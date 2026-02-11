@@ -12,7 +12,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView className="flex-1 bg-bg-secondary">
-      <View className="px-5 mb-8">
+      <View className="px-5 mb-8 pt-2">
         <Text className="mb-2 ml-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
           Configuration
         </Text>
