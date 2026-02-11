@@ -186,10 +186,9 @@ export default function ChatDetailScreen() {
 
   return (
     <PanGestureHandler
-      onGestureEvent={handleSwipeGesture}
       onHandlerStateChange={handleSwipeGesture}
-      activeOffsetX={[0, 10]}
-      failOffsetY={[-20, 20]}
+      activeOffsetX={[0, 30]}
+      failOffsetY={[-10, 10]}
     >
     <KeyboardAvoidingView
       className="flex-1 bg-bg-chat"
