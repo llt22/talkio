@@ -124,92 +124,178 @@ export default function ExpertsScreen() {
   );
 
   return (
-    <View className="flex-1 bg-bg-secondary">
-      <View className="bg-white px-4 pb-3">
-        <View className="flex-row items-center rounded-xl bg-bg-secondary px-3 py-2">
-          <Ionicons name="search" size={18} color="#9ca3af" />
+    <View className="flex-1 bg-white">
+      <View className="px-5 pt-4 pb-3">
+        <View className="mb-4 flex-row items-center justify-between">
+          <Text className="text-3xl font-bold tracking-tight text-black">Experts</Text>
+          <Pressable
+            onPress={() => router.push("/(tabs)/settings/providers")}
+            className="flex-row items-center gap-1"
+          >
+            <Ionicons name="add" size={20} color="#007AFF" />
+            <Text className="text-base font-medium text-primary">Add</Text>
+          </Pressable>
+        </View>
+        <View className="relative">
+          <View className="absolute left-3 top-1/2 z-10" style={{ transform: [{ translateY: -9 }] }}>
+            <Ionicons name="search" size={18} color="#94a3b8" />
+          </View>
           <TextInput
-            className="ml-2 flex-1 text-sm text-text-main"
-            placeholder="Search models..."
-            placeholderTextColor="#9ca3af"
+            className="w-full rounded-xl border-0 bg-ios-gray py-2 pl-10 pr-4 text-[17px] text-text-main"
+            placeholder="Search"
+            placeholderTextColor="#64748b"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
       </View>
 
-      <View className="bg-white px-4 pb-3">
-        <Text className="mb-2 text-xs font-semibold uppercase text-text-muted">
+      <View className="mt-2 px-5">
+        <Text className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
           Active Providers
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {providers.map((p) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pb-2">
+          <View className="flex-row gap-5">
+            {providers.map((p) => (
+              <Pressable
+                key={p.id}
+                onPress={() => router.push("/(tabs)/settings/providers")}
+                className="items-center gap-1.5"
+              >
+                <View
+                  className="h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-white"
+                  style={{ shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}
+                >
+                  <Text className="text-lg font-bold text-text-main">
+                    {p.name.slice(0, 2)}
+                  </Text>
+                </View>
+                <Text className="text-[11px] font-medium text-slate-600">{p.name}</Text>
+              </Pressable>
+            ))}
             <Pressable
-              key={p.id}
               onPress={() => router.push("/(tabs)/settings/providers")}
-              className="mr-3 items-center"
+              className="items-center gap-1.5"
             >
-              <View className="h-12 w-12 items-center justify-center rounded-xl bg-bg-secondary">
-                <Text className="text-lg font-bold text-text-main">
-                  {p.name.slice(0, 2)}
-                </Text>
+              <View className="h-14 w-14 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-ios-gray/50">
+                <Ionicons name="add" size={20} color="#94a3b8" />
               </View>
-              <Text className="mt-1 text-xs text-text-muted">{p.name}</Text>
+              <Text className="text-[11px] font-medium text-slate-400">Add</Text>
             </Pressable>
-          ))}
-          <Pressable
-            onPress={() => router.push("/(tabs)/settings/providers")}
-            className="items-center"
-          >
-            <View className="h-12 w-12 items-center justify-center rounded-xl border border-dashed border-border-light">
-              <Ionicons name="add" size={20} color="#9ca3af" />
-            </View>
-            <Text className="mt-1 text-xs text-text-muted">Add</Text>
-          </Pressable>
+          </View>
         </ScrollView>
       </View>
 
-      <View className="flex-row items-center justify-between px-4 py-2">
-        <Text className="text-xs font-semibold uppercase text-text-muted">
-          {filtered.length} Models
-        </Text>
-        <Pressable
-          onPress={() => {
-            setGroupMode(!groupMode);
-            setSelectedForGroup([]);
-          }}
-          className={`rounded-full px-3 py-1 ${groupMode ? "bg-primary" : "bg-white"}`}
-        >
-          <Text className={`text-xs font-medium ${groupMode ? "text-white" : "text-primary"}`}>
-            {groupMode ? "Cancel" : "Group Chat"}
-          </Text>
-        </Pressable>
-      </View>
+      <ScrollView className="flex-1 mt-4 px-5" showsVerticalScrollIndicator={false}>
+        {Array.from(groupedModels.entries()).map(([group, groupModels]) => (
+          <View key={group} className="mb-6">
+            <Text className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-tight text-slate-500">
+              {group === "Reasoning" ? "Reasoning Experts" : group === "Multimodal" ? "Multimodal & Creative" : "General Purpose"}
+            </Text>
+            <View
+              className="overflow-hidden rounded-2xl border border-slate-100 bg-white"
+              style={{ shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}
+            >
+              {groupModels.map((item, idx) => {
+                const provider = getProviderById(item.providerId);
+                const isSelected = selectedForGroup.includes(item.id);
+                const isLast = idx === groupModels.length - 1;
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => handleStartChat(item)}
+                    className={`flex-row items-center gap-4 p-4 ${!isLast ? "border-b border-slate-50" : ""} ${isSelected ? "bg-blue-50/50" : ""}`}
+                  >
+                    <View className="relative">
+                      <View className="h-12 w-12 overflow-hidden rounded-xl">
+                        <ModelAvatar name={item.displayName} size="md" />
+                      </View>
+                      {item.capabilitiesVerified && (
+                        <View className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-accent-green" />
+                      )}
+                    </View>
+                    <View className="flex-1">
+                      <View className="flex-row items-center gap-1">
+                        <Text className="text-[17px] font-semibold text-slate-900" numberOfLines={1}>
+                          {item.displayName}
+                        </Text>
+                        {item.capabilitiesVerified && (
+                          <Ionicons name="checkmark-circle" size={16} color="#007AFF" />
+                        )}
+                      </View>
+                      <View className="mt-1 flex-row gap-1.5">
+                        {item.capabilities.reasoning && (
+                          <View className="rounded bg-tag-reasoning px-2 py-0.5">
+                            <Text className="text-[10px] font-semibold text-tag-reasoning-text">Reasoning</Text>
+                          </View>
+                        )}
+                        {item.capabilities.vision && (
+                          <View className="rounded bg-tag-vision px-2 py-0.5">
+                            <Text className="text-[10px] font-semibold text-tag-vision-text">Vision</Text>
+                          </View>
+                        )}
+                        {item.capabilities.toolCall && (
+                          <View className="rounded bg-tag-tools px-2 py-0.5">
+                            <Text className="text-[10px] font-semibold text-tag-tools-text">Tools</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    {groupMode ? (
+                      <Ionicons
+                        name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                        size={24}
+                        color={isSelected ? "#007AFF" : "#d1d5db"}
+                      />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ))}
+      </ScrollView>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon="people-outline"
-          title="No models found"
-          description="Add a provider in Settings to get started"
-        />
-      ) : (
-        <FlashList
-          data={filtered}
-          renderItem={renderModelItem}
-          keyExtractor={(item) => item.id}
-        />
+      {!groupMode && (
+        <View className="absolute bottom-24 right-6">
+          <Pressable
+            onPress={() => {
+              setGroupMode(true);
+              setSelectedForGroup([]);
+            }}
+            className="h-14 w-14 items-center justify-center rounded-full bg-primary"
+            style={{ shadowColor: "#007AFF", shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 }}
+          >
+            <Ionicons name="chatbubbles" size={24} color="#fff" />
+          </Pressable>
+        </View>
       )}
 
-      {groupMode && selectedForGroup.length >= 2 && (
-        <View className="absolute bottom-4 left-4 right-4">
-          <Pressable
-            onPress={handleCreateGroup}
-            className="items-center rounded-2xl bg-primary py-4"
-          >
-            <Text className="text-base font-semibold text-white">
-              Create Group Chat ({selectedForGroup.length} models)
-            </Text>
-          </Pressable>
+      {groupMode && (
+        <View className="absolute bottom-4 left-5 right-5">
+          {selectedForGroup.length >= 2 ? (
+            <Pressable
+              onPress={handleCreateGroup}
+              className="items-center rounded-2xl bg-primary py-4"
+              style={{ shadowColor: "#007AFF", shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 }}
+            >
+              <Text className="text-base font-semibold text-white">
+                Create Group Chat ({selectedForGroup.length} models)
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => {
+                setGroupMode(false);
+                setSelectedForGroup([]);
+              }}
+              className="items-center rounded-2xl bg-slate-200 py-4"
+            >
+              <Text className="text-base font-medium text-slate-600">Cancel</Text>
+            </Pressable>
+          )}
         </View>
       )}
     </View>

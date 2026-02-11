@@ -53,22 +53,30 @@ export default function ChatsScreen() {
         <Pressable
           onPress={() => router.push(`/(tabs)/chats/${item.id}`)}
           onLongPress={() => handleDelete(item.id)}
-          className="flex-row items-center border-b border-border-light bg-white px-4 py-3"
+          className="flex-row items-center gap-4 rounded-2xl px-3 py-3"
         >
-          <ModelAvatar
-            name={modelName}
-            size="md"
-            online={firstModel ? true : undefined}
-          />
-          <View className="ml-3 flex-1">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1 flex-row items-center">
-                <Text className="text-base font-semibold text-text-main" numberOfLines={1}>
+          <View className="relative">
+            <View className="h-14 w-14 overflow-hidden rounded-full">
+              <ModelAvatar name={modelName} size="lg" />
+            </View>
+            {firstModel && (
+              <View className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-accent-green" />
+            )}
+          </View>
+          <View className="flex-1 border-b border-divider pb-3">
+            <View className="flex-row items-center justify-between mb-1">
+              <View className="flex-1 flex-row items-center gap-1.5">
+                <Text className="text-[16px] font-semibold text-text-main" numberOfLines={1}>
                   {item.type === "group" ? item.title : modelName}
                 </Text>
                 {firstModel?.capabilities.reasoning && (
-                  <View className="ml-2">
-                    <CapabilityTag label="Reasoning" type="reasoning" />
+                  <View className="rounded bg-blue-50 px-1.5 py-0.5">
+                    <Text className="text-[10px] font-bold uppercase tracking-wide text-primary">Reasoning</Text>
+                  </View>
+                )}
+                {firstModel?.capabilities.vision && (
+                  <View className="rounded bg-orange-100 px-1.5 py-0.5">
+                    <Text className="text-[10px] font-bold uppercase tracking-wide text-orange-600">Vision</Text>
                   </View>
                 )}
               </View>
@@ -76,7 +84,7 @@ export default function ChatsScreen() {
                 {formatDate(item.updatedAt)}
               </Text>
             </View>
-            <Text className="mt-0.5 text-sm text-text-muted" numberOfLines={1}>
+            <Text className="text-sm text-text-hint" numberOfLines={1}>
               {identity ? `${identity.name}: ` : ""}
               {item.lastMessage ?? "Start a conversation"}
             </Text>
@@ -89,37 +97,41 @@ export default function ChatsScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <View className="px-4 pb-2 pt-1">
-        <View className="flex-row items-center rounded-xl bg-bg-secondary px-3 py-2">
-          <Ionicons name="search" size={18} color="#9ca3af" />
-          <TextInput
-            className="ml-2 flex-1 text-sm text-text-main"
-            placeholder="Search chats..."
-            placeholderTextColor="#9ca3af"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+      <View className="px-5 pb-4 pt-2">
+        <View className="mb-4 flex-row items-center justify-between">
+          <Text className="text-3xl font-bold tracking-tight text-text-main">Messages</Text>
+          <View className="flex-row gap-3">
+            <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-divider">
+              <Ionicons name="search" size={20} color="#1C1C1E" />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/(tabs)/experts")}
+              className="h-9 w-9 items-center justify-center rounded-full bg-primary"
+            >
+              <Ionicons name="add" size={20} color="#fff" />
+            </Pressable>
+          </View>
         </View>
-      </View>
 
-      <View className="flex-row px-4 pb-2">
-        {(["all", "single", "group"] as FilterType[]).map((f) => (
-          <Pressable
-            key={f}
-            onPress={() => setFilter(f)}
-            className={`mr-2 rounded-full px-3.5 py-1.5 ${
-              filter === f ? "bg-primary" : "bg-bg-secondary"
-            }`}
-          >
-            <Text
-              className={`text-xs font-medium ${
-                filter === f ? "text-white" : "text-text-muted"
+        <View className="flex-row gap-2">
+          {(["all", "single", "group"] as FilterType[]).map((f) => (
+            <Pressable
+              key={f}
+              onPress={() => setFilter(f)}
+              className={`rounded-full px-4 py-1.5 ${
+                filter === f ? "bg-primary" : "bg-divider"
               }`}
             >
-              {f === "all" ? "All" : f === "single" ? "Direct" : "Groups"}
-            </Text>
-          </Pressable>
-        ))}
+              <Text
+                className={`text-xs font-semibold ${
+                  filter === f ? "text-white" : "text-text-main"
+                }`}
+              >
+                {f === "all" ? "All" : f === "single" ? "Experts" : "Groups"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       {filtered.length === 0 ? (
