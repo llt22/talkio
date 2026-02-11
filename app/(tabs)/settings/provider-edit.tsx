@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, Alert, ActivityIndicator, Switch } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useProviderStore } from "../../../src/stores/provider-store";
-import { CapabilityTag } from "../../../src/components/common/CapabilityTag";
 import { PROVIDER_PRESETS } from "../../../src/constants";
 import type { Model } from "../../../src/types";
 
@@ -18,6 +17,8 @@ export default function ProviderEditScreen() {
   const getModelsByProvider = useProviderStore((s) => s.getModelsByProvider);
   const testConnection = useProviderStore((s) => s.testConnection);
   const fetchModels = useProviderStore((s) => s.fetchModels);
+  const toggleModel = useProviderStore((s) => s.toggleModel);
+  const allModels = useProviderStore((s) => s.models);
 
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
@@ -28,6 +29,10 @@ export default function ProviderEditScreen() {
   const [pulling, setPulling] = useState(false);
   const [savedProviderId, setSavedProviderId] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
+
+  const displayModels = savedProviderId
+    ? allModels.filter((m) => m.providerId === savedProviderId)
+    : pulledModels;
 
   useEffect(() => {
     if (editId) {
@@ -219,37 +224,25 @@ export default function ProviderEditScreen() {
             </Pressable>
           </View>
 
-          <View className="mt-3 gap-3">
-            {pulledModels.map((m) => (
+          <View className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+            {displayModels.map((m, idx) => (
               <View
                 key={m.id}
-                className="rounded-xl border border-slate-200 bg-white p-4"
+                className={`flex-row items-center justify-between px-4 py-3 ${idx < displayModels.length - 1 ? "border-b border-slate-100" : ""}`}
               >
-                <View className="flex-row items-start justify-between">
-                  <View>
-                    <Text className="text-[17px] font-semibold text-slate-900">{m.displayName}</Text>
-                    <Text className="text-[13px] text-slate-400">{m.modelId}</Text>
-                  </View>
-                  <View className={`rounded-full px-2.5 py-1 ${m.enabled ? "bg-primary/10" : "bg-slate-100"}`}>
-                    <Text className={`text-[11px] font-bold uppercase tracking-wide ${m.enabled ? "text-primary" : "text-slate-500"}`}>
-                      {m.enabled ? "Active" : "Disabled"}
-                    </Text>
-                  </View>
+                <View className="flex-1 mr-3">
+                  <Text className={`text-[15px] font-medium ${m.enabled ? "text-slate-900" : "text-slate-400"}`} numberOfLines={1}>
+                    {m.displayName}
+                  </Text>
+                  <Text className="text-[12px] text-slate-400" numberOfLines={1}>{m.modelId}</Text>
                 </View>
-                <View className="mt-3 flex-row flex-wrap gap-2">
-                  <View className={`flex-row items-center rounded-lg border border-slate-100 bg-slate-50 px-3 py-1 ${!m.capabilities.vision ? "opacity-40" : ""}`}>
-                    <Ionicons name="eye-outline" size={14} color={m.capabilities.vision ? "#007AFF" : "#94a3b8"} style={{ marginRight: 4 }} />
-                    <Text className="text-[12px] font-medium text-slate-700">Vision</Text>
-                  </View>
-                  <View className={`flex-row items-center rounded-lg border border-slate-100 bg-slate-50 px-3 py-1 ${!m.capabilities.toolCall ? "opacity-40" : ""}`}>
-                    <Ionicons name="construct-outline" size={14} color={m.capabilities.toolCall ? "#007AFF" : "#94a3b8"} style={{ marginRight: 4 }} />
-                    <Text className="text-[12px] font-medium text-slate-700">Tools</Text>
-                  </View>
-                  <View className={`flex-row items-center rounded-lg border border-slate-100 bg-slate-50 px-3 py-1 ${!m.capabilities.reasoning ? "opacity-40" : ""}`}>
-                    <Ionicons name="bulb-outline" size={14} color={m.capabilities.reasoning ? "#007AFF" : "#94a3b8"} style={{ marginRight: 4 }} />
-                    <Text className="text-[12px] font-medium text-slate-700">Reasoning</Text>
-                  </View>
-                </View>
+                <Switch
+                  value={m.enabled}
+                  onValueChange={() => toggleModel(m.id)}
+                  trackColor={{ false: "#e5e7eb", true: "#007AFF" }}
+                  thumbColor="#fff"
+                  ios_backgroundColor="#e5e7eb"
+                />
               </View>
             ))}
           </View>
