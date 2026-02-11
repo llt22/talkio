@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { View, Text, Pressable, Platform, Alert, ActionSheetIOS } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { LegendList } from "@legendapp/list";
 import type { LegendListRef } from "@legendapp/list";
@@ -15,6 +16,7 @@ import { IdentitySlider } from "../../src/components/chat/IdentitySlider";
 import type { Message } from "../../src/types";
 
 export default function ChatDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
@@ -47,9 +49,9 @@ export default function ChatDetailScreen() {
 
   useEffect(() => {
     const title = isGroup
-      ? conv?.title ?? "Group"
-      : model?.displayName ?? "Chat";
-    const subtitle = activeIdentity ? `◆ ${activeIdentity.name}` : isGroup ? undefined : "◆ Mount Identity";
+      ? conv?.title ?? t("chat.group")
+      : model?.displayName ?? t("chat.chatTitle");
+    const subtitle = activeIdentity ? `◆ ${activeIdentity.name}` : isGroup ? undefined : `◆ ${t("chat.mountIdentity")}`;
 
     navigation.setOptions({
       headerTitle: () => (
@@ -62,7 +64,7 @@ export default function ChatDetailScreen() {
             <View className="mt-0.5 flex-row items-center gap-1">
               <Ionicons name="layers-outline" size={12} color="#007AFF" />
               <Text className="text-[10px] font-bold uppercase tracking-widest text-primary">
-                {activeIdentity ? activeIdentity.name : "Mount Identity"}
+                {activeIdentity ? activeIdentity.name : t("chat.mountIdentity")}
               </Text>
               <Ionicons name="chevron-down" size={12} color="#007AFF" />
             </View>
@@ -107,10 +109,10 @@ export default function ChatDetailScreen() {
 
   const handleBranch = useCallback(
     (messageId: string) => {
-      Alert.alert("Branch Conversation", "Create a new branch from this message?", [
-        { text: "Cancel", style: "cancel" },
+      Alert.alert(t("chat.branchConversation"), t("chat.branchConfirm"), [
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Branch",
+          text: t("chat.branch"),
           onPress: () => branchFromMessage(messageId),
         },
       ]);
@@ -122,7 +124,7 @@ export default function ChatDetailScreen() {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ["Cancel", "Copy", "Branch from here", "Delete"],
+          options: [t("common.cancel"), t("common.copy"), t("chat.branchFromHere"), t("common.delete")],
           cancelButtonIndex: 0,
           destructiveButtonIndex: 3,
         },
@@ -131,10 +133,10 @@ export default function ChatDetailScreen() {
         },
       );
     } else {
-      Alert.alert("Message Options", undefined, [
-        { text: "Copy", onPress: () => {} },
-        { text: "Branch", onPress: () => handleBranch(message.id) },
-        { text: "Cancel", style: "cancel" },
+      Alert.alert(t("chat.messageOptions"), undefined, [
+        { text: t("common.copy"), onPress: () => {} },
+        { text: t("chat.branch"), onPress: () => handleBranch(message.id) },
+        { text: t("common.cancel"), style: "cancel" },
       ]);
     }
   }, [handleBranch]);
@@ -143,7 +145,7 @@ export default function ChatDetailScreen() {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ["Cancel", "Search in Chat", "Export", "Clear History"],
+          options: [t("common.cancel"), t("chat.searchInChat"), t("chat.export"), t("chat.clearHistory")],
           cancelButtonIndex: 0,
           destructiveButtonIndex: 3,
         },
@@ -167,7 +169,7 @@ export default function ChatDetailScreen() {
   if (!conv) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <Text className="text-text-muted">Conversation not found</Text>
+        <Text className="text-text-muted">{t("chat.conversationNotFound")}</Text>
       </View>
     );
   }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View, Text, Pressable } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MotiView } from "moti";
 import { Ionicons } from "@expo/vector-icons";
 import { ModelAvatar } from "../common/ModelAvatar";
@@ -19,6 +20,7 @@ export function MessageBubble({
   onLongPress,
   onBranch,
 }: MessageBubbleProps) {
+  const { t } = useTranslation();
   const [showReasoning, setShowReasoning] = useState(false);
   const isUser = message.role === "user";
 
@@ -37,7 +39,7 @@ export function MessageBubble({
         </View>
         <View className="flex-1 flex-col items-end gap-1">
           <Text className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            You
+            {t("chat.you")}
           </Text>
           <Pressable
             onLongPress={() => onLongPress?.(message)}
@@ -77,7 +79,7 @@ export function MessageBubble({
             <View className="flex-row items-center gap-2">
               <Ionicons name="bulb-outline" size={16} color="#6b7280" />
               <Text className="text-[13px] font-medium text-slate-600">
-                Thought process
+                {t("chat.thoughtProcess")}
               </Text>
               {message.reasoningDuration && (
                 <View className="rounded bg-white/80 px-1.5 py-0.5">
@@ -123,7 +125,7 @@ export function MessageBubble({
               <View key={tc.id} className="flex-row items-center">
                 <Ionicons name="construct-outline" size={14} color="#6b7280" />
                 <Text className="ml-1.5 text-xs text-text-muted">
-                  Called: {tc.name}
+                  {t("chat.called", { name: tc.name })}
                 </Text>
               </View>
             ))}

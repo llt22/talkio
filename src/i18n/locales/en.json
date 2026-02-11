@@ -10,25 +10,84 @@
     "loading": "Loading...",
     "error": "Error",
     "retry": "Retry",
-    "done": "Done"
+    "done": "Done",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "off": "Off",
+    "unknown": "Unknown",
+    "areYouSure": "Are you sure?",
+    "configured": "{{count}} configured",
+    "yesterday": "Yesterday"
+  },
+  "tabs": {
+    "chats": "Messages",
+    "models": "Models",
+    "discover": "Discover",
+    "settings": "Settings"
+  },
+  "chats": {
+    "deleteChat": "Delete Chat",
+    "searchChats": "Search chats...",
+    "filterAll": "All",
+    "filterSingle": "Single",
+    "filterGroups": "Groups",
+    "noConversations": "No conversations yet",
+    "goToModels": "Go to Models tab to start chatting",
+    "startConversation": "Start a conversation",
+    "reasoning": "Reasoning",
+    "vision": "Vision"
   },
   "chat": {
-    "newChat": "New Chat",
-    "sendMessage": "Type a message...",
-    "generating": "Generating...",
-    "showThinking": "Show thinking",
-    "hideThinking": "Hide thinking",
-    "branch": "Branch from here",
+    "you": "You",
+    "group": "Group",
+    "chatTitle": "Chat",
+    "mountIdentity": "Mount Identity",
+    "thoughtProcess": "Thought process",
+    "branchConversation": "Branch Conversation",
     "branchConfirm": "Create a new branch from this message?",
+    "branch": "Branch",
+    "branchFromHere": "Branch from here",
     "conversationNotFound": "Conversation not found",
+    "messageOptions": "Message Options",
     "searchInChat": "Search in Chat",
     "export": "Export",
     "clearHistory": "Clear History",
-    "messageOptions": "Message Options"
+    "selectModel": "Select Model",
+    "messageGroup": "Message Group...",
+    "message": "Message...",
+    "called": "Called: {{name}}"
+  },
+  "models": {
+    "title": "Models",
+    "noModels": "No models yet",
+    "configureHint": "Configure a provider to pull available models",
+    "configureProvider": "Configure Provider",
+    "selectModels": "Select Models",
+    "selectModelsHint": "Pick at least 2 models for a group chat.",
+    "createGroup": "Create Group ({{count}})"
+  },
+  "discover": {
+    "identityCards": "Identity Cards",
+    "mcpTools": "MCP Tools",
+    "deleteIdentity": "Delete Identity",
+    "deleteTool": "Delete Tool",
+    "createIdentity": "Create New Identity Card",
+    "addTool": "Add MCP Tool",
+    "temp": "Temp: {{value}}",
+    "tools": "Tools: {{count}}"
   },
   "settings": {
     "title": "Settings",
+    "configuration": "Configuration",
     "providers": "Providers",
+    "dataSync": "Data Sync",
+    "privacyPermissions": "Privacy & Permissions",
+    "interactions": "Interactions",
+    "hapticFeedback": "Haptic Feedback",
+    "quickPrompts": "Quick Prompts",
+    "voiceAutoTranscribe": "Voice Auto-transcribe",
+    "securityTip": "Security Tip: API Keys are end-to-end encrypted and stored only locally.",
+    "appName": "Avatar AI Client",
     "addProvider": "Add Provider",
     "editProvider": "Edit Provider",
     "apiKey": "API Key",
@@ -37,17 +96,5 @@
     "theme": "Theme",
     "language": "Language",
     "about": "About"
-  },
-  "experts": {
-    "title": "Experts",
-    "createIdentity": "Create Identity",
-    "systemPrompt": "System Prompt",
-    "temperature": "Temperature",
-    "maxTokens": "Max Tokens"
-  },
-  "tabs": {
-    "chats": "Chats",
-    "experts": "Experts",
-    "settings": "Settings"
   }
 }

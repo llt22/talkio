@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { View, Text, Pressable, TextInput, Alert, SectionList } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useProviderStore } from "../../../src/stores/provider-store";
@@ -8,6 +9,7 @@ import { ModelAvatar } from "../../../src/components/common/ModelAvatar";
 import type { Model } from "../../../src/types";
 
 export default function ModelsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const models = useProviderStore((s) => s.getEnabledModels);
   const getProviderById = useProviderStore((s) => s.getProviderById);
@@ -47,7 +49,7 @@ export default function ModelsScreen() {
 
   const handleCreateGroup = useCallback(async () => {
     if (selectedForGroup.length < 2) {
-      Alert.alert("Select Models", "Pick at least 2 models for a group chat.");
+      Alert.alert(t("models.selectModels"), t("models.selectModelsHint"));
       return;
     }
     const participants = selectedForGroup.map((id) => ({
@@ -67,7 +69,7 @@ export default function ModelsScreen() {
           <Ionicons name="search" size={18} color="#8E8E93" />
           <TextInput
             className="ml-2 flex-1 text-[15px] text-text-main"
-            placeholder="Search"
+            placeholder={t("common.search")}
             placeholderTextColor="#8E8E93"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -83,13 +85,13 @@ export default function ModelsScreen() {
       {sections.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="people-outline" size={48} color="#cbd5e1" />
-          <Text className="mt-4 text-lg font-semibold text-text-main">No models yet</Text>
-          <Text className="mt-1 text-center text-sm text-slate-400">Configure a provider to pull available models</Text>
+          <Text className="mt-4 text-lg font-semibold text-text-main">{t("models.noModels")}</Text>
+          <Text className="mt-1 text-center text-sm text-slate-400">{t("models.configureHint")}</Text>
           <Pressable
             onPress={() => router.push("/(tabs)/settings/providers")}
             className="mt-6 rounded-lg bg-primary px-6 py-2.5"
           >
-            <Text className="text-[15px] font-semibold text-white">Configure Provider</Text>
+            <Text className="text-[15px] font-semibold text-white">{t("models.configureProvider")}</Text>
           </Pressable>
         </View>
       ) : (
@@ -161,7 +163,7 @@ export default function ModelsScreen() {
               className="items-center rounded-xl bg-primary py-3.5"
             >
               <Text className="text-base font-semibold text-white">
-                Create Group ({selectedForGroup.length})
+                {t("models.createGroup", { count: selectedForGroup.length })}
               </Text>
             </Pressable>
           ) : (
@@ -172,7 +174,7 @@ export default function ModelsScreen() {
               }}
               className="items-center rounded-xl bg-slate-200 py-3.5"
             >
-              <Text className="text-base font-medium text-slate-600">Cancel</Text>
+              <Text className="text-base font-medium text-slate-600">{t("common.cancel")}</Text>
             </Pressable>
           )}
         </View>

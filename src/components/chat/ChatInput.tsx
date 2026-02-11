@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { View, TextInput, Pressable, Text } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { ModelAvatar } from "../common/ModelAvatar";
 import type { ConversationParticipant } from "../../types";
@@ -18,6 +19,7 @@ export function ChatInput({
   isGroup = false,
   participants = [],
 }: ChatInputProps) {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -64,7 +66,7 @@ export function ChatInput({
       {showMentionPicker && isGroup && (
         <View className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
           <Text className="mb-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-            Select Model
+            {t("chat.selectModel")}
           </Text>
           {participants.map((p) => {
             const model = getModelById(p.modelId);
@@ -101,7 +103,7 @@ export function ChatInput({
           <TextInput
             ref={inputRef}
             className="max-h-24 min-h-[36px] flex-1 text-[16px] text-text-main"
-            placeholder={isGroup ? "Message Group..." : `Message...`}
+            placeholder={isGroup ? t("chat.messageGroup") : t("chat.message")}
             placeholderTextColor="#8E8E93"
             value={text}
             onChangeText={handleTextChange}

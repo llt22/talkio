@@ -10,25 +10,84 @@
     "loading": "加载中...",
     "error": "错误",
     "retry": "重试",
-    "done": "完成"
+    "done": "完成",
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "off": "关闭",
+    "unknown": "未知",
+    "areYouSure": "确定吗？",
+    "configured": "已配置 {{count}} 个",
+    "yesterday": "昨天"
+  },
+  "tabs": {
+    "chats": "消息",
+    "models": "模型",
+    "discover": "发现",
+    "settings": "设置"
+  },
+  "chats": {
+    "deleteChat": "删除对话",
+    "searchChats": "搜索对话...",
+    "filterAll": "全部",
+    "filterSingle": "单聊",
+    "filterGroups": "群聊",
+    "noConversations": "暂无对话",
+    "goToModels": "前往模型页面开始聊天",
+    "startConversation": "开始新对话",
+    "reasoning": "推理",
+    "vision": "视觉"
   },
   "chat": {
-    "newChat": "新对话",
-    "sendMessage": "输入消息...",
-    "generating": "生成中...",
-    "showThinking": "展开思考",
-    "hideThinking": "收起思考",
-    "branch": "从此消息分支",
+    "you": "你",
+    "group": "群聊",
+    "chatTitle": "对话",
+    "mountIdentity": "挂载身份",
+    "thoughtProcess": "思考过程",
+    "branchConversation": "分支对话",
     "branchConfirm": "从此消息创建新分支？",
+    "branch": "分支",
+    "branchFromHere": "从此处分支",
     "conversationNotFound": "对话不存在",
+    "messageOptions": "消息选项",
     "searchInChat": "搜索聊天记录",
     "export": "导出",
     "clearHistory": "清空历史",
-    "messageOptions": "消息选项"
+    "selectModel": "选择模型",
+    "messageGroup": "发送群消息...",
+    "message": "发送消息...",
+    "called": "调用：{{name}}"
+  },
+  "models": {
+    "title": "模型",
+    "noModels": "暂无模型",
+    "configureHint": "配置供应商以获取可用模型",
+    "configureProvider": "配置供应商",
+    "selectModels": "选择模型",
+    "selectModelsHint": "至少选择 2 个模型以创建群聊。",
+    "createGroup": "创建群聊 ({{count}})"
+  },
+  "discover": {
+    "identityCards": "身份卡片",
+    "mcpTools": "MCP 工具",
+    "deleteIdentity": "删除身份",
+    "deleteTool": "删除工具",
+    "createIdentity": "创建新身份卡片",
+    "addTool": "添加 MCP 工具",
+    "temp": "温度：{{value}}",
+    "tools": "工具：{{count}}"
   },
   "settings": {
     "title": "设置",
+    "configuration": "配置",
     "providers": "供应商",
+    "dataSync": "数据同步",
+    "privacyPermissions": "隐私与权限",
+    "interactions": "交互",
+    "hapticFeedback": "触觉反馈",
+    "quickPrompts": "快捷提示",
+    "voiceAutoTranscribe": "语音自动转写",
+    "securityTip": "安全提示：API 密钥采用端到端加密，仅存储在本地。",
+    "appName": "Avatar AI 客户端",
     "addProvider": "添加供应商",
     "editProvider": "编辑供应商",
     "apiKey": "API 密钥",
@@ -37,17 +96,5 @@
     "theme": "主题",
     "language": "语言",
     "about": "关于"
-  },
-  "experts": {
-    "title": "专家",
-    "createIdentity": "创建身份",
-    "systemPrompt": "系统提示词",
-    "temperature": "温度",
-    "maxTokens": "最大令牌数"
-  },
-  "tabs": {
-    "chats": "对话",
-    "experts": "专家",
-    "settings": "设置"
   }
 }

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { View, Text, Pressable, TextInput, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { FlashList } from "@shopify/flash-list";
 import { useRouter, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +15,7 @@ import type { Conversation } from "../../../src/types";
 type FilterType = "all" | "single" | "group";
 
 export default function ChatsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
   const conversations = useChatStore((s) => s.conversations);
@@ -56,9 +58,9 @@ export default function ChatsScreen() {
 
   const handleDelete = useCallback(
     (id: string) => {
-      Alert.alert("Delete Chat", "Are you sure?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => deleteConversation(id) },
+      Alert.alert(t("chats.deleteChat"), t("common.areYouSure"), [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("common.delete"), style: "destructive", onPress: () => deleteConversation(id) },
       ]);
     },
     [deleteConversation],
@@ -67,7 +69,7 @@ export default function ChatsScreen() {
   const renderItem = useCallback(
     ({ item }: { item: Conversation }) => {
       const firstModel = getModelById(item.participants[0]?.modelId);
-      const modelName = firstModel?.displayName ?? "Unknown";
+      const modelName = firstModel?.displayName ?? t("common.unknown");
       const identity = item.participants[0]?.identityId
         ? getIdentityById(item.participants[0].identityId)
         : null;
@@ -94,12 +96,12 @@ export default function ChatsScreen() {
                 </Text>
                 {firstModel?.capabilities.reasoning && (
                   <View className="rounded bg-blue-50 px-1.5 py-0.5">
-                    <Text className="text-[10px] font-bold uppercase tracking-wide text-primary">Reasoning</Text>
+                    <Text className="text-[10px] font-bold uppercase tracking-wide text-primary">{t("chats.reasoning")}</Text>
                   </View>
                 )}
                 {firstModel?.capabilities.vision && (
                   <View className="rounded bg-orange-100 px-1.5 py-0.5">
-                    <Text className="text-[10px] font-bold uppercase tracking-wide text-orange-600">Vision</Text>
+                    <Text className="text-[10px] font-bold uppercase tracking-wide text-orange-600">{t("chats.vision")}</Text>
                   </View>
                 )}
               </View>
@@ -109,7 +111,7 @@ export default function ChatsScreen() {
             </View>
             <Text className="text-sm text-text-hint" numberOfLines={1}>
               {identity ? `${identity.name}: ` : ""}
-              {item.lastMessage ?? "Start a conversation"}
+              {item.lastMessage ?? t("chats.startConversation")}
             </Text>
           </View>
         </Pressable>
@@ -126,7 +128,7 @@ export default function ChatsScreen() {
             <Ionicons name="search" size={18} color="#94a3b8" />
             <TextInput
               className="ml-2 flex-1 text-[15px] text-text-main"
-              placeholder="Search chats..."
+              placeholder={t("chats.searchChats")}
               placeholderTextColor="#8E8E93"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -156,7 +158,7 @@ export default function ChatsScreen() {
                   filter === f ? "text-white" : "text-text-main"
                 }`}
               >
-                {f === "all" ? "All" : f === "single" ? "Single" : "Groups"}
+                {f === "all" ? t("chats.filterAll") : f === "single" ? t("chats.filterSingle") : t("chats.filterGroups")}
               </Text>
             </Pressable>
           ))}
@@ -166,8 +168,8 @@ export default function ChatsScreen() {
       {filtered.length === 0 ? (
         <EmptyState
           icon="chatbubbles-outline"
-          title="No conversations yet"
-          description="Go to Models tab to start chatting"
+          title={t("chats.noConversations")}
+          description={t("chats.goToModels")}
         />
       ) : (
         <FlashList
@@ -187,7 +189,7 @@ function formatDate(iso: string): string {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  if (diffDays === 1) return "Yesterday";
+  if (diffDays === 1) return "yesterday";
   if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" });
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }

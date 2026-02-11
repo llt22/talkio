@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View, Text, Pressable, ScrollView, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useIdentityStore } from "../../../src/stores/identity-store";
@@ -26,6 +27,7 @@ const IDENTITY_ICONS: Array<keyof typeof Ionicons.glyphMap> = [
 ];
 
 export default function DiscoverScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const identities = useIdentityStore((s) => s.identities);
   const mcpTools = useIdentityStore((s) => s.mcpTools);
@@ -34,16 +36,16 @@ export default function DiscoverScreen() {
   const [activeTab, setActiveTab] = useState<Tab>("identities");
 
   const handleDeleteIdentity = (id: string) => {
-    Alert.alert("Delete Identity", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => removeIdentity(id) },
+    Alert.alert(t("discover.deleteIdentity"), t("common.areYouSure"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => removeIdentity(id) },
     ]);
   };
 
   const handleDeleteTool = (id: string) => {
-    Alert.alert("Delete Tool", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => removeMcpTool(id) },
+    Alert.alert(t("discover.deleteTool"), t("common.areYouSure"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => removeMcpTool(id) },
     ]);
   };
 
@@ -64,7 +66,7 @@ export default function DiscoverScreen() {
                   activeTab === tab ? "text-primary" : "text-slate-500"
                 }`}
               >
-                {tab === "identities" ? "Identity Cards" : "MCP Tools"}
+                {tab === "identities" ? t("discover.identityCards") : t("discover.mcpTools")}
               </Text>
             </Pressable>
           ))}
@@ -121,7 +123,7 @@ export default function DiscoverScreen() {
         >
           <Ionicons name="add-circle" size={22} color="#fff" />
           <Text className="text-base font-semibold text-white">
-            {activeTab === "identities" ? "Create New Identity Card" : "Add MCP Tool"}
+            {activeTab === "identities" ? t("discover.createIdentity") : t("discover.addTool")}
           </Text>
         </Pressable>
       </View>
@@ -140,6 +142,7 @@ function IdentityCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const colorSet = ICON_COLORS[colorIndex % ICON_COLORS.length];
   const iconName = IDENTITY_ICONS[colorIndex % IDENTITY_ICONS.length];
 
@@ -163,12 +166,12 @@ function IdentityCard({
           <View className="mb-3 flex-row gap-2">
             <View className="rounded border border-slate-200 bg-slate-100 px-2 py-0.5">
               <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                Temp: {identity.params.temperature}
+                {t("discover.temp", { value: identity.params.temperature })}
               </Text>
             </View>
             <View className="rounded border border-slate-200 bg-slate-100 px-2 py-0.5">
               <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                Tools: {identity.mcpToolIds.length}
+                {t("discover.tools", { count: identity.mcpToolIds.length })}
               </Text>
             </View>
           </View>
@@ -190,6 +193,7 @@ function ToolCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const isLocal = tool.type === "local";
 
   return (
@@ -230,7 +234,7 @@ function ToolCard({
             </View>
             <View className={`rounded px-2 py-0.5 ${tool.enabled ? "bg-primary/10" : "bg-slate-100"}`}>
               <Text className={`text-[10px] font-bold uppercase tracking-wider ${tool.enabled ? "text-primary" : "text-slate-500"}`}>
-                {tool.enabled ? "Enabled" : "Disabled"}
+                {tool.enabled ? t("common.enabled") : t("common.disabled")}
               </Text>
             </View>
           </View>
