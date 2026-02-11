@@ -30,6 +30,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.avatar.app",
+      "softwareKeyboardLayoutMode": "adjustResize",
       "permissions": [
         "READ_CALENDAR",
         "WRITE_CALENDAR",
