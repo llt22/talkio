@@ -177,7 +177,9 @@
     "received": "{{count}} provider(s) received",
     "securityNote": "Data is transmitted over your local network only. Nothing leaves your devices.",
     "starting": "Starting configuration server...",
-    "startServer": "Start Configuration Server"
+    "startServer": "Start Configuration Server",
+    "stopServer": "Stop Server",
+    "visitUrl": "Visit this URL on your computer:"
   },
   "identityEdit": {
     "name": "Name",

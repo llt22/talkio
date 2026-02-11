@@ -177,7 +177,9 @@
     "received": "已接收 {{count}} 个供应商",
     "securityNote": "数据仅通过本地网络传输，不会离开您的设备。",
     "starting": "正在启动配置服务器...",
-    "startServer": "启动配置服务"
+    "startServer": "启动配置服务",
+    "stopServer": "停止服务",
+    "visitUrl": "在电脑浏览器中访问："
   },
   "identityEdit": {
     "name": "名称",

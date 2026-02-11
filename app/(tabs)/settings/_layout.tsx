@@ -19,7 +19,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="provider-edit" options={{ title: t("layout.addProvider"), presentation: "modal" }} />
       <Stack.Screen name="sync" options={{ title: t("layout.dataSync") }} />
       <Stack.Screen name="privacy" options={{ title: t("layout.privacy") }} />
-      <Stack.Screen name="web-config" options={{ title: t("layout.webConfig"), presentation: "modal" }} />
+      <Stack.Screen name="web-config" options={{ title: t("layout.webConfig") }} />
     </Stack>
   );
 }

@@ -1,8 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { View, Text, Pressable, Alert, AppState } from "react-native";
+import { useState } from "react";
+import { View, Text, ScrollView, Pressable, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import QRCode from "react-native-qrcode-svg";
 import { useProviderStore } from "../../../src/stores/provider-store";
 import {
   startConfigServer,
@@ -17,17 +16,15 @@ export default function WebConfigScreen() {
 
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [receivedCount, setReceivedCount] = useState(0);
-  const mountedRef = useRef(true);
 
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
+  const handleStart = async () => {
+    if (serverUrl) {
       stopConfigServer();
-    };
-  }, []);
+      setServerUrl(null);
+      return;
+    }
 
-  const handleStart = useCallback(async () => {
-    const handleConfig = async (config: ProviderConfig) => {
+    const onConfig = async (config: ProviderConfig) => {
       const provider = addProvider({
         name: config.name,
         type: "official",
@@ -35,85 +32,74 @@ export default function WebConfigScreen() {
         apiKey: config.apiKey,
       });
       await testConnection(provider.id);
-      if (mountedRef.current) {
-        setReceivedCount((c) => c + 1);
-        Alert.alert(
-          t("webConfig.providerAdded"),
-          t("webConfig.providerAddedDetail", { name: config.name }),
-        );
-      }
+      setReceivedCount((c) => c + 1);
+      Alert.alert(
+        t("webConfig.providerAdded"),
+        t("webConfig.providerAddedDetail", { name: config.name }),
+      );
     };
 
     try {
-      const url = await startConfigServer(handleConfig);
-      if (mountedRef.current) setServerUrl(url);
+      const url = await startConfigServer(onConfig);
+      setServerUrl(url);
     } catch (err) {
-      Alert.alert(
-        t("common.error"),
-        err instanceof Error ? err.message : "Failed to start server",
-      );
+      Alert.alert(t("common.error"), err instanceof Error ? err.message : "Failed");
     }
-  }, [addProvider, testConnection, t]);
+  };
 
   return (
-    <View className="flex-1 bg-bg-secondary">
-      <View className="flex-1 items-center justify-center px-8">
-        {serverUrl ? (
-          <>
-            <View className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
-              <QRCode value={serverUrl} size={200} />
-            </View>
+    <ScrollView className="flex-1 bg-bg-secondary">
+      <View className="mx-4 mt-4 rounded-xl bg-white p-4">
+        <View className="flex-row items-center">
+          <Ionicons name="laptop-outline" size={24} color="#8b5cf6" />
+          <Text className="ml-2 text-base font-semibold text-text-main">
+            {t("webConfig.scanOrVisit")}
+          </Text>
+        </View>
+        <Text className="mt-2 text-sm leading-5 text-text-muted">
+          {t("webConfig.instructions")}
+        </Text>
+      </View>
 
-            <Text className="mb-2 text-center text-lg font-bold text-text-main">
-              {t("webConfig.scanOrVisit")}
+      <View className="mx-4 mt-4 rounded-xl bg-white p-4">
+        <Pressable
+          onPress={handleStart}
+          className={`items-center rounded-lg py-3 ${serverUrl ? "bg-red-500" : "bg-primary"}`}
+        >
+          <Text className="text-base font-semibold text-white">
+            {serverUrl ? t("webConfig.stopServer") : t("webConfig.startServer")}
+          </Text>
+        </Pressable>
+
+        {serverUrl && (
+          <View className="mt-4 rounded-lg bg-slate-50 p-4">
+            <Text className="text-center text-sm text-text-muted">
+              {t("webConfig.visitUrl")}
             </Text>
-
-            <View className="mb-6 rounded-xl bg-white px-5 py-3">
-              <Text className="text-center text-base font-mono font-semibold text-primary">
-                {serverUrl}
-              </Text>
-            </View>
-
-            <Text className="mb-2 text-center text-sm text-text-muted">
-              {t("webConfig.instructions")}
+            <Text className="mt-2 text-center text-lg font-bold text-primary">
+              {serverUrl}
             </Text>
+          </View>
+        )}
 
-            {receivedCount > 0 && (
-              <View className="mt-4 flex-row items-center gap-2 rounded-xl bg-green-50 px-4 py-3">
-                <Ionicons name="checkmark-circle" size={20} color="#059669" />
-                <Text className="text-sm font-medium text-green-700">
-                  {t("webConfig.received", { count: receivedCount })}
-                </Text>
-              </View>
-            )}
-
-            <View className="mt-8 flex-row items-center gap-2 rounded-xl bg-blue-50 px-4 py-3">
-              <Ionicons name="shield-checkmark-outline" size={16} color="#3b82f6" />
-              <Text className="flex-1 text-xs text-blue-600">
-                {t("webConfig.securityNote")}
-              </Text>
-            </View>
-          </>
-        ) : (
-          <View className="items-center">
-            <Ionicons name="laptop-outline" size={48} color="#8b5cf6" />
-            <Text className="mt-4 text-center text-lg font-bold text-text-main">
-              {t("webConfig.scanOrVisit")}
+        {receivedCount > 0 && (
+          <View className="mt-3 flex-row items-center gap-2 rounded-lg bg-green-50 px-3 py-2">
+            <Ionicons name="checkmark-circle" size={18} color="#059669" />
+            <Text className="text-sm font-medium text-green-700">
+              {t("webConfig.received", { count: receivedCount })}
             </Text>
-            <Text className="mt-2 mb-6 text-center text-sm text-text-muted">
-              {t("webConfig.instructions")}
-            </Text>
-            <Pressable
-              onPress={handleStart}
-              className="rounded-xl bg-primary px-8 py-3.5"
-            >
-              <Text className="text-base font-semibold text-white">
-                {t("webConfig.startServer")}
-              </Text>
-            </Pressable>
           </View>
         )}
       </View>
-    </View>
+
+      <View className="mx-4 mt-4 mb-8 rounded-xl bg-white p-4">
+        <View className="flex-row items-center">
+          <Ionicons name="shield-checkmark-outline" size={18} color="#3b82f6" />
+          <Text className="ml-2 text-sm text-blue-600">
+            {t("webConfig.securityNote")}
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
