@@ -90,21 +90,9 @@ export default function ChatsScreen() {
           </View>
           <View className="flex-1 border-b border-divider pb-3">
             <View className="flex-row items-center justify-between mb-1">
-              <View className="flex-1 flex-row items-center gap-1.5">
-                <Text className="text-[16px] font-semibold text-text-main" numberOfLines={1}>
-                  {item.type === "group" ? item.title : modelName}
-                </Text>
-                {firstModel?.capabilities.reasoning && (
-                  <View className="rounded bg-blue-50 px-1.5 py-0.5">
-                    <Text className="text-[10px] font-bold uppercase tracking-wide text-primary">{t("chats.reasoning")}</Text>
-                  </View>
-                )}
-                {firstModel?.capabilities.vision && (
-                  <View className="rounded bg-orange-100 px-1.5 py-0.5">
-                    <Text className="text-[10px] font-bold uppercase tracking-wide text-orange-600">{t("chats.vision")}</Text>
-                  </View>
-                )}
-              </View>
+              <Text className="flex-1 text-[16px] font-semibold text-text-main" numberOfLines={1}>
+                {item.type === "group" ? item.title : modelName}
+              </Text>
               <Text className="ml-2 text-xs text-text-hint">
                 {formatDate(item.updatedAt)}
               </Text>
