@@ -94,7 +94,9 @@ export function ChatInput({
 
         <View className="flex-1 flex-row items-center rounded-3xl border border-slate-200/50 bg-[#F2F2F7] px-4 py-1.5">
           {isGroup && (
-            <Text className="text-primary text-[16px] font-semibold mr-0.5">@</Text>
+            <Pressable onPress={() => setShowMentionPicker((v) => !v)}>
+              <Text className="text-primary text-[16px] font-semibold mr-0.5">@</Text>
+            </Pressable>
           )}
           <TextInput
             ref={inputRef}
