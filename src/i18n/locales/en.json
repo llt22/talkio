@@ -176,7 +176,8 @@
     "providerAddedDetail": "\"{{name}}\" has been added and tested.",
     "received": "{{count}} provider(s) received",
     "securityNote": "Data is transmitted over your local network only. Nothing leaves your devices.",
-    "starting": "Starting configuration server..."
+    "starting": "Starting configuration server...",
+    "startServer": "Start Configuration Server"
   },
   "identityEdit": {
     "name": "Name",

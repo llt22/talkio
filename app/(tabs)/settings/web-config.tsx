@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { View, Text, Pressable, Alert, Platform } from "react-native";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { View, Text, Pressable, Alert, AppState } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
@@ -17,10 +17,16 @@ export default function WebConfigScreen() {
 
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [receivedCount, setReceivedCount] = useState(0);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    let mounted = true;
+    return () => {
+      mountedRef.current = false;
+      stopConfigServer();
+    };
+  }, []);
 
+  const handleStart = useCallback(async () => {
     const handleConfig = async (config: ProviderConfig) => {
       const provider = addProvider({
         name: config.name,
@@ -29,7 +35,7 @@ export default function WebConfigScreen() {
         apiKey: config.apiKey,
       });
       await testConnection(provider.id);
-      if (mounted) {
+      if (mountedRef.current) {
         setReceivedCount((c) => c + 1);
         Alert.alert(
           t("webConfig.providerAdded"),
@@ -38,22 +44,16 @@ export default function WebConfigScreen() {
       }
     };
 
-    startConfigServer(handleConfig)
-      .then((url) => {
-        if (mounted) setServerUrl(url);
-      })
-      .catch((err) => {
-        Alert.alert(
-          t("common.error"),
-          err instanceof Error ? err.message : "Failed to start server",
-        );
-      });
-
-    return () => {
-      mounted = false;
-      stopConfigServer();
-    };
-  }, []);
+    try {
+      const url = await startConfigServer(handleConfig);
+      if (mountedRef.current) setServerUrl(url);
+    } catch (err) {
+      Alert.alert(
+        t("common.error"),
+        err instanceof Error ? err.message : "Failed to start server",
+      );
+    }
+  }, [addProvider, testConnection, t]);
 
   return (
     <View className="flex-1 bg-bg-secondary">
@@ -96,10 +96,21 @@ export default function WebConfigScreen() {
           </>
         ) : (
           <View className="items-center">
-            <Ionicons name="hourglass-outline" size={32} color="#9ca3af" />
-            <Text className="mt-3 text-sm text-text-muted">
-              {t("webConfig.starting")}
+            <Ionicons name="laptop-outline" size={48} color="#8b5cf6" />
+            <Text className="mt-4 text-center text-lg font-bold text-text-main">
+              {t("webConfig.scanOrVisit")}
             </Text>
+            <Text className="mt-2 mb-6 text-center text-sm text-text-muted">
+              {t("webConfig.instructions")}
+            </Text>
+            <Pressable
+              onPress={handleStart}
+              className="rounded-xl bg-primary px-8 py-3.5"
+            >
+              <Text className="text-base font-semibold text-white">
+                {t("webConfig.startServer")}
+              </Text>
+            </Pressable>
           </View>
         )}
       </View>
