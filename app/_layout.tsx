@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useProviderStore } from "../src/stores/provider-store";
 import { useIdentityStore } from "../src/stores/identity-store";
 import { useSettingsStore } from "../src/stores/settings-store";
@@ -32,11 +33,13 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <KeyboardProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-    </KeyboardProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <KeyboardProvider>
+        <StatusBar style="dark" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </KeyboardProvider>
+    </GestureHandlerRootView>
   );
 }
