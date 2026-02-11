@@ -79,8 +79,8 @@ export default function ChatsScreen() {
           className="flex-row items-center gap-4 rounded-2xl px-3 py-3"
         >
           <View className="relative">
-            <View className="h-14 w-14 overflow-hidden rounded-full">
-              <ModelAvatar name={modelName} size="lg" />
+            <View className="h-12 w-12 overflow-hidden rounded-full">
+              <ModelAvatar name={modelName} size="md" />
             </View>
             {firstModel && (
               <View className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-accent-green" />

@@ -52,7 +52,7 @@ export function ModelAvatar({ name, size = "md", online }: ModelAvatarProps) {
   return (
     <View className="relative">
       <View
-        className={`${SIZE_MAP[size]} ${bgColor} items-center justify-center rounded-xl`}
+        className={`${SIZE_MAP[size]} ${bgColor} items-center justify-center rounded-full`}
       >
         <Text className={`${TEXT_SIZE_MAP[size]} font-semibold text-white`}>
           {initials}
