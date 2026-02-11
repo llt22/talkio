@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, Alert, ActivityIndicator, Switch } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useProviderStore } from "../../../src/stores/provider-store";
@@ -7,6 +8,7 @@ import { PROVIDER_PRESETS } from "../../../src/constants";
 import type { Model } from "../../../src/types";
 
 export default function ProviderEditScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { id: editId } = useLocalSearchParams<{ id?: string }>();
   const isEditing = !!editId;
@@ -59,7 +61,7 @@ export default function ProviderEditScreen() {
 
   const handleTest = async () => {
     if (!name.trim() || !baseUrl.trim() || !apiKey.trim()) {
-      Alert.alert("Error", "All fields are required");
+      Alert.alert(t("common.error"), t("providerEdit.allFieldsRequired"));
       return;
     }
 
@@ -88,7 +90,7 @@ export default function ProviderEditScreen() {
     setTesting(false);
 
     if (!ok) {
-      Alert.alert("Connection Failed", "Check your API key and base URL.");
+      Alert.alert(t("providerEdit.connectionFailed"), t("providerEdit.connectionFailedHint"));
     }
   };
 
@@ -99,7 +101,7 @@ export default function ProviderEditScreen() {
       const models = await fetchModels(savedProviderId);
       setPulledModels(models);
     } catch (err) {
-      Alert.alert("Error", err instanceof Error ? err.message : "Failed to fetch models");
+      Alert.alert(t("common.error"), err instanceof Error ? err.message : t("providerEdit.fetchFailed"));
     } finally {
       setPulling(false);
     }
@@ -119,7 +121,7 @@ export default function ProviderEditScreen() {
   return (
     <ScrollView className="flex-1 bg-bg-secondary" keyboardShouldPersistTaps="handled">
       <View className="px-4 pt-4">
-        <Text className="mb-2 text-xs font-semibold uppercase text-text-muted">Quick Select</Text>
+        <Text className="mb-2 text-xs font-semibold uppercase text-text-muted">{t("providerEdit.quickSelect")}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {Object.keys(PROVIDER_PRESETS).map((key) => (
             <Pressable
@@ -135,12 +137,12 @@ export default function ProviderEditScreen() {
 
       <View className="px-4 pt-6">
         <Text className="mb-2 px-1 text-[13px] font-normal uppercase tracking-tight text-slate-500">
-          Provider Details
+          {t("providerEdit.providerDetails")}
         </Text>
         <View className="overflow-hidden rounded-xl border border-slate-200 bg-white"
         >
           <View className="flex-row items-center border-b border-slate-100 px-4 py-3.5">
-            <Text className="w-24 text-[15px] text-slate-900">Name</Text>
+            <Text className="w-24 text-[15px] text-slate-900">{t("providerEdit.name")}</Text>
             <TextInput
               className="flex-1 bg-transparent text-[16px] text-slate-600"
               value={name}
@@ -150,7 +152,7 @@ export default function ProviderEditScreen() {
             />
           </View>
           <View className="flex-row items-center border-b border-slate-100 px-4 py-3.5">
-            <Text className="w-24 text-[15px] text-slate-900">Base URL</Text>
+            <Text className="w-24 text-[15px] text-slate-900">{t("providerEdit.baseUrl")}</Text>
             <TextInput
               className="flex-1 bg-transparent text-[16px] text-slate-600"
               value={baseUrl}
@@ -162,7 +164,7 @@ export default function ProviderEditScreen() {
             />
           </View>
           <View className="flex-row items-center px-4 py-3.5">
-            <Text className="w-24 text-[15px] text-slate-900">API Key</Text>
+            <Text className="w-24 text-[15px] text-slate-900">{t("providerEdit.apiKey")}</Text>
             <TextInput
               className="flex-1 bg-transparent text-[16px] text-slate-600"
               value={apiKey}
@@ -192,17 +194,17 @@ export default function ProviderEditScreen() {
           ) : connected === true ? (
             <>
               <Ionicons name="checkmark-circle" size={22} color="#fff" style={{ marginRight: 8 }} />
-              <Text className="text-base font-semibold text-white">Connection Successful</Text>
+              <Text className="text-base font-semibold text-white">{t("providerEdit.connectionSuccessful")}</Text>
             </>
           ) : connected === false ? (
-            <Text className="text-base font-semibold text-white">Connection Failed — Retry</Text>
+            <Text className="text-base font-semibold text-white">{t("providerEdit.connectionFailed")}</Text>
           ) : (
-            <Text className="text-base font-semibold text-white">Test Connection</Text>
+            <Text className="text-base font-semibold text-white">{t("providerEdit.testConnection")}</Text>
           )}
         </Pressable>
         {connected === true && (
           <Text className="mt-2 text-center text-[12px] text-slate-400">
-            Verified at {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} Today
+            {t("providerEdit.verifiedAt", { time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}
           </Text>
         )}
       </View>
@@ -211,7 +213,7 @@ export default function ProviderEditScreen() {
         <View className="px-4 pt-6">
           <View className="flex-row items-center justify-between px-1">
             <Text className="text-[13px] font-normal uppercase tracking-tight text-slate-500">
-              Pulled Models ({displayModels.length})
+              {t("providerEdit.pulledModels", { count: displayModels.length })}
             </Text>
             <View className="flex-row items-center gap-4">
               {savedProviderId && displayModels.length > 0 && (
@@ -221,7 +223,7 @@ export default function ProviderEditScreen() {
                     setProviderModelsEnabled(savedProviderId, !allEnabled);
                   }}>
                     <Text className="text-[13px] font-medium text-primary">
-                      {displayModels.every((m) => m.enabled) ? "Deselect All" : "Select All"}
+                      {displayModels.every((m) => m.enabled) ? t("providerEdit.deselectAll") : t("providerEdit.selectAll")}
                     </Text>
                   </Pressable>
                 </>
@@ -232,7 +234,7 @@ export default function ProviderEditScreen() {
               ) : (
                 <>
                   <Ionicons name="refresh" size={14} color="#007AFF" />
-                  <Text className="ml-1 text-[13px] font-medium text-primary">Refresh</Text>
+                  <Text className="ml-1 text-[13px] font-medium text-primary">{t("providerEdit.refresh")}</Text>
                 </>
               )}
             </Pressable>
@@ -263,15 +265,15 @@ export default function ProviderEditScreen() {
                 <View className="mt-3 flex-row flex-wrap gap-2">
                   <View className={`flex-row items-center rounded-lg border border-slate-100 bg-slate-50 px-3 py-1 ${!m.capabilities.vision ? "opacity-40" : ""}`}>
                     <Ionicons name="eye-outline" size={14} color={m.capabilities.vision ? "#007AFF" : "#94a3b8"} style={{ marginRight: 4 }} />
-                    <Text className="text-[12px] font-medium text-slate-700">Vision</Text>
+                    <Text className="text-[12px] font-medium text-slate-700">{t("providerEdit.vision")}</Text>
                   </View>
                   <View className={`flex-row items-center rounded-lg border border-slate-100 bg-slate-50 px-3 py-1 ${!m.capabilities.toolCall ? "opacity-40" : ""}`}>
                     <Ionicons name="construct-outline" size={14} color={m.capabilities.toolCall ? "#007AFF" : "#94a3b8"} style={{ marginRight: 4 }} />
-                    <Text className="text-[12px] font-medium text-slate-700">Tools</Text>
+                    <Text className="text-[12px] font-medium text-slate-700">{t("providerEdit.tools")}</Text>
                   </View>
                   <View className={`flex-row items-center rounded-lg border border-slate-100 bg-slate-50 px-3 py-1 ${!m.capabilities.reasoning ? "opacity-40" : ""}`}>
                     <Ionicons name="bulb-outline" size={14} color={m.capabilities.reasoning ? "#007AFF" : "#94a3b8"} style={{ marginRight: 4 }} />
-                    <Text className="text-[12px] font-medium text-slate-700">Reasoning</Text>
+                    <Text className="text-[12px] font-medium text-slate-700">{t("providerEdit.reasoning")}</Text>
                   </View>
                 </View>
               </View>
@@ -284,7 +286,7 @@ export default function ProviderEditScreen() {
         {connected && (
           <Pressable onPress={handleSave} className="items-center rounded-xl bg-primary py-3.5"
           >
-            <Text className="text-[17px] font-semibold text-white">Save</Text>
+            <Text className="text-[17px] font-semibold text-white">{t("providerEdit.save")}</Text>
           </Pressable>
         )}
       </View>
@@ -293,11 +295,11 @@ export default function ProviderEditScreen() {
         <View className="flex-row items-center gap-1.5 mb-2">
           <Ionicons name="lock-closed" size={14} color="#94a3b8" />
           <Text className="text-[11px] font-medium uppercase tracking-tight text-slate-500">
-            End-to-End Encryption
+            {t("providerEdit.encryption")}
           </Text>
         </View>
         <Text className="text-center text-[12px] leading-normal text-slate-400">
-          API keys are stored securely on this device and are never sent to our servers.
+          {t("providerEdit.encryptionHint")}
         </Text>
       </View>
     </ScrollView>

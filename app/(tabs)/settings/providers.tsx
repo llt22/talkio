@@ -1,18 +1,20 @@
 import { View, Text, Pressable, ScrollView, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useProviderStore } from "../../../src/stores/provider-store";
 
 export default function ProvidersScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const providers = useProviderStore((s) => s.providers);
   const models = useProviderStore((s) => s.models);
   const removeProvider = useProviderStore((s) => s.removeProvider);
 
   const handleDelete = (id: string, name: string) => {
-    Alert.alert("Delete Provider", `Remove "${name}" and all its models?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => removeProvider(id) },
+    Alert.alert(t("providers.deleteProvider"), t("providers.deleteConfirm", { name }), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => removeProvider(id) },
     ]);
   };
 
@@ -40,11 +42,11 @@ export default function ProvidersScreen() {
                   <Text className="text-xs text-text-muted">{p.baseUrl}</Text>
                 </View>
               </View>
-              <Text className={`text-xs font-medium capitalize ${statusColor}`}>{p.status}</Text>
+              <Text className={`text-xs font-medium capitalize ${statusColor}`}>{p.status === "connected" ? t("providerEdit.connectionSuccessful") : p.status}</Text>
             </View>
             <View className="mt-2 flex-row items-center justify-between">
               <Text className="text-xs text-text-muted">
-                {providerModels.length} models · {providerModels.filter((m) => m.enabled).length} active
+                {t("providers.modelsCount", { total: providerModels.length, active: providerModels.filter((m) => m.enabled).length })}
               </Text>
               <Text className="text-xs text-text-hint">{p.type}</Text>
             </View>
@@ -57,7 +59,7 @@ export default function ProvidersScreen() {
         className="mx-4 mt-4 mb-8 items-center rounded-xl border border-dashed border-border-light bg-white py-6"
       >
         <Ionicons name="add-circle-outline" size={28} color="#2b2bee" />
-        <Text className="mt-1 text-sm font-medium text-primary">Add Provider</Text>
+        <Text className="mt-1 text-sm font-medium text-primary">{t("providers.addProvider")}</Text>
       </Pressable>
     </ScrollView>
   );

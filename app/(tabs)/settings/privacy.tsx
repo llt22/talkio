@@ -1,61 +1,63 @@
 import { View, Text, ScrollView } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function PrivacyScreen() {
+  const { t } = useTranslation();
   return (
     <ScrollView className="flex-1 bg-bg-secondary">
       <View className="mx-4 mt-4 rounded-xl bg-white p-4">
         <View className="flex-row items-center">
           <Ionicons name="shield-checkmark" size={24} color="#2b2bee" />
-          <Text className="ml-2 text-base font-semibold text-text-main">Privacy First</Text>
+          <Text className="ml-2 text-base font-semibold text-text-main">{t("privacy.privacyFirst")}</Text>
         </View>
         <Text className="mt-2 text-sm leading-5 text-text-muted">
-          Avatar is designed with privacy at its core. Your data stays on your device.
+          {t("privacy.privacyDesc")}
         </Text>
       </View>
 
       <View className="mx-4 mt-4 rounded-xl bg-white p-4">
-        <Text className="mb-3 text-sm font-semibold text-text-main">Data Storage</Text>
+        <Text className="mb-3 text-sm font-semibold text-text-main">{t("privacy.dataStorage")}</Text>
         <PrivacyItem
           icon="phone-portrait-outline"
-          title="Local Storage Only"
-          description="All conversations, settings, and API keys are stored locally using encrypted storage (MMKV + SQLite)."
+          title={t("privacy.localOnly")}
+          description={t("privacy.localOnlyDesc")}
         />
         <PrivacyItem
           icon="key-outline"
-          title="API Key Security"
-          description="API keys are stored on-device only. They are sent directly to your configured provider endpoints and never pass through any intermediate servers."
+          title={t("privacy.apiKeySecurity")}
+          description={t("privacy.apiKeyDesc")}
         />
         <PrivacyItem
           icon="cloud-offline-outline"
-          title="No Cloud by Default"
-          description="No data is uploaded to any cloud service unless you explicitly enable WebDAV sync."
+          title={t("privacy.noCloud")}
+          description={t("privacy.noCloudDesc")}
         />
       </View>
 
       <View className="mx-4 mt-4 rounded-xl bg-white p-4">
-        <Text className="mb-3 text-sm font-semibold text-text-main">Permissions</Text>
+        <Text className="mb-3 text-sm font-semibold text-text-main">{t("privacy.permissions")}</Text>
         <PrivacyItem
           icon="mic-outline"
-          title="Microphone"
-          description="Used for voice input. Only active when you press the mic button."
+          title={t("privacy.microphone")}
+          description={t("privacy.microphoneDesc")}
         />
         <PrivacyItem
           icon="camera-outline"
-          title="Camera"
-          description="Used for scanning QR codes and capturing images for vision models."
+          title={t("privacy.camera")}
+          description={t("privacy.cameraDesc")}
         />
         <PrivacyItem
           icon="images-outline"
-          title="Photo Library"
-          description="Used for attaching images to conversations with vision-capable models."
+          title={t("privacy.photoLibrary")}
+          description={t("privacy.photoLibraryDesc")}
         />
       </View>
 
       <View className="mx-4 mb-8 mt-4 rounded-xl bg-white p-4">
-        <Text className="mb-3 text-sm font-semibold text-text-main">Data Management</Text>
+        <Text className="mb-3 text-sm font-semibold text-text-main">{t("privacy.dataManagement")}</Text>
         <Text className="text-sm leading-5 text-text-muted">
-          You can export or delete all your data at any time from the Settings page. We do not collect analytics or telemetry data.
+          {t("privacy.dataManagementDesc")}
         </Text>
       </View>
     </ScrollView>
