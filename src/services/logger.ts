@@ -1,4 +1,4 @@
-import { File, Paths } from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 export type LogLevel = "error" | "warn" | "info" | "debug";
 
@@ -25,10 +25,26 @@ class LoggerService {
   private module: string = "";
   private logQueue: string[] = [];
   private isWriting = false;
-  private logFile: File;
+  private logFileUri: string | null = null;
+  private fileInitFailed = false;
 
   private constructor() {
-    this.logFile = new File(Paths.document, "app.log");
+    this.initLogFile();
+  }
+
+  private initLogFile() {
+    if (this.fileInitFailed) return;
+    try {
+      const docDir = FileSystem.documentDirectory;
+      if (!docDir) {
+        this.fileInitFailed = true;
+        return;
+      }
+      this.logFileUri = `${docDir}app.log`;
+    } catch {
+      this.fileInitFailed = true;
+      this.logFileUri = null;
+    }
   }
 
   static getInstance(): LoggerService {
@@ -81,7 +97,7 @@ class LoggerService {
     }
 
     // File output (warn+ only)
-    if (LEVEL_MAP[level] >= LEVEL_MAP[FILE_LOG_LEVEL]) {
+    if (!this.fileInitFailed && LEVEL_MAP[level] >= LEVEL_MAP[FILE_LOG_LEVEL]) {
       const fileLine = `${timestamp} [${level.toUpperCase()}] ${prefix} ${message}${
         data.length > 0 ? " " + JSON.stringify(data) : ""
       }\n`;
@@ -107,17 +123,19 @@ class LoggerService {
       const batch = this.logQueue.splice(0);
       const newContent = batch.join("");
       const root = (this as any).root || this;
-      const file = root.logFile as File;
+      const uri = root.logFileUri as string;
+      if (!uri) return;
       // P2-1: Read file only once, then append in memory
       if (root.cachedContent === null) {
         try {
-          root.cachedContent = file.exists ? await file.text() : "";
+          const info = await FileSystem.getInfoAsync(uri);
+          root.cachedContent = info.exists ? await FileSystem.readAsStringAsync(uri) : "";
         } catch {
           root.cachedContent = "";
         }
       }
       root.cachedContent += newContent;
-      file.write(root.cachedContent);
+      await FileSystem.writeAsStringAsync(uri, root.cachedContent);
     } catch {
       // Silently fail - logging should never crash the app
     } finally {
@@ -130,16 +148,20 @@ class LoggerService {
 
   async getLogContent(): Promise<string> {
     try {
-      if (!this.logFile.exists) return "";
-      return await this.logFile.text();
+      if (!this.logFileUri) return "";
+      const info = await FileSystem.getInfoAsync(this.logFileUri);
+      if (!info.exists) return "";
+      return await FileSystem.readAsStringAsync(this.logFileUri);
     } catch {
       return "";
     }
   }
 
-  clearLogs(): void {
+  async clearLogs(): Promise<void> {
     try {
-      if (this.logFile.exists) this.logFile.delete();
+      if (!this.logFileUri) return;
+      const info = await FileSystem.getInfoAsync(this.logFileUri);
+      if (info.exists) await FileSystem.deleteAsync(this.logFileUri, { idempotent: true });
     } catch {
       // ignore
     }

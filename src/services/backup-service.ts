@@ -1,4 +1,4 @@
-import { File, Paths } from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { db, expoDb } from "../../db";
 import { conversations, messages } from "../../db/schema";
@@ -27,11 +27,13 @@ export async function createBackup(): Promise<string> {
   };
 
   const fileName = `avatar-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-  const backupFile = new File(Paths.cache, fileName);
-  backupFile.write(JSON.stringify(backup, null, 2));
+  const cacheDir = FileSystem.cacheDirectory;
+  if (!cacheDir) throw new Error("Cache directory not available");
+  const fileUri = `${cacheDir}${fileName}`;
+  await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(backup, null, 2));
 
   log.info(`Backup created: ${fileName} (${allConversations.length} conversations, ${allMessages.length} messages)`);
-  return backupFile.uri;
+  return fileUri;
 }
 
 export async function shareBackup(): Promise<void> {
