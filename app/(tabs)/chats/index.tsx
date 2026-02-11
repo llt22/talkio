@@ -75,15 +75,17 @@ export default function ChatsScreen() {
           extrapolate: "clamp",
         });
         return (
-          <Pressable
-            onPress={() => handleDelete(id)}
-            className="w-20 items-center justify-center bg-red-500"
-          >
-            <Animated.View style={{ transform: [{ scale }] }}>
-              <Ionicons name="trash-outline" size={22} color="#fff" />
-              <Text className="mt-0.5 text-[10px] font-medium text-white">{t("common.delete")}</Text>
-            </Animated.View>
-          </Pressable>
+          <View style={{ width: 80, flex: 1 }}>
+            <Pressable
+              onPress={() => handleDelete(id)}
+              style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#ef4444" }}
+            >
+              <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
+                <Ionicons name="trash-outline" size={22} color="#fff" />
+                <Text className="mt-0.5 text-[10px] font-medium text-white">{t("common.delete")}</Text>
+              </Animated.View>
+            </Pressable>
+          </View>
         );
       },
     [handleDelete, t],
