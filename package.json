@@ -19,6 +19,7 @@
     "@legendapp/list": "^2.0.19",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@shopify/flash-list": "2.0.2",
+    "babel-plugin-react-compiler": "^1.0.0",
     "expo": "^54.0.33",
     "expo-audio": "~1.1.1",
     "expo-battery": "~10.0.8",

@@ -39,6 +39,10 @@
         "READ_CONTACTS"
       ]
     },
+    "experiments": {
+      "reactCompiler": true,
+      "typedRoutes": true
+    },
     "plugins": [
       "expo-router",
       "expo-sqlite",
