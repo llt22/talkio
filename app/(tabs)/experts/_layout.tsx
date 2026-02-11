@@ -13,7 +13,6 @@ export default function ExpertsLayout() {
           headerShadowVisible: false,
         }}
       />
-      <Stack.Screen name="[id]" options={{ headerBackTitle: "Models" }} />
     </Stack>
   );
 }
