@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { View, Text, Pressable, Platform, Alert, ActionSheetIOS } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { LegendList } from "@legendapp/list";
 import type { LegendListRef } from "@legendapp/list";
@@ -172,8 +173,9 @@ export default function ChatDetailScreen() {
   }
 
   return (
+    <SafeAreaView className="flex-1 bg-bg-chat" edges={["bottom"]}>
     <KeyboardAvoidingView
-      className="flex-1 bg-bg-chat"
+      className="flex-1"
       behavior="padding"
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 80}
     >
@@ -206,5 +208,6 @@ export default function ChatDetailScreen() {
         participants={conv.participants}
       />
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
