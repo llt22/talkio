@@ -126,7 +126,7 @@ export default function ChatsScreen() {
                   {item.type === "group" ? item.title : modelName}
                 </Text>
                 <Text className="ml-2 text-xs text-text-hint">
-                  {formatDate(item.updatedAt)}
+                  {formatDate(item.updatedAt, t("common.yesterday"))}
                 </Text>
               </View>
               <Text className="text-sm text-text-hint" numberOfLines={1}>
@@ -203,14 +203,14 @@ export default function ChatsScreen() {
   );
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, yesterdayLabel: string): string {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  if (diffDays === 1) return "yesterday";
+  if (diffDays === 1) return yesterdayLabel;
   if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" });
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }

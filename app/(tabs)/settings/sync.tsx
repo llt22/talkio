@@ -8,12 +8,34 @@ export default function SyncScreen() {
   const settings = useSettingsStore((s) => s.settings);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
 
-  const handleTestWebdav = () => {
+  const handleTestWebdav = async () => {
     if (!settings.webdavUrl) {
       Alert.alert(t("common.error"), t("sync.enterUrlFirst"));
       return;
     }
-    Alert.alert("WebDAV", t("sync.notImplemented"));
+    try {
+      const headers: Record<string, string> = { Depth: "0" };
+      if (settings.webdavUser && settings.webdavPass) {
+        headers.Authorization =
+          "Basic " + btoa(`${settings.webdavUser}:${settings.webdavPass}`);
+      }
+      const res = await fetch(settings.webdavUrl, {
+        method: "PROPFIND",
+        headers,
+      });
+      if (res.status >= 200 && res.status < 300) {
+        Alert.alert(t("sync.testConnection"), t("sync.connectionOk"));
+      } else if (res.status === 207) {
+        Alert.alert(t("sync.testConnection"), t("sync.connectionOk"));
+      } else {
+        Alert.alert(t("common.error"), `HTTP ${res.status}`);
+      }
+    } catch (err) {
+      Alert.alert(
+        t("common.error"),
+        err instanceof Error ? err.message : t("sync.connectionFailed"),
+      );
+    }
   };
 
   return (

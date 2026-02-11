@@ -59,6 +59,7 @@
     "searchInChat": "搜索聊天记录",
     "export": "导出",
     "clearHistory": "清空历史",
+    "clearHistoryConfirm": "确定删除该会话中的所有消息？",
     "selectModel": "选择模型",
     "messageGroup": "发送群消息...",
     "message": "发送消息...",
@@ -150,7 +151,8 @@
     "password": "密码",
     "testConnection": "测试连接",
     "enterUrlFirst": "请先输入 WebDAV 地址",
-    "notImplemented": "连接测试尚未实现",
+    "connectionOk": "WebDAV 连接成功！",
+    "connectionFailed": "连接失败",
     "qrSync": "二维码同步",
     "qrDesc": "扫描其他设备的二维码以传输设置和 API 密钥。",
     "scanQr": "扫描二维码"

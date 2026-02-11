@@ -1,11 +1,30 @@
 import type { Message, Conversation } from "../types";
 
-// Web platform: pure in-memory storage (no SQLite)
+// Web platform: localStorage-backed storage (no SQLite)
+const CONV_KEY = "@avatar:web:conversations";
+const MSG_KEY = "@avatar:web:messages";
+
 let memConversations: Conversation[] = [];
 let memMessages: Message[] = [];
 
+function persist() {
+  try {
+    localStorage.setItem(CONV_KEY, JSON.stringify(memConversations));
+    localStorage.setItem(MSG_KEY, JSON.stringify(memMessages));
+  } catch {
+    // localStorage full or unavailable
+  }
+}
+
 export async function initDatabase(): Promise<void> {
-  // No-op on web
+  try {
+    const convJson = localStorage.getItem(CONV_KEY);
+    const msgJson = localStorage.getItem(MSG_KEY);
+    if (convJson) memConversations = JSON.parse(convJson);
+    if (msgJson) memMessages = JSON.parse(msgJson);
+  } catch {
+    // fresh start
+  }
 }
 
 export async function getDatabase() {
@@ -14,18 +33,21 @@ export async function getDatabase() {
 
 export async function insertConversation(conv: Conversation): Promise<void> {
   memConversations.push(conv);
+  persist();
 }
 
 export async function updateConversation(id: string, updates: Partial<Conversation>): Promise<void> {
   const idx = memConversations.findIndex((c) => c.id === id);
   if (idx >= 0) {
     memConversations[idx] = { ...memConversations[idx], ...updates, updatedAt: new Date().toISOString() };
+    persist();
   }
 }
 
 export async function deleteConversation(id: string): Promise<void> {
   memConversations = memConversations.filter((c) => c.id !== id);
   memMessages = memMessages.filter((m) => m.conversationId !== id);
+  persist();
 }
 
 export async function getAllConversations(): Promise<Conversation[]> {
@@ -41,12 +63,14 @@ export async function getConversation(id: string): Promise<Conversation | null> 
 
 export async function insertMessage(msg: Message): Promise<void> {
   memMessages.push(msg);
+  persist();
 }
 
 export async function updateMessage(id: string, updates: Partial<Message>): Promise<void> {
   const idx = memMessages.findIndex((m) => m.id === id);
   if (idx >= 0) {
     memMessages[idx] = { ...memMessages[idx], ...updates };
+    persist();
   }
 }
 
@@ -57,8 +81,10 @@ export async function getMessages(
   offset = 0,
 ): Promise<Message[]> {
   let filtered = memMessages.filter((m) => m.conversationId === conversationId);
-  if (branchId !== undefined) {
-    filtered = filtered.filter((m) => m.branchId === branchId || m.branchId === null);
+  if (branchId) {
+    filtered = filtered.filter((m) => m.branchId === branchId);
+  } else {
+    filtered = filtered.filter((m) => m.branchId === null);
   }
   return filtered
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
@@ -74,4 +100,5 @@ export async function searchMessages(query: string): Promise<Message[]> {
 
 export async function deleteMessage(id: string): Promise<void> {
   memMessages = memMessages.filter((m) => m.id !== id);
+  persist();
 }

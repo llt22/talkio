@@ -9,12 +9,19 @@ interface HtmlPreviewProps {
 }
 
 export function HtmlPreview({ html, onClose }: HtmlPreviewProps) {
+  // P2-4: Sanitize HTML to prevent XSS
+  const sanitized = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
+    .replace(/\son\w+\s*=/gi, " data-removed=");
+
   const wrappedHtml = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: https:;" />
       <style>
         body { font-family: -apple-system, system-ui, sans-serif; padding: 16px; margin: 0; }
         @media (prefers-color-scheme: dark) {
@@ -23,7 +30,7 @@ export function HtmlPreview({ html, onClose }: HtmlPreviewProps) {
         }
       </style>
     </head>
-    <body>${html}</body>
+    <body>${sanitized}</body>
     </html>
   `;
 
@@ -40,7 +47,7 @@ export function HtmlPreview({ html, onClose }: HtmlPreviewProps) {
         source={{ html: wrappedHtml }}
         style={{ flex: 1 }}
         originWhitelist={["*"]}
-        javaScriptEnabled
+        javaScriptEnabled={false}
         scrollEnabled
       />
     </SafeAreaView>

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { View, Text, Pressable, Platform, Alert, ActionSheetIOS } from "react-native";
+import { View, Text, Pressable, Platform, Alert, ActionSheetIOS, Share } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -35,11 +36,12 @@ export default function ChatDetailScreen() {
   const conv = conversations.find((c) => c.id === id);
   const isGroup = conv?.type === "group";
   const [showIdentitySlider, setShowIdentitySlider] = useState(false);
+  const [selectedParticipantIdx, setSelectedParticipantIdx] = useState(0);
 
-  const firstParticipant = conv?.participants[0];
-  const model = firstParticipant ? getModelById(firstParticipant.modelId) : null;
-  const activeIdentity = firstParticipant?.identityId
-    ? getIdentityById(firstParticipant.identityId)
+  const currentParticipant = conv?.participants[isGroup ? selectedParticipantIdx : 0];
+  const model = currentParticipant ? getModelById(currentParticipant.modelId) : null;
+  const activeIdentity = currentParticipant?.identityId
+    ? getIdentityById(currentParticipant.identityId)
     : null;
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function ChatDetailScreen() {
     navigation.setOptions({
       headerTitle: () => (
         <Pressable
-          onPress={() => !isGroup && setShowIdentitySlider((v) => !v)}
+          onPress={handleHeaderPress}
           className="items-center"
         >
           <Text className="text-sm font-bold tracking-tight text-text-main">{title}</Text>
@@ -99,13 +101,24 @@ export default function ChatDetailScreen() {
 
   const handleIdentitySelect = useCallback(
     (identityId: string | null) => {
-      if (id && firstParticipant) {
-        updateParticipantIdentity(id, firstParticipant.modelId, identityId);
+      if (id && currentParticipant) {
+        updateParticipantIdentity(id, currentParticipant.modelId, identityId);
       }
       setShowIdentitySlider(false);
     },
-    [id, firstParticipant, updateParticipantIdentity],
+    [id, currentParticipant, updateParticipantIdentity],
   );
+
+  const handleHeaderPress = useCallback(() => {
+    if (isGroup && conv) {
+      // Cycle to next participant and open slider
+      const nextIdx = (selectedParticipantIdx + 1) % conv.participants.length;
+      setSelectedParticipantIdx(nextIdx);
+      setShowIdentitySlider(true);
+    } else {
+      setShowIdentitySlider((v) => !v);
+    }
+  }, [isGroup, conv, selectedParticipantIdx]);
 
   const handleBranch = useCallback(
     (messageId: string) => {
@@ -120,6 +133,10 @@ export default function ChatDetailScreen() {
     [branchFromMessage],
   );
 
+  const copyMessage = useCallback(async (content: string) => {
+    await Clipboard.setStringAsync(content);
+  }, []);
+
   const handleLongPress = useCallback((message: Message) => {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -129,28 +146,65 @@ export default function ChatDetailScreen() {
           destructiveButtonIndex: 3,
         },
         (index) => {
+          if (index === 1) copyMessage(message.content);
           if (index === 2) handleBranch(message.id);
         },
       );
     } else {
       Alert.alert(t("chat.messageOptions"), undefined, [
-        { text: t("common.copy"), onPress: () => {} },
+        { text: t("common.copy"), onPress: () => copyMessage(message.content) },
         { text: t("chat.branch"), onPress: () => handleBranch(message.id) },
         { text: t("common.cancel"), style: "cancel" },
       ]);
     }
-  }, [handleBranch]);
+  }, [handleBranch, copyMessage]);
+
+  const exportChat = useCallback(async () => {
+    const lines = messages.map((m) => `[${m.senderName ?? m.role}]: ${m.content}`);
+    const text = lines.join("\n\n");
+    try {
+      await Share.share({ message: text, title: conv?.title ?? "Chat Export" });
+    } catch {
+      // user cancelled
+    }
+  }, [messages, conv]);
+
+  const clearHistory = useCallback(() => {
+    if (!id) return;
+    Alert.alert(t("chat.clearHistory"), t("chat.clearHistoryConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("common.delete"),
+        style: "destructive",
+        onPress: async () => {
+          for (const msg of messages) {
+            await useChatStore.getState().deleteMessageById(msg.id);
+          }
+        },
+      },
+    ]);
+  }, [id, messages]);
 
   const showChatOptions = () => {
+    const options = [t("common.cancel"), t("chat.export"), t("chat.clearHistory")];
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: [t("common.cancel"), t("chat.searchInChat"), t("chat.export"), t("chat.clearHistory")],
+          options,
           cancelButtonIndex: 0,
-          destructiveButtonIndex: 3,
+          destructiveButtonIndex: 2,
         },
-        (_index) => {},
+        (index) => {
+          if (index === 1) exportChat();
+          if (index === 2) clearHistory();
+        },
       );
+    } else {
+      Alert.alert(t("chat.messageOptions"), undefined, [
+        { text: t("chat.export"), onPress: exportChat },
+        { text: t("chat.clearHistory"), style: "destructive", onPress: clearHistory },
+        { text: t("common.cancel"), style: "cancel" },
+      ]);
     }
   };
 
@@ -181,13 +235,11 @@ export default function ChatDetailScreen() {
       behavior="padding"
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 80}
     >
-      {!isGroup && (
-        <IdentitySlider
-          visible={showIdentitySlider}
-          activeIdentityId={firstParticipant?.identityId ?? null}
-          onSelect={handleIdentitySelect}
-        />
-      )}
+      <IdentitySlider
+        visible={showIdentitySlider}
+        activeIdentityId={currentParticipant?.identityId ?? null}
+        onSelect={handleIdentitySelect}
+      />
 
       <LegendList
         ref={listRef}

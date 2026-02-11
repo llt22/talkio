@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ModelAvatar } from "../common/ModelAvatar";
 import type { ConversationParticipant } from "../../types";
 import { useProviderStore } from "../../stores/provider-store";
+import { extractMentionedModelIds } from "../../utils/mention-parser";
 
 interface ChatInputProps {
   onSend: (text: string, mentionedModelIds?: string[]) => void;
@@ -29,17 +30,19 @@ export function ChatInput({
     const trimmed = text.trim();
     if (!trimmed || isGenerating) return;
 
-    const mentionedIds: string[] = [];
+    let mentionedIds: string[] | undefined;
     if (isGroup) {
+      // P1-4: Use robust mention parser instead of naive includes
+      const modelNames = new Map<string, string>();
       for (const p of participants) {
         const model = getModelById(p.modelId);
-        if (model && trimmed.includes(`@${model.displayName}`)) {
-          mentionedIds.push(p.modelId);
-        }
+        if (model) modelNames.set(p.modelId, model.displayName);
       }
+      const ids = extractMentionedModelIds(trimmed, modelNames);
+      if (ids.length > 0) mentionedIds = ids;
     }
 
-    onSend(trimmed, mentionedIds.length > 0 ? mentionedIds : undefined);
+    onSend(trimmed, mentionedIds);
     setText("");
   };
 

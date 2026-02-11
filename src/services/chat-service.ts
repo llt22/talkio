@@ -228,10 +228,20 @@ export async function generateResponse(
       ),
     }));
 
+    const now = new Date().toISOString();
     await dbUpdateConversation(conversationId, {
       lastMessage: content.slice(0, 100),
-      lastMessageAt: new Date().toISOString(),
+      lastMessageAt: now,
     });
+
+    // P1-1: Sync conversations store so list view reflects AI reply
+    useChatStore.setState((s) => ({
+      conversations: s.conversations.map((c) =>
+        c.id === conversationId
+          ? { ...c, lastMessage: content.slice(0, 100), lastMessageAt: now, updatedAt: now }
+          : c,
+      ),
+    }));
 
     log.info(`Response complete for model ${model.displayName}`);
   } catch (err) {

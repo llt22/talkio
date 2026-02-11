@@ -47,6 +47,8 @@ interface ChatState {
   searchAllMessages: (query: string) => Promise<Message[]>;
 }
 
+let loadSequence = 0;
+
 export const useChatStore = create<ChatState>((set, get) => ({
   conversations: [],
   currentConversationId: null,
@@ -102,7 +104,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   loadMessages: async (conversationId) => {
+    const seq = ++loadSequence;
     const messages = await dbGetMessages(conversationId, get().activeBranchId);
+    // P1-2: Discard stale results if user switched conversations during async load
+    if (seq !== loadSequence) return;
     set({ messages });
   },
 

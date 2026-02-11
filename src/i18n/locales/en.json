@@ -59,6 +59,7 @@
     "searchInChat": "Search in Chat",
     "export": "Export",
     "clearHistory": "Clear History",
+    "clearHistoryConfirm": "Delete all messages in this conversation?",
     "selectModel": "Select Model",
     "messageGroup": "Message Group...",
     "message": "Message...",
@@ -150,7 +151,8 @@
     "password": "Password",
     "testConnection": "Test Connection",
     "enterUrlFirst": "Please enter a WebDAV URL first",
-    "notImplemented": "Connection test not yet implemented",
+    "connectionOk": "WebDAV connection successful!",
+    "connectionFailed": "Connection failed",
     "qrSync": "QR Code Sync",
     "qrDesc": "Scan a QR code from another device to transfer settings and API keys.",
     "scanQr": "Scan QR Code"

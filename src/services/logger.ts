@@ -97,23 +97,27 @@ class LoggerService {
     }
   }
 
+  private cachedContent: string | null = null;
+
   private async flushQueue() {
     if (this.isWriting || this.logQueue.length === 0) return;
     this.isWriting = true;
 
     try {
       const batch = this.logQueue.splice(0);
-      const content = batch.join("");
+      const newContent = batch.join("");
       const root = (this as any).root || this;
       const file = root.logFile as File;
-      // Append by reading existing + writing all
-      let existing = "";
-      try {
-        if (file.exists) existing = await file.text();
-      } catch {
-        // file doesn't exist yet
+      // P2-1: Read file only once, then append in memory
+      if (root.cachedContent === null) {
+        try {
+          root.cachedContent = file.exists ? await file.text() : "";
+        } catch {
+          root.cachedContent = "";
+        }
       }
-      file.write(existing + content);
+      root.cachedContent += newContent;
+      file.write(root.cachedContent);
     } catch {
       // Silently fail - logging should never crash the app
     } finally {
