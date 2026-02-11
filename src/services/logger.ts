@@ -1,0 +1,145 @@
+import { File, Paths } from "expo-file-system";
+
+export type LogLevel = "error" | "warn" | "info" | "debug";
+
+const LEVEL_MAP: Record<LogLevel, number> = {
+  error: 3,
+  warn: 2,
+  info: 1,
+  debug: 0,
+};
+
+const LEVEL_COLORS: Record<LogLevel, string> = {
+  error: "🔴",
+  warn: "🟡",
+  info: "🔵",
+  debug: "⚪",
+};
+
+const IS_DEV = __DEV__;
+const CONSOLE_LEVEL: LogLevel = IS_DEV ? "debug" : "warn";
+const FILE_LOG_LEVEL: LogLevel = "warn";
+
+class LoggerService {
+  private static instance: LoggerService;
+  private module: string = "";
+  private logQueue: string[] = [];
+  private isWriting = false;
+  private logFile: File;
+
+  private constructor() {
+    this.logFile = new File(Paths.document, "app.log");
+  }
+
+  static getInstance(): LoggerService {
+    if (!LoggerService.instance) {
+      LoggerService.instance = new LoggerService();
+    }
+    return LoggerService.instance;
+  }
+
+  withContext(module: string): LoggerService {
+    const child = Object.create(this) as LoggerService;
+    child.module = module;
+    return child;
+  }
+
+  error(message: string, ...data: any[]) {
+    this.log("error", message, data);
+  }
+
+  warn(message: string, ...data: any[]) {
+    this.log("warn", message, data);
+  }
+
+  info(message: string, ...data: any[]) {
+    this.log("info", message, data);
+  }
+
+  debug(message: string, ...data: any[]) {
+    this.log("debug", message, data);
+  }
+
+  private log(level: LogLevel, message: string, data: any[]) {
+    const timestamp = new Date().toISOString();
+    const prefix = this.module ? `[${this.module}]` : "";
+    const formatted = `${LEVEL_COLORS[level]} ${timestamp} ${prefix} ${message}`;
+
+    // Console output
+    if (LEVEL_MAP[level] >= LEVEL_MAP[CONSOLE_LEVEL]) {
+      const args = data.length > 0 ? [formatted, ...data] : [formatted];
+      switch (level) {
+        case "error":
+          console.error(...args);
+          break;
+        case "warn":
+          console.warn(...args);
+          break;
+        default:
+          console.log(...args);
+      }
+    }
+
+    // File output (warn+ only)
+    if (LEVEL_MAP[level] >= LEVEL_MAP[FILE_LOG_LEVEL]) {
+      const fileLine = `${timestamp} [${level.toUpperCase()}] ${prefix} ${message}${
+        data.length > 0 ? " " + JSON.stringify(data) : ""
+      }\n`;
+      this.enqueueWrite(fileLine);
+    }
+  }
+
+  private enqueueWrite(line: string) {
+    const root = (this as any).root || this;
+    root.logQueue.push(line);
+    if (!root.isWriting) {
+      root.flushQueue();
+    }
+  }
+
+  private async flushQueue() {
+    if (this.isWriting || this.logQueue.length === 0) return;
+    this.isWriting = true;
+
+    try {
+      const batch = this.logQueue.splice(0);
+      const content = batch.join("");
+      const root = (this as any).root || this;
+      const file = root.logFile as File;
+      // Append by reading existing + writing all
+      let existing = "";
+      try {
+        if (file.exists) existing = await file.text();
+      } catch {
+        // file doesn't exist yet
+      }
+      file.write(existing + content);
+    } catch {
+      // Silently fail - logging should never crash the app
+    } finally {
+      this.isWriting = false;
+      if (this.logQueue.length > 0) {
+        this.flushQueue();
+      }
+    }
+  }
+
+  async getLogContent(): Promise<string> {
+    try {
+      if (!this.logFile.exists) return "";
+      return await this.logFile.text();
+    } catch {
+      return "";
+    }
+  }
+
+  clearLogs(): void {
+    try {
+      if (this.logFile.exists) this.logFile.delete();
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export const logger = LoggerService.getInstance();
