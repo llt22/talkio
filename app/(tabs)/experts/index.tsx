@@ -1,17 +1,14 @@
-import { useState, useCallback, useEffect } from "react";
-import { View, Text, Pressable, ScrollView, TextInput, Alert, SectionList } from "react-native";
-import { useRouter, useNavigation } from "expo-router";
+import { useState, useCallback } from "react";
+import { View, Text, Pressable, TextInput, Alert, SectionList } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useProviderStore } from "../../../src/stores/provider-store";
 import { useChatStore } from "../../../src/stores/chat-store";
 import { ModelAvatar } from "../../../src/components/common/ModelAvatar";
-import { EmptyState } from "../../../src/components/common/EmptyState";
 import type { Model } from "../../../src/types";
 
 export default function ModelsScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
-  const providers = useProviderStore((s) => s.providers);
   const models = useProviderStore((s) => s.getEnabledModels);
   const getProviderById = useProviderStore((s) => s.getProviderById);
   const createConversation = useChatStore((s) => s.createConversation);
@@ -19,19 +16,6 @@ export default function ModelsScreen() {
   const [selectedForGroup, setSelectedForGroup] = useState<string[]>([]);
   const [groupMode, setGroupMode] = useState(false);
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable
-          onPress={() => router.push("/(tabs)/settings/providers")}
-          className="flex-row items-center gap-1"
-        >
-          <Ionicons name="add" size={22} color="#007AFF" />
-          <Text className="text-base font-medium text-primary">Add</Text>
-        </Pressable>
-      ),
-    });
-  }, [navigation, router]);
 
   const enabledModels = models();
   const filtered = enabledModels.filter((m) =>
@@ -97,11 +81,17 @@ export default function ModelsScreen() {
       </View>
 
       {sections.length === 0 ? (
-        <EmptyState
-          icon="people-outline"
-          title="No models available"
-          description="Add a provider to get started"
-        />
+        <View className="flex-1 items-center justify-center px-8">
+          <Ionicons name="people-outline" size={48} color="#cbd5e1" />
+          <Text className="mt-4 text-lg font-semibold text-text-main">No models yet</Text>
+          <Text className="mt-1 text-center text-sm text-slate-400">Configure a provider to pull available models</Text>
+          <Pressable
+            onPress={() => router.push("/(tabs)/settings/providers")}
+            className="mt-6 rounded-lg bg-primary px-6 py-2.5"
+          >
+            <Text className="text-[15px] font-semibold text-white">Configure Provider</Text>
+          </Pressable>
+        </View>
       ) : (
         <SectionList
           sections={sections}
