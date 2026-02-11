@@ -6,14 +6,14 @@ export default function ExpertsLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: "Experts",
+          title: "Models",
           headerLargeTitle: true,
           headerLargeStyle: { backgroundColor: "#ffffff" },
           headerStyle: { backgroundColor: "#ffffff" },
           headerShadowVisible: false,
         }}
       />
-      <Stack.Screen name="[id]" options={{ headerBackTitle: "Experts" }} />
+      <Stack.Screen name="[id]" options={{ headerBackTitle: "Models" }} />
     </Stack>
   );
 }

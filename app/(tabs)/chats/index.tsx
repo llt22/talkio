@@ -156,7 +156,7 @@ export default function ChatsScreen() {
                   filter === f ? "text-white" : "text-text-main"
                 }`}
               >
-                {f === "all" ? "All" : f === "single" ? "Experts" : "Groups"}
+                {f === "all" ? "All" : f === "single" ? "Single" : "Groups"}
               </Text>
             </Pressable>
           ))}
@@ -167,7 +167,7 @@ export default function ChatsScreen() {
         <EmptyState
           icon="chatbubbles-outline"
           title="No conversations yet"
-          description="Go to Experts tab to start chatting with a model"
+          description="Go to Models tab to start chatting"
         />
       ) : (
         <FlashList
