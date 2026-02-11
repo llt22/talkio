@@ -1,3 +1,4 @@
+import { fetch as expoFetch } from "expo/fetch";
 import type {
   ChatApiRequest,
   ChatApiResponse,
@@ -50,7 +51,8 @@ export class ApiClient {
   async *streamChat(
     request: ChatApiRequest,
   ): AsyncGenerator<StreamDelta, void, unknown> {
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    // expo/fetch provides ReadableStream on both native (Hermes) and web
+    const response = await expoFetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({ ...request, stream: true }),
@@ -62,43 +64,8 @@ export class ApiClient {
     }
 
     const reader = response.body?.getReader();
-
-    // React Native (Hermes) doesn't support ReadableStream — fall back to non-streaming
     if (!reader) {
-      const text = await response.text();
-      // Try parsing SSE lines from full text response
-      const lines = text.split("\n");
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith("data: ")) continue;
-        const data = trimmed.slice(6);
-        if (data === "[DONE]") return;
-        try {
-          const parsed = JSON.parse(data);
-          const delta = parsed.choices?.[0]?.delta as StreamDelta | undefined;
-          if (delta) yield delta;
-        } catch {
-          // skip malformed JSON lines
-        }
-      }
-      // If no SSE lines found, try parsing as a regular non-stream response
-      if (!lines.some((l) => l.trim().startsWith("data: "))) {
-        try {
-          const parsed = JSON.parse(text);
-          const msg = parsed.choices?.[0]?.message;
-          if (msg) {
-            yield {
-              role: msg.role,
-              content: msg.content ?? undefined,
-              reasoning_content: msg.reasoning_content ?? undefined,
-              tool_calls: msg.tool_calls,
-            } as StreamDelta;
-          }
-        } catch {
-          throw new Error("Failed to parse chat response");
-        }
-      }
-      return;
+      throw new Error("No response body reader — streaming not supported");
     }
 
     const decoder = new TextDecoder();
