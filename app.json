@@ -41,7 +41,6 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "expo-clipboard",
       "expo-calendar",
       "expo-location",
       [
