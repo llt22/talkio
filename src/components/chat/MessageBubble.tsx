@@ -30,20 +30,25 @@ export function MessageBubble({
         from={{ opacity: 0, translateY: 8 }}
         animate={{ opacity: 1, translateY: 0 }}
         transition={{ type: "timing", duration: 250 }}
-        className="mb-4 flex-col items-end px-4"
+        className="mb-6 flex-row-reverse items-start gap-3 px-4"
       >
-        <Pressable
-          onLongPress={() => onLongPress?.(message)}
-          className="max-w-[85%] rounded-2xl bg-ios-green px-4 py-3"
-          style={{ borderTopRightRadius: 0 }}
-        >
-          <Text className="text-[15px] font-medium leading-relaxed text-ios-green-text">
-            {markdownContent}
+        <View className="h-9 w-9 items-center justify-center rounded-full bg-primary">
+          <Ionicons name="person" size={20} color="#fff" />
+        </View>
+        <View className="flex-1 flex-col items-end gap-1">
+          <Text className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            You
           </Text>
-        </Pressable>
-        <Text className="mr-1 mt-1 text-[10px] font-medium uppercase text-text-muted">
-          {formatTime(message.createdAt)}
-        </Text>
+          <Pressable
+            onLongPress={() => onLongPress?.(message)}
+            className="max-w-[80%] rounded-2xl bg-primary px-4 py-3"
+            style={{ borderTopRightRadius: 0 }}
+          >
+            <Text className="text-[15px] leading-relaxed text-white">
+              {markdownContent}
+            </Text>
+          </Pressable>
+        </View>
       </MotiView>
     );
   }
@@ -53,86 +58,82 @@ export function MessageBubble({
       from={{ opacity: 0, translateY: 8 }}
       animate={{ opacity: 1, translateY: 0 }}
       transition={{ type: "timing", duration: 250 }}
-      className="mb-4 flex-col items-start px-4"
+      className="mb-6 flex-row items-start gap-3 px-4"
     >
-      <View className="mb-2 flex-row items-center gap-2">
-        <View className="h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-border-light bg-slate-100">
-          <ModelAvatar name={message.senderName ?? "AI"} size="sm" />
-        </View>
-        <Text className="text-xs font-bold text-text-muted">
-          {message.senderName}
-          {message.identityId ? ` • ${message.identityId}` : ""}
-        </Text>
+      <View className="h-9 w-9 overflow-hidden rounded-full">
+        <ModelAvatar name={message.senderName ?? "AI"} size="sm" />
       </View>
-
-      {message.reasoningContent && (
-        <Pressable
-          onPress={() => setShowReasoning(!showReasoning)}
-          className="mb-2 flex-row items-center rounded-xl bg-slate-200/50 px-3 py-2"
-        >
-          <Ionicons name="bulb-outline" size={14} color="#6b7280" />
-          <Text className="ml-1.5 text-[13px] font-medium text-slate-600">
-            {showReasoning ? "Hide thinking" : "Thought process"}
-          </Text>
-          <Ionicons
-            name={showReasoning ? "chevron-up" : "chevron-down"}
-            size={14}
-            color="#9ca3af"
-            style={{ marginLeft: 4 }}
-          />
-        </Pressable>
-      )}
-
-      {showReasoning && message.reasoningContent && (
-        <View className="mb-2 rounded-xl bg-slate-50 p-3">
-          <Text className="text-xs leading-5 text-slate-600">
-            {message.reasoningContent}
-          </Text>
-        </View>
-      )}
-
-      <Pressable
-        onLongPress={() => onLongPress?.(message)}
-        className="max-w-[90%] rounded-2xl border border-border-light bg-white px-4 py-3"
-        style={{
-          borderTopLeftRadius: 0,
-          shadowColor: "#000",
-          shadowOpacity: 0.04,
-          shadowRadius: 4,
-          shadowOffset: { width: 0, height: 1 },
-          elevation: 1,
-        }}
-      >
-        {message.isStreaming && !message.content ? (
-          <View className="flex-row items-center">
-            <Ionicons name="ellipsis-horizontal" size={20} color="#6b7280" />
-          </View>
-        ) : (
-          <MarkdownRenderer content={markdownContent} />
-        )}
-      </Pressable>
-
-      {message.toolCalls.length > 0 && (
-        <View className="mt-1 rounded-lg border border-border-light bg-gray-50 px-3 py-2">
-          {message.toolCalls.map((tc) => (
-            <View key={tc.id} className="flex-row items-center">
-              <Ionicons name="construct-outline" size={14} color="#6b7280" />
-              <Text className="ml-1.5 text-xs text-text-muted">
-                Called: {tc.name}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      <View className="mt-1 ml-1 flex-row items-center">
-        <Text className="text-[10px] font-medium uppercase text-text-muted">
-          {formatTime(message.createdAt)}
+      <View className="flex-1 flex-col gap-1">
+        <Text className="ml-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          {message.senderName}
+          {message.identityId ? ` (${message.identityId})` : ""}
         </Text>
+
+        {message.reasoningContent && (
+          <Pressable
+            onPress={() => setShowReasoning(!showReasoning)}
+            className="flex-row items-center justify-between rounded-xl bg-slate-200/50 px-3 py-2.5"
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="bulb-outline" size={16} color="#6b7280" />
+              <Text className="text-[13px] font-medium text-slate-600">
+                Thought process
+              </Text>
+              {message.reasoningDuration && (
+                <View className="rounded bg-white/80 px-1.5 py-0.5">
+                  <Text className="text-[11px] font-mono text-primary">
+                    {message.reasoningDuration}s
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Ionicons
+              name={showReasoning ? "chevron-up" : "chevron-down"}
+              size={16}
+              color="#9ca3af"
+            />
+          </Pressable>
+        )}
+
+        {showReasoning && message.reasoningContent && (
+          <View className="rounded-xl bg-slate-50 p-3">
+            <Text className="text-xs leading-5 text-slate-600">
+              {message.reasoningContent}
+            </Text>
+          </View>
+        )}
+
+        <Pressable
+          onLongPress={() => onLongPress?.(message)}
+          className="max-w-[90%] rounded-2xl border border-slate-100 bg-[#F2F2F7] px-4 py-3"
+          style={{ borderTopLeftRadius: 0 }}
+        >
+          {message.isStreaming && !message.content ? (
+            <View className="flex-row items-center">
+              <Ionicons name="ellipsis-horizontal" size={20} color="#6b7280" />
+            </View>
+          ) : (
+            <MarkdownRenderer content={markdownContent} />
+          )}
+        </Pressable>
+
+        {message.toolCalls.length > 0 && (
+          <View className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+            {message.toolCalls.map((tc) => (
+              <View key={tc.id} className="flex-row items-center">
+                <Ionicons name="construct-outline" size={14} color="#6b7280" />
+                <Text className="ml-1.5 text-xs text-text-muted">
+                  Called: {tc.name}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {onBranch && (
           <Pressable
             onPress={() => onBranch(message.id)}
-            className="ml-2 p-1"
+            className="ml-1 self-start p-1"
             hitSlop={8}
           >
             <Ionicons name="git-branch-outline" size={12} color="#9ca3af" />

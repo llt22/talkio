@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { View, TextInput, Pressable, ScrollView, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { ModelAvatar } from "../common/ModelAvatar";
 import { QUICK_PROMPTS } from "../../constants";
 import type { ConversationParticipant } from "../../types";
 import { useProviderStore } from "../../stores/provider-store";
@@ -67,28 +68,28 @@ export function ChatInput({
   };
 
   return (
-    <View className="border-t border-border-light bg-nav-light">
+    <View className="border-t border-slate-100 bg-white">
       {showQuickPrompts && !isGroup && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="border-b border-border-light px-2 py-1.5"
+          className="border-b border-slate-100 px-2 py-1.5"
         >
           {QUICK_PROMPTS.map((qp) => (
             <Pressable
               key={qp.label}
               onPress={() => handleQuickPrompt(qp.prompt)}
-              className="mr-2 rounded-full border border-border-light px-3 py-1"
+              className="mr-2 rounded-full border border-slate-200 px-3 py-1"
             >
-              <Text className="text-xs text-text-muted">{qp.label}</Text>
+              <Text className="text-xs text-slate-500">{qp.label}</Text>
             </Pressable>
           ))}
         </ScrollView>
       )}
 
       {showMentionPicker && isGroup && (
-        <View className="border-b border-border-light bg-gray-50 px-4 py-2">
-          <Text className="mb-1 text-xs font-semibold uppercase text-text-muted">
+        <View className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+          <Text className="mb-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">
             Select Model
           </Text>
           {participants.map((p) => {
@@ -98,10 +99,12 @@ export function ChatInput({
               <Pressable
                 key={p.modelId}
                 onPress={() => insertMention(p.modelId)}
-                className="flex-row items-center py-1.5"
+                className="flex-row items-center gap-3 py-2.5"
               >
-                <Ionicons name="flash" size={16} color="#007AFF" />
-                <Text className="ml-2 text-sm font-medium text-text-main">
+                <View className="h-8 w-8 overflow-hidden rounded-lg">
+                  <ModelAvatar name={model.displayName} size="sm" />
+                </View>
+                <Text className="text-[15px] font-medium text-slate-700">
                   {model.displayName}
                 </Text>
               </Pressable>
@@ -110,48 +113,37 @@ export function ChatInput({
         </View>
       )}
 
-      <View className="flex-row items-end gap-2 px-4 py-2.5">
-        <Pressable
-          className="mb-0.5 h-10 w-10 items-center justify-center rounded-full border border-border-light bg-white"
-          style={{ shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}
-        >
-          <Ionicons name="add" size={24} color="#6b7280" />
+      <View className="flex-row items-center gap-3 px-4 py-2.5">
+        <Pressable className="text-primary p-1">
+          <Ionicons name="add" size={24} color="#007AFF" />
         </Pressable>
 
-        <TextInput
-          ref={inputRef}
-          className="max-h-24 min-h-[40px] flex-1 rounded-2xl border border-border-light bg-white px-4 py-2.5 text-[15px] text-text-main"
-          style={{ shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}
-          placeholder={isGroup ? "@| Message Group..." : "Message..."}
-          placeholderTextColor="#8E8E93"
-          value={text}
-          onChangeText={handleTextChange}
-          multiline
-          editable={!isGenerating}
-        />
-
-        <Pressable
-          className="mb-0.5 h-10 w-10 items-center justify-center rounded-full border border-border-light bg-white"
-          style={{ shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}
-        >
-          <Ionicons name="mic-outline" size={24} color="#6b7280" />
-        </Pressable>
+        <View className="flex-1 flex-row items-center rounded-3xl border border-slate-200/50 bg-[#F2F2F7] px-4 py-1.5">
+          {isGroup && (
+            <Text className="text-primary text-[16px] font-semibold mr-0.5">@</Text>
+          )}
+          <TextInput
+            ref={inputRef}
+            className="max-h-24 min-h-[36px] flex-1 text-[16px] text-text-main"
+            placeholder={isGroup ? "Message Group..." : `Message...`}
+            placeholderTextColor="#8E8E93"
+            value={text}
+            onChangeText={handleTextChange}
+            multiline
+            editable={!isGenerating}
+          />
+        </View>
 
         <Pressable
           onPress={handleSend}
           disabled={!text.trim() || isGenerating}
-          className={`mb-0.5 h-10 w-10 items-center justify-center rounded-full ${
-            text.trim() && !isGenerating ? "bg-primary" : "bg-gray-200"
+          className={`h-8 w-8 items-center justify-center rounded-full ${
+            text.trim() && !isGenerating ? "bg-primary" : "bg-slate-200"
           }`}
-          style={
-            text.trim() && !isGenerating
-              ? { shadowColor: "#007AFF", shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 }
-              : undefined
-          }
         >
           <Ionicons
             name="arrow-up"
-            size={20}
+            size={18}
             color={text.trim() && !isGenerating ? "#fff" : "#9ca3af"}
           />
         </Pressable>

@@ -106,6 +106,7 @@ export interface Message {
   identityId: string | null;
   content: string;
   reasoningContent: string | null;
+  reasoningDuration: number | null;
   toolCalls: ToolCall[];
   toolResults: ToolResult[];
   branchId: string | null;

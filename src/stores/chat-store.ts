@@ -138,6 +138,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       identityId: null,
       content: text,
       reasoningContent: null,
+      reasoningDuration: null,
       toolCalls: [],
       toolResults: [],
       branchId: state.activeBranchId,

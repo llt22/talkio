@@ -71,6 +71,7 @@ export async function generateResponse(
     identityId: identity?.id ?? null,
     content: "",
     reasoningContent: null,
+    reasoningDuration: null,
     toolCalls: [],
     toolResults: [],
     branchId: chatStore.activeBranchId,

@@ -64,6 +64,7 @@ function rowToMessage(row: typeof messages.$inferSelect): Message {
     identityId: row.identityId ?? null,
     content: row.content || "",
     reasoningContent: row.reasoningContent ?? null,
+    reasoningDuration: (row as any).reasoningDuration ?? null,
     toolCalls: JSON.parse(row.toolCalls || "[]"),
     toolResults: JSON.parse(row.toolResults || "[]"),
     branchId: row.branchId ?? null,
