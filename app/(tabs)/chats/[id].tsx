@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { View, Text, Pressable, KeyboardAvoidingView, Platform, Alert, ActionSheetIOS } from "react-native";
-import { FlashList, FlashListRef } from "@shopify/flash-list";
+import { LegendList } from "@legendapp/list";
+import type { LegendListRef } from "@legendapp/list";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useChatStore } from "../../../src/stores/chat-store";
@@ -15,7 +16,7 @@ export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const listRef = useRef<FlashListRef<Message>>(null);
+  const listRef = useRef<LegendListRef>(null);
 
   const conversations = useChatStore((s) => s.conversations);
   const messages = useChatStore((s) => s.messages);
@@ -74,7 +75,7 @@ export default function ChatDetailScreen() {
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => {
-        listRef.current?.scrollToEnd({ animated: true });
+        listRef.current?.scrollToOffset({ offset: 9999999, animated: true });
       }, 150);
     }
   }, [messages.length, lastMsgContent]);
@@ -177,12 +178,18 @@ export default function ChatDetailScreen() {
         />
       )}
 
-      <FlashList
+      <LegendList
         ref={listRef}
         data={messages}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingTop: 12, paddingBottom: 8 }}
+        recycleItems
+        maintainScrollAtEnd
+        maintainScrollAtEndThreshold={0.1}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       />
 
       <ChatInput
