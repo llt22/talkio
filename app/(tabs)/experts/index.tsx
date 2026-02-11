@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { View, Text, Pressable, ScrollView, TextInput, Alert } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useProviderStore } from "../../../src/stores/provider-store";
 import { useChatStore } from "../../../src/stores/chat-store";
@@ -12,6 +12,7 @@ import type { Model } from "../../../src/types";
 
 export default function ExpertsScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const providers = useProviderStore((s) => s.providers);
   const models = useProviderStore((s) => s.getEnabledModels);
   const getProviderById = useProviderStore((s) => s.getProviderById);
@@ -19,6 +20,20 @@ export default function ExpertsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedForGroup, setSelectedForGroup] = useState<string[]>([]);
   const [groupMode, setGroupMode] = useState(false);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={() => router.push("/(tabs)/settings/providers")}
+          className="flex-row items-center gap-1"
+        >
+          <Ionicons name="add" size={22} color="#007AFF" />
+          <Text className="text-base font-medium text-primary">Add</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation, router]);
 
   const enabledModels = models();
   const filtered = enabledModels.filter((m) =>
@@ -125,28 +140,21 @@ export default function ExpertsScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <View className="px-5 pt-4 pb-3">
-        <View className="mb-4 flex-row items-center justify-between">
-          <Text className="text-3xl font-bold tracking-tight text-black">Experts</Text>
-          <Pressable
-            onPress={() => router.push("/(tabs)/settings/providers")}
-            className="flex-row items-center gap-1"
-          >
-            <Ionicons name="add" size={20} color="#007AFF" />
-            <Text className="text-base font-medium text-primary">Add</Text>
-          </Pressable>
-        </View>
-        <View className="relative">
-          <View className="absolute left-3 top-1/2 z-10" style={{ transform: [{ translateY: -9 }] }}>
-            <Ionicons name="search" size={18} color="#94a3b8" />
-          </View>
+      <View className="px-4 pb-3">
+        <View className="flex-row items-center rounded-xl bg-ios-gray px-3 py-2">
+          <Ionicons name="search" size={18} color="#94a3b8" />
           <TextInput
-            className="w-full rounded-xl border-0 bg-ios-gray py-2 pl-10 pr-4 text-[17px] text-text-main"
-            placeholder="Search"
-            placeholderTextColor="#64748b"
+            className="ml-2 flex-1 text-[15px] text-text-main"
+            placeholder="Search models..."
+            placeholderTextColor="#8E8E93"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery("")}>
+              <Ionicons name="close-circle" size={18} color="#94a3b8" />
+            </Pressable>
+          )}
         </View>
       </View>
 

@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { View, Text, Pressable, TextInput, Alert } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useChatStore } from "../../../src/stores/chat-store";
 import { useProviderStore } from "../../../src/stores/provider-store";
@@ -15,12 +15,35 @@ type FilterType = "all" | "single" | "group";
 
 export default function ChatsScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const conversations = useChatStore((s) => s.conversations);
   const deleteConversation = useChatStore((s) => s.deleteConversation);
   const getModelById = useProviderStore((s) => s.getModelById);
   const getIdentityById = useIdentityStore((s) => s.getIdentityById);
   const [filter, setFilter] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            onPress={() => setShowSearch((v) => !v)}
+            className="p-1"
+          >
+            <Ionicons name="search" size={22} color="#007AFF" />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/(tabs)/experts")}
+            className="p-1"
+          >
+            <Ionicons name="create-outline" size={22} color="#007AFF" />
+          </Pressable>
+        </View>
+      ),
+    });
+  }, [navigation, router]);
 
   const filtered = conversations.filter((c) => {
     if (filter === "single" && c.type !== "single") return false;
@@ -97,22 +120,28 @@ export default function ChatsScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <View className="px-5 pb-4 pt-2">
-        <View className="mb-4 flex-row items-center justify-between">
-          <Text className="text-3xl font-bold tracking-tight text-text-main">Messages</Text>
-          <View className="flex-row gap-3">
-            <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-divider">
-              <Ionicons name="search" size={20} color="#1C1C1E" />
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/(tabs)/experts")}
-              className="h-9 w-9 items-center justify-center rounded-full bg-primary"
-            >
-              <Ionicons name="add" size={20} color="#fff" />
-            </Pressable>
+      {showSearch && (
+        <View className="px-4 pb-2">
+          <View className="flex-row items-center rounded-xl bg-ios-gray px-3 py-2">
+            <Ionicons name="search" size={18} color="#94a3b8" />
+            <TextInput
+              className="ml-2 flex-1 text-[15px] text-text-main"
+              placeholder="Search chats..."
+              placeholderTextColor="#8E8E93"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery("")}>
+                <Ionicons name="close-circle" size={18} color="#94a3b8" />
+              </Pressable>
+            )}
           </View>
         </View>
+      )}
 
+      <View className="px-4 pb-3">
         <View className="flex-row gap-2">
           {(["all", "single", "group"] as FilterType[]).map((f) => (
             <Pressable
