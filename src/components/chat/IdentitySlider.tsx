@@ -18,18 +18,24 @@ export function IdentitySlider({
   if (!visible) return null;
 
   return (
-    <View className="border-b border-border-light bg-gray-50 px-2 py-3">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+    <View className="w-full pb-4 pt-2">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+      >
         {activeIdentityId && (
           <Pressable
             onPress={() => onSelect(null)}
-            className="mr-2 items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 py-3"
-            style={{ minWidth: 100 }}
+            className="w-[160px] flex-shrink-0 items-start gap-2 rounded-2xl border border-red-200 bg-red-50 p-3"
           >
-            <Ionicons name="close-circle-outline" size={20} color="#ef4444" />
-            <Text className="mt-1 text-xs font-medium text-red-500">
-              Remove
-            </Text>
+            <View className="h-8 w-8 items-center justify-center rounded-lg bg-red-100">
+              <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
+            </View>
+            <View>
+              <Text className="text-xs font-bold text-red-500">Remove</Text>
+              <Text className="text-[10px] leading-tight text-red-400">Clear identity</Text>
+            </View>
           </Pressable>
         )}
 
@@ -39,29 +45,36 @@ export function IdentitySlider({
             <Pressable
               key={identity.id}
               onPress={() => onSelect(identity.id)}
-              className={`mr-2 rounded-xl border px-4 py-3 ${
+              className={`w-[160px] flex-shrink-0 items-start gap-2 rounded-2xl border p-3 ${
                 isActive
-                  ? "border-primary bg-primary-light"
+                  ? "border-primary/20 bg-primary/5"
                   : "border-border-light bg-white"
               }`}
-              style={{ minWidth: 120 }}
             >
-              <Ionicons
-                name={getIconName(identity.icon)}
-                size={20}
-                color={isActive ? "#2b2bee" : "#6b7280"}
-              />
-              <Text
-                className={`mt-1 text-sm font-semibold ${
-                  isActive ? "text-primary" : "text-text-main"
+              <View
+                className={`h-8 w-8 items-center justify-center rounded-lg ${
+                  isActive ? "bg-primary" : "bg-slate-100"
                 }`}
-                numberOfLines={1}
               >
-                {identity.name}
-              </Text>
-              <Text className="mt-0.5 text-xs text-text-muted" numberOfLines={2}>
-                {identity.systemPrompt.slice(0, 50)}...
-              </Text>
+                <Ionicons
+                  name={getIconName(identity.icon)}
+                  size={18}
+                  color={isActive ? "#fff" : "#64748b"}
+                />
+              </View>
+              <View>
+                <Text
+                  className={`text-xs font-bold ${
+                    isActive ? "text-primary" : "text-text-main"
+                  }`}
+                  numberOfLines={1}
+                >
+                  {identity.name}
+                </Text>
+                <Text className="text-[10px] leading-tight text-text-muted" numberOfLines={2}>
+                  {identity.systemPrompt.slice(0, 60)}
+                </Text>
+              </View>
             </Pressable>
           );
         })}

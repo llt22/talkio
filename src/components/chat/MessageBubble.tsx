@@ -24,112 +24,126 @@ export function MessageBubble({
 
   const markdownContent = isUser ? message.content : message.content.trimEnd();
 
+  if (isUser) {
+    return (
+      <MotiView
+        from={{ opacity: 0, translateY: 8 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: "timing", duration: 250 }}
+        className="mb-4 flex-col items-end px-4"
+      >
+        <Pressable
+          onLongPress={() => onLongPress?.(message)}
+          className="max-w-[85%] rounded-2xl bg-ios-green px-4 py-3"
+          style={{ borderTopRightRadius: 0 }}
+        >
+          <Text className="text-[15px] font-medium leading-relaxed text-ios-green-text">
+            {markdownContent}
+          </Text>
+        </Pressable>
+        <Text className="mr-1 mt-1 text-[10px] font-medium uppercase text-text-muted">
+          {formatTime(message.createdAt)}
+        </Text>
+      </MotiView>
+    );
+  }
+
   return (
     <MotiView
       from={{ opacity: 0, translateY: 8 }}
       animate={{ opacity: 1, translateY: 0 }}
       transition={{ type: "timing", duration: 250 }}
-      className={`mb-2 flex-row px-4 ${isUser ? "justify-end" : "justify-start"}`}
+      className="mb-4 flex-col items-start px-4"
     >
-      {!isUser && (
-        <View className="mr-2 mt-1">
+      <View className="mb-2 flex-row items-center gap-2">
+        <View className="h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-border-light bg-slate-100">
           <ModelAvatar name={message.senderName ?? "AI"} size="sm" />
         </View>
-      )}
-
-      <View className={`max-w-[80%] ${isUser ? "items-end" : "items-start"}`}>
-        {!isUser && (isGroup || message.identityId) && (
-          <Text className="mb-1 text-xs font-medium uppercase text-text-muted">
-            {message.senderName}
-            {message.identityId ? ` · ${message.identityId}` : ""}
-          </Text>
-        )}
-
-        {message.reasoningContent && (
-          <Pressable
-            onPress={() => setShowReasoning(!showReasoning)}
-            className="mb-1 flex-row items-center rounded-lg bg-amber-50 px-3 py-1.5"
-          >
-            <Ionicons name="bulb-outline" size={14} color="#92400e" />
-            <Text className="ml-1.5 text-xs font-medium text-amber-700">
-              {showReasoning ? "Hide thinking" : "Show thinking"}
-            </Text>
-          </Pressable>
-        )}
-
-        {showReasoning && message.reasoningContent && (
-          <View className="mb-1 rounded-lg bg-amber-50 p-3">
-            <Text className="text-xs leading-5 text-amber-800">
-              {message.reasoningContent}
-            </Text>
-          </View>
-        )}
-
-        <Pressable
-          onLongPress={() => onLongPress?.(message)}
-          className={`overflow-hidden rounded-2xl px-4 py-2.5 ${
-            isUser ? "bg-primary" : "bg-white"
-          }`}
-          style={
-            !isUser
-              ? { shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 }
-              : undefined
-          }
-        >
-          {isUser ? (
-            <Text className="text-[15px] leading-6 text-white">
-              {markdownContent}
-            </Text>
-          ) : message.isStreaming && !message.content ? (
-            <View className="flex-row items-center">
-              <Ionicons name="ellipsis-horizontal" size={20} color="#6b7280" />
-            </View>
-          ) : (
-            <MarkdownRenderer content={markdownContent} />
-          )}
-        </Pressable>
-
-        {message.toolCalls.length > 0 && (
-          <View className="mt-1 rounded-lg border border-border-light bg-gray-50 px-3 py-2">
-            {message.toolCalls.map((tc) => (
-              <View key={tc.id} className="flex-row items-center">
-                <Ionicons name="construct-outline" size={14} color="#6b7280" />
-                <Text className="ml-1.5 text-xs text-text-muted">
-                  Called: {tc.name}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        <View className="mt-0.5 flex-row items-center">
-          <Text className="text-xs text-text-hint">
-            {formatTime(message.createdAt)}
-          </Text>
-          {onBranch && !isUser && (
-            <Pressable
-              onPress={() => onBranch(message.id)}
-              className="ml-2 p-1"
-              hitSlop={8}
-            >
-              <Ionicons name="git-branch-outline" size={12} color="#9ca3af" />
-            </Pressable>
-          )}
-        </View>
+        <Text className="text-xs font-bold text-text-muted">
+          {message.senderName}
+          {message.identityId ? ` • ${message.identityId}` : ""}
+        </Text>
       </View>
 
-      {isUser && (
-        <View className="ml-2 mt-1">
-          <View className="h-8 w-8 items-center justify-center rounded-xl bg-primary">
-            <Ionicons name="person" size={16} color="#fff" />
-          </View>
+      {message.reasoningContent && (
+        <Pressable
+          onPress={() => setShowReasoning(!showReasoning)}
+          className="mb-2 flex-row items-center rounded-xl bg-slate-200/50 px-3 py-2"
+        >
+          <Ionicons name="bulb-outline" size={14} color="#6b7280" />
+          <Text className="ml-1.5 text-[13px] font-medium text-slate-600">
+            {showReasoning ? "Hide thinking" : "Thought process"}
+          </Text>
+          <Ionicons
+            name={showReasoning ? "chevron-up" : "chevron-down"}
+            size={14}
+            color="#9ca3af"
+            style={{ marginLeft: 4 }}
+          />
+        </Pressable>
+      )}
+
+      {showReasoning && message.reasoningContent && (
+        <View className="mb-2 rounded-xl bg-slate-50 p-3">
+          <Text className="text-xs leading-5 text-slate-600">
+            {message.reasoningContent}
+          </Text>
         </View>
       )}
+
+      <Pressable
+        onLongPress={() => onLongPress?.(message)}
+        className="max-w-[90%] rounded-2xl border border-border-light bg-white px-4 py-3"
+        style={{
+          borderTopLeftRadius: 0,
+          shadowColor: "#000",
+          shadowOpacity: 0.04,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 1 },
+          elevation: 1,
+        }}
+      >
+        {message.isStreaming && !message.content ? (
+          <View className="flex-row items-center">
+            <Ionicons name="ellipsis-horizontal" size={20} color="#6b7280" />
+          </View>
+        ) : (
+          <MarkdownRenderer content={markdownContent} />
+        )}
+      </Pressable>
+
+      {message.toolCalls.length > 0 && (
+        <View className="mt-1 rounded-lg border border-border-light bg-gray-50 px-3 py-2">
+          {message.toolCalls.map((tc) => (
+            <View key={tc.id} className="flex-row items-center">
+              <Ionicons name="construct-outline" size={14} color="#6b7280" />
+              <Text className="ml-1.5 text-xs text-text-muted">
+                Called: {tc.name}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <View className="mt-1 ml-1 flex-row items-center">
+        <Text className="text-[10px] font-medium uppercase text-text-muted">
+          {formatTime(message.createdAt)}
+        </Text>
+        {onBranch && (
+          <Pressable
+            onPress={() => onBranch(message.id)}
+            className="ml-2 p-1"
+            hitSlop={8}
+          >
+            <Ionicons name="git-branch-outline" size={12} color="#9ca3af" />
+          </Pressable>
+        )}
+      </View>
     </MotiView>
   );
 }
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).toUpperCase();
 }

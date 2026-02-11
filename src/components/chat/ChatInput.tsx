@@ -67,7 +67,7 @@ export function ChatInput({
   };
 
   return (
-    <View className="border-t border-border-light bg-white">
+    <View className="border-t border-border-light bg-nav-light">
       {showQuickPrompts && !isGroup && (
         <ScrollView
           horizontal
@@ -100,7 +100,7 @@ export function ChatInput({
                 onPress={() => insertMention(p.modelId)}
                 className="flex-row items-center py-1.5"
               >
-                <Ionicons name="flash" size={16} color="#2b2bee" />
+                <Ionicons name="flash" size={16} color="#007AFF" />
                 <Text className="ml-2 text-sm font-medium text-text-main">
                   {model.displayName}
                 </Text>
@@ -110,32 +110,44 @@ export function ChatInput({
         </View>
       )}
 
-      <View className="flex-row items-end px-3 py-2">
-        <Pressable className="mb-1 mr-2 p-1">
+      <View className="flex-row items-end gap-2 px-4 py-2.5">
+        <Pressable
+          className="mb-0.5 h-10 w-10 items-center justify-center rounded-full border border-border-light bg-white"
+          style={{ shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}
+        >
           <Ionicons name="add" size={24} color="#6b7280" />
         </Pressable>
 
         <TextInput
           ref={inputRef}
-          className="max-h-24 min-h-[36px] flex-1 rounded-2xl bg-bg-secondary px-4 py-2 text-[15px] text-text-main"
+          className="max-h-24 min-h-[40px] flex-1 rounded-2xl border border-border-light bg-white px-4 py-2.5 text-[15px] text-text-main"
+          style={{ shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}
           placeholder={isGroup ? "@| Message Group..." : "Message..."}
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#8E8E93"
           value={text}
           onChangeText={handleTextChange}
           multiline
           editable={!isGenerating}
         />
 
-        <Pressable className="mb-1 ml-2 p-1">
+        <Pressable
+          className="mb-0.5 h-10 w-10 items-center justify-center rounded-full border border-border-light bg-white"
+          style={{ shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 }}
+        >
           <Ionicons name="mic-outline" size={24} color="#6b7280" />
         </Pressable>
 
         <Pressable
           onPress={handleSend}
           disabled={!text.trim() || isGenerating}
-          className={`mb-1 ml-1 h-9 w-9 items-center justify-center rounded-full ${
+          className={`mb-0.5 h-10 w-10 items-center justify-center rounded-full ${
             text.trim() && !isGenerating ? "bg-primary" : "bg-gray-200"
           }`}
+          style={
+            text.trim() && !isGenerating
+              ? { shadowColor: "#007AFF", shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 }
+              : undefined
+          }
         >
           <Ionicons
             name="arrow-up"

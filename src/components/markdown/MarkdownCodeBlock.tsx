@@ -31,14 +31,13 @@ export function MarkdownCodeBlock({ content, language = "text" }: MarkdownCodeBl
   };
 
   return (
-    <View className="mt-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-zinc-100 dark:bg-zinc-900 overflow-hidden">
-      <View className="flex-row items-center justify-between px-3 py-1.5 border-b border-gray-200 dark:border-gray-700">
-        <Text className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-          {lang.toUpperCase()}
+    <View className="mt-1 rounded-xl border border-border-light bg-slate-50 overflow-hidden">
+      <View className="flex-row items-center justify-between px-3 py-2 border-b border-border-light bg-slate-100/50">
+        <Text className="text-[10px] font-mono font-bold text-text-muted uppercase">
+          {lang}
         </Text>
-        <Pressable onPress={handleCopy} className="flex-row items-center gap-1 px-2 py-1 rounded active:bg-gray-200 dark:active:bg-gray-700">
-          <Ionicons name="copy-outline" size={14} color={isDark ? "#9ca3af" : "#6b7280"} />
-          <Text className="text-xs text-gray-500 dark:text-gray-400">Copy</Text>
+        <Pressable onPress={handleCopy} className="flex-row items-center gap-1 px-2 py-0.5 rounded active:bg-slate-200">
+          <Ionicons name="copy-outline" size={12} color="#6b7280" />
         </Pressable>
       </View>
       <View className="px-3 py-2">
