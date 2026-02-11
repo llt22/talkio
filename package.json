@@ -27,6 +27,7 @@
     "expo-calendar": "~15.0.8",
     "expo-clipboard": "~8.0.8",
     "expo-crypto": "^15.0.8",
+    "expo-dev-client": "^6.0.20",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",
     "expo-linking": "~8.0.11",
