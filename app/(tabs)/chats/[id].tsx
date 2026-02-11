@@ -57,15 +57,21 @@ export default function ChatDetailScreen() {
           onPress={() => !isGroup && setShowIdentitySlider((v) => !v)}
           className="items-center"
         >
-          <Text className="text-base font-semibold text-text-main">{title}</Text>
+          <Text className="text-sm font-bold tracking-tight text-text-main">{title}</Text>
           {subtitle && (
-            <Text className="text-xs text-primary">{subtitle}</Text>
+            <View className="mt-0.5 flex-row items-center gap-1">
+              <Ionicons name="layers-outline" size={12} color="#007AFF" />
+              <Text className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                {activeIdentity ? activeIdentity.name : "Mount Identity"}
+              </Text>
+              <Ionicons name="chevron-down" size={12} color="#007AFF" />
+            </View>
           )}
         </Pressable>
       ),
       headerRight: () => (
         <Pressable onPress={() => showChatOptions()} className="px-2">
-          <Ionicons name="ellipsis-horizontal" size={22} color="#1f2937" />
+          <Ionicons name="ellipsis-horizontal" size={22} color="#007AFF" />
         </Pressable>
       ),
     });
