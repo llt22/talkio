@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { View, Text, Pressable, TextInput, Alert, SectionList } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
@@ -11,7 +11,8 @@ import type { Model } from "../../../src/types";
 export default function ModelsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const enabledModels = useProviderStore((s) => s.models.filter((m) => m.enabled));
+  const models = useProviderStore((s) => s.models);
+  const enabledModels = useMemo(() => models.filter((m) => m.enabled), [models]);
   const getProviderById = useProviderStore((s) => s.getProviderById);
   const createConversation = useChatStore((s) => s.createConversation);
   const [searchQuery, setSearchQuery] = useState("");
