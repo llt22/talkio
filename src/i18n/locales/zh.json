@@ -155,6 +155,37 @@
     "qrDesc": "扫描其他设备的二维码以传输设置和 API 密钥。",
     "scanQr": "扫描二维码"
   },
+  "identityEdit": {
+    "name": "名称",
+    "namePlaceholder": "例如：高级架构师",
+    "icon": "图标",
+    "systemPrompt": "系统提示词",
+    "systemPromptPlaceholder": "你是一个...",
+    "parameters": "参数",
+    "temperature": "温度",
+    "topP": "Top P",
+    "maxTokens": "最大 Token：{{value}}",
+    "bindTools": "绑定 MCP 工具",
+    "createIdentity": "创建身份",
+    "saveChanges": "保存更改",
+    "nameRequired": "名称为必填项",
+    "promptRequired": "系统提示词为必填项"
+  },
+  "toolEdit": {
+    "name": "名称",
+    "namePlaceholder": "例如：日历读取器",
+    "description": "描述",
+    "descPlaceholder": "这个工具做什么？",
+    "type": "类型",
+    "typeLocal": "本地（原生）",
+    "typeRemote": "远程（SSE）",
+    "scope": "作用域",
+    "endpointUrl": "端点 URL",
+    "enabled": "启用",
+    "addTool": "添加工具",
+    "saveChanges": "保存更改",
+    "nameRequired": "名称为必填项"
+  },
   "privacy": {
     "privacyFirst": "隐私优先",
     "privacyDesc": "Avatar 以隐私为核心设计，您的数据始终保留在设备上。",

@@ -155,6 +155,37 @@
     "qrDesc": "Scan a QR code from another device to transfer settings and API keys.",
     "scanQr": "Scan QR Code"
   },
+  "identityEdit": {
+    "name": "Name",
+    "namePlaceholder": "e.g. Senior Architect",
+    "icon": "Icon",
+    "systemPrompt": "System Prompt",
+    "systemPromptPlaceholder": "You are a...",
+    "parameters": "Parameters",
+    "temperature": "Temperature",
+    "topP": "Top P",
+    "maxTokens": "Max Tokens: {{value}}",
+    "bindTools": "Bind MCP Tools",
+    "createIdentity": "Create Identity",
+    "saveChanges": "Save Changes",
+    "nameRequired": "Name is required",
+    "promptRequired": "System prompt is required"
+  },
+  "toolEdit": {
+    "name": "Name",
+    "namePlaceholder": "e.g. Calendar Reader",
+    "description": "Description",
+    "descPlaceholder": "What does this tool do?",
+    "type": "Type",
+    "typeLocal": "Local (Native)",
+    "typeRemote": "Remote (SSE)",
+    "scope": "Scope",
+    "endpointUrl": "Endpoint URL",
+    "enabled": "Enabled",
+    "addTool": "Add Tool",
+    "saveChanges": "Save Changes",
+    "nameRequired": "Name is required"
+  },
   "privacy": {
     "privacyFirst": "Privacy First",
     "privacyDesc": "Avatar is designed with privacy at its core. Your data stays on your device.",

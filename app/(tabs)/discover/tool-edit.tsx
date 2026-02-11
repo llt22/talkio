@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, Alert, Switch } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useIdentityStore } from "../../../src/stores/identity-store";
 import type { McpToolType, McpToolScope } from "../../../src/types";
 
 export default function ToolEditScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
   const getMcpToolById = useIdentityStore((s) => s.getMcpToolById);
@@ -23,7 +25,7 @@ export default function ToolEditScreen() {
 
   const handleSave = () => {
     if (!name.trim()) {
-      Alert.alert("Error", "Name is required");
+      Alert.alert(t("common.error"), t("toolEdit.nameRequired"));
       return;
     }
 
@@ -54,23 +56,23 @@ export default function ToolEditScreen() {
   return (
     <ScrollView className="flex-1 bg-white" keyboardShouldPersistTaps="handled">
       <View className="px-4 pt-4">
-        <Text className="mb-1 text-sm font-medium text-text-muted">Name</Text>
+        <Text className="mb-1 text-sm font-medium text-text-muted">{t("toolEdit.name")}</Text>
         <TextInput
           className="rounded-xl border border-border-light bg-bg-secondary px-4 py-3 text-base text-text-main"
           value={name}
           onChangeText={setName}
-          placeholder="e.g. Calendar Reader"
+          placeholder={t("toolEdit.namePlaceholder")}
           placeholderTextColor="#9ca3af"
         />
       </View>
 
       <View className="px-4 pt-4">
-        <Text className="mb-1 text-sm font-medium text-text-muted">Description</Text>
+        <Text className="mb-1 text-sm font-medium text-text-muted">{t("toolEdit.description")}</Text>
         <TextInput
           className="min-h-[80px] rounded-xl border border-border-light bg-bg-secondary px-4 py-3 text-sm text-text-main"
           value={description}
           onChangeText={setDescription}
-          placeholder="What does this tool do?"
+          placeholder={t("toolEdit.descPlaceholder")}
           placeholderTextColor="#9ca3af"
           multiline
           textAlignVertical="top"
@@ -78,18 +80,18 @@ export default function ToolEditScreen() {
       </View>
 
       <View className="px-4 pt-4">
-        <Text className="mb-2 text-sm font-medium text-text-muted">Type</Text>
+        <Text className="mb-2 text-sm font-medium text-text-muted">{t("toolEdit.type")}</Text>
         <View className="flex-row">
-          {(["local", "remote"] as McpToolType[]).map((t) => (
+          {(["local", "remote"] as McpToolType[]).map((tp) => (
             <Pressable
-              key={t}
-              onPress={() => setType(t)}
+              key={tp}
+              onPress={() => setType(tp)}
               className={`mr-2 rounded-full px-4 py-2 ${
-                type === t ? "bg-primary" : "bg-bg-secondary"
+                type === tp ? "bg-primary" : "bg-bg-secondary"
               }`}
             >
-              <Text className={`text-sm ${type === t ? "text-white" : "text-text-muted"}`}>
-                {t === "local" ? "Local (Native)" : "Remote (SSE)"}
+              <Text className={`text-sm ${type === tp ? "text-white" : "text-text-muted"}`}>
+                {tp === "local" ? t("toolEdit.typeLocal") : t("toolEdit.typeRemote")}
               </Text>
             </Pressable>
           ))}
@@ -97,7 +99,7 @@ export default function ToolEditScreen() {
       </View>
 
       <View className="px-4 pt-4">
-        <Text className="mb-2 text-sm font-medium text-text-muted">Scope</Text>
+        <Text className="mb-2 text-sm font-medium text-text-muted">{t("toolEdit.scope")}</Text>
         <View className="flex-row flex-wrap">
           {(["global", "identity-bound", "ad-hoc"] as McpToolScope[]).map((s) => (
             <Pressable
@@ -117,7 +119,7 @@ export default function ToolEditScreen() {
 
       {type === "remote" && (
         <View className="px-4 pt-4">
-          <Text className="mb-1 text-sm font-medium text-text-muted">Endpoint URL</Text>
+          <Text className="mb-1 text-sm font-medium text-text-muted">{t("toolEdit.endpointUrl")}</Text>
           <TextInput
             className="rounded-xl border border-border-light bg-bg-secondary px-4 py-3 text-sm text-text-main"
             value={endpoint}
@@ -131,14 +133,14 @@ export default function ToolEditScreen() {
       )}
 
       <View className="mx-4 mt-4 flex-row items-center justify-between rounded-xl border border-border-light bg-bg-secondary px-4 py-3">
-        <Text className="text-sm text-text-main">Enabled</Text>
-        <Switch value={enabled} onValueChange={setEnabled} trackColor={{ true: "#2b2bee" }} />
+        <Text className="text-sm text-text-main">{t("toolEdit.enabled")}</Text>
+        <Switch value={enabled} onValueChange={setEnabled} trackColor={{ false: "#e5e7eb", true: "#007AFF" }} thumbColor="#fff" ios_backgroundColor="#e5e7eb" />
       </View>
 
       <View className="px-4 pb-8 pt-6">
         <Pressable onPress={handleSave} className="items-center rounded-2xl bg-primary py-4">
           <Text className="text-base font-semibold text-white">
-            {isNew ? "Add Tool" : "Save Changes"}
+            {isNew ? t("toolEdit.addTool") : t("toolEdit.saveChanges")}
           </Text>
         </Pressable>
       </View>
