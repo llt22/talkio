@@ -37,12 +37,9 @@ export default function ModelsScreen() {
         );
         return;
       }
-      const conv = await createConversation("single", [
-        { modelId: model.id, identityId: null },
-      ]);
-      router.push(`/(tabs)/chats/${conv.id}`);
+      router.push(`/(tabs)/experts/${model.id}`);
     },
-    [groupMode, createConversation, router],
+    [groupMode, router],
   );
 
   const handleCreateGroup = useCallback(async () => {
