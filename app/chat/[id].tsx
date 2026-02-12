@@ -2,8 +2,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { View, Text, Pressable, Platform, Alert, ActionSheetIOS, Share } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { KeyboardAvoidingView, KeyboardController } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { useTranslation } from "react-i18next";
 import { LegendList } from "@legendapp/list";
 import type { LegendListRef } from "@legendapp/list";
@@ -24,9 +22,7 @@ export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const listRef = useRef<LegendListRef>(null);
-  const headerHeight = useHeaderHeight();
 
   const conversations = useChatStore((s) => s.conversations);
   const messages = useChatStore((s) => s.messages);
