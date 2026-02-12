@@ -17,7 +17,8 @@
     "unknown": "Unknown",
     "areYouSure": "Are you sure?",
     "configured": "{{count}} configured",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "add": "Add"
   },
   "tabs": {
     "chats": "Chats",
@@ -145,7 +146,12 @@
     "vision": "Vision",
     "tools": "Tools",
     "reasoning": "Reasoning",
-    "probe": "Probe"
+    "probe": "Probe",
+    "type": "Type",
+    "enabled": "Enabled",
+    "customHeaders": "Custom Headers",
+    "searchModels": "Search models...",
+    "addModelPlaceholder": "Enter model ID (e.g. gpt-4o)"
   },
   "providers": {
     "deleteProvider": "Delete Provider",

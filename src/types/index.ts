@@ -5,12 +5,20 @@ export type MessageRole = "user" | "assistant" | "system" | "tool";
 export type McpToolType = "local" | "remote";
 export type McpToolScope = "global" | "identity-bound" | "ad-hoc";
 
+export interface CustomHeader {
+  name: string;
+  value: string;
+}
+
 export interface Provider {
   id: string;
   name: string;
   type: ProviderType;
   baseUrl: string;
   apiKey: string;
+  apiVersion?: string;
+  customHeaders: CustomHeader[];
+  enabled: boolean;
   status: ProviderStatus;
   createdAt: string;
 }
@@ -34,9 +42,12 @@ export interface Model {
   enabled: boolean;
 }
 
+export type ReasoningEffort = "none" | "low" | "medium" | "high" | "auto";
+
 export interface IdentityParams {
   temperature: number;
   topP: number;
+  reasoningEffort?: ReasoningEffort;
 }
 
 export interface Identity {

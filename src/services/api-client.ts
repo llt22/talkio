@@ -9,14 +9,21 @@ import type {
 export class ApiClient {
   private baseUrl: string;
   private apiKey: string;
+  private apiVersion?: string;
+  private customHeaders: Record<string, string>;
 
   constructor(provider: Provider) {
     this.baseUrl = provider.baseUrl.replace(/\/+$/, "");
     this.apiKey = provider.apiKey;
+    this.apiVersion = provider.apiVersion;
+    this.customHeaders = {};
+    for (const h of provider.customHeaders ?? []) {
+      if (h.name && h.value) this.customHeaders[h.name] = h.value;
+    }
   }
 
   async listModels(): Promise<Array<{ id: string; object: string }>> {
-    const response = await fetch(`${this.baseUrl}/models`, {
+    const response = await fetch(this.getUrl("/models"), {
       headers: this.getHeaders(),
     });
     if (!response.ok) {
@@ -36,7 +43,7 @@ export class ApiClient {
   }
 
   async chat(request: ChatApiRequest): Promise<ChatApiResponse> {
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    const response = await fetch(this.getUrl("/chat/completions"), {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({ ...request, stream: false }),
@@ -52,7 +59,7 @@ export class ApiClient {
     request: ChatApiRequest,
   ): AsyncGenerator<StreamDelta, void, unknown> {
     // expo/fetch provides ReadableStream on both native (Hermes) and web
-    const response = await expoFetch(`${this.baseUrl}/chat/completions`, {
+    const response = await expoFetch(this.getUrl("/chat/completions"), {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({ ...request, stream: true }),
@@ -164,7 +171,7 @@ export class ApiClient {
 
   async probeReasoning(modelId: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
+      const response = await fetch(this.getUrl("/chat/completions"), {
         method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify({
@@ -186,6 +193,16 @@ export class ApiClient {
     return {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
+      ...this.customHeaders,
     };
+  }
+
+  private getUrl(path: string): string {
+    let url = `${this.baseUrl}${path}`;
+    if (this.apiVersion) {
+      const sep = url.includes("?") ? "&" : "?";
+      url += `${sep}api-version=${this.apiVersion}`;
+    }
+    return url;
   }
 }

@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useProviderStore } from "../../../src/stores/provider-store";
 import { PROVIDER_PRESETS, PROVIDER_TYPE_OPTIONS } from "../../../src/constants";
-import type { Model, ProviderType } from "../../../src/types";
+import type { Model, ProviderType, CustomHeader } from "../../../src/types";
 
 export default function ProviderEditScreen() {
   const { t } = useTranslation();
@@ -23,18 +23,24 @@ export default function ProviderEditScreen() {
   const setProviderModelsEnabled = useProviderStore((s) => s.setProviderModelsEnabled);
   const probeModelCapabilities = useProviderStore((s) => s.probeModelCapabilities);
   const allModels = useProviderStore((s) => s.models);
+  const addModelToStore = useProviderStore((s) => s.addModel);
   const [probingModelId, setProbingModelId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [providerType, setProviderType] = useState<ProviderType>("openai");
+  const [apiVersion, setApiVersion] = useState("");
+  const [customHeaders, setCustomHeaders] = useState<CustomHeader[]>([]);
+  const [providerEnabled, setProviderEnabled] = useState(true);
   const [testing, setTesting] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [pulledModels, setPulledModels] = useState<Model[]>([]);
   const [pulling, setPulling] = useState(false);
   const [savedProviderId, setSavedProviderId] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [modelSearch, setModelSearch] = useState("");
+  const [newModelId, setNewModelId] = useState("");
 
   const displayModels = savedProviderId
     ? allModels.filter((m) => m.providerId === savedProviderId)
@@ -48,6 +54,9 @@ export default function ProviderEditScreen() {
         setBaseUrl(provider.baseUrl);
         setApiKey(provider.apiKey);
         setProviderType(provider.type);
+        setApiVersion(provider.apiVersion ?? "");
+        setCustomHeaders(provider.customHeaders ?? []);
+        setProviderEnabled(provider.enabled !== false);
         setSavedProviderId(provider.id);
         setConnected(provider.status === "connected");
         setPulledModels(getModelsByProvider(provider.id));
@@ -72,21 +81,21 @@ export default function ProviderEditScreen() {
 
     setTesting(true);
 
+    const providerData = {
+      name: name.trim(),
+      baseUrl: baseUrl.trim(),
+      apiKey: apiKey.trim(),
+      type: providerType,
+      apiVersion: apiVersion.trim() || undefined,
+      customHeaders,
+      enabled: providerEnabled,
+    };
+
     let providerId = savedProviderId;
     if (isEditing && providerId) {
-      updateProvider(providerId, {
-        name: name.trim(),
-        baseUrl: baseUrl.trim(),
-        apiKey: apiKey.trim(),
-        type: providerType,
-      });
+      updateProvider(providerId, providerData);
     } else {
-      const provider = addProvider({
-        name: name.trim(),
-        type: providerType,
-        baseUrl: baseUrl.trim(),
-        apiKey: apiKey.trim(),
-      });
+      const provider = addProvider(providerData);
       providerId = provider.id;
       setSavedProviderId(providerId);
     }
@@ -120,10 +129,40 @@ export default function ProviderEditScreen() {
         baseUrl: baseUrl.trim(),
         apiKey: apiKey.trim(),
         type: providerType,
+        apiVersion: apiVersion.trim() || undefined,
+        customHeaders,
+        enabled: providerEnabled,
       });
     }
     router.back();
   };
+
+  const handleAddModel = () => {
+    const mid = newModelId.trim();
+    if (!mid || !savedProviderId) return;
+    addModelToStore(savedProviderId, mid);
+    setNewModelId("");
+  };
+
+  const addCustomHeader = () => {
+    setCustomHeaders((prev) => [...prev, { name: "", value: "" }]);
+  };
+
+  const updateCustomHeader = (index: number, field: "name" | "value", val: string) => {
+    setCustomHeaders((prev) => prev.map((h, i) => (i === index ? { ...h, [field]: val } : h)));
+  };
+
+  const removeCustomHeader = (index: number) => {
+    setCustomHeaders((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const filteredModels = modelSearch
+    ? displayModels.filter(
+        (m) =>
+          m.displayName.toLowerCase().includes(modelSearch.toLowerCase()) ||
+          m.modelId.toLowerCase().includes(modelSearch.toLowerCase()),
+      )
+    : displayModels;
 
   return (
     <ScrollView className="flex-1 bg-bg-secondary" keyboardShouldPersistTaps="handled">
@@ -185,7 +224,7 @@ export default function ProviderEditScreen() {
               <Ionicons name={showApiKey ? "eye-off" : "eye"} size={20} color="#94a3b8" />
             </Pressable>
           </View>
-          <View className="flex-row items-center px-4 py-3.5">
+          <View className="flex-row items-center border-b border-slate-100 px-4 py-3.5">
             <Text className="w-24 text-[15px] text-slate-900">{t("providerEdit.type")}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-1">
               <View className="flex-row gap-2">
@@ -211,7 +250,66 @@ export default function ProviderEditScreen() {
               </View>
             </ScrollView>
           </View>
+          {providerType === "azure-openai" && (
+            <View className="flex-row items-center border-b border-slate-100 px-4 py-3.5">
+              <Text className="w-24 text-[15px] text-slate-900">API Ver.</Text>
+              <TextInput
+                className="flex-1 bg-transparent text-[16px] text-slate-600"
+                value={apiVersion}
+                onChangeText={setApiVersion}
+                placeholder="2024-02-01"
+                placeholderTextColor="#cbd5e1"
+                autoCapitalize="none"
+              />
+            </View>
+          )}
+          <View className="flex-row items-center justify-between px-4 py-3.5">
+            <Text className="text-[15px] text-slate-900">{t("providerEdit.enabled")}</Text>
+            <Switch
+              value={providerEnabled}
+              onValueChange={setProviderEnabled}
+              trackColor={{ false: "#e5e7eb", true: "#007AFF" }}
+              thumbColor="#fff"
+              ios_backgroundColor="#e5e7eb"
+            />
+          </View>
         </View>
+      </View>
+
+      {/* Custom Headers */}
+      <View className="px-4 pt-4">
+        <View className="flex-row items-center justify-between px-1 mb-2">
+          <Text className="text-[13px] font-normal uppercase tracking-tight text-slate-500">
+            {t("providerEdit.customHeaders")}
+          </Text>
+          <Pressable onPress={addCustomHeader} className="flex-row items-center">
+            <Ionicons name="add-circle-outline" size={16} color="#007AFF" />
+            <Text className="ml-1 text-[13px] font-medium text-primary">{t("common.add")}</Text>
+          </Pressable>
+        </View>
+        {customHeaders.map((h, idx) => (
+          <View key={idx} className="mb-2 flex-row items-center gap-2">
+            <TextInput
+              className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[14px]"
+              value={h.name}
+              onChangeText={(v) => updateCustomHeader(idx, "name", v)}
+              placeholder="Header Name"
+              placeholderTextColor="#cbd5e1"
+              autoCapitalize="none"
+            />
+            <TextInput
+              className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[14px]"
+              value={h.value}
+              onChangeText={(v) => updateCustomHeader(idx, "value", v)}
+              placeholder="Value"
+              placeholderTextColor="#cbd5e1"
+              autoCapitalize="none"
+            />
+            <Pressable onPress={() => removeCustomHeader(idx)} className="p-1">
+              <Ionicons name="close-circle" size={20} color="#ef4444" />
+            </Pressable>
+          </View>
+        ))}
       </View>
 
       <View className="px-4 pt-6">
@@ -274,8 +372,49 @@ export default function ProviderEditScreen() {
             </View>
           </View>
 
+          {/* Model Search */}
+          <View className="mt-3 flex-row items-center rounded-xl border border-slate-200 bg-white px-3 py-2">
+            <Ionicons name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+            <TextInput
+              className="flex-1 text-[14px] text-slate-700"
+              value={modelSearch}
+              onChangeText={setModelSearch}
+              placeholder={t("providerEdit.searchModels")}
+              placeholderTextColor="#cbd5e1"
+              autoCapitalize="none"
+            />
+            {modelSearch ? (
+              <Pressable onPress={() => setModelSearch("")}>
+                <Ionicons name="close-circle" size={16} color="#94a3b8" />
+              </Pressable>
+            ) : null}
+          </View>
+
+          {/* Manual Add Model */}
+          {savedProviderId && (
+            <View className="mt-2 flex-row items-center gap-2">
+              <TextInput
+                className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[14px]"
+                value={newModelId}
+                onChangeText={setNewModelId}
+                placeholder={t("providerEdit.addModelPlaceholder")}
+                placeholderTextColor="#cbd5e1"
+                autoCapitalize="none"
+              />
+              <Pressable
+                onPress={handleAddModel}
+                disabled={!newModelId.trim()}
+                className={`rounded-xl px-4 py-2.5 ${newModelId.trim() ? "bg-primary" : "bg-slate-200"}`}
+              >
+                <Text className={`text-[14px] font-medium ${newModelId.trim() ? "text-white" : "text-slate-400"}`}>
+                  {t("common.add")}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
           <View className="mt-3 gap-3">
-            {displayModels.map((m) => (
+            {filteredModels.map((m) => (
               <View
                 key={m.id}
                 className="rounded-xl border border-slate-200 bg-white p-4"

@@ -91,22 +91,22 @@ export async function generateResponse(
   const client = new ApiClient(provider);
 
   // Build reasoning params if model supports it (ref: Cherry Studio reasoning.ts)
+  const effort = identity?.params.reasoningEffort ?? "auto";
   const reasoningParams: Record<string, unknown> = {};
-  if (model.capabilities.reasoning) {
+  if (model.capabilities.reasoning && effort !== "none") {
     const mid = model.modelId.toLowerCase();
     if (mid.includes("claude")) {
-      // Claude: enable extended thinking
-      reasoningParams.thinking = { type: "enabled", budget_tokens: 8192 };
+      const budgetMap = { low: 4096, medium: 8192, high: 16384, auto: 8192 };
+      reasoningParams.thinking = { type: "enabled", budget_tokens: budgetMap[effort] ?? 8192 };
     } else if (mid.includes("gemini") && mid.includes("thinking")) {
-      // Gemini thinking models
+      const budgetMap = { low: 1024, medium: 4096, high: -1, auto: -1 };
       reasoningParams.extra_body = {
-        google: { thinking_config: { thinking_budget: -1, include_thoughts: true } },
+        google: { thinking_config: { thinking_budget: budgetMap[effort] ?? -1, include_thoughts: true } },
       };
     } else if (mid.includes("hunyuan")) {
       reasoningParams.enable_thinking = true;
-    } else if (mid.match(/\b(o1|o3|o4)\b/) || mid.includes("grok")) {
-      // OpenAI o-series / Grok: reasoning_effort
-      reasoningParams.reasoning_effort = "medium";
+    } else if (mid.match(/\b(o1|o3|o4)\b/) || mid.includes("grok") || mid.includes("perplexity")) {
+      reasoningParams.reasoning_effort = effort === "auto" ? "medium" : effort;
     }
     // DeepSeek R1, QwQ etc: no special params needed, they return reasoning_content automatically
   }

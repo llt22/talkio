@@ -11,11 +11,12 @@ interface ProviderState {
   providers: Provider[];
   models: Model[];
   loadProviders: () => void;
-  addProvider: (data: Omit<Provider, "id" | "status" | "createdAt">) => Provider;
+  addProvider: (data: Omit<Provider, "id" | "status" | "createdAt" | "enabled" | "customHeaders"> & Partial<Pick<Provider, "enabled" | "customHeaders">>) => Provider;
   updateProvider: (id: string, updates: Partial<Provider>) => void;
   removeProvider: (id: string) => void;
   testConnection: (id: string) => Promise<boolean>;
   fetchModels: (providerId: string) => Promise<Model[]>;
+  addModel: (providerId: string, modelId: string) => Model;
   toggleModel: (modelId: string) => void;
   setProviderModelsEnabled: (providerId: string, enabled: boolean) => void;
   updateModelCapabilities: (modelId: string, caps: Partial<ModelCapabilities>) => void;
@@ -40,6 +41,8 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
     const provider: Provider = {
       ...data,
       id: generateId(),
+      enabled: data.enabled ?? true,
+      customHeaders: data.customHeaders ?? [],
       status: "pending",
       createdAt: new Date().toISOString(),
     };
@@ -110,6 +113,29 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
     return newModels;
   },
 
+  addModel: (providerId, modelId) => {
+    const existing = get().models.find(
+      (m) => m.providerId === providerId && m.modelId === modelId,
+    );
+    if (existing) return existing;
+
+    const model: Model = {
+      id: generateId(),
+      providerId,
+      modelId,
+      displayName: prettifyModelName(modelId),
+      avatar: null,
+      capabilities: inferCapabilities(modelId),
+      capabilitiesVerified: false,
+      maxContextLength: inferMaxContext(modelId),
+      enabled: true,
+    };
+    const models = [...get().models, model];
+    set({ models });
+    setItem(STORAGE_KEYS.MODELS, models);
+    return model;
+  },
+
   toggleModel: (modelId) => {
     const models = get().models.map((m) =>
       m.id === modelId ? { ...m, enabled: !m.enabled } : m,
@@ -169,5 +195,10 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
   getModelById: (id) => get().models.find((m) => m.id === id),
   getModelsByProvider: (providerId) =>
     get().models.filter((m) => m.providerId === providerId),
-  getEnabledModels: () => get().models.filter((m) => m.enabled),
+  getEnabledModels: () => {
+    const enabledProviderIds = new Set(
+      get().providers.filter((p) => p.enabled !== false).map((p) => p.id),
+    );
+    return get().models.filter((m) => m.enabled && enabledProviderIds.has(m.providerId));
+  },
 }));

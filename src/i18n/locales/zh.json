@@ -17,7 +17,8 @@
     "unknown": "未知",
     "areYouSure": "确定吗？",
     "configured": "已配置 {{count}} 个",
-    "yesterday": "昨天"
+    "yesterday": "昨天",
+    "add": "添加"
   },
   "tabs": {
     "chats": "聊天",
@@ -145,7 +146,12 @@
     "vision": "视觉",
     "tools": "工具",
     "reasoning": "推理",
-    "probe": "探测"
+    "probe": "探测",
+    "type": "类型",
+    "enabled": "启用",
+    "customHeaders": "自定义请求头",
+    "searchModels": "搜索模型...",
+    "addModelPlaceholder": "输入模型 ID（如 gpt-4o）"
   },
   "providers": {
     "deleteProvider": "删除供应商",
