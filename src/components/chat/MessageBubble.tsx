@@ -85,7 +85,7 @@ export function MessageBubble({
         {message.reasoningContent && (
           <Pressable
             onPress={() => setShowReasoning(!showReasoning)}
-            className="flex-row items-center justify-between rounded-xl bg-slate-200/50 px-3 py-2.5"
+            className="max-w-[90%] flex-row items-center justify-between rounded-xl bg-slate-200/50 px-3 py-2.5"
           >
             <View className="flex-row items-center gap-2">
               <Ionicons name="bulb-outline" size={16} color="#6b7280" />
@@ -109,9 +109,9 @@ export function MessageBubble({
         )}
 
         {showReasoning && message.reasoningContent && (
-          <View className="rounded-xl bg-slate-50 p-3">
+          <View className="max-w-[90%] rounded-xl bg-slate-50 p-3">
             <Text className="text-xs leading-5 text-slate-600">
-              {message.reasoningContent}
+              {message.reasoningContent.replace(/\*+/g, "")}
             </Text>
           </View>
         )}
