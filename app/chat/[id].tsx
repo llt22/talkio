@@ -227,11 +227,11 @@ export default function ChatDetailScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F2F2F7', paddingBottom: 0 }}>
+    <View className="flex-1 bg-bg-chat">
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior="padding"
-      keyboardVerticalOffset={Platform.OS === "ios" ? -20 : -specificBottom}
+      keyboardVerticalOffset={0}
     >
       <IdentitySlider
         visible={showIdentitySlider}
