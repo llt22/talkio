@@ -3,7 +3,6 @@ export const APP_NAME = "Avatar";
 export const DEFAULT_IDENTITY_PARAMS = {
   temperature: 0.7,
   topP: 0.9,
-  maxTokens: 4096,
 } as const;
 
 

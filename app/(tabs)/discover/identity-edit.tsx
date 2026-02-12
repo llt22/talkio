@@ -24,9 +24,6 @@ export default function IdentityEditScreen() {
     existing?.params.temperature ?? DEFAULT_IDENTITY_PARAMS.temperature,
   );
   const [topP, setTopP] = useState(existing?.params.topP ?? DEFAULT_IDENTITY_PARAMS.topP);
-  const [maxTokens, setMaxTokens] = useState(
-    existing?.params.maxTokens ?? DEFAULT_IDENTITY_PARAMS.maxTokens,
-  );
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>(
     existing?.mcpToolIds ?? [],
   );
@@ -45,7 +42,7 @@ export default function IdentityEditScreen() {
       name: name.trim(),
       icon,
       systemPrompt: systemPrompt.trim(),
-      params: { temperature, topP, maxTokens },
+      params: { temperature, topP },
       mcpToolIds: selectedToolIds,
     };
 
@@ -112,15 +109,6 @@ export default function IdentityEditScreen() {
         <Text className="mb-2 text-sm font-medium text-text-muted">{t("identityEdit.parameters")}</Text>
         <ParamSlider label={t("identityEdit.temperature")} value={temperature} min={0} max={2} step={0.1} onChange={setTemperature} />
         <ParamSlider label={t("identityEdit.topP")} value={topP} min={0} max={1} step={0.05} onChange={setTopP} />
-        <View className="mt-2">
-          <Text className="text-xs text-text-muted">{t("identityEdit.maxTokens", { value: maxTokens })}</Text>
-          <TextInput
-            className="mt-1 rounded-lg border border-border-light bg-bg-secondary px-3 py-2 text-sm text-text-main"
-            value={String(maxTokens)}
-            onChangeText={(v) => setMaxTokens(parseInt(v, 10) || 4096)}
-            keyboardType="number-pad"
-          />
-        </View>
       </View>
 
       {mcpTools.length > 0 && (

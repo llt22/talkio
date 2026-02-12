@@ -95,7 +95,6 @@ export async function generateResponse(
       stream: true,
       temperature: identity?.params.temperature,
       top_p: identity?.params.topP,
-      max_tokens: identity?.params.maxTokens,
       tools: tools.length > 0 ? tools : undefined,
     });
 
@@ -192,7 +191,6 @@ export async function generateResponse(
         stream: true,
         temperature: identity?.params.temperature,
         top_p: identity?.params.topP,
-        max_tokens: identity?.params.maxTokens,
       });
 
       let followUpContent = "";

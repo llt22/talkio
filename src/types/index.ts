@@ -37,7 +37,6 @@ export interface Model {
 export interface IdentityParams {
   temperature: number;
   topP: number;
-  maxTokens: number;
 }
 
 export interface Identity {
