@@ -225,7 +225,7 @@ export default function ChatDetailScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-bg-chat" edges={[]}>
+    <SafeAreaView className="flex-1 bg-bg-chat" edges={["bottom"]}>
     <KeyboardAvoidingView
       className="flex-1"
       behavior="padding"

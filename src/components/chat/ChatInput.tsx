@@ -85,7 +85,7 @@ export function ChatInput({
   };
 
   return (
-    <View className="border-t border-slate-100 bg-white" style={{ paddingBottom: insets.bottom }}>
+    <View className="border-t border-slate-100 bg-white">
       {showMentionPicker && isGroup && (
         <View className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
           <Text className="mb-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">
