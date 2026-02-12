@@ -73,6 +73,7 @@ export async function generateResponse(
     identityId: identity?.id ?? null,
     content: "",
     images: [],
+    generatedImages: [],
     reasoningContent: null,
     reasoningDuration: null,
     toolCalls: [],
@@ -124,6 +125,7 @@ export async function generateResponse(
 
     let content = "";
     let reasoningContent = "";
+    const generatedImages: string[] = [];
     const pendingToolCalls: Array<{
       id: string;
       name: string;
@@ -132,30 +134,45 @@ export async function generateResponse(
 
     let inThinkTag = false;
 
-    for await (const delta of stream) {
-      if (delta.content) {
-        // Handle <think> tags embedded in content
-        let chunk = delta.content;
-        while (chunk) {
-          if (inThinkTag) {
-            const closeIdx = chunk.indexOf("</think>");
-            if (closeIdx !== -1) {
-              reasoningContent += chunk.slice(0, closeIdx);
-              chunk = chunk.slice(closeIdx + 8);
-              inThinkTag = false;
-            } else {
-              reasoningContent += chunk;
-              chunk = "";
-            }
+    // Process a text chunk: handle <think> tags
+    const processTextChunk = (raw: string) => {
+      let chunk = raw;
+      while (chunk) {
+        if (inThinkTag) {
+          const closeIdx = chunk.indexOf("</think>");
+          if (closeIdx !== -1) {
+            reasoningContent += chunk.slice(0, closeIdx);
+            chunk = chunk.slice(closeIdx + 8);
+            inThinkTag = false;
           } else {
-            const openIdx = chunk.indexOf("<think>");
-            if (openIdx !== -1) {
-              content += chunk.slice(0, openIdx);
-              chunk = chunk.slice(openIdx + 7);
-              inThinkTag = true;
-            } else {
-              content += chunk;
-              chunk = "";
+            reasoningContent += chunk;
+            chunk = "";
+          }
+        } else {
+          const openIdx = chunk.indexOf("<think>");
+          if (openIdx !== -1) {
+            content += chunk.slice(0, openIdx);
+            chunk = chunk.slice(openIdx + 7);
+            inThinkTag = true;
+          } else {
+            content += chunk;
+            chunk = "";
+          }
+        }
+      }
+    };
+
+    for await (const delta of stream) {
+      // Handle content: can be string or multimodal array
+      if (delta.content != null) {
+        if (typeof delta.content === "string") {
+          processTextChunk(delta.content);
+        } else if (Array.isArray(delta.content)) {
+          for (const part of delta.content) {
+            if (part.type === "text" && part.text) {
+              processTextChunk(part.text);
+            } else if (part.type === "image_url" && part.image_url?.url) {
+              generatedImages.push(part.image_url.url);
             }
           }
         }
@@ -191,6 +208,7 @@ export async function generateResponse(
             ? {
                 ...m,
                 content,
+                generatedImages: [...generatedImages],
                 reasoningContent: reasoningContent || null,
                 toolCalls: pendingToolCalls.map((tc) => ({
                   id: tc.id,
@@ -201,6 +219,17 @@ export async function generateResponse(
             : m,
         ),
       }));
+    }
+
+    // Post-stream: extract markdown images from content (fallback for APIs that embed base64 in text)
+    const mdImageRegex = /!\[[^\]]*\]\((data:image\/[^)]+)\)/g;
+    let match: RegExpExecArray | null;
+    while ((match = mdImageRegex.exec(content)) !== null) {
+      generatedImages.push(match[1]);
+    }
+    // Remove markdown image syntax from displayed content if we extracted images
+    if (generatedImages.length > 0) {
+      content = content.replace(/!\[[^\]]*\]\(data:image\/[^)]+\)/g, "").trim();
     }
 
     const toolCallsSnapshot = pendingToolCalls.map((tc) => ({
@@ -269,6 +298,7 @@ export async function generateResponse(
 
     await dbUpdateMessage(assistantMsg.id, {
       content,
+      generatedImages,
       reasoningContent: reasoningContent || null,
       toolCalls: toolCallsSnapshot,
       toolResults,
@@ -277,7 +307,9 @@ export async function generateResponse(
 
     useChatStore.setState((s) => ({
       messages: s.messages.map((m) =>
-        m.id === assistantMsg.id ? { ...m, content, isStreaming: false } : m,
+        m.id === assistantMsg.id
+          ? { ...m, content, generatedImages: [...generatedImages], isStreaming: false }
+          : m,
       ),
     }));
 

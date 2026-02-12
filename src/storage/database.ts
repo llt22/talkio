@@ -72,6 +72,7 @@ function rowToMessage(row: typeof messages.$inferSelect): Message {
     identityId: row.identityId ?? null,
     content: row.content || "",
     images: JSON.parse((row as any).images || "[]"),
+    generatedImages: JSON.parse((row as any).generatedImages || "[]"),
     reasoningContent: row.reasoningContent ?? null,
     reasoningDuration: (row as any).reasoningDuration ?? null,
     toolCalls: JSON.parse(row.toolCalls || "[]"),
@@ -140,6 +141,7 @@ export async function insertMessage(msg: Message): Promise<void> {
     identityId: msg.identityId,
     content: msg.content,
     images: JSON.stringify(msg.images ?? []),
+    generatedImages: JSON.stringify(msg.generatedImages ?? []),
     reasoningContent: msg.reasoningContent,
     toolCalls: JSON.stringify(msg.toolCalls),
     toolResults: JSON.stringify(msg.toolResults),
@@ -154,6 +156,7 @@ export async function updateMessage(id: string, updates: Partial<Message>): Prom
   const values: Record<string, unknown> = {};
   if (updates.content !== undefined) values.content = updates.content;
   if (updates.images !== undefined) values.images = JSON.stringify(updates.images);
+  if (updates.generatedImages !== undefined) values.generatedImages = JSON.stringify(updates.generatedImages);
   if (updates.reasoningContent !== undefined) values.reasoningContent = updates.reasoningContent;
   if (updates.toolCalls !== undefined) values.toolCalls = JSON.stringify(updates.toolCalls);
   if (updates.toolResults !== undefined) values.toolResults = JSON.stringify(updates.toolResults);

@@ -31,6 +31,7 @@ export const messages = sqliteTable(
     branchId: text("branchId"),
     parentMessageId: text("parentMessageId"),
     images: text("images").notNull().default("[]"),
+    generatedImages: text("generatedImages").notNull().default("[]"),
     isStreaming: integer("isStreaming").notNull().default(0),
     createdAt: text("createdAt").notNull(),
   },

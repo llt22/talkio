@@ -119,12 +119,27 @@ export function MessageBubble({
           className="max-w-[90%] rounded-2xl border border-slate-100 bg-[#F2F2F7] px-4 py-3"
           style={{ borderTopLeftRadius: 0 }}
         >
-          {message.isStreaming && !message.content ? (
+          {message.isStreaming && !message.content && !message.generatedImages?.length ? (
             <View className="flex-row items-center">
               <Ionicons name="ellipsis-horizontal" size={20} color="#6b7280" />
             </View>
           ) : (
-            <MarkdownRenderer content={markdownContent} />
+            <>
+              {markdownContent ? <MarkdownRenderer content={markdownContent} /> : null}
+              {message.generatedImages && message.generatedImages.length > 0 && (
+                <View className={`flex-row flex-wrap gap-2 ${markdownContent ? "mt-3" : ""}`}>
+                  {message.generatedImages.map((uri, idx) => (
+                    <Image
+                      key={idx}
+                      source={{ uri }}
+                      className="rounded-xl"
+                      style={{ width: 240, height: 240 }}
+                      resizeMode="cover"
+                    />
+                  ))}
+                </View>
+              )}
+            </>
           )}
         </Pressable>
 

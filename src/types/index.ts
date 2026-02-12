@@ -116,6 +116,7 @@ export interface Message {
   identityId: string | null;
   content: string;
   images: string[];
+  generatedImages: string[];
   reasoningContent: string | null;
   reasoningDuration: number | null;
   toolCalls: ToolCall[];
@@ -195,9 +196,15 @@ export interface ChatApiResponse {
   usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
 }
 
+export interface StreamContentPart {
+  type: "text" | "image_url";
+  text?: string;
+  image_url?: { url: string };
+}
+
 export interface StreamDelta {
   role?: string;
-  content?: string;
+  content?: string | StreamContentPart[];
   reasoning_content?: string;
   tool_calls?: Array<{
     index: number;

@@ -143,6 +143,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       identityId: null,
       content: text,
       images: images ?? [],
+      generatedImages: [],
       reasoningContent: null,
       reasoningDuration: null,
       toolCalls: [],
