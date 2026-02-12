@@ -26,6 +26,7 @@ export function resolveTargetModels(
   mentionedModelIds?: string[],
 ): string[] {
   if (conv.type === "single") {
+    if (!conv.participants[0]) return [];
     return [conv.participants[0].modelId];
   }
   if (mentionedModelIds && mentionedModelIds.length > 0) {

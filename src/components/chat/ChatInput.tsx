@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { View, TextInput, Pressable, Text, Alert } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -23,7 +22,6 @@ export function ChatInput({
   participants = [],
 }: ChatInputProps) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const [text, setText] = useState("");
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -64,6 +62,7 @@ export function ChatInput({
 
     onSend(trimmed, mentionedIds);
     setText("");
+    inputRef.current?.focus();
   };
 
   const handleTextChange = (value: string) => {

@@ -63,9 +63,27 @@ export class ApiClient {
       throw new Error(`Stream API error: ${response.status} - ${errorText}`);
     }
 
-    const reader = response.body!.getReader();
+    if (!response.body) {
+      throw new Error("Stream response has no body");
+    }
+
+    const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+
+    const processLine = function* (line: string): Generator<StreamDelta> {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("data: ")) return;
+      const data = trimmed.slice(6);
+      if (data === "[DONE]") return;
+      try {
+        const parsed = JSON.parse(data);
+        const delta = parsed.choices?.[0]?.delta as StreamDelta | undefined;
+        if (delta) yield delta;
+      } catch {
+        // skip malformed JSON lines
+      }
+    };
 
     try {
       while (true) {
@@ -77,20 +95,12 @@ export class ApiClient {
         buffer = lines.pop() ?? "";
 
         for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith("data: ")) continue;
-
-          const data = trimmed.slice(6);
-          if (data === "[DONE]") return;
-
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta as StreamDelta | undefined;
-            if (delta) yield delta;
-          } catch {
-            // skip malformed JSON lines
-          }
+          yield* processLine(line);
         }
+      }
+      // Process remaining buffer after stream ends
+      if (buffer.trim()) {
+        yield* processLine(buffer);
       }
     } finally {
       reader.releaseLock();

@@ -24,6 +24,7 @@ export default function ChatDetailScreen() {
   const navigation = useNavigation();
   const listRef = useRef<LegendListRef>(null);
   const headerHeight = useHeaderHeight();
+  const shouldAvoidKeyboard = Platform.OS === "ios";
 
   const conversations = useChatStore((s) => s.conversations);
   const messages = useChatStore((s) => s.messages);
@@ -228,8 +229,9 @@ export default function ChatDetailScreen() {
     <SafeAreaView className="flex-1 bg-bg-chat" edges={["bottom"]}>
     <KeyboardAvoidingView
       className="flex-1"
+      enabled={shouldAvoidKeyboard}
       behavior="padding"
-      keyboardVerticalOffset={headerHeight}
+      keyboardVerticalOffset={shouldAvoidKeyboard ? headerHeight : 0}
     >
       <IdentitySlider
         visible={showIdentitySlider}

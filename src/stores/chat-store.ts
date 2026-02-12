@@ -155,24 +155,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
     await insertMessage(userMsg);
     set({ messages: [...state.messages, userMsg], isGenerating: true });
 
-    await dbUpdateConversation(convId, {
-      lastMessage: text,
-      lastMessageAt: userMsg.createdAt,
-    });
-    const conversations = get().conversations.map((c) =>
-      c.id === convId
-        ? { ...c, lastMessage: text, lastMessageAt: userMsg.createdAt, updatedAt: userMsg.createdAt }
-        : c,
-    );
-    set({ conversations });
+    try {
+      await dbUpdateConversation(convId, {
+        lastMessage: text,
+        lastMessageAt: userMsg.createdAt,
+      });
+      const conversations = get().conversations.map((c) =>
+        c.id === convId
+          ? { ...c, lastMessage: text, lastMessageAt: userMsg.createdAt, updatedAt: userMsg.createdAt }
+          : c,
+      );
+      set({ conversations });
 
-    const targetModelIds = resolveTargetModels(conv, mentionedModelIds);
+      const targetModelIds = resolveTargetModels(conv, mentionedModelIds);
 
-    for (const modelId of targetModelIds) {
-      await generateResponse(convId, modelId, conv);
+      for (const modelId of targetModelIds) {
+        await generateResponse(convId, modelId, conv);
+      }
+    } finally {
+      set({ isGenerating: false });
     }
-
-    set({ isGenerating: false });
   },
 
   branchFromMessage: async (messageId) => {
@@ -204,7 +206,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   deleteMessageById: async (messageId) => {
     await dbDeleteMessage(messageId);
-    set({ messages: get().messages.filter((m) => m.id !== messageId) });
+    const remaining = get().messages.filter((m) => m.id !== messageId);
+    set({ messages: remaining });
+
+    const convId = get().currentConversationId;
+    if (convId) {
+      const last = remaining[remaining.length - 1];
+      const updates = {
+        lastMessage: last?.content ?? null,
+        lastMessageAt: last?.createdAt ?? null,
+      };
+      await dbUpdateConversation(convId, updates);
+      set({
+        conversations: get().conversations.map((c) =>
+          c.id === convId ? { ...c, ...updates } : c,
+        ),
+      });
+    }
   },
 
   searchAllMessages: async (query) => {
