@@ -110,9 +110,7 @@ export function MessageBubble({
 
         {showReasoning && message.reasoningContent && (
           <View className="max-w-[90%] rounded-xl bg-slate-50 p-3">
-            <Text className="text-xs leading-5 text-slate-600">
-              {message.reasoningContent.replace(/\*+/g, "")}
-            </Text>
+            <MarkdownRenderer content={message.reasoningContent} />
           </View>
         )}
 
