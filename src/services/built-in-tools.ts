@@ -169,6 +169,29 @@ export const BUILT_IN_TOOLS: Omit<McpTool, "id">[] = [
       },
     },
   },
+  {
+    name: "Get Weather",
+    type: "local",
+    scope: "global",
+    description: "Get current weather and forecast for a city using free Open-Meteo API (no API key needed)",
+    endpoint: null,
+    nativeModule: "get_weather",
+    permissions: [],
+    enabled: false,
+    builtIn: true,
+    schema: {
+      name: "get_weather",
+      description: "Get current weather and 3-day forecast for a location. Provide city name or coordinates.",
+      parameters: {
+        type: "object",
+        properties: {
+          latitude: { type: "number", description: "Latitude (e.g. 35.6762 for Tokyo)" },
+          longitude: { type: "number", description: "Longitude (e.g. 139.6503 for Tokyo)" },
+          city: { type: "string", description: "City name for geocoding (alternative to lat/lng, e.g. 'Tokyo')" },
+        },
+      },
+    },
+  },
 ];
 
 // ── Handler implementations ──
@@ -391,6 +414,77 @@ async function handleShareText(args: Record<string, unknown>): Promise<McpExecut
   }
 }
 
+async function handleGetWeather(args: Record<string, unknown>): Promise<McpExecutionResult> {
+  try {
+    let lat = args.latitude as number | undefined;
+    let lng = args.longitude as number | undefined;
+
+    // Geocode city name if coordinates not provided
+    if ((lat === undefined || lng === undefined) && args.city) {
+      const geoResp = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(args.city as string)}&count=1&language=en`,
+      );
+      const geoData = await geoResp.json();
+      if (!geoData.results?.length) {
+        return { success: false, content: "", error: `City not found: ${args.city}` };
+      }
+      lat = geoData.results[0].latitude;
+      lng = geoData.results[0].longitude;
+    }
+
+    if (lat === undefined || lng === undefined) {
+      return { success: false, content: "", error: "Provide city name or latitude/longitude" };
+    }
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=3&timezone=auto`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (data.error) {
+      return { success: false, content: "", error: data.reason ?? data.error };
+    }
+
+    const WMO: Record<number, string> = {
+      0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+      45: "Foggy", 48: "Rime fog", 51: "Light drizzle", 53: "Drizzle",
+      55: "Heavy drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain",
+      71: "Light snow", 73: "Snow", 75: "Heavy snow", 80: "Rain showers",
+      81: "Moderate showers", 82: "Heavy showers", 95: "Thunderstorm",
+    };
+
+    const current = data.current;
+    const daily = data.daily;
+    const forecast = daily.time.map((d: string, i: number) => ({
+      date: d,
+      condition: WMO[daily.weather_code[i]] ?? `Code ${daily.weather_code[i]}`,
+      tempMax: `${daily.temperature_2m_max[i]}°C`,
+      tempMin: `${daily.temperature_2m_min[i]}°C`,
+      precipProbability: `${daily.precipitation_probability_max[i]}%`,
+    }));
+
+    return {
+      success: true,
+      content: JSON.stringify({
+        location: { latitude: lat, longitude: lng, timezone: data.timezone },
+        current: {
+          temperature: `${current.temperature_2m}°C`,
+          feelsLike: `${current.apparent_temperature}°C`,
+          condition: WMO[current.weather_code] ?? `Code ${current.weather_code}`,
+          humidity: `${current.relative_humidity_2m}%`,
+          windSpeed: `${current.wind_speed_10m} km/h`,
+        },
+        forecast,
+      }),
+    };
+  } catch (err) {
+    return {
+      success: false,
+      content: "",
+      error: err instanceof Error ? err.message : "Failed to fetch weather",
+    };
+  }
+}
+
 // ── Registration ──
 
 const HANDLER_MAP: Record<string, (args: Record<string, unknown>) => Promise<McpExecutionResult>> = {
@@ -402,6 +496,7 @@ const HANDLER_MAP: Record<string, (args: Record<string, unknown>) => Promise<Mcp
   open_link: handleOpenLink,
   set_brightness: handleSetBrightness,
   share_text: handleShareText,
+  get_weather: handleGetWeather,
 };
 
 export function registerBuiltInTools(toolIds: Map<string, string>): void {
