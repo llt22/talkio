@@ -249,9 +249,15 @@ function extractToolResult(result: Record<string, unknown>): McpExecutionResult 
   return { success: false, content: "", error: `Unexpected MCP response: ${JSON.stringify(result).slice(0, 200)}` };
 }
 
+interface StreamableHttpResult {
+  data: Record<string, unknown> | null;
+  sessionId?: string;
+}
+
 /**
  * Try Streamable HTTP protocol (new): POST directly to endpoint.
- * Returns null if server doesn't support it (e.g. 405).
+ * Returns null data if server doesn't support it (e.g. 405).
+ * Captures Mcp-Session-Id from response for subsequent requests.
  */
 async function tryStreamableHttp(
   endpoint: string,
@@ -259,19 +265,25 @@ async function tryStreamableHttp(
   params: Record<string, unknown>,
   id: number,
   extraHeaders?: CustomHeader[],
-): Promise<Record<string, unknown> | null> {
+  sessionId?: string,
+): Promise<StreamableHttpResult> {
   try {
+    const base: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    };
+    if (sessionId) base["Mcp-Session-Id"] = sessionId;
+
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: buildHeaders({
-        "Content-Type": "application/json",
-        Accept: "application/json, text/event-stream",
-      }, extraHeaders),
+      headers: buildHeaders(base, extraHeaders),
       body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
     });
 
+    const respSessionId = response.headers.get("mcp-session-id") ?? sessionId;
+
     // 405 = server doesn't accept POST on this URL (likely old SSE endpoint)
-    if (response.status === 405 || response.status === 406) return null;
+    if (response.status === 405 || response.status === 406) return { data: null };
 
     if (!response.ok) {
       throw new Error(`MCP error ${response.status}`);
@@ -282,15 +294,15 @@ async function tryStreamableHttp(
       const text = await response.text();
       for (const line of text.split("\n")) {
         if (line.startsWith("data:")) {
-          try { return JSON.parse(line.slice(5).trim()); } catch {}
+          try { return { data: JSON.parse(line.slice(5).trim()), sessionId: respSessionId }; } catch {}
         }
       }
       throw new Error("No JSON-RPC response in SSE stream");
     }
 
-    return response.json();
+    return { data: await response.json(), sessionId: respSessionId };
   } catch (err) {
-    if (err instanceof Error && err.message.includes("405")) return null;
+    if (err instanceof Error && err.message.includes("405")) return { data: null };
     throw err;
   }
 }
@@ -311,21 +323,22 @@ async function executeRemoteTool(
 
   try {
     // Try Streamable HTTP first (new protocol: single endpoint)
-    const initResult = await tryStreamableHttp(tool.endpoint, "initialize", {
+    const initResp = await tryStreamableHttp(tool.endpoint, "initialize", {
       protocolVersion: "2025-03-26",
       capabilities: {},
       clientInfo: { name: "avatar-app", version: "1.0.0" },
     }, 1, hdrs);
 
-    if (initResult !== null) {
+    if (initResp.data !== null) {
+      const sid = initResp.sessionId;
       // Streamable HTTP works — send initialized + tools/call
-      await tryStreamableHttp(tool.endpoint, "notifications/initialized", {}, 0, hdrs);
-      const result = await tryStreamableHttp(tool.endpoint, "tools/call", {
+      await tryStreamableHttp(tool.endpoint, "notifications/initialized", {}, 0, hdrs, sid);
+      const callResp = await tryStreamableHttp(tool.endpoint, "tools/call", {
         name: tool.schema?.name ?? tool.name,
         arguments: args,
-      }, 2, hdrs);
-      if (!result) throw new Error("tools/call failed");
-      return extractToolResult(result);
+      }, 2, hdrs, sid);
+      if (!callResp.data) throw new Error("tools/call failed");
+      return extractToolResult(callResp.data);
     }
 
     // Fallback: Old SSE protocol (GET /sse → endpoint event → POST)
@@ -356,16 +369,17 @@ export async function listRemoteTools(
   extraHeaders?: CustomHeader[],
 ): Promise<{ name: string; description: string; inputSchema: Record<string, unknown> }[]> {
   // Try Streamable HTTP first
-  const initResult = await tryStreamableHttp(endpoint, "initialize", {
+  const initResp = await tryStreamableHttp(endpoint, "initialize", {
     protocolVersion: "2025-03-26",
     capabilities: {},
     clientInfo: { name: "avatar-app", version: "1.0.0" },
   }, 1, extraHeaders);
 
-  if (initResult !== null) {
-    await tryStreamableHttp(endpoint, "notifications/initialized", {}, 0, extraHeaders);
-    const result = await tryStreamableHttp(endpoint, "tools/list", {}, 2, extraHeaders);
-    return (result as any)?.result?.tools ?? [];
+  if (initResp.data !== null) {
+    const sid = initResp.sessionId;
+    await tryStreamableHttp(endpoint, "notifications/initialized", {}, 0, extraHeaders, sid);
+    const listResp = await tryStreamableHttp(endpoint, "tools/list", {}, 2, extraHeaders, sid);
+    return (listResp.data as any)?.result?.tools ?? [];
   }
 
   // Fallback: Old SSE protocol
