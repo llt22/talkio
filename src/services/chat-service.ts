@@ -121,6 +121,21 @@ export async function generateResponse(
     arguments: string;
   }> = [];
 
+  // Safety: guarantee isStreaming is always reset
+  const markDone = async (text?: string) => {
+    try {
+      const finalContent = text ?? (content || "");
+      await dbUpdateMessage(assistantMsg.id, { content: finalContent, isStreaming: false });
+      useChatStore.setState((s) => ({
+        messages: s.messages.map((m) =>
+          m.id === assistantMsg.id ? { ...m, content: finalContent, isStreaming: false } : m,
+        ),
+      }));
+    } catch (e) {
+      log.error(`Failed to mark message done: ${e}`);
+    }
+  };
+
   try {
     const stream = client.streamChat({
       model: model.modelId,
@@ -331,36 +346,13 @@ export async function generateResponse(
     log.info(`Response complete for model ${model.displayName}`);
   } catch (err) {
     if (signal?.aborted) {
-      // User cancelled — save whatever content we have so far
-      await dbUpdateMessage(assistantMsg.id, {
-        content: content || "(stopped)",
-        generatedImages,
-        reasoningContent: reasoningContent || null,
-        isStreaming: false,
-      });
-      useChatStore.setState((s) => ({
-        messages: s.messages.map((m) =>
-          m.id === assistantMsg.id
-            ? { ...m, content: content || "(stopped)", isStreaming: false }
-            : m,
-        ),
-      }));
       log.info(`Generation stopped by user for model ${model.displayName}`);
+      await markDone(content || "(stopped)");
       return;
     }
     log.error(`Stream error for ${model.displayName}: ${err instanceof Error ? err.message : "Unknown"}`);
     const errorContent = `[${model.displayName}] Error: ${err instanceof Error ? err.message : "Unknown error"}`;
-    await dbUpdateMessage(assistantMsg.id, {
-      content: errorContent,
-      isStreaming: false,
-    });
-    useChatStore.setState((s) => ({
-      messages: s.messages.map((m) =>
-        m.id === assistantMsg.id
-          ? { ...m, content: errorContent, isStreaming: false }
-          : m,
-      ),
-    }));
+    await markDone(errorContent);
   }
 }
 
