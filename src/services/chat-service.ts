@@ -63,7 +63,7 @@ export async function generateResponse(
     : undefined;
 
   const apiMessages = buildApiMessages(chatStore.messages, modelId, identity);
-  const tools = buildTools(identity);
+  const tools = buildTools(model, identity);
 
   const assistantMsg: Message = {
     id: generateId(),
@@ -470,12 +470,15 @@ function buildApiMessages(
   return apiMessages;
 }
 
-function buildTools(identity: Identity | undefined): ChatApiToolDef[] {
+function buildTools(model: { capabilities: { toolCall: boolean } }, identity: Identity | undefined): ChatApiToolDef[] {
+  // Skip tools entirely if model doesn't support tool calls
+  if (!model.capabilities.toolCall) return [];
+
   const identityStore = useIdentityStore.getState();
-  const allTools = [
-    ...identityStore.getGlobalTools(),
-    ...(identity ? identityStore.getToolsForIdentity(identity.id) : []),
-  ];
+  // Built-in tools (global) + role-bound custom tools
+  const builtInTools = identityStore.mcpTools.filter((t) => t.builtIn && t.enabled);
+  const roleTools = identity ? identityStore.getToolsForIdentity(identity.id) : [];
+  const allTools = [...builtInTools, ...roleTools];
 
   // Deduplicate by function name to avoid "Duplicate function declaration" errors
   const seen = new Set<string>();
