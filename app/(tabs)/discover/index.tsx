@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, Alert, Switch, Modal } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, Alert, Switch, Modal, SafeAreaView } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -261,7 +261,7 @@ export default function DiscoverScreen() {
 
       {/* JSON Import Modal */}
       <Modal visible={showImportModal} animationType="slide" presentationStyle="pageSheet">
-        <View className="flex-1 bg-white">
+        <SafeAreaView className="flex-1 bg-white">
           <View className="flex-row items-center justify-between border-b border-slate-100 px-4 py-3">
             <Pressable onPress={() => { setShowImportModal(false); setImportJson(""); }}>
               <Text className="text-[16px] text-slate-500">{t("common.cancel")}</Text>
@@ -285,7 +285,7 @@ export default function DiscoverScreen() {
               autoCorrect={false}
             />
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
     </View>
   );
