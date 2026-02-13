@@ -101,6 +101,7 @@ export default function DiscoverScreen() {
 
     setIsImporting(true);
     let totalAdded = 0;
+    const addedNames: string[] = [];
 
     try {
       for (const server of servers) {
@@ -125,6 +126,7 @@ export default function DiscoverScreen() {
               customHeaders: server.headers,
             });
             totalAdded++;
+            addedNames.push(rt.name);
           }
         } catch (err) {
           // Discovery failed — show error, don't create a fake tool
@@ -138,7 +140,8 @@ export default function DiscoverScreen() {
 
       setShowImportModal(false);
       setImportJson("");
-      Alert.alert(t("common.success"), t("personas.importSuccess", { count: totalAdded }));
+      const toolList = addedNames.length > 0 ? `\n\n${addedNames.join("\n")}` : "";
+      Alert.alert(t("common.success"), t("personas.importSuccess", { count: totalAdded }) + toolList);
     } catch (err) {
       Alert.alert(t("common.error"), err instanceof Error ? err.message : "Import failed");
     } finally {
