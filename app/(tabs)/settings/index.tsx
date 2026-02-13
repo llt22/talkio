@@ -84,7 +84,7 @@ export default function SettingsScreen() {
         <View
           className="overflow-hidden rounded-xl border border-slate-100 bg-white"
         >
-          <View className="flex-row items-center justify-between p-4 border-b border-slate-50">
+          <View className="flex-row items-center justify-between p-4">
             <View className="flex-row items-center">
               <View className="mr-3 h-8 w-8 items-center justify-center rounded-lg bg-gray-500/10">
                 <Ionicons name="hand-left-outline" size={16} color="#6b7280" />
@@ -94,36 +94,6 @@ export default function SettingsScreen() {
             <Switch
               value={settings.hapticFeedback}
               onValueChange={(v) => updateSettings({ hapticFeedback: v })}
-              trackColor={{ false: "#e5e7eb", true: "#007AFF" }}
-              thumbColor="#fff"
-              ios_backgroundColor="#e5e7eb"
-            />
-          </View>
-          <View className="flex-row items-center justify-between p-4 border-b border-slate-50">
-            <View className="flex-row items-center">
-              <View className="mr-3 h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
-                <Ionicons name="flash-outline" size={16} color="#a855f7" />
-              </View>
-              <Text className="text-[15px] font-medium text-text-main">{t("settings.quickPrompts")}</Text>
-            </View>
-            <Switch
-              value={settings.quickPromptEnabled}
-              onValueChange={(v) => updateSettings({ quickPromptEnabled: v })}
-              trackColor={{ false: "#e5e7eb", true: "#007AFF" }}
-              thumbColor="#fff"
-              ios_backgroundColor="#e5e7eb"
-            />
-          </View>
-          <View className="flex-row items-center justify-between p-4">
-            <View className="flex-row items-center">
-              <View className="mr-3 h-8 w-8 items-center justify-center rounded-lg bg-red-500/10">
-                <Ionicons name="mic-outline" size={16} color="#ef4444" />
-              </View>
-              <Text className="text-[15px] font-medium text-text-main">{t("settings.voiceAutoTranscribe")}</Text>
-            </View>
-            <Switch
-              value={settings.voiceAutoTranscribe}
-              onValueChange={(v) => updateSettings({ voiceAutoTranscribe: v })}
               trackColor={{ false: "#e5e7eb", true: "#007AFF" }}
               thumbColor="#fff"
               ios_backgroundColor="#e5e7eb"

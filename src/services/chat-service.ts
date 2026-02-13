@@ -90,8 +90,6 @@ export async function generateResponse(
     messages: [...s.messages, assistantMsg],
   }));
 
-  console.log(`[GEN] START model=${model.displayName} (${model.modelId})`);
-
   let content = "";
   let reasoningContent = "";
   const generatedImages: string[] = [];
@@ -106,7 +104,7 @@ export async function generateResponse(
     try {
       await dbUpdateMessage(assistantMsg.id, { content: finalContent, isStreaming: false });
     } catch (e) {
-      console.error(`[GEN] DB update failed:`, e);
+      log.error(`DB update failed: ${e}`);
     }
     useChatStore.setState((s) => ({
       messages: s.messages.map((m) =>
@@ -137,8 +135,6 @@ export async function generateResponse(
         reasoningParams.reasoning_effort = effort === "auto" ? "medium" : effort;
       }
     }
-
-    console.log(`[GEN] STREAM model=${model.displayName}, msgs=${apiMessages.length}, params=${JSON.stringify(Object.keys(reasoningParams))}`);
 
     const stream = client.streamChat({
       model: model.modelId,
@@ -240,8 +236,6 @@ export async function generateResponse(
         ),
       }));
     }
-
-    console.log(`[GEN] STREAM_END model=${model.displayName}, chunks=${chunkCount}, contentLen=${content.length}`);
 
     // Post-stream: extract markdown images from content
     const mdImageRegex = /!\[[^\]]*\]\((data:image\/[^)]+)\)/g;
@@ -346,16 +340,68 @@ export async function generateResponse(
       ),
     }));
 
-    console.log(`[GEN] DONE model=${model.displayName}`);
+    // Auto-generate conversation title on first response
+    autoGenerateTitle(conversationId, client, model, chatStore.messages, content).catch(() => {});
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    console.error(`[GEN] ERROR model=${model.displayName}: ${errMsg}`);
+    log.error(`Stream error for ${model.displayName}: ${errMsg}`);
 
     if (signal?.aborted) {
       await finishMessage(content || "(stopped)");
       return;
     }
     await finishMessage(`[${model.displayName}] Error: ${errMsg}`);
+  }
+}
+
+async function autoGenerateTitle(
+  conversationId: string,
+  client: ApiClient,
+  model: { modelId: string; displayName: string },
+  previousMessages: Message[],
+  assistantContent: string,
+): Promise<void> {
+  // Only generate title if this is the first assistant message in the conversation
+  const assistantCount = previousMessages.filter((m) => m.role === "assistant").length;
+  if (assistantCount > 0) return; // already has prior responses
+
+  const conv = useChatStore.getState().conversations.find((c) => c.id === conversationId);
+  if (!conv) return;
+
+  // Skip if title was manually set (not the default "Model Group" or model name pattern)
+  const isDefaultTitle = conv.title.startsWith("Model Group") || conv.title === model.displayName;
+  if (!isDefaultTitle) return;
+
+  const userMsg = previousMessages.find((m) => m.role === "user");
+  if (!userMsg) return;
+
+  try {
+    const resp = await client.chat({
+      model: model.modelId,
+      messages: [
+        {
+          role: "system",
+          content: "Generate a very short title (3-8 words) for this conversation. Return ONLY the title text, no quotes, no punctuation at the end.",
+        },
+        { role: "user", content: userMsg.content.slice(0, 500) },
+        { role: "assistant", content: assistantContent.slice(0, 500) },
+      ],
+      stream: false,
+      temperature: 0.3,
+      max_tokens: 30,
+    });
+
+    const title = (resp.choices?.[0]?.message?.content ?? "").trim().replace(/^["']|["']$/g, "");
+    if (!title || title.length > 60) return;
+
+    await dbUpdateConversation(conversationId, { title });
+    useChatStore.setState((s) => ({
+      conversations: s.conversations.map((c) =>
+        c.id === conversationId ? { ...c, title } : c,
+      ),
+    }));
+  } catch {
+    // Non-critical, silently fail
   }
 }
 
