@@ -477,9 +477,16 @@ function buildTools(identity: Identity | undefined): ChatApiToolDef[] {
     ...(identity ? identityStore.getToolsForIdentity(identity.id) : []),
   ];
 
+  // Deduplicate by function name to avoid "Duplicate function declaration" errors
+  const seen = new Set<string>();
   return allTools
     .map((t) => toolToApiDef(t))
-    .filter((t): t is ChatApiToolDef => t !== null);
+    .filter((t): t is ChatApiToolDef => {
+      if (!t) return false;
+      if (seen.has(t.function.name)) return false;
+      seen.add(t.function.name);
+      return true;
+    });
 }
 
 async function executeToolCalls(
