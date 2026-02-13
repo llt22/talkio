@@ -196,7 +196,7 @@ export default function DiscoverScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-5 pt-4" contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView className="flex-1 px-5 pt-4" contentContainerStyle={{ paddingBottom: 160 }}>
         {activeTab === "identities" ? (
           <View className="gap-4">
             {identities.map((identity, idx) => (
