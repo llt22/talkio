@@ -31,6 +31,8 @@ export async function initDatabase(): Promise<void> {
       branchId TEXT,
       parentMessageId TEXT,
       images TEXT NOT NULL DEFAULT '[]',
+      generatedImages TEXT NOT NULL DEFAULT '[]',
+      reasoningDuration REAL,
       isStreaming INTEGER NOT NULL DEFAULT 0,
       createdAt TEXT NOT NULL,
       FOREIGN KEY (conversationId) REFERENCES conversations(id) ON DELETE CASCADE
@@ -39,11 +41,27 @@ export async function initDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_messages_branch ON messages(branchId);
   `);
 
-  // Migration: add images column if missing
+  // Migration: add missing columns
+  const migrations = [
+    `ALTER TABLE messages ADD COLUMN images TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE messages ADD COLUMN generatedImages TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE messages ADD COLUMN reasoningDuration REAL`,
+  ];
+  for (const sql of migrations) {
+    try {
+      expoDb.execSync(sql);
+    } catch {
+      // Column already exists
+    }
+  }
+}
+
+function safeJsonParse<T>(value: unknown, fallback: T): T {
+  if (typeof value !== "string" || !value) return fallback;
   try {
-    expoDb.execSync(`ALTER TABLE messages ADD COLUMN images TEXT NOT NULL DEFAULT '[]'`);
+    return JSON.parse(value) as T;
   } catch {
-    // Column already exists
+    return fallback;
   }
 }
 
@@ -72,7 +90,7 @@ function rowToMessage(row: typeof messages.$inferSelect): Message {
     identityId: row.identityId ?? null,
     content: row.content || "",
     images: JSON.parse((row as any).images || "[]"),
-    generatedImages: JSON.parse((row as any).generatedImages || "[]"),
+    generatedImages: safeJsonParse((row as any).generatedImages, []),
     reasoningContent: row.reasoningContent ?? null,
     reasoningDuration: (row as any).reasoningDuration ?? null,
     toolCalls: JSON.parse(row.toolCalls || "[]"),
@@ -143,6 +161,7 @@ export async function insertMessage(msg: Message): Promise<void> {
     images: JSON.stringify(msg.images ?? []),
     generatedImages: JSON.stringify(msg.generatedImages ?? []),
     reasoningContent: msg.reasoningContent,
+    reasoningDuration: msg.reasoningDuration,
     toolCalls: JSON.stringify(msg.toolCalls),
     toolResults: JSON.stringify(msg.toolResults),
     branchId: msg.branchId,
@@ -158,6 +177,7 @@ export async function updateMessage(id: string, updates: Partial<Message>): Prom
   if (updates.images !== undefined) values.images = JSON.stringify(updates.images);
   if (updates.generatedImages !== undefined) values.generatedImages = JSON.stringify(updates.generatedImages);
   if (updates.reasoningContent !== undefined) values.reasoningContent = updates.reasoningContent;
+  if (updates.reasoningDuration !== undefined) values.reasoningDuration = updates.reasoningDuration;
   if (updates.toolCalls !== undefined) values.toolCalls = JSON.stringify(updates.toolCalls);
   if (updates.toolResults !== undefined) values.toolResults = JSON.stringify(updates.toolResults);
   if (updates.isStreaming !== undefined) values.isStreaming = updates.isStreaming ? 1 : 0;

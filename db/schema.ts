@@ -32,6 +32,7 @@ export const messages = sqliteTable(
     parentMessageId: text("parentMessageId"),
     images: text("images").notNull().default("[]"),
     generatedImages: text("generatedImages").notNull().default("[]"),
+    reasoningDuration: integer("reasoningDuration"),
     isStreaming: integer("isStreaming").notNull().default(0),
     createdAt: text("createdAt").notNull(),
   },
