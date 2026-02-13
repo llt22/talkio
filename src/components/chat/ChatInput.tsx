@@ -1,15 +1,17 @@
-import { useState, useRef } from "react";
-import { View, TextInput, Pressable, Text, Alert, Platform, Image, ScrollView } from "react-native";
+import { useState, useRef, useCallback } from "react";
+import { View, TextInput, Pressable, Text, Alert, Platform, Image, ScrollView, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import { useAudioRecorder, RecordingPresets, AudioModule } from "expo-audio";
 import { ModelAvatar } from "../common/ModelAvatar";
 import type { ConversationParticipant } from "../../types";
 import { useProviderStore } from "../../stores/provider-store";
 import { extractMentionedModelIds } from "../../utils/mention-parser";
 import { useChatStore } from "../../stores/chat-store";
+import { ApiClient } from "../../services/api-client";
 
 interface ChatInputProps {
   onSend: (text: string, mentionedModelIds?: string[], images?: string[]) => void;
@@ -32,6 +34,9 @@ export function ChatInput({
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const getModelById = useProviderStore((s) => s.getModelById);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   // Check if any participant model supports vision
   const supportsVision = participants.length > 0
@@ -96,6 +101,53 @@ export function ChatInput({
     setAttachedImages([]);
     inputRef.current?.focus();
   };
+
+  const handleMicPress = useCallback(async () => {
+    if (isTranscribing) return;
+
+    if (isRecording) {
+      // Stop recording and transcribe
+      await recorder.stop();
+      setIsRecording(false);
+
+      const uri = recorder.uri;
+      if (!uri) return;
+
+      setIsTranscribing(true);
+      try {
+        // Find a provider that supports transcription (OpenAI-compatible)
+        const providers = useProviderStore.getState().providers;
+        const sttProvider = providers.find(
+          (p) => p.enabled && (p.type === "openai" || p.type === "azure-openai"),
+        );
+        if (!sttProvider) {
+          Alert.alert(t("common.error"), t("chat.noSttProvider"));
+          return;
+        }
+
+        const client = new ApiClient(sttProvider);
+        const transcribedText = await client.transcribeAudio(uri);
+        if (transcribedText) {
+          setText((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
+          inputRef.current?.focus();
+        }
+      } catch (err) {
+        Alert.alert(t("common.error"), err instanceof Error ? err.message : "Transcription failed");
+      } finally {
+        setIsTranscribing(false);
+      }
+    } else {
+      // Start recording
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) {
+        Alert.alert(t("common.error"), t("chat.micPermissionDenied"));
+        return;
+      }
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setIsRecording(true);
+    }
+  }, [isRecording, isTranscribing, recorder, t]);
 
   const handleTextChange = (value: string) => {
     setText(value);
@@ -204,18 +256,28 @@ export function ChatInput({
           >
             <Ionicons name="stop" size={16} color="#fff" />
           </Pressable>
-        ) : (
+        ) : isTranscribing ? (
+          <View className="h-8 w-8 items-center justify-center">
+            <ActivityIndicator size="small" color="#007AFF" />
+          </View>
+        ) : text.trim() || attachedImages.length > 0 ? (
           <Pressable
             onPress={handleSend}
-            disabled={!text.trim() && attachedImages.length === 0}
+            className="h-8 w-8 items-center justify-center rounded-full bg-primary"
+          >
+            <Ionicons name="arrow-up" size={18} color="#fff" />
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={handleMicPress}
             className={`h-8 w-8 items-center justify-center rounded-full ${
-              text.trim() || attachedImages.length > 0 ? "bg-primary" : "bg-slate-200"
+              isRecording ? "bg-red-500" : "bg-slate-200"
             }`}
           >
             <Ionicons
-              name="arrow-up"
-              size={18}
-              color={text.trim() || attachedImages.length > 0 ? "#fff" : "#9ca3af"}
+              name={isRecording ? "stop" : "mic"}
+              size={isRecording ? 14 : 18}
+              color={isRecording ? "#fff" : "#64748b"}
             />
           </Pressable>
         )}

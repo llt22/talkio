@@ -71,7 +71,9 @@
     "message": "Message...",
     "called": "Called: {{name}}",
     "modelCount": "{{count}} models",
-    "noIdentity": "No role"
+    "noIdentity": "No role",
+    "micPermissionDenied": "Microphone access is required for voice input.",
+    "noSttProvider": "No OpenAI-compatible provider configured for speech-to-text. Please add a provider that supports the Whisper API."
   },
   "models": {
     "title": "Models",

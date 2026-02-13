@@ -448,6 +448,55 @@ export class ApiClient {
     }
   }
 
+  // ── Speech-to-Text ──
+
+  async transcribeAudio(audioUri: string, language?: string): Promise<string> {
+    const formData = new FormData();
+    const ext = audioUri.split(".").pop() ?? "m4a";
+    const mimeMap: Record<string, string> = {
+      m4a: "audio/mp4",
+      mp4: "audio/mp4",
+      wav: "audio/wav",
+      webm: "audio/webm",
+      mp3: "audio/mpeg",
+      ogg: "audio/ogg",
+    };
+    formData.append("file", {
+      uri: audioUri,
+      name: `recording.${ext}`,
+      type: mimeMap[ext] ?? "audio/mp4",
+    } as unknown as Blob);
+    formData.append("model", "whisper-1");
+    if (language) formData.append("language", language);
+
+    const headers: Record<string, string> = {};
+    if (this.providerType === "anthropic") {
+      headers["x-api-key"] = this.apiKey;
+    } else if (this.providerType === "azure-openai") {
+      headers["api-key"] = this.apiKey;
+    } else if (this.providerType !== "gemini") {
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
+    }
+    for (const [k, v] of Object.entries(this.customHeaders)) {
+      headers[k] = v;
+    }
+
+    const url = this.getUrl("/audio/transcriptions");
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Transcription failed: ${response.status} - ${errText}`);
+    }
+
+    const data = await response.json();
+    return data.text ?? "";
+  }
+
   // ── Probe Methods ──
 
   async probeVision(modelId: string): Promise<boolean> {
