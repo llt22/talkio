@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useIdentityStore } from "../../../src/stores/identity-store";
+import { listRemoteTools } from "../../../src/services/mcp-client";
 import type { Identity, McpTool } from "../../../src/types";
 
 type Tab = "identities" | "tools";
@@ -44,81 +45,109 @@ export default function DiscoverScreen() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJson, setImportJson] = useState("");
 
-  const handleImportJson = () => {
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleImportJson = async () => {
+    let parsed: any;
     try {
-      const parsed = JSON.parse(importJson.trim());
+      parsed = JSON.parse(importJson.trim());
+    } catch {
+      Alert.alert(t("common.error"), t("personas.importInvalidJson"));
+      return;
+    }
 
-      // Support multiple formats:
-      // 1. { "mcpServers": { "name": { "url": "..." } } }
-      // 2. [{ "name": "...", "endpoint": "..." }]
-      // 3. { "name": "...", "endpoint": "..." }
-      let tools: Array<{ name: string; endpoint: string; description?: string }> = [];
+    // Extract server entries: { name, url }
+    let servers: Array<{ name: string; url: string }> = [];
 
-      if (parsed.mcpServers && typeof parsed.mcpServers === "object") {
-        for (const [key, val] of Object.entries(parsed.mcpServers)) {
-          const v = val as Record<string, unknown>;
-          tools.push({
-            name: key,
-            endpoint: (v.url ?? v.endpoint ?? "") as string,
-            description: (v.description ?? "") as string,
-          });
+    if (parsed.mcpServers && typeof parsed.mcpServers === "object") {
+      for (const [key, val] of Object.entries(parsed.mcpServers)) {
+        const v = val as Record<string, unknown>;
+        const url = (v.url ?? v.endpoint ?? "") as string;
+        const hasCommand = !!(v.command || v.args);
+        if (url) {
+          servers.push({ name: key, url });
+        } else if (hasCommand) {
+          // Desktop command-based config, skip with info
         }
-      } else if (Array.isArray(parsed)) {
-        tools = parsed.map((item: Record<string, unknown>) => ({
-          name: (item.name ?? "") as string,
-          endpoint: (item.url ?? item.endpoint ?? "") as string,
-          description: (item.description ?? "") as string,
-        }));
-      } else if (parsed.name || parsed.endpoint || parsed.url) {
-        tools = [{
-          name: (parsed.name ?? "") as string,
-          endpoint: (parsed.url ?? parsed.endpoint ?? "") as string,
-          description: (parsed.description ?? "") as string,
-        }];
       }
-
-      // Detect command-based configs (desktop MCP, not supported on mobile)
-      const hasCommandOnly = tools.length > 0 && tools.every((t) => !t.endpoint);
-      if (tools.length === 0 || hasCommandOnly) {
-        // Check if it's a command-based config
-        const isCommandConfig = parsed.mcpServers && Object.values(parsed.mcpServers).some(
+      // All entries were command-based
+      if (servers.length === 0) {
+        const isCommandConfig = Object.values(parsed.mcpServers).some(
           (v: any) => v.command || v.args,
         );
-        if (isCommandConfig) {
-          Alert.alert(t("common.error"), t("personas.importCommandNotSupported"));
-        } else {
-          Alert.alert(t("common.error"), t("personas.importNoTools"));
-        }
+        Alert.alert(
+          t("common.error"),
+          isCommandConfig ? t("personas.importCommandNotSupported") : t("personas.importNoTools"),
+        );
         return;
       }
+    } else if (Array.isArray(parsed)) {
+      servers = parsed
+        .map((item: any) => ({ name: item.name ?? "", url: (item.url ?? item.endpoint ?? "") as string }))
+        .filter((s: any) => s.url);
+    } else if (parsed.url || parsed.endpoint) {
+      servers = [{ name: parsed.name ?? "MCP Server", url: (parsed.url ?? parsed.endpoint) as string }];
+    }
 
-      let added = 0;
-      let skipped = 0;
-      for (const tool of tools) {
-        if (!tool.name || !tool.endpoint) { skipped++; continue; }
-        addMcpTool({
-          name: tool.name,
-          type: "remote",
-          scope: "global",
-          description: tool.description ?? "",
-          endpoint: tool.endpoint,
-          nativeModule: null,
-          permissions: [],
-          enabled: true,
-          schema: {
-            name: tool.name.toLowerCase().replace(/\s+/g, "_"),
-            description: tool.description ?? "",
-            parameters: { type: "object", properties: {} },
-          },
-        });
-        added++;
+    if (servers.length === 0) {
+      Alert.alert(t("common.error"), t("personas.importNoTools"));
+      return;
+    }
+
+    setIsImporting(true);
+    let totalAdded = 0;
+
+    try {
+      for (const server of servers) {
+        try {
+          // Connect to MCP server and discover tools
+          const remoteTools = await listRemoteTools(server.url);
+          for (const rt of remoteTools) {
+            addMcpTool({
+              name: rt.name,
+              type: "remote",
+              scope: "global",
+              description: rt.description ?? "",
+              endpoint: server.url,
+              nativeModule: null,
+              permissions: [],
+              enabled: true,
+              schema: {
+                name: rt.name,
+                description: rt.description ?? "",
+                parameters: rt.inputSchema ?? { type: "object", properties: {} },
+              },
+            });
+            totalAdded++;
+          }
+        } catch (err) {
+          // If discovery fails, add server as a single tool entry
+          addMcpTool({
+            name: server.name,
+            type: "remote",
+            scope: "global",
+            description: "",
+            endpoint: server.url,
+            nativeModule: null,
+            permissions: [],
+            enabled: true,
+            schema: {
+              name: server.name.toLowerCase().replace(/\s+/g, "_"),
+              description: "",
+              parameters: { type: "object", properties: {} },
+            },
+          });
+          totalAdded++;
+        }
       }
 
       setShowImportModal(false);
       setImportJson("");
-      Alert.alert(t("common.success"), t("personas.importSuccess", { count: added }));
-    } catch {
-      Alert.alert(t("common.error"), t("personas.importInvalidJson"));
+      Alert.alert(t("common.success"), t("personas.importSuccess", { count: totalAdded }));
+    } catch (err) {
+      Alert.alert(t("common.error"), err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -276,12 +305,14 @@ export default function DiscoverScreen() {
       <Modal visible={showImportModal} animationType="slide" presentationStyle="pageSheet">
         <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
           <View className="flex-row items-center justify-between border-b border-slate-100 px-4 py-3">
-            <Pressable onPress={() => { setShowImportModal(false); setImportJson(""); }}>
+            <Pressable onPress={() => { if (!isImporting) { setShowImportModal(false); setImportJson(""); } }}>
               <Text className="text-[16px] text-slate-500">{t("common.cancel")}</Text>
             </Pressable>
             <Text className="text-[16px] font-bold text-slate-900">{t("personas.importJson")}</Text>
-            <Pressable onPress={handleImportJson}>
-              <Text className="text-[16px] font-semibold text-primary">{t("personas.import")}</Text>
+            <Pressable onPress={handleImportJson} disabled={isImporting || !importJson.trim()}>
+              <Text className={`text-[16px] font-semibold ${isImporting ? "text-slate-400" : "text-primary"}`}>
+                {isImporting ? t("common.loading") : t("personas.import")}
+              </Text>
             </Pressable>
           </View>
           <View className="flex-1 px-4 pt-4">
