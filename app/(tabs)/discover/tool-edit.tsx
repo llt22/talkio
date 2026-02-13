@@ -173,9 +173,9 @@ export default function ToolEditScreen() {
                 },
               ]);
             }}
-            className="items-center rounded-2xl border-2 border-red-500 py-4"
+            className="items-center py-2"
           >
-            <Text className="text-base font-semibold text-red-500">{t("common.delete")}</Text>
+            <Text className="text-sm text-red-500">{t("common.delete")}</Text>
           </Pressable>
         )}
       </View>
