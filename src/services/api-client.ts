@@ -78,6 +78,7 @@ export class ApiClient {
     const decoder = new TextDecoder();
     let buffer = "";
 
+    let firstChunkLogged = false;
     const processLine = function* (line: string): Generator<StreamDelta> {
       const trimmed = line.trim();
       if (!trimmed || !trimmed.startsWith("data: ")) return;
@@ -85,8 +86,25 @@ export class ApiClient {
       if (data === "[DONE]") return;
       try {
         const parsed = JSON.parse(data);
-        const delta = parsed.choices?.[0]?.delta as StreamDelta | undefined;
-        if (delta) yield delta;
+        const choice = parsed.choices?.[0];
+        const delta = choice?.delta as StreamDelta | undefined;
+        if (!firstChunkLogged && delta) {
+          const keys = Object.keys(delta);
+          const choiceKeys = Object.keys(choice).filter((k) => k !== "delta");
+          console.log(`[StreamDebug] delta keys: [${keys}], choice keys: [${choiceKeys}]`);
+          firstChunkLogged = true;
+        }
+        if (delta) {
+          // Some proxies put reasoning_content at choice level, not inside delta
+          if (!delta.reasoning_content && choice?.reasoning_content) {
+            delta.reasoning_content = choice.reasoning_content;
+          }
+          // Some proxies use 'reasoning' field
+          if (!delta.reasoning_content && (choice as any)?.reasoning) {
+            delta.reasoning_content = (choice as any).reasoning;
+          }
+          yield delta;
+        }
       } catch {
         // skip malformed JSON lines
       }

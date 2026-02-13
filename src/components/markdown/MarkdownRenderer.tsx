@@ -14,6 +14,7 @@ try {
 
 import { MarkdownFallback } from "./MarkdownFallback";
 import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
+import { MermaidRenderer } from "./MermaidRenderer";
 
 interface MarkdownRendererProps {
   content: string;
@@ -133,13 +134,18 @@ function NodeRenderer({ node }: NodeRendererProps) {
         </Text>
       );
 
-    case "code_block":
+    case "code_block": {
+      const lang = (node.language || "").toLowerCase();
+      if (lang === "mermaid") {
+        return <MermaidRenderer code={getTextContent(node)} />;
+      }
       return (
         <MarkdownCodeBlock
           content={getTextContent(node)}
           language={node.language}
         />
       );
+    }
 
     case "link":
       return (
