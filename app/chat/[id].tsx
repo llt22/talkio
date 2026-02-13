@@ -204,15 +204,23 @@ export default function ChatDetailScreen() {
     }
   };
 
+  const lastAssistantId = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return messages[i].id;
+    }
+    return null;
+  })();
+
   const renderItem = useCallback(
     ({ item }: { item: Message }) => (
       <MessageBubble
         message={item}
         isGroup={isGroup}
+        isLastAssistant={item.id === lastAssistantId}
         onLongPress={handleLongPress}
       />
     ),
-    [isGroup, handleLongPress],
+    [isGroup, handleLongPress, lastAssistantId],
   );
 
   if (!conv) {

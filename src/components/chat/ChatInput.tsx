@@ -9,6 +9,7 @@ import { ModelAvatar } from "../common/ModelAvatar";
 import type { ConversationParticipant } from "../../types";
 import { useProviderStore } from "../../stores/provider-store";
 import { extractMentionedModelIds } from "../../utils/mention-parser";
+import { useChatStore } from "../../stores/chat-store";
 
 interface ChatInputProps {
   onSend: (text: string, mentionedModelIds?: string[], images?: string[]) => void;
@@ -176,19 +177,28 @@ export function ChatInput({
           />
         </View>
 
-        <Pressable
-          onPress={handleSend}
-          disabled={(!text.trim() && attachedImages.length === 0) || isGenerating}
-          className={`h-8 w-8 items-center justify-center rounded-full ${
-            (text.trim() || attachedImages.length > 0) && !isGenerating ? "bg-primary" : "bg-slate-200"
-          }`}
-        >
-          <Ionicons
-            name="arrow-up"
-            size={18}
-            color={(text.trim() || attachedImages.length > 0) && !isGenerating ? "#fff" : "#9ca3af"}
-          />
-        </Pressable>
+        {isGenerating ? (
+          <Pressable
+            onPress={() => useChatStore.getState().stopGeneration()}
+            className="h-8 w-8 items-center justify-center rounded-full bg-red-500"
+          >
+            <Ionicons name="stop" size={16} color="#fff" />
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={handleSend}
+            disabled={!text.trim() && attachedImages.length === 0}
+            className={`h-8 w-8 items-center justify-center rounded-full ${
+              text.trim() || attachedImages.length > 0 ? "bg-primary" : "bg-slate-200"
+            }`}
+          >
+            <Ionicons
+              name="arrow-up"
+              size={18}
+              color={text.trim() || attachedImages.length > 0 ? "#fff" : "#9ca3af"}
+            />
+          </Pressable>
+        )}
       </View>
     </View>
   );

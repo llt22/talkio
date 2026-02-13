@@ -10,6 +10,7 @@ import type { Message } from "../../types";
 interface MessageBubbleProps {
   message: Message;
   isGroup?: boolean;
+  isLastAssistant?: boolean;
   onLongPress?: (message: Message) => void;
   onBranch?: (messageId: string) => void;
 }
@@ -17,6 +18,7 @@ interface MessageBubbleProps {
 export function MessageBubble({
   message,
   isGroup = false,
+  isLastAssistant = false,
   onLongPress,
   onBranch,
 }: MessageBubbleProps) {
@@ -38,9 +40,12 @@ export function MessageBubble({
           <Ionicons name="person" size={20} color="#fff" />
         </View>
         <View className="flex-1 flex-col items-end gap-1">
-          <Text className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            {t("chat.you")}
-          </Text>
+          <View className="mr-1 flex-row items-center gap-2">
+            <Text className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              {t("chat.you")}
+            </Text>
+            <Text className="text-[10px] text-slate-300">{formatTime(message.createdAt)}</Text>
+          </View>
           {message.images && message.images.length > 0 && (
             <View className="flex-row flex-wrap gap-1.5 max-w-[80%]">
               {message.images.map((uri, idx) => (
@@ -78,9 +83,12 @@ export function MessageBubble({
         <ModelAvatar name={message.senderName ?? "AI"} size="sm" />
       </View>
       <View className="flex-1 flex-col gap-1">
-        <Text className="ml-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-          {message.senderName}
-        </Text>
+        <View className="ml-1 flex-row items-center gap-2">
+          <Text className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            {message.senderName}
+          </Text>
+          <Text className="text-[10px] text-slate-300">{formatTime(message.createdAt)}</Text>
+        </View>
 
         {message.reasoningContent && (
           <Pressable
@@ -156,14 +164,28 @@ export function MessageBubble({
           </View>
         )}
 
-        {onBranch && (
-          <Pressable
-            onPress={() => onBranch(message.id)}
-            className="ml-1 self-start p-1"
-            hitSlop={8}
-          >
-            <Ionicons name="git-branch-outline" size={12} color="#9ca3af" />
-          </Pressable>
+        {isLastAssistant && !message.isStreaming && (
+          <View className="ml-1 flex-row items-center gap-1">
+            <Pressable
+              onPress={() => {
+                const { regenerateMessage } = require("../../stores/chat-store").useChatStore.getState();
+                regenerateMessage(message.id);
+              }}
+              className="self-start rounded-md p-1.5"
+              hitSlop={8}
+            >
+              <Ionicons name="refresh-outline" size={14} color="#9ca3af" />
+            </Pressable>
+            {onBranch && (
+              <Pressable
+                onPress={() => onBranch(message.id)}
+                className="self-start p-1.5"
+                hitSlop={8}
+              >
+                <Ionicons name="git-branch-outline" size={14} color="#9ca3af" />
+              </Pressable>
+            )}
+          </View>
         )}
       </View>
     </MotiView>

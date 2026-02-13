@@ -39,6 +39,7 @@ export async function generateResponse(
   conversationId: string,
   modelId: string,
   conv: Conversation,
+  signal?: AbortSignal,
 ): Promise<void> {
   const providerStore = useProviderStore.getState();
   const identityStore = useIdentityStore.getState();
@@ -111,6 +112,14 @@ export async function generateResponse(
     }
     // DeepSeek R1, QwQ etc: no special params needed, they return reasoning_content automatically
   }
+  let content = "";
+  let reasoningContent = "";
+  const generatedImages: string[] = [];
+  const pendingToolCalls: Array<{
+    id: string;
+    name: string;
+    arguments: string;
+  }> = [];
 
   try {
     const stream = client.streamChat({
@@ -121,16 +130,7 @@ export async function generateResponse(
       top_p: identity?.params.topP,
       tools: tools.length > 0 ? tools : undefined,
       ...reasoningParams,
-    });
-
-    let content = "";
-    let reasoningContent = "";
-    const generatedImages: string[] = [];
-    const pendingToolCalls: Array<{
-      id: string;
-      name: string;
-      arguments: string;
-    }> = [];
+    }, signal);
 
     let inThinkTag = false;
 
@@ -275,7 +275,7 @@ export async function generateResponse(
         stream: true,
         temperature: identity?.params.temperature,
         top_p: identity?.params.topP,
-      });
+      }, signal);
 
       let followUpContent = "";
       for await (const delta of followUpStream) {
@@ -330,6 +330,24 @@ export async function generateResponse(
 
     log.info(`Response complete for model ${model.displayName}`);
   } catch (err) {
+    if (signal?.aborted) {
+      // User cancelled — save whatever content we have so far
+      await dbUpdateMessage(assistantMsg.id, {
+        content: content || "(stopped)",
+        generatedImages,
+        reasoningContent: reasoningContent || null,
+        isStreaming: false,
+      });
+      useChatStore.setState((s) => ({
+        messages: s.messages.map((m) =>
+          m.id === assistantMsg.id
+            ? { ...m, content: content || "(stopped)", isStreaming: false }
+            : m,
+        ),
+      }));
+      log.info(`Generation stopped by user for model ${model.displayName}`);
+      return;
+    }
     log.error(`Stream error: ${err instanceof Error ? err.message : "Unknown"}`);
     const errorContent = `Error: ${err instanceof Error ? err.message : "Unknown error"}`;
     await dbUpdateMessage(assistantMsg.id, {

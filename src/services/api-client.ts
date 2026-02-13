@@ -57,12 +57,14 @@ export class ApiClient {
 
   async *streamChat(
     request: ChatApiRequest,
+    signal?: AbortSignal,
   ): AsyncGenerator<StreamDelta, void, unknown> {
     // expo/fetch provides ReadableStream on both native (Hermes) and web
     const response = await expoFetch(this.getUrl("/chat/completions"), {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({ ...request, stream: true }),
+      signal,
     });
 
     if (!response.ok) {
@@ -78,7 +80,6 @@ export class ApiClient {
     const decoder = new TextDecoder();
     let buffer = "";
 
-    let firstChunkLogged = false;
     const processLine = function* (line: string): Generator<StreamDelta> {
       const trimmed = line.trim();
       if (!trimmed || !trimmed.startsWith("data: ")) return;
@@ -88,20 +89,19 @@ export class ApiClient {
         const parsed = JSON.parse(data);
         const choice = parsed.choices?.[0];
         const delta = choice?.delta as StreamDelta | undefined;
-        if (!firstChunkLogged && delta) {
-          const keys = Object.keys(delta);
-          const choiceKeys = Object.keys(choice).filter((k) => k !== "delta");
-          console.log(`[StreamDebug] delta keys: [${keys}], choice keys: [${choiceKeys}]`);
-          firstChunkLogged = true;
-        }
         if (delta) {
-          // Some proxies put reasoning_content at choice level, not inside delta
-          if (!delta.reasoning_content && choice?.reasoning_content) {
-            delta.reasoning_content = choice.reasoning_content;
+          // Normalize reasoning content from various proxy formats
+          if (!delta.reasoning_content) {
+            // Check choice level
+            const rc = choice?.reasoning_content ?? (choice as any)?.reasoning
+              ?? (choice as any)?.thinking ?? (choice as any)?.thinking_content;
+            if (rc) delta.reasoning_content = rc;
           }
-          // Some proxies use 'reasoning' field
-          if (!delta.reasoning_content && (choice as any)?.reasoning) {
-            delta.reasoning_content = (choice as any).reasoning;
+          // Check delta level alternate field names
+          if (!delta.reasoning_content) {
+            const dr = (delta as any).reasoning ?? (delta as any).thinking
+              ?? (delta as any).thinking_content;
+            if (dr) delta.reasoning_content = dr;
           }
           yield delta;
         }

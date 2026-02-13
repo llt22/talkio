@@ -41,6 +41,8 @@ interface ChatState {
   ) => Promise<void>;
 
   sendMessage: (text: string, mentionedModelIds?: string[], images?: string[]) => Promise<void>;
+  stopGeneration: () => void;
+  regenerateMessage: (messageId: string) => Promise<void>;
   branchFromMessage: (messageId: string) => Promise<string>;
   switchBranch: (branchId: string | null) => void;
   deleteMessageById: (messageId: string) => Promise<void>;
@@ -48,6 +50,7 @@ interface ChatState {
 }
 
 let loadSequence = 0;
+let currentAbortController: AbortController | null = null;
 
 export const useChatStore = create<ChatState>((set, get) => ({
   conversations: [],
@@ -171,10 +174,51 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       const targetModelIds = resolveTargetModels(conv, mentionedModelIds);
 
+      const abortController = new AbortController();
+      currentAbortController = abortController;
+
       for (const modelId of targetModelIds) {
-        await generateResponse(convId, modelId, conv);
+        if (abortController.signal.aborted) break;
+        await generateResponse(convId, modelId, conv, abortController.signal);
       }
     } finally {
+      currentAbortController = null;
+      set({ isGenerating: false });
+    }
+  },
+
+  stopGeneration: () => {
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
+    }
+  },
+
+  regenerateMessage: async (messageId) => {
+    const state = get();
+    const convId = state.currentConversationId;
+    if (!convId || state.isGenerating) return;
+
+    const msg = state.messages.find((m) => m.id === messageId);
+    if (!msg || msg.role !== "assistant" || !msg.senderModelId) return;
+
+    const conv = state.conversations.find((c) => c.id === convId);
+    if (!conv) return;
+
+    // Delete the old assistant message
+    await dbDeleteMessage(messageId);
+    set({
+      messages: state.messages.filter((m) => m.id !== messageId),
+      isGenerating: true,
+    });
+
+    const abortController = new AbortController();
+    currentAbortController = abortController;
+
+    try {
+      await generateResponse(convId, msg.senderModelId, conv, abortController.signal);
+    } finally {
+      currentAbortController = null;
       set({ isGenerating: false });
     }
   },
