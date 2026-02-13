@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, Pressable, ScrollView, Alert } from "react-native";
+import { View, Text, Pressable, ScrollView, Alert, Switch } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,7 +33,11 @@ export default function DiscoverScreen() {
   const mcpTools = useIdentityStore((s) => s.mcpTools);
   const removeIdentity = useIdentityStore((s) => s.removeIdentity);
   const removeMcpTool = useIdentityStore((s) => s.removeMcpTool);
+  const updateMcpTool = useIdentityStore((s) => s.updateMcpTool);
   const [activeTab, setActiveTab] = useState<Tab>("identities");
+
+  const builtInTools = mcpTools.filter((t) => t.builtIn);
+  const customTools = mcpTools.filter((t) => !t.builtIn);
 
   const handleDeleteIdentity = (id: string) => {
     Alert.alert(t("personas.deleteIdentity"), t("common.areYouSure"), [
@@ -92,20 +96,66 @@ export default function DiscoverScreen() {
             ))}
           </View>
         ) : (
-          <View className="gap-4">
-            {mcpTools.map((tool) => (
-              <ToolCard
-                key={tool.id}
-                tool={tool}
-                onEdit={() =>
-                  router.push({
-                    pathname: "/(tabs)/discover/tool-edit",
-                    params: { id: tool.id },
-                  })
-                }
-                onDelete={() => handleDeleteTool(tool.id)}
-              />
-            ))}
+          <View className="gap-6">
+            {/* Built-in Tools */}
+            {builtInTools.length > 0 && (
+              <View>
+                <Text className="mb-2 px-1 text-[13px] font-medium uppercase tracking-tight text-slate-400">
+                  {t("personas.builtInTools")}
+                </Text>
+                <View className="overflow-hidden rounded-xl border border-slate-100 bg-white">
+                  {builtInTools.map((tool, idx) => (
+                    <View
+                      key={tool.id}
+                      className={`flex-row items-center justify-between px-4 py-3 ${idx < builtInTools.length - 1 ? "border-b border-slate-50" : ""}`}
+                    >
+                      <View className="flex-row items-center flex-1 mr-3">
+                        <View className="mr-3 h-9 w-9 items-center justify-center rounded-lg bg-emerald-50">
+                          <Ionicons name="phone-portrait-outline" size={18} color="#059669" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-[14px] font-semibold text-slate-900">{tool.name}</Text>
+                          <Text className="text-[11px] text-slate-400" numberOfLines={1}>{tool.description}</Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={tool.enabled}
+                        onValueChange={(v) => updateMcpTool(tool.id, { enabled: v })}
+                        trackColor={{ false: "#e5e7eb", true: "#007AFF" }}
+                        thumbColor="#fff"
+                        ios_backgroundColor="#e5e7eb"
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Custom MCP Tools */}
+            <View>
+              <Text className="mb-2 px-1 text-[13px] font-medium uppercase tracking-tight text-slate-400">
+                {t("personas.mcpTools")}
+              </Text>
+              {customTools.length > 0 ? (
+                <View className="gap-3">
+                  {customTools.map((tool) => (
+                    <ToolCard
+                      key={tool.id}
+                      tool={tool}
+                      onEdit={() =>
+                        router.push({
+                          pathname: "/(tabs)/discover/tool-edit",
+                          params: { id: tool.id },
+                        })
+                      }
+                      onDelete={() => handleDeleteTool(tool.id)}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <Text className="px-1 text-[13px] text-slate-400">{t("personas.noCustomTools")}</Text>
+              )}
+            </View>
           </View>
         )}
       </ScrollView>

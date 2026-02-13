@@ -92,7 +92,9 @@
     "temp": "Temp: {{value}}",
     "tools": "Tools: {{count}}",
     "editIdentity": "Edit Role",
-    "editTool": "Edit Tool"
+    "editTool": "Edit Tool",
+    "builtInTools": "Built-in Tools",
+    "noCustomTools": "No custom MCP tools yet"
   },
   "settings": {
     "title": "Settings",
