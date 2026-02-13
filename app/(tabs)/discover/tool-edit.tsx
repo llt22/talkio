@@ -14,6 +14,7 @@ export default function ToolEditScreen() {
   const getMcpToolById = useIdentityStore((s) => s.getMcpToolById);
   const addMcpTool = useIdentityStore((s) => s.addMcpTool);
   const updateMcpTool = useIdentityStore((s) => s.updateMcpTool);
+  const removeMcpTool = useIdentityStore((s) => s.removeMcpTool);
 
   const existing = id ? getMcpToolById(id) : undefined;
   const isNew = !existing;
@@ -154,12 +155,29 @@ export default function ToolEditScreen() {
         <Switch value={enabled} onValueChange={setEnabled} trackColor={{ false: "#e5e7eb", true: "#007AFF" }} thumbColor="#fff" ios_backgroundColor="#e5e7eb" />
       </View>
 
-      <View className="px-4 pb-8 pt-6">
+      <View className="px-4 pb-8 pt-6 gap-3">
         <Pressable onPress={handleSave} className="items-center rounded-2xl bg-primary py-4">
           <Text className="text-base font-semibold text-white">
             {isNew ? t("toolEdit.addTool") : t("toolEdit.saveChanges")}
           </Text>
         </Pressable>
+        {!isNew && (
+          <Pressable
+            onPress={() => {
+              Alert.alert(t("common.delete"), t("common.areYouSure"), [
+                { text: t("common.cancel"), style: "cancel" },
+                {
+                  text: t("common.delete"),
+                  style: "destructive",
+                  onPress: () => { removeMcpTool(id!); router.back(); },
+                },
+              ]);
+            }}
+            className="items-center rounded-2xl border-2 border-red-500 py-4"
+          >
+            <Text className="text-base font-semibold text-red-500">{t("common.delete")}</Text>
+          </Pressable>
+        )}
       </View>
     </ScrollView>
   );
