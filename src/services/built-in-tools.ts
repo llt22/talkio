@@ -1,8 +1,13 @@
-import { Platform, Alert } from "react-native";
+import { Platform } from "react-native";
 import * as Battery from "expo-battery";
 import * as Network from "expo-network";
 import * as Clipboard from "expo-clipboard";
 import * as Calendar from "expo-calendar";
+import * as Location from "expo-location";
+import * as Linking from "expo-linking";
+import * as Brightness from "expo-brightness";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
 import { registerLocalTool, type McpExecutionResult } from "./mcp-client";
 import type { McpTool } from "../types";
 
@@ -79,6 +84,88 @@ export const BUILT_IN_TOOLS: Omit<McpTool, "id">[] = [
           alarm_minutes_before: { type: "number", description: "Minutes before event to trigger alarm (default: 5)" },
         },
         required: ["title", "date"],
+      },
+    },
+  },
+  {
+    name: "Get Location",
+    type: "local",
+    scope: "global",
+    description: "Get the device's current GPS location (latitude, longitude, altitude)",
+    endpoint: null,
+    nativeModule: "get_location",
+    permissions: ["location"],
+    enabled: false,
+    builtIn: true,
+    schema: {
+      name: "get_location",
+      description: "Get the device's current GPS location coordinates",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    name: "Open Link",
+    type: "local",
+    scope: "global",
+    description: "Open a URL, navigate to an address in Maps, or make a phone call",
+    endpoint: null,
+    nativeModule: "open_link",
+    permissions: [],
+    enabled: true,
+    builtIn: true,
+    schema: {
+      name: "open_link",
+      description: "Open a URL in browser, navigate to address in Maps (use maps: or geo: scheme), or dial a phone number (use tel: scheme)",
+      parameters: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "URL to open. Examples: https://..., tel:+1234567890, maps:?q=Starbucks" },
+        },
+        required: ["url"],
+      },
+    },
+  },
+  {
+    name: "Set Brightness",
+    type: "local",
+    scope: "global",
+    description: "Adjust the screen brightness level (0.0 to 1.0)",
+    endpoint: null,
+    nativeModule: "set_brightness",
+    permissions: [],
+    enabled: true,
+    builtIn: true,
+    schema: {
+      name: "set_brightness",
+      description: "Set screen brightness. 0.0 = darkest, 1.0 = brightest, 0.5 = medium",
+      parameters: {
+        type: "object",
+        properties: {
+          level: { type: "number", description: "Brightness level from 0.0 to 1.0" },
+        },
+        required: ["level"],
+      },
+    },
+  },
+  {
+    name: "Share Text",
+    type: "local",
+    scope: "global",
+    description: "Share text content to other apps via the system share sheet",
+    endpoint: null,
+    nativeModule: "share_text",
+    permissions: [],
+    enabled: true,
+    builtIn: true,
+    schema: {
+      name: "share_text",
+      description: "Share text content to other apps (WeChat, Notes, Mail, etc.) via the system share sheet",
+      parameters: {
+        type: "object",
+        properties: {
+          text: { type: "string", description: "Text content to share" },
+        },
+        required: ["text"],
       },
     },
   },
@@ -197,6 +284,113 @@ async function handleCreateReminder(args: Record<string, unknown>): Promise<McpE
   }
 }
 
+async function handleGetLocation(): Promise<McpExecutionResult> {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      return { success: false, content: "", error: "Location permission denied" };
+    }
+
+    const loc = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+
+    let address = "unknown";
+    try {
+      const [geo] = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+      if (geo) {
+        address = [geo.street, geo.district, geo.city, geo.region, geo.country]
+          .filter(Boolean)
+          .join(", ");
+      }
+    } catch { /* reverse geocode not available */ }
+
+    return {
+      success: true,
+      content: JSON.stringify({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+        altitude: loc.coords.altitude,
+        accuracy: loc.coords.accuracy,
+        address,
+      }),
+    };
+  } catch (err) {
+    return {
+      success: false,
+      content: "",
+      error: err instanceof Error ? err.message : "Failed to get location",
+    };
+  }
+}
+
+async function handleOpenLink(args: Record<string, unknown>): Promise<McpExecutionResult> {
+  const url = args.url as string;
+  if (!url) {
+    return { success: false, content: "", error: "url is required" };
+  }
+
+  try {
+    const canOpen = await Linking.canOpenURL(url);
+    if (!canOpen) {
+      return { success: false, content: "", error: `Cannot open URL: ${url}` };
+    }
+    await Linking.openURL(url);
+    return { success: true, content: `Opened: ${url}` };
+  } catch (err) {
+    return {
+      success: false,
+      content: "",
+      error: err instanceof Error ? err.message : "Failed to open URL",
+    };
+  }
+}
+
+async function handleSetBrightness(args: Record<string, unknown>): Promise<McpExecutionResult> {
+  const level = args.level as number;
+  if (level === undefined || level < 0 || level > 1) {
+    return { success: false, content: "", error: "level must be between 0.0 and 1.0" };
+  }
+
+  try {
+    await Brightness.setBrightnessAsync(level);
+    return {
+      success: true,
+      content: JSON.stringify({ brightness: level, percent: `${Math.round(level * 100)}%` }),
+    };
+  } catch (err) {
+    return {
+      success: false,
+      content: "",
+      error: err instanceof Error ? err.message : "Failed to set brightness",
+    };
+  }
+}
+
+async function handleShareText(args: Record<string, unknown>): Promise<McpExecutionResult> {
+  const text = args.text as string;
+  if (!text) {
+    return { success: false, content: "", error: "text is required" };
+  }
+
+  try {
+    // Write text to a temp file for sharing
+    const tmpPath = `${FileSystem.cacheDirectory}share_${Date.now()}.txt`;
+    await FileSystem.writeAsStringAsync(tmpPath, text);
+    await Sharing.shareAsync(tmpPath, { mimeType: "text/plain", dialogTitle: "Share" });
+    return { success: true, content: "Share dialog opened" };
+  } catch (err) {
+    return {
+      success: false,
+      content: "",
+      error: err instanceof Error ? err.message : "Failed to share",
+    };
+  }
+}
+
 // ── Registration ──
 
 const HANDLER_MAP: Record<string, (args: Record<string, unknown>) => Promise<McpExecutionResult>> = {
@@ -204,6 +398,10 @@ const HANDLER_MAP: Record<string, (args: Record<string, unknown>) => Promise<Mcp
   get_device_info: () => handleGetDeviceInfo(),
   read_clipboard: () => handleReadClipboard(),
   create_reminder: handleCreateReminder,
+  get_location: () => handleGetLocation(),
+  open_link: handleOpenLink,
+  set_brightness: handleSetBrightness,
+  share_text: handleShareText,
 };
 
 export function registerBuiltInTools(toolIds: Map<string, string>): void {
