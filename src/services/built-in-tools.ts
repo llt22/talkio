@@ -22,7 +22,7 @@ export const BUILT_IN_TOOLS: Omit<McpTool, "id">[] = [
     endpoint: null,
     nativeModule: "get_current_time",
     permissions: [],
-    enabled: true,
+    enabled: false,
     builtIn: true,
     schema: {
       name: "get_current_time",
@@ -38,7 +38,7 @@ export const BUILT_IN_TOOLS: Omit<McpTool, "id">[] = [
     endpoint: null,
     nativeModule: "get_device_info",
     permissions: [],
-    enabled: true,
+    enabled: false,
     builtIn: true,
     schema: {
       name: "get_device_info",
@@ -70,7 +70,7 @@ export const BUILT_IN_TOOLS: Omit<McpTool, "id">[] = [
     endpoint: null,
     nativeModule: "create_reminder",
     permissions: ["calendar"],
-    enabled: true,
+    enabled: false,
     builtIn: true,
     schema: {
       name: "create_reminder",
@@ -111,7 +111,7 @@ export const BUILT_IN_TOOLS: Omit<McpTool, "id">[] = [
     endpoint: null,
     nativeModule: "open_link",
     permissions: [],
-    enabled: true,
+    enabled: false,
     builtIn: true,
     schema: {
       name: "open_link",
@@ -133,7 +133,7 @@ export const BUILT_IN_TOOLS: Omit<McpTool, "id">[] = [
     endpoint: null,
     nativeModule: "set_brightness",
     permissions: [],
-    enabled: true,
+    enabled: false,
     builtIn: true,
     schema: {
       name: "set_brightness",
@@ -155,7 +155,7 @@ export const BUILT_IN_TOOLS: Omit<McpTool, "id">[] = [
     endpoint: null,
     nativeModule: "share_text",
     permissions: [],
-    enabled: true,
+    enabled: false,
     builtIn: true,
     schema: {
       name: "share_text",
