@@ -53,7 +53,6 @@ export default function ChatDetailScreen() {
     const title = isGroup
       ? conv?.title ?? t("chat.group")
       : model?.displayName ?? t("chat.chatTitle");
-    const subtitle = activeIdentity ? `◆ ${activeIdentity.name}` : isGroup ? undefined : `◆ ${t("chat.mountIdentity")}`;
 
     navigation.setOptions({
       headerTitle: () => (
@@ -62,7 +61,15 @@ export default function ChatDetailScreen() {
           className="items-center"
         >
           <Text className="text-sm font-bold tracking-tight text-text-main">{title}</Text>
-          {subtitle && (
+          {isGroup && model ? (
+            <View className="mt-0.5 flex-row items-center gap-1">
+              <Ionicons name="swap-horizontal-outline" size={12} color="#007AFF" />
+              <Text className="text-[10px] font-bold uppercase tracking-widest text-primary" numberOfLines={1}>
+                {model.displayName}{activeIdentity ? ` · ${activeIdentity.name}` : ""}
+              </Text>
+              <Ionicons name="chevron-down" size={12} color="#007AFF" />
+            </View>
+          ) : !isGroup ? (
             <View className="mt-0.5 flex-row items-center gap-1">
               <Ionicons name="person-circle-outline" size={12} color="#007AFF" />
               <Text className="text-[10px] font-bold uppercase tracking-widest text-primary">
@@ -70,7 +77,7 @@ export default function ChatDetailScreen() {
               </Text>
               <Ionicons name="chevron-down" size={12} color="#007AFF" />
             </View>
-          )}
+          ) : null}
         </Pressable>
       ),
       headerRight: () => (
