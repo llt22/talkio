@@ -206,7 +206,19 @@ async function initMcpSession(messageEndpoint: string): Promise<void> {
  * Extract tool call result content from JSON-RPC response.
  */
 function extractToolResult(result: Record<string, unknown>): McpExecutionResult {
+  console.log("[MCP] Raw response:", JSON.stringify(result).slice(0, 500));
+
   const rpcResult = (result as any).result;
+
+  // JSON-RPC error object { error: { code, message, data } }
+  if ((result as any).error) {
+    const err = (result as any).error;
+    const msg = typeof err === "string" ? err
+      : err.message ?? err.data ?? JSON.stringify(err);
+    return { success: false, content: "", error: msg };
+  }
+
+  // MCP tool result { result: { content: [...], isError } }
   if (rpcResult?.content) {
     const contentItems = Array.isArray(rpcResult.content) ? rpcResult.content : [rpcResult.content];
     const textParts = contentItems
@@ -215,15 +227,12 @@ function extractToolResult(result: Record<string, unknown>): McpExecutionResult 
     return { success: !rpcResult.isError, content: textParts };
   }
 
-  if ((result as any).error) {
-    return {
-      success: false,
-      content: "",
-      error: (result as any).error.message ?? JSON.stringify((result as any).error),
-    };
+  // Result exists but no content field
+  if (rpcResult !== undefined) {
+    return { success: true, content: typeof rpcResult === "string" ? rpcResult : JSON.stringify(rpcResult) };
   }
 
-  return { success: true, content: JSON.stringify(result) };
+  return { success: false, content: "", error: `Unexpected MCP response: ${JSON.stringify(result).slice(0, 200)}` };
 }
 
 /**
