@@ -93,9 +93,13 @@ export function ChatInput({
     setText(value);
     if (isGroup && value.endsWith("@")) {
       setShowMentionPicker(true);
-    } else {
+    } else if (showMentionPicker && !value.includes("@")) {
       setShowMentionPicker(false);
     }
+  };
+
+  const toggleMentionPicker = () => {
+    setShowMentionPicker((v) => !v);
   };
 
   const insertMention = (modelId: string) => {
@@ -105,7 +109,8 @@ export function ChatInput({
       setText((prev) => {
         // Remove trailing @ if user typed it to trigger the picker
         const base = prev.endsWith("@") ? prev.slice(0, -1) : prev;
-        return base + (base.length > 0 && !base.endsWith(" ") ? " " : "") + "@" + mentionTag + " ";
+        const sep = base.length > 0 && !base.endsWith(" ") ? " " : "";
+        return `${base}${sep}@${mentionTag} `;
       });
     }
     setShowMentionPicker(false);
@@ -163,20 +168,13 @@ export function ChatInput({
         <Pressable onPress={handleAttach} className="text-primary p-1">
           <Ionicons name="add" size={24} color="#007AFF" />
         </Pressable>
+        {isGroup && (
+          <Pressable onPress={toggleMentionPicker} className="p-1">
+            <Ionicons name="at" size={22} color={showMentionPicker ? "#007AFF" : "#8E8E93"} />
+          </Pressable>
+        )}
 
         <View className="flex-1 flex-row items-center rounded-3xl border border-slate-200/50 bg-[#F2F2F7] px-4 py-1.5">
-          {isGroup && (
-            <Pressable onPress={() => {
-              if (!showMentionPicker) {
-                setText((prev) => prev + "@");
-                setShowMentionPicker(true);
-              } else {
-                setShowMentionPicker(false);
-              }
-            }}>
-              <Text className="text-primary text-[16px] font-semibold mr-0.5">@</Text>
-            </Pressable>
-          )}
           <TextInput
             ref={inputRef}
             className="max-h-24 min-h-[36px] flex-1 text-[16px] text-text-main"
