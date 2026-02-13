@@ -86,6 +86,7 @@ export const STORAGE_KEYS = {
   IDENTITIES: "identities",
   CONVERSATIONS: "conversations",
   MCP_TOOLS: "mcp_tools",
+  MCP_SERVERS: "mcp_servers",
   SHORTCUTS: "shortcuts",
   SETTINGS: "settings",
 } as const;

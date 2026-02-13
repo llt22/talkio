@@ -5,23 +5,22 @@ import type { CustomHeader } from "../../../src/types";
 import { useTranslation } from "react-i18next";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useIdentityStore } from "../../../src/stores/identity-store";
-// Remote MCP tool editor (built-in tools are managed separately)
+// MCP Server editor
 
 export default function ToolEditScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
-  const getMcpToolById = useIdentityStore((s) => s.getMcpToolById);
-  const addMcpTool = useIdentityStore((s) => s.addMcpTool);
-  const updateMcpTool = useIdentityStore((s) => s.updateMcpTool);
-  const removeMcpTool = useIdentityStore((s) => s.removeMcpTool);
+  const getMcpServerById = useIdentityStore((s) => s.getMcpServerById);
+  const addMcpServer = useIdentityStore((s) => s.addMcpServer);
+  const updateMcpServer = useIdentityStore((s) => s.updateMcpServer);
+  const removeMcpServer = useIdentityStore((s) => s.removeMcpServer);
 
-  const existing = id ? getMcpToolById(id) : undefined;
+  const existing = id ? getMcpServerById(id) : undefined;
   const isNew = !existing;
 
   const [name, setName] = useState(existing?.name ?? "");
-  const [description, setDescription] = useState(existing?.description ?? "");
-  const [endpoint, setEndpoint] = useState(existing?.endpoint ?? "");
+  const [url, setUrl] = useState(existing?.url ?? "");
   const [enabled, setEnabled] = useState(existing?.enabled ?? true);
   const [headers, setHeaders] = useState<CustomHeader[]>(existing?.customHeaders ?? []);
 
@@ -30,7 +29,7 @@ export default function ToolEditScreen() {
       Alert.alert(t("common.error"), t("toolEdit.nameRequired"));
       return;
     }
-    if (!endpoint.trim()) {
+    if (!url.trim()) {
       Alert.alert(t("common.error"), t("toolEdit.endpointRequired"));
       return;
     }
@@ -38,25 +37,15 @@ export default function ToolEditScreen() {
     const validHeaders = headers.filter((h) => h.name.trim() && h.value.trim());
     const data = {
       name: name.trim(),
-      type: "remote" as const,
-      scope: "global" as const,
-      description: description.trim(),
-      endpoint: endpoint.trim(),
-      nativeModule: null,
-      permissions: [] as string[],
+      url: url.trim(),
       enabled,
-      schema: {
-        name: name.trim().toLowerCase().replace(/\s+/g, "_"),
-        description: description.trim(),
-        parameters: { type: "object" as const, properties: {} },
-      },
       customHeaders: validHeaders.length > 0 ? validHeaders : undefined,
     };
 
     if (isNew) {
-      addMcpTool(data);
+      addMcpServer(data);
     } else {
-      updateMcpTool(id!, data);
+      updateMcpServer(id!, data);
     }
     router.back();
   };
@@ -75,25 +64,12 @@ export default function ToolEditScreen() {
       </View>
 
       <View className="px-4 pt-4">
-        <Text className="mb-1 text-sm font-medium text-text-muted">{t("toolEdit.description")}</Text>
-        <TextInput
-          className="min-h-[80px] rounded-xl border border-border-light bg-bg-secondary px-4 py-3 text-sm text-text-main"
-          value={description}
-          onChangeText={setDescription}
-          placeholder={t("toolEdit.descPlaceholder")}
-          placeholderTextColor="#9ca3af"
-          multiline
-          textAlignVertical="top"
-        />
-      </View>
-
-      <View className="px-4 pt-4">
         <Text className="mb-1 text-sm font-medium text-text-muted">{t("toolEdit.endpointUrl")}</Text>
         <TextInput
           className="rounded-xl border border-border-light bg-bg-secondary px-4 py-3 text-sm text-text-main"
-          value={endpoint}
-          onChangeText={setEndpoint}
-          placeholder="https://mcp-server.example.com/sse"
+          value={url}
+          onChangeText={setUrl}
+          placeholder="https://mcp.example.com/mcp"
           placeholderTextColor="#9ca3af"
           autoCapitalize="none"
           keyboardType="url"
@@ -169,7 +145,7 @@ export default function ToolEditScreen() {
                 {
                   text: t("common.delete"),
                   style: "destructive",
-                  onPress: () => { removeMcpTool(id!); router.back(); },
+                  onPress: () => { removeMcpServer(id!); router.back(); },
                 },
               ]);
             }}

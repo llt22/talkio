@@ -60,6 +60,16 @@ export interface Identity {
   createdAt: string;
 }
 
+// Persisted MCP server configuration
+export interface McpServer {
+  id: string;
+  name: string;
+  url: string;
+  customHeaders?: CustomHeader[];
+  enabled: boolean;
+}
+
+// Legacy tool interface — still used for built-in tools
 export interface McpTool {
   id: string;
   name: string;
@@ -79,6 +89,15 @@ export interface McpToolSchema {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
+}
+
+// Runtime tool definition discovered from an MCP server
+export interface DiscoveredTool {
+  serverId: string;
+  serverName: string;
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
 }
 
 export interface ConversationParticipant {

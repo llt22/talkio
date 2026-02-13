@@ -5,8 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useIdentityStore } from "../../../src/stores/identity-store";
-import { listRemoteTools } from "../../../src/services/mcp-client";
-import type { Identity, McpTool } from "../../../src/types";
+import type { Identity, McpServer } from "../../../src/types";
 
 type Tab = "identities" | "tools";
 
@@ -34,17 +33,17 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const identities = useIdentityStore((s) => s.identities);
   const mcpTools = useIdentityStore((s) => s.mcpTools);
+  const mcpServers = useIdentityStore((s) => s.mcpServers);
   const removeIdentity = useIdentityStore((s) => s.removeIdentity);
-  const addMcpTool = useIdentityStore((s) => s.addMcpTool);
-  const removeMcpTool = useIdentityStore((s) => s.removeMcpTool);
   const updateMcpTool = useIdentityStore((s) => s.updateMcpTool);
+  const addMcpServer = useIdentityStore((s) => s.addMcpServer);
+  const updateMcpServer = useIdentityStore((s) => s.updateMcpServer);
+  const removeMcpServer = useIdentityStore((s) => s.removeMcpServer);
   const [activeTab, setActiveTab] = useState<Tab>("identities");
 
   const builtInTools = mcpTools.filter((t) => t.builtIn);
-  const customTools = mcpTools.filter((t) => !t.builtIn);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJson, setImportJson] = useState("");
-
   const [isImporting, setIsImporting] = useState(false);
 
   const handleImportJson = async () => {
@@ -64,7 +63,6 @@ export default function DiscoverScreen() {
         const v = val as Record<string, unknown>;
         const url = (v.url ?? v.endpoint ?? "") as string;
         const hasCommand = !!(v.command || v.args);
-        // Extract headers from config
         let hdrs: Array<{ name: string; value: string }> | undefined;
         if (v.headers && typeof v.headers === "object") {
           hdrs = Object.entries(v.headers as Record<string, string>).map(([k, vv]) => ({ name: k, value: String(vv) }));
@@ -72,10 +70,9 @@ export default function DiscoverScreen() {
         if (url) {
           servers.push({ name: key, url, headers: hdrs });
         } else if (hasCommand) {
-          // Desktop command-based config, skip with info
+          // Desktop command-based config, skip
         }
       }
-      // All entries were command-based
       if (servers.length === 0) {
         const isCommandConfig = Object.values(parsed.mcpServers).some(
           (v: any) => v.command || v.args,
@@ -100,48 +97,25 @@ export default function DiscoverScreen() {
     }
 
     setIsImporting(true);
-    let totalAdded = 0;
     const addedNames: string[] = [];
 
     try {
       for (const server of servers) {
-        try {
-          // Connect to MCP server and discover tools
-          const remoteTools = await listRemoteTools(server.url, server.headers);
-          for (const rt of remoteTools) {
-            addMcpTool({
-              name: rt.name,
-              type: "remote",
-              scope: "global",
-              description: rt.description ?? "",
-              endpoint: server.url,
-              nativeModule: null,
-              permissions: [],
-              enabled: true,
-              schema: {
-                name: rt.name,
-                description: rt.description ?? "",
-                parameters: rt.inputSchema ?? { type: "object", properties: {} },
-              },
-              customHeaders: server.headers,
-            });
-            totalAdded++;
-            addedNames.push(rt.name);
-          }
-        } catch (err) {
-          // Discovery failed — show error, don't create a fake tool
-          const errMsg = err instanceof Error ? err.message : "Connection failed";
-          Alert.alert(
-            server.name,
-            `${t("personas.importDiscoveryFailed")}: ${errMsg}`,
-          );
-        }
+        addMcpServer({
+          name: server.name,
+          url: server.url,
+          customHeaders: server.headers,
+          enabled: true,
+        });
+        addedNames.push(server.name);
       }
 
       setShowImportModal(false);
       setImportJson("");
-      const toolList = addedNames.length > 0 ? `\n\n${addedNames.join("\n")}` : "";
-      Alert.alert(t("common.success"), t("personas.importSuccess", { count: totalAdded }) + toolList);
+      Alert.alert(
+        t("common.success"),
+        t("personas.importSuccess", { count: addedNames.length }) + "\n\n" + addedNames.join("\n"),
+      );
     } catch (err) {
       Alert.alert(t("common.error"), err instanceof Error ? err.message : "Import failed");
     } finally {
@@ -156,10 +130,10 @@ export default function DiscoverScreen() {
     ]);
   };
 
-  const handleDeleteTool = (id: string) => {
-    Alert.alert(t("personas.deleteTool"), t("common.areYouSure"), [
+  const handleDeleteServer = (id: string) => {
+    Alert.alert(t("common.delete"), t("common.areYouSure"), [
       { text: t("common.cancel"), style: "cancel" },
-      { text: t("common.delete"), style: "destructive", onPress: () => removeMcpTool(id) },
+      { text: t("common.delete"), style: "destructive", onPress: () => removeMcpServer(id) },
     ]);
   };
 
@@ -241,24 +215,25 @@ export default function DiscoverScreen() {
               </View>
             )}
 
-            {/* Custom MCP Tools */}
+            {/* MCP Servers */}
             <View>
               <Text className="mb-2 px-1 text-[13px] font-medium uppercase tracking-tight text-slate-400">
-                {t("personas.mcpTools")}
+                MCP Servers
               </Text>
-              {customTools.length > 0 ? (
+              {mcpServers.length > 0 ? (
                 <View className="gap-3">
-                  {customTools.map((tool) => (
-                    <ToolCard
-                      key={tool.id}
-                      tool={tool}
+                  {mcpServers.map((server) => (
+                    <ServerCard
+                      key={server.id}
+                      server={server}
+                      onToggle={(v) => updateMcpServer(server.id, { enabled: v })}
                       onEdit={() =>
                         router.push({
                           pathname: "/(tabs)/discover/tool-edit",
-                          params: { id: tool.id },
+                          params: { id: server.id },
                         })
                       }
-                      onDelete={() => handleDeleteTool(tool.id)}
+                      onDelete={() => handleDeleteServer(server.id)}
                     />
                   ))}
                 </View>
@@ -386,74 +361,42 @@ function IdentityCard({
   );
 }
 
-function ToolCard({
-  tool,
+function ServerCard({
+  server,
+  onToggle,
   onEdit,
   onDelete,
 }: {
-  tool: McpTool;
+  server: McpServer;
+  onToggle: (enabled: boolean) => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const { t } = useTranslation();
-  const isLocal = tool.type === "local";
-
   return (
     <Pressable
       onPress={onEdit}
       onLongPress={onDelete}
       className="rounded-xl border border-slate-100 bg-white p-4"
     >
-      <View className="flex-row items-start gap-4">
-        <View
-          className={`h-12 w-12 items-center justify-center rounded-xl ${
-            isLocal ? "bg-emerald-100" : "bg-blue-100"
-          }`}
-        >
-          <Ionicons
-            name={isLocal ? "phone-portrait-outline" : "cloud-outline"}
-            size={24}
-            color={isLocal ? "#059669" : "#2563eb"}
-          />
+      <View className="flex-row items-center gap-3">
+        <View className="h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
+          <Ionicons name="cloud-outline" size={20} color="#2563eb" />
         </View>
         <View className="flex-1">
-          <View className="mb-1 flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-text-main" numberOfLines={1}>
-              {tool.name}
-            </Text>
-            <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
-          </View>
-          <View className="mb-3 flex-row gap-2">
-            <View className="rounded border border-slate-200 bg-slate-100 px-2 py-0.5">
-              <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                {tool.type}
-              </Text>
-            </View>
-            <View className="rounded border border-slate-200 bg-slate-100 px-2 py-0.5">
-              <Text className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                {tool.scope}
-              </Text>
-            </View>
-            <View className={`rounded px-2 py-0.5 ${tool.enabled ? "bg-primary/10" : "bg-slate-100"}`}>
-              <Text className={`text-[10px] font-bold uppercase tracking-wider ${tool.enabled ? "text-primary" : "text-slate-500"}`}>
-                {tool.enabled ? t("common.enabled") : t("common.disabled")}
-              </Text>
-            </View>
-          </View>
-          <Text className="text-sm leading-relaxed text-slate-500" numberOfLines={1}>
-            {tool.description}
+          <Text className="text-[15px] font-semibold text-slate-900" numberOfLines={1}>
+            {server.name}
           </Text>
-          {tool.schema?.name && (
-            <Text className="mt-1 text-[11px] font-mono text-slate-400" numberOfLines={1}>
-              {tool.schema.name}
-            </Text>
-          )}
-          {!isLocal && tool.endpoint && (
-            <Text className="mt-0.5 text-[10px] text-slate-300" numberOfLines={1}>
-              {tool.endpoint}
-            </Text>
-          )}
+          <Text className="mt-0.5 text-[11px] text-slate-400" numberOfLines={1}>
+            {server.url}
+          </Text>
         </View>
+        <Switch
+          value={server.enabled}
+          onValueChange={onToggle}
+          trackColor={{ false: "#e5e7eb", true: "#007AFF" }}
+          thumbColor="#fff"
+          ios_backgroundColor="#e5e7eb"
+        />
       </View>
     </Pressable>
   );

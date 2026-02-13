@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Identity, McpTool } from "../types";
+import type { Identity, McpTool, McpServer } from "../types";
 import { getItem, setItem } from "../storage/mmkv";
 import { STORAGE_KEYS, DEFAULT_IDENTITY_PARAMS } from "../constants";
 import { generateId } from "../utils/id";
@@ -7,24 +7,32 @@ import { BUILT_IN_TOOLS, registerBuiltInTools } from "../services/built-in-tools
 
 interface IdentityState {
   identities: Identity[];
-  mcpTools: McpTool[];
+  mcpTools: McpTool[];      // built-in tools only
+  mcpServers: McpServer[];  // remote MCP server configs
   initBuiltInTools: () => void;
   loadIdentities: () => void;
   addIdentity: (data: Omit<Identity, "id" | "createdAt">) => Identity;
   updateIdentity: (id: string, updates: Partial<Identity>) => void;
   removeIdentity: (id: string) => void;
   getIdentityById: (id: string) => Identity | undefined;
+  // Built-in tool management
   addMcpTool: (data: Omit<McpTool, "id">) => McpTool;
   updateMcpTool: (id: string, updates: Partial<McpTool>) => void;
   removeMcpTool: (id: string) => void;
   getMcpToolById: (id: string) => McpTool | undefined;
   getGlobalTools: () => McpTool[];
   getToolsForIdentity: (identityId: string) => McpTool[];
+  // MCP Server management
+  addMcpServer: (data: Omit<McpServer, "id">) => McpServer;
+  updateMcpServer: (id: string, updates: Partial<McpServer>) => void;
+  removeMcpServer: (id: string) => void;
+  getMcpServerById: (id: string) => McpServer | undefined;
 }
 
 export const useIdentityStore = create<IdentityState>((set, get) => ({
   identities: [],
   mcpTools: [],
+  mcpServers: [],
 
   initBuiltInTools: () => {
     const existing = get().mcpTools;
@@ -58,7 +66,8 @@ export const useIdentityStore = create<IdentityState>((set, get) => ({
   loadIdentities: () => {
     const identities = getItem<Identity[]>(STORAGE_KEYS.IDENTITIES) ?? [];
     const mcpTools = getItem<McpTool[]>(STORAGE_KEYS.MCP_TOOLS) ?? [];
-    set({ identities, mcpTools });
+    const mcpServers = getItem<McpServer[]>(STORAGE_KEYS.MCP_SERVERS) ?? [];
+    set({ identities, mcpTools, mcpServers });
   },
 
   addIdentity: (data) => {
@@ -122,4 +131,30 @@ export const useIdentityStore = create<IdentityState>((set, get) => ({
     if (!identity) return [];
     return get().mcpTools.filter((t) => identity.mcpToolIds.includes(t.id) && t.enabled);
   },
+
+  // ── MCP Server CRUD ──
+
+  addMcpServer: (data) => {
+    const server: McpServer = { ...data, id: generateId() };
+    const mcpServers = [...get().mcpServers, server];
+    set({ mcpServers });
+    setItem(STORAGE_KEYS.MCP_SERVERS, mcpServers);
+    return server;
+  },
+
+  updateMcpServer: (id, updates) => {
+    const mcpServers = get().mcpServers.map((s) =>
+      s.id === id ? { ...s, ...updates } : s,
+    );
+    set({ mcpServers });
+    setItem(STORAGE_KEYS.MCP_SERVERS, mcpServers);
+  },
+
+  removeMcpServer: (id) => {
+    const mcpServers = get().mcpServers.filter((s) => s.id !== id);
+    set({ mcpServers });
+    setItem(STORAGE_KEYS.MCP_SERVERS, mcpServers);
+  },
+
+  getMcpServerById: (id) => get().mcpServers.find((s) => s.id === id),
 }));

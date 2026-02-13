@@ -8,7 +8,8 @@ import type {
 } from "../types";
 import { generateId } from "../utils/id";
 import { ApiClient } from "./api-client";
-import { executeTool, toolToApiDef } from "./mcp-client";
+import { executeTool, toolToApiDef, discoverServerTools, executeServerTool, discoveredToolToApiDef } from "./mcp-client";
+import type { DiscoveredTool, McpServer } from "../types";
 import {
   insertMessage,
   updateMessage as dbUpdateMessage,
@@ -63,7 +64,7 @@ export async function generateResponse(
     : undefined;
 
   const apiMessages = buildApiMessages(chatStore.messages, modelId, identity);
-  const tools = buildTools(model, identity);
+  const tools = await buildTools(model, identity);
 
   const assistantMsg: Message = {
     id: generateId(),
@@ -470,25 +471,46 @@ function buildApiMessages(
   return apiMessages;
 }
 
-function buildTools(model: { capabilities: { toolCall: boolean } }, identity: Identity | undefined): ChatApiToolDef[] {
+// Module-level cache: maps tool name → { server, tool } for routing executeToolCalls
+let _discoveredToolsCache: Map<string, { server: McpServer; tool: DiscoveredTool }> = new Map();
+
+async function buildTools(model: { capabilities: { toolCall: boolean } }, identity: Identity | undefined): Promise<ChatApiToolDef[]> {
   // Skip tools entirely if model doesn't support tool calls
   if (!model.capabilities.toolCall) return [];
 
   const identityStore = useIdentityStore.getState();
-  // All enabled tools: built-in (global) + custom enabled tools
-  const enabledTools = identityStore.mcpTools.filter((t) => t.enabled);
-  const allTools = [...enabledTools];
-
-  // Deduplicate by function name to avoid "Duplicate function declaration" errors
   const seen = new Set<string>();
-  return allTools
-    .map((t) => toolToApiDef(t))
-    .filter((t): t is ChatApiToolDef => {
-      if (!t) return false;
-      if (seen.has(t.function.name)) return false;
-      seen.add(t.function.name);
-      return true;
-    });
+  const result: ChatApiToolDef[] = [];
+
+  // 1. Built-in tools (local)
+  const enabledBuiltIn = identityStore.mcpTools.filter((t) => t.enabled);
+  for (const t of enabledBuiltIn) {
+    const def = toolToApiDef(t);
+    if (def && !seen.has(def.function.name)) {
+      seen.add(def.function.name);
+      result.push(def);
+    }
+  }
+
+  // 2. Remote tools from enabled McpServers
+  _discoveredToolsCache = new Map();
+  const enabledServers = identityStore.mcpServers.filter((s) => s.enabled);
+  for (const server of enabledServers) {
+    try {
+      const tools = await discoverServerTools(server);
+      for (const tool of tools) {
+        if (!seen.has(tool.name)) {
+          seen.add(tool.name);
+          result.push(discoveredToolToApiDef(tool));
+          _discoveredToolsCache.set(tool.name, { server, tool });
+        }
+      }
+    } catch (err) {
+      log.warn(`Failed to discover tools from ${server.name}: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  return result;
 }
 
 async function executeToolCalls(
@@ -498,30 +520,35 @@ async function executeToolCalls(
   const results: Array<{ toolCallId: string; content: string }> = [];
 
   for (const tc of toolCalls) {
-    const tcLower = tc.name.toLowerCase();
-    const tool = identityStore.mcpTools.find(
-      (t) => {
-        const schemaName = t.schema?.name?.toLowerCase() ?? "";
-        const toolName = t.name.toLowerCase();
-        return schemaName === tcLower || toolName === tcLower
-          || toolName.replace(/\s+/g, "_") === tcLower;
-      },
-    );
+    let args: Record<string, unknown> = {};
+    try {
+      args = JSON.parse(tc.arguments);
+    } catch { /* empty args */ }
 
-    if (!tool) {
-      console.warn(`[MCP] Tool not found: "${tc.name}". Available:`, identityStore.mcpTools.map((t) => `${t.name} (schema: ${t.schema?.name})`));
+    // Check remote tools cache first (from buildTools discovery)
+    const remote = _discoveredToolsCache.get(tc.name);
+    if (remote) {
+      const result = await executeServerTool(remote.server, tc.name, args);
       results.push({
         toolCallId: tc.id,
-        content: `Tool not found: ${tc.name}`,
+        content: result.success ? result.content : `Error: ${result.error}`,
       });
       continue;
     }
 
-    let args: Record<string, unknown> = {};
-    try {
-      args = JSON.parse(tc.arguments);
-    } catch {
-      // empty args
+    // Fallback: built-in tools
+    const tcLower = tc.name.toLowerCase();
+    const tool = identityStore.mcpTools.find((t) => {
+      const schemaName = t.schema?.name?.toLowerCase() ?? "";
+      const toolName = t.name.toLowerCase();
+      return schemaName === tcLower || toolName === tcLower
+        || toolName.replace(/\s+/g, "_") === tcLower;
+    });
+
+    if (!tool) {
+      log.warn(`Tool not found: "${tc.name}". Built-in:`, identityStore.mcpTools.map((t) => t.schema?.name));
+      results.push({ toolCallId: tc.id, content: `Tool not found: ${tc.name}` });
+      continue;
     }
 
     const result = await executeTool(tool, args);
