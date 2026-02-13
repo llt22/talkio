@@ -152,7 +152,7 @@ export function MessageBubble({
         </Pressable>
 
         {message.toolCalls.length > 0 && (
-          <View className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+          <View className="max-w-[90%] rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
             {message.toolCalls.map((tc) => (
               <View key={tc.id} className="flex-row items-center">
                 <Ionicons name="construct-outline" size={14} color="#6b7280" />

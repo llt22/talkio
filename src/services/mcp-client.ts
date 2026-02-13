@@ -185,7 +185,95 @@ async function mcpRpcCall(
 }
 
 /**
- * Execute a remote MCP tool using the SSE protocol.
+ * Initialize an MCP session on a given message endpoint.
+ */
+async function initMcpSession(messageEndpoint: string): Promise<void> {
+  await mcpRpcCall(messageEndpoint, "initialize", {
+    protocolVersion: "2024-11-05",
+    capabilities: {},
+    clientInfo: { name: "avatar-app", version: "1.0.0" },
+  }, 1);
+
+  // Send initialized notification (fire and forget)
+  fetch(messageEndpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+  }).catch(() => {});
+}
+
+/**
+ * Extract tool call result content from JSON-RPC response.
+ */
+function extractToolResult(result: Record<string, unknown>): McpExecutionResult {
+  const rpcResult = (result as any).result;
+  if (rpcResult?.content) {
+    const contentItems = Array.isArray(rpcResult.content) ? rpcResult.content : [rpcResult.content];
+    const textParts = contentItems
+      .map((c: any) => (typeof c === "string" ? c : c.text ?? JSON.stringify(c)))
+      .join("\n");
+    return { success: !rpcResult.isError, content: textParts };
+  }
+
+  if ((result as any).error) {
+    return {
+      success: false,
+      content: "",
+      error: (result as any).error.message ?? JSON.stringify((result as any).error),
+    };
+  }
+
+  return { success: true, content: JSON.stringify(result) };
+}
+
+/**
+ * Try Streamable HTTP protocol (new): POST directly to endpoint.
+ * Returns null if server doesn't support it (e.g. 405).
+ */
+async function tryStreamableHttp(
+  endpoint: string,
+  method: string,
+  params: Record<string, unknown>,
+  id: number,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
+    });
+
+    // 405 = server doesn't accept POST on this URL (likely old SSE endpoint)
+    if (response.status === 405 || response.status === 406) return null;
+
+    if (!response.ok) {
+      throw new Error(`MCP error ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("text/event-stream")) {
+      const text = await response.text();
+      for (const line of text.split("\n")) {
+        if (line.startsWith("data:")) {
+          try { return JSON.parse(line.slice(5).trim()); } catch {}
+        }
+      }
+      throw new Error("No JSON-RPC response in SSE stream");
+    }
+
+    return response.json();
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("405")) return null;
+    throw err;
+  }
+}
+
+/**
+ * Execute a remote MCP tool.
+ * Tries Streamable HTTP first, falls back to old SSE protocol.
  */
 async function executeRemoteTool(
   tool: McpTool,
@@ -196,51 +284,34 @@ async function executeRemoteTool(
   }
 
   try {
-    // Step 1: Connect to SSE endpoint and get message URL
-    const session = await connectMcpSse(tool.endpoint);
-
-    // Step 2: Initialize the MCP session
-    await mcpRpcCall(session.messageEndpoint, "initialize", {
-      protocolVersion: "2024-11-05",
+    // Try Streamable HTTP first (new protocol: single endpoint)
+    const initResult = await tryStreamableHttp(tool.endpoint, "initialize", {
+      protocolVersion: "2025-03-26",
       capabilities: {},
       clientInfo: { name: "avatar-app", version: "1.0.0" },
     }, 1);
 
-    // Step 3: Send initialized notification (no response expected)
-    fetch(session.messageEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "notifications/initialized",
-      }),
-    }).catch(() => { /* fire and forget */ });
+    if (initResult !== null) {
+      // Streamable HTTP works — send initialized + tools/call
+      await tryStreamableHttp(tool.endpoint, "notifications/initialized", {}, 0);
+      const result = await tryStreamableHttp(tool.endpoint, "tools/call", {
+        name: tool.schema?.name ?? tool.name,
+        arguments: args,
+      }, 2);
+      if (!result) throw new Error("tools/call failed");
+      return extractToolResult(result);
+    }
 
-    // Step 4: Call the tool
+    // Fallback: Old SSE protocol (GET /sse → endpoint event → POST)
+    const session = await connectMcpSse(tool.endpoint);
+    await initMcpSession(session.messageEndpoint);
+
     const result = await mcpRpcCall(session.messageEndpoint, "tools/call", {
       name: tool.schema?.name ?? tool.name,
       arguments: args,
     }, 2);
 
-    // Extract result content
-    const rpcResult = (result as any).result;
-    if (rpcResult?.content) {
-      const contentItems = Array.isArray(rpcResult.content) ? rpcResult.content : [rpcResult.content];
-      const textParts = contentItems
-        .map((c: any) => (typeof c === "string" ? c : c.text ?? JSON.stringify(c)))
-        .join("\n");
-      return { success: !rpcResult.isError, content: textParts };
-    }
-
-    if ((result as any).error) {
-      return {
-        success: false,
-        content: "",
-        error: (result as any).error.message ?? JSON.stringify((result as any).error),
-      };
-    }
-
-    return { success: true, content: JSON.stringify(result) };
+    return extractToolResult(result);
   } catch (err) {
     return {
       success: false,
@@ -252,28 +323,30 @@ async function executeRemoteTool(
 
 /**
  * Connect to a remote MCP server and list available tools.
- * Used during import to discover tool schemas.
+ * Tries Streamable HTTP first, falls back to old SSE protocol.
  */
 export async function listRemoteTools(
-  sseUrl: string,
+  endpoint: string,
 ): Promise<{ name: string; description: string; inputSchema: Record<string, unknown> }[]> {
-  const session = await connectMcpSse(sseUrl);
-
-  await mcpRpcCall(session.messageEndpoint, "initialize", {
-    protocolVersion: "2024-11-05",
+  // Try Streamable HTTP first
+  const initResult = await tryStreamableHttp(endpoint, "initialize", {
+    protocolVersion: "2025-03-26",
     capabilities: {},
     clientInfo: { name: "avatar-app", version: "1.0.0" },
   }, 1);
 
-  fetch(session.messageEndpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
-  }).catch(() => {});
+  if (initResult !== null) {
+    await tryStreamableHttp(endpoint, "notifications/initialized", {}, 0);
+    const result = await tryStreamableHttp(endpoint, "tools/list", {}, 2);
+    return (result as any)?.result?.tools ?? [];
+  }
+
+  // Fallback: Old SSE protocol
+  const session = await connectMcpSse(endpoint);
+  await initMcpSession(session.messageEndpoint);
 
   const result = await mcpRpcCall(session.messageEndpoint, "tools/list", {}, 2);
-  const tools = (result as any).result?.tools ?? [];
-  return tools;
+  return (result as any).result?.tools ?? [];
 }
 
 export function toolToApiDef(tool: McpTool): {
