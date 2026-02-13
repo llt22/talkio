@@ -23,7 +23,7 @@
   "tabs": {
     "chats": "聊天",
     "models": "模型",
-    "personas": "身份",
+    "personas": "角色",
     "settings": "设置"
   },
   "layout": {
@@ -50,7 +50,7 @@
     "you": "你",
     "group": "群聊",
     "chatTitle": "对话",
-    "mountIdentity": "挂载身份",
+    "mountIdentity": "选择角色",
     "thoughtProcess": "思考过程",
     "branchConversation": "分支对话",
     "branchConfirm": "从此消息创建新分支？",
@@ -70,7 +70,7 @@
     "message": "发送消息...",
     "called": "调用：{{name}}",
     "modelCount": "{{count}} 个模型",
-    "noIdentity": "未设置身份"
+    "noIdentity": "未设置角色"
   },
   "models": {
     "title": "模型",
@@ -82,16 +82,16 @@
     "createGroup": "创建群聊 ({{count}})"
   },
   "personas": {
-    "title": "身份",
-    "identityCards": "身份卡片",
+    "title": "角色",
+    "identityCards": "角色卡片",
     "mcpTools": "MCP 工具",
-    "deleteIdentity": "删除身份",
+    "deleteIdentity": "删除角色",
     "deleteTool": "删除工具",
-    "createIdentity": "创建新身份卡片",
+    "createIdentity": "创建新角色",
     "addTool": "添加 MCP 工具",
     "temp": "温度：{{value}}",
     "tools": "工具：{{count}}",
-    "editIdentity": "编辑身份",
+    "editIdentity": "编辑角色",
     "editTool": "编辑工具"
   },
   "settings": {
@@ -209,12 +209,12 @@
     "temperature": "温度",
     "topP": "Top P",
     "bindTools": "绑定 MCP 工具",
-    "createIdentity": "创建身份",
+    "createIdentity": "创建角色",
     "saveChanges": "保存更改",
     "nameRequired": "名称为必填项",
     "promptRequired": "系统提示词为必填项",
     "aiGenerate": "AI 生成",
-    "aiDescPlaceholder": "描述你想要的身份，例如「一个 React Native 专家」",
+    "aiDescPlaceholder": "描述你想要的角色，例如「一个 React Native 专家」",
     "aiDescRequired": "请先输入描述",
     "aiSelectModel": "选择模型",
     "selectModel": "选择模型",

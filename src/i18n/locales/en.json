@@ -50,7 +50,7 @@
     "you": "You",
     "group": "Group",
     "chatTitle": "Chat",
-    "mountIdentity": "Mount Identity",
+    "mountIdentity": "Select Role",
     "thoughtProcess": "Thought process",
     "branchConversation": "Branch Conversation",
     "branchConfirm": "Create a new branch from this message?",
@@ -70,7 +70,7 @@
     "message": "Message...",
     "called": "Called: {{name}}",
     "modelCount": "{{count}} models",
-    "noIdentity": "No identity"
+    "noIdentity": "No role"
   },
   "models": {
     "title": "Models",
@@ -83,15 +83,15 @@
   },
   "personas": {
     "title": "Personas",
-    "identityCards": "Identity Cards",
+    "identityCards": "Role Cards",
     "mcpTools": "MCP Tools",
-    "deleteIdentity": "Delete Identity",
+    "deleteIdentity": "Delete Role",
     "deleteTool": "Delete Tool",
-    "createIdentity": "Create New Identity Card",
+    "createIdentity": "Create New Role",
     "addTool": "Add MCP Tool",
     "temp": "Temp: {{value}}",
     "tools": "Tools: {{count}}",
-    "editIdentity": "Edit Identity",
+    "editIdentity": "Edit Role",
     "editTool": "Edit Tool"
   },
   "settings": {
@@ -209,12 +209,12 @@
     "temperature": "Temperature",
     "topP": "Top P",
     "bindTools": "Bind MCP Tools",
-    "createIdentity": "Create Identity",
+    "createIdentity": "Create Role",
     "saveChanges": "Save Changes",
     "nameRequired": "Name is required",
     "promptRequired": "System prompt is required",
     "aiGenerate": "AI Generate",
-    "aiDescPlaceholder": "Describe the identity you want, e.g. 'A React Native expert'",
+    "aiDescPlaceholder": "Describe the role you want, e.g. 'A React Native expert'",
     "aiDescRequired": "Please enter a description first",
     "aiSelectModel": "Select Model",
     "selectModel": "Select Model",
