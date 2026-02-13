@@ -18,7 +18,8 @@
     "areYouSure": "Are you sure?",
     "configured": "{{count}} configured",
     "yesterday": "Yesterday",
-    "add": "Add"
+    "add": "Add",
+    "success": "Success"
   },
   "tabs": {
     "chats": "Chats",
@@ -94,7 +95,13 @@
     "editIdentity": "Edit Role",
     "editTool": "Edit Tool",
     "builtInTools": "Built-in Tools",
-    "noCustomTools": "No custom MCP tools yet"
+    "noCustomTools": "No custom MCP tools yet",
+    "importJson": "Import JSON",
+    "import": "Import",
+    "importHint": "Paste MCP server config JSON. Supports {mcpServers: {...}}, array, or single object format.",
+    "importNoTools": "No valid tools found in JSON",
+    "importInvalidJson": "Invalid JSON format",
+    "importSuccess": "Successfully imported {{count}} tool(s)"
   },
   "settings": {
     "title": "Settings",

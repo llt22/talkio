@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, Pressable, ScrollView, Alert, Switch } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, Alert, Switch, Modal } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -32,12 +32,82 @@ export default function DiscoverScreen() {
   const identities = useIdentityStore((s) => s.identities);
   const mcpTools = useIdentityStore((s) => s.mcpTools);
   const removeIdentity = useIdentityStore((s) => s.removeIdentity);
+  const addMcpTool = useIdentityStore((s) => s.addMcpTool);
   const removeMcpTool = useIdentityStore((s) => s.removeMcpTool);
   const updateMcpTool = useIdentityStore((s) => s.updateMcpTool);
   const [activeTab, setActiveTab] = useState<Tab>("identities");
 
   const builtInTools = mcpTools.filter((t) => t.builtIn);
   const customTools = mcpTools.filter((t) => !t.builtIn);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importJson, setImportJson] = useState("");
+
+  const handleImportJson = () => {
+    try {
+      const parsed = JSON.parse(importJson.trim());
+
+      // Support multiple formats:
+      // 1. { "mcpServers": { "name": { "url": "..." } } }
+      // 2. [{ "name": "...", "endpoint": "..." }]
+      // 3. { "name": "...", "endpoint": "..." }
+      let tools: Array<{ name: string; endpoint: string; description?: string }> = [];
+
+      if (parsed.mcpServers && typeof parsed.mcpServers === "object") {
+        for (const [key, val] of Object.entries(parsed.mcpServers)) {
+          const v = val as Record<string, unknown>;
+          tools.push({
+            name: key,
+            endpoint: (v.url ?? v.endpoint ?? "") as string,
+            description: (v.description ?? "") as string,
+          });
+        }
+      } else if (Array.isArray(parsed)) {
+        tools = parsed.map((item: Record<string, unknown>) => ({
+          name: (item.name ?? "") as string,
+          endpoint: (item.url ?? item.endpoint ?? "") as string,
+          description: (item.description ?? "") as string,
+        }));
+      } else if (parsed.name || parsed.endpoint || parsed.url) {
+        tools = [{
+          name: (parsed.name ?? "") as string,
+          endpoint: (parsed.url ?? parsed.endpoint ?? "") as string,
+          description: (parsed.description ?? "") as string,
+        }];
+      }
+
+      if (tools.length === 0) {
+        Alert.alert(t("common.error"), t("personas.importNoTools"));
+        return;
+      }
+
+      let added = 0;
+      for (const tool of tools) {
+        if (!tool.name || !tool.endpoint) continue;
+        addMcpTool({
+          name: tool.name,
+          type: "remote",
+          scope: "global",
+          description: tool.description ?? "",
+          endpoint: tool.endpoint,
+          nativeModule: null,
+          permissions: [],
+          enabled: true,
+          schema: {
+            name: tool.name.toLowerCase().replace(/\s+/g, "_"),
+            description: tool.description ?? "",
+            parameters: { type: "object", properties: {} },
+          },
+        });
+        added++;
+      }
+
+      setShowImportModal(false);
+      setImportJson("");
+      Alert.alert(t("common.success"), t("personas.importSuccess", { count: added }));
+    } catch {
+      Alert.alert(t("common.error"), t("personas.importInvalidJson"));
+    }
+  };
 
   const handleDeleteIdentity = (id: string) => {
     Alert.alert(t("personas.deleteIdentity"), t("common.areYouSure"), [
@@ -161,22 +231,62 @@ export default function DiscoverScreen() {
       </ScrollView>
 
       <View className="absolute bottom-20 left-0 right-0 px-5">
-        <Pressable
-          onPress={() =>
-            router.push(
-              activeTab === "identities"
-                ? "/(tabs)/discover/identity-edit"
-                : "/(tabs)/discover/tool-edit",
-            )
-          }
-          className="flex-row items-center justify-center gap-2 rounded-xl bg-primary py-4"
-        >
-          <Ionicons name="add-circle" size={22} color="#fff" />
-          <Text className="text-base font-semibold text-white">
-            {activeTab === "identities" ? t("personas.createIdentity") : t("personas.addTool")}
-          </Text>
-        </Pressable>
+        {activeTab === "identities" ? (
+          <Pressable
+            onPress={() => router.push("/(tabs)/discover/identity-edit")}
+            className="flex-row items-center justify-center gap-2 rounded-xl bg-primary py-4"
+          >
+            <Ionicons name="add-circle" size={22} color="#fff" />
+            <Text className="text-base font-semibold text-white">{t("personas.createIdentity")}</Text>
+          </Pressable>
+        ) : (
+          <View className="flex-row gap-3">
+            <Pressable
+              onPress={() => setShowImportModal(true)}
+              className="flex-1 flex-row items-center justify-center gap-2 rounded-xl border-2 border-primary bg-white py-3.5"
+            >
+              <Ionicons name="code-slash-outline" size={18} color="#007AFF" />
+              <Text className="text-[15px] font-semibold text-primary">{t("personas.importJson")}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/(tabs)/discover/tool-edit")}
+              className="flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-primary py-3.5"
+            >
+              <Ionicons name="add-circle" size={18} color="#fff" />
+              <Text className="text-[15px] font-semibold text-white">{t("personas.addTool")}</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
+
+      {/* JSON Import Modal */}
+      <Modal visible={showImportModal} animationType="slide" presentationStyle="pageSheet">
+        <View className="flex-1 bg-white">
+          <View className="flex-row items-center justify-between border-b border-slate-100 px-4 py-3">
+            <Pressable onPress={() => { setShowImportModal(false); setImportJson(""); }}>
+              <Text className="text-[16px] text-slate-500">{t("common.cancel")}</Text>
+            </Pressable>
+            <Text className="text-[16px] font-bold text-slate-900">{t("personas.importJson")}</Text>
+            <Pressable onPress={handleImportJson}>
+              <Text className="text-[16px] font-semibold text-primary">{t("personas.import")}</Text>
+            </Pressable>
+          </View>
+          <View className="flex-1 px-4 pt-4">
+            <Text className="mb-2 text-[13px] text-slate-400">{t("personas.importHint")}</Text>
+            <TextInput
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 p-4 text-[14px] text-slate-800 font-mono"
+              value={importJson}
+              onChangeText={setImportJson}
+              placeholder={'{\n  "mcpServers": {\n    "weather": {\n      "url": "https://..."\n    }\n  }\n}'}
+              placeholderTextColor="#cbd5e1"
+              multiline
+              textAlignVertical="top"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
