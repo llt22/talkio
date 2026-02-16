@@ -75,16 +75,23 @@ export class ApiClient {
       return;
     }
     // OpenAI / Azure OpenAI
-    const response = await expoFetch(this.getUrl("/chat/completions"), {
-      method: "POST",
-      headers: this.getHeaders(),
-      body: JSON.stringify({ ...request, stream: true }),
-      signal,
-    });
+    let response: Response;
+    try {
+      response = await expoFetch(this.getUrl("/chat/completions"), {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({ ...request, stream: true }),
+        signal,
+      });
+    } catch (fetchErr: any) {
+      const detail = fetchErr?.message || fetchErr?.name || fetchErr?.code
+        || (typeof fetchErr === "object" ? JSON.stringify(fetchErr) : String(fetchErr));
+      throw new Error(`Fetch failed: ${detail}`);
+    }
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Stream API error: ${response.status} - ${errorText}`);
+      const errorText = await response.text().catch(() => "");
+      throw new Error(`Stream API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     if (!response.body) {
@@ -171,15 +178,22 @@ export class ApiClient {
   ): AsyncGenerator<StreamDelta, void, unknown> {
     const body = this.toAnthropicBody(request);
     body.stream = true;
-    const response = await expoFetch(`${this.baseUrl}/messages`, {
-      method: "POST",
-      headers: this.getHeaders(),
-      body: JSON.stringify(body),
-      signal,
-    });
+    let response: Response;
+    try {
+      response = await expoFetch(`${this.baseUrl}/messages`, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify(body),
+        signal,
+      });
+    } catch (fetchErr: any) {
+      const detail = fetchErr?.message || fetchErr?.name || fetchErr?.code
+        || (typeof fetchErr === "object" ? JSON.stringify(fetchErr) : String(fetchErr));
+      throw new Error(`Fetch failed: ${detail}`);
+    }
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Stream API error: ${response.status} - ${errorText}`);
+      const errorText = await response.text().catch(() => "");
+      throw new Error(`Stream API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
     if (!response.body) throw new Error("Stream response has no body");
     yield* this.readSSE(response.body, (parsed) => {
