@@ -75,9 +75,11 @@ export class ApiClient {
       return;
     }
     // OpenAI / Azure OpenAI
+    try {
+    const url = this.getUrl("/chat/completions");
     let response: Response;
     try {
-      response = await expoFetch(this.getUrl("/chat/completions"), {
+      response = await expoFetch(url, {
         method: "POST",
         headers: this.getHeaders(),
         body: JSON.stringify({ ...request, stream: true }),
@@ -86,7 +88,7 @@ export class ApiClient {
     } catch (fetchErr: any) {
       const detail = fetchErr?.message || fetchErr?.name || fetchErr?.code
         || (typeof fetchErr === "object" ? JSON.stringify(fetchErr) : String(fetchErr));
-      throw new Error(`Fetch failed: ${detail}`);
+      throw new Error(`Fetch failed (${url}): ${detail}`);
     }
 
     if (!response.ok) {
@@ -151,6 +153,19 @@ export class ApiClient {
       }
     } finally {
       reader.releaseLock();
+    }
+    } catch (streamErr: any) {
+      // Ensure error has a meaningful message before propagating
+      const msg = streamErr?.message || streamErr?.name || streamErr?.code || "";
+      if (!msg) {
+        // Error with no message — capture all available info
+        const keys = streamErr ? Object.keys(streamErr) : [];
+        const detail = keys.length > 0
+          ? JSON.stringify(streamErr, null, 0)
+          : `${typeof streamErr}: ${String(streamErr)}`;
+        throw new Error(`Stream error (no message): ${detail}`);
+      }
+      throw streamErr;
     }
   }
 
