@@ -13,6 +13,8 @@ import {
   getMessages as dbGetMessages,
   searchMessages as dbSearchMessages,
   deleteMessage as dbDeleteMessage,
+  clearMessages as dbClearMessages,
+  insertMessages as dbInsertMessages,
 } from "../storage/database";
 import { generateId } from "../utils/id";
 import { useProviderStore } from "./provider-store";
@@ -46,6 +48,7 @@ interface ChatState {
   branchFromMessage: (messageId: string) => Promise<string>;
   switchBranch: (branchId: string | null) => void;
   deleteMessageById: (messageId: string) => Promise<void>;
+  clearConversationMessages: (conversationId: string) => Promise<void>;
   searchAllMessages: (query: string) => Promise<Message[]>;
 }
 
@@ -235,9 +238,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       branchId,
     }));
 
-    for (const msg of branchedMessages) {
-      await insertMessage(msg);
-    }
+    await dbInsertMessages(branchedMessages);
 
     set({ activeBranchId: branchId });
     await get().loadMessages(get().currentConversationId!);
@@ -269,6 +270,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ),
       });
     }
+  },
+
+  clearConversationMessages: async (conversationId) => {
+    await dbClearMessages(conversationId);
+    await dbUpdateConversation(conversationId, {
+      lastMessage: null,
+      lastMessageAt: null,
+    });
+    set({
+      messages: get().currentConversationId === conversationId ? [] : get().messages,
+      conversations: get().conversations.map((c) =>
+        c.id === conversationId
+          ? { ...c, lastMessage: null, lastMessageAt: null }
+          : c,
+      ),
+    });
   },
 
   searchAllMessages: async (query) => {

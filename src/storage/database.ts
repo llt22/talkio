@@ -226,6 +226,35 @@ export async function deleteMessage(id: string): Promise<void> {
   await db.delete(messages).where(eq(messages.id, id));
 }
 
+export async function clearMessages(conversationId: string): Promise<void> {
+  await db.delete(messages).where(eq(messages.conversationId, conversationId));
+}
+
+export async function insertMessages(msgs: Message[]): Promise<void> {
+  if (msgs.length === 0) return;
+  await db.insert(messages).values(
+    msgs.map((msg) => ({
+      id: msg.id,
+      conversationId: msg.conversationId,
+      role: msg.role,
+      senderModelId: msg.senderModelId,
+      senderName: msg.senderName,
+      identityId: msg.identityId,
+      content: msg.content,
+      images: JSON.stringify(msg.images ?? []),
+      generatedImages: JSON.stringify(msg.generatedImages ?? []),
+      reasoningContent: msg.reasoningContent,
+      reasoningDuration: msg.reasoningDuration,
+      toolCalls: JSON.stringify(msg.toolCalls),
+      toolResults: JSON.stringify(msg.toolResults),
+      branchId: msg.branchId,
+      parentMessageId: msg.parentMessageId,
+      isStreaming: msg.isStreaming ? 1 : 0,
+      createdAt: msg.createdAt,
+    })),
+  );
+}
+
 // Re-export for backward compat
 export {
   updateMessage as dbUpdateMessage,
@@ -234,4 +263,6 @@ export {
   getMessages as dbGetMessages,
   searchMessages as dbSearchMessages,
   deleteMessage as dbDeleteMessage,
+  clearMessages as dbClearMessages,
+  insertMessages as dbInsertMessages,
 };

@@ -241,23 +241,24 @@ export async function generateResponse(
         }
       }
 
-      useChatStore.setState((s) => ({
-        messages: s.messages.map((m) =>
-          m.id === assistantMsg.id
-            ? {
-                ...m,
-                content,
-                generatedImages: [...generatedImages],
-                reasoningContent: reasoningContent || null,
-                toolCalls: pendingToolCalls.map((tc) => ({
-                  id: tc.id,
-                  name: tc.name,
-                  arguments: tc.arguments,
-                })),
-              }
-            : m,
-        ),
-      }));
+      useChatStore.setState((s) => {
+        const msgs = [...s.messages];
+        const idx = msgs.length - 1;
+        if (idx >= 0 && msgs[idx].id === assistantMsg.id) {
+          msgs[idx] = {
+            ...msgs[idx],
+            content,
+            generatedImages: [...generatedImages],
+            reasoningContent: reasoningContent || null,
+            toolCalls: pendingToolCalls.map((tc) => ({
+              id: tc.id,
+              name: tc.name,
+              arguments: tc.arguments,
+            })),
+          };
+        }
+        return { messages: msgs };
+      });
     }
 
     // Post-stream: extract markdown images from content
@@ -279,11 +280,14 @@ export async function generateResponse(
 
     if (pendingToolCalls.length > 0) {
       toolResults = await executeToolCalls(pendingToolCalls);
-      useChatStore.setState((s) => ({
-        messages: s.messages.map((m) =>
-          m.id === assistantMsg.id ? { ...m, toolResults } : m,
-        ),
-      }));
+      useChatStore.setState((s) => {
+        const msgs = [...s.messages];
+        const idx = msgs.length - 1;
+        if (idx >= 0 && msgs[idx].id === assistantMsg.id) {
+          msgs[idx] = { ...msgs[idx], toolResults };
+        }
+        return { messages: msgs };
+      });
 
       const assistantApiMsg: ChatApiMessage = {
         role: "assistant",
@@ -324,13 +328,14 @@ export async function generateResponse(
         if (delta.content) {
           followUpContent += delta.content;
         }
-        useChatStore.setState((s) => ({
-          messages: s.messages.map((m) =>
-            m.id === assistantMsg.id
-              ? { ...m, content: followUpContent || content }
-              : m,
-          ),
-        }));
+        useChatStore.setState((s) => {
+          const msgs = [...s.messages];
+          const idx = msgs.length - 1;
+          if (idx >= 0 && msgs[idx].id === assistantMsg.id) {
+            msgs[idx] = { ...msgs[idx], content: followUpContent || content };
+          }
+          return { messages: msgs };
+        });
       }
 
       if (followUpContent) {
@@ -347,13 +352,14 @@ export async function generateResponse(
       isStreaming: false,
     });
 
-    useChatStore.setState((s) => ({
-      messages: s.messages.map((m) =>
-        m.id === assistantMsg.id
-          ? { ...m, content, generatedImages: [...generatedImages], isStreaming: false }
-          : m,
-      ),
-    }));
+    useChatStore.setState((s) => {
+      const msgs = [...s.messages];
+      const idx = msgs.length - 1;
+      if (idx >= 0 && msgs[idx].id === assistantMsg.id) {
+        msgs[idx] = { ...msgs[idx], content, generatedImages: [...generatedImages], isStreaming: false };
+      }
+      return { messages: msgs };
+    });
 
     const now = new Date().toISOString();
     await dbUpdateConversation(conversationId, {

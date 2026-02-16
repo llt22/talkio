@@ -51,6 +51,8 @@ export default function ChatDetailScreen() {
     return () => setCurrentConversation(null);
   }, [id]);
 
+  const clearConversationMessages = useChatStore((s) => s.clearConversationMessages);
+
   const clearHistory = useCallback(() => {
     if (!id) return;
     Alert.alert(t("chat.clearHistory"), t("chat.clearHistoryConfirm"), [
@@ -58,15 +60,10 @@ export default function ChatDetailScreen() {
       {
         text: t("common.delete"),
         style: "destructive",
-        onPress: async () => {
-          const currentMessages = useChatStore.getState().messages;
-          for (const msg of currentMessages) {
-            await useChatStore.getState().deleteMessageById(msg.id);
-          }
-        },
+        onPress: () => clearConversationMessages(id),
       },
     ]);
-  }, [id]);
+  }, [id, clearConversationMessages]);
 
   useEffect(() => {
     const title = isGroup
