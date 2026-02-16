@@ -103,7 +103,7 @@ function NodeRenderer({ node }: NodeRendererProps) {
       return <Text>{node.content || ""}</Text>;
 
     case "soft_break":
-      return <Text>{"\n"}</Text>;
+      return <Text>{" "}</Text>;
 
     case "line_break":
       return <Text>{"\n"}</Text>;

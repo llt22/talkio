@@ -138,6 +138,7 @@ export default function ChatDetailScreen() {
 
   const handleScrollBeginDrag = useCallback(() => {
     isDragging.current = true;
+    userScrolledAway.current = true;
   }, []);
 
   const handleScrollEndDrag = useCallback(() => {
