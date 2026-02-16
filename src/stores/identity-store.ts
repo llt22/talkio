@@ -175,12 +175,15 @@ export const useIdentityStore = create<IdentityState>((set, get) => ({
     );
     set({ mcpServers });
     setItem(STORAGE_KEYS.MCP_SERVERS, mcpServers);
+    // Reset persistent connection so next use picks up new config
+    import("../services/mcp/connection-manager").then((m) => m.mcpConnectionManager.reset(id)).catch(() => {});
   },
 
   removeMcpServer: (id) => {
     const mcpServers = get().mcpServers.filter((s) => s.id !== id);
     set({ mcpServers });
     setItem(STORAGE_KEYS.MCP_SERVERS, mcpServers);
+    import("../services/mcp/connection-manager").then((m) => m.mcpConnectionManager.disconnect(id)).catch(() => {});
   },
 
   getMcpServerById: (id) => get().mcpServers.find((s) => s.id === id),

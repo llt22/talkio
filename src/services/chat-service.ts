@@ -8,7 +8,8 @@ import type {
 } from "../types";
 import { generateId } from "../utils/id";
 import { ApiClient } from "./api-client";
-import { executeTool, toolToApiDef, discoverServerTools, executeServerTool, discoveredToolToApiDef } from "./mcp-client";
+import { executeTool, toolToApiDef, discoveredToolToApiDef } from "./mcp-client";
+import { mcpConnectionManager } from "./mcp/connection-manager";
 import type { DiscoveredTool, McpServer } from "../types";
 import {
   insertMessage,
@@ -516,24 +517,22 @@ async function buildTools(model: { capabilities: { toolCall: boolean } }, identi
     }
   }
 
-  // 2. Remote MCP servers — discover in parallel for faster startup
+  // 2. Remote MCP servers — use persistent connections, discover in parallel
   _discoveredToolsCache = new Map();
   const enabledServers = identity.mcpServerIds?.length
     ? identityStore.mcpServers.filter((s) => s.enabled && identity.mcpServerIds!.includes(s.id))
     : [];
 
-  const DISCOVERY_TIMEOUT = 8000; // 8s per server
+  const DISCOVERY_TIMEOUT = 10000; // 10s per server
   if (enabledServers.length > 0) {
     const discoveries = await Promise.allSettled(
       enabledServers.map(async (server) => {
-        log.info(`Discovering tools from ${server.name} (${server.url})...`);
         const tools = await Promise.race([
-          discoverServerTools(server),
+          mcpConnectionManager.discoverTools(server),
           new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error(`Timeout after ${DISCOVERY_TIMEOUT}ms`)), DISCOVERY_TIMEOUT),
           ),
         ]);
-        log.info(`Discovered ${tools.length} tools from ${server.name}`);
         return { server, tools };
       }),
     );
@@ -574,7 +573,7 @@ async function executeToolCalls(
       const EXEC_TIMEOUT = 30000; // 30s for tool execution
       try {
         const result = await Promise.race([
-          executeServerTool(remote.server, tc.name, args),
+          mcpConnectionManager.callTool(remote.server, tc.name, args),
           new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error(`Tool execution timeout after ${EXEC_TIMEOUT}ms`)), EXEC_TIMEOUT),
           ),
