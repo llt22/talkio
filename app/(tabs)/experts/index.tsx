@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { View, Text, Pressable, TextInput, Alert, SectionList } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useProviderStore } from "../../../src/stores/provider-store";
 import { useChatStore } from "../../../src/stores/chat-store";
@@ -11,13 +11,28 @@ import type { Model } from "../../../src/types";
 export default function ModelsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const navigation = useNavigation();
   const models = useProviderStore((s) => s.models);
   const enabledModels = useMemo(() => models.filter((m) => m.enabled), [models]);
   const getProviderById = useProviderStore((s) => s.getProviderById);
   const createConversation = useChatStore((s) => s.createConversation);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const [selectedForGroup, setSelectedForGroup] = useState<string[]>([]);
   const [groupMode, setGroupMode] = useState(false);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={() => setShowSearch((v) => !v)}
+          className="p-1"
+        >
+          <Ionicons name="search" size={22} color="#007AFF" />
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
   const filtered = enabledModels.filter((m) =>
     searchQuery
       ? m.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -62,23 +77,26 @@ export default function ModelsScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <View className="px-4 pb-2 pt-1">
-        <View className="flex-row items-center rounded-lg bg-ios-gray px-3 py-2">
-          <Ionicons name="search" size={18} color="#8E8E93" />
-          <TextInput
-            className="ml-2 flex-1 text-[15px] text-text-main"
-            placeholder={t("common.search")}
-            placeholderTextColor="#8E8E93"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={18} color="#8E8E93" />
-            </Pressable>
-          )}
+      {showSearch && (
+        <View className="px-4 pb-2">
+          <View className="flex-row items-center rounded-xl bg-ios-gray px-3 py-2">
+            <Ionicons name="search" size={18} color="#94a3b8" />
+            <TextInput
+              className="ml-2 flex-1 text-[15px] text-text-main"
+              placeholder={t("common.search")}
+              placeholderTextColor="#8E8E93"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery("")}>
+                <Ionicons name="close-circle" size={18} color="#94a3b8" />
+              </Pressable>
+            )}
+          </View>
         </View>
-      </View>
+      )}
 
       {sections.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
