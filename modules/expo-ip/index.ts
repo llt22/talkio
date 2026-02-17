@@ -1,7 +1,13 @@
-import { requireNativeModule } from "expo-modules-core";
+import { Platform } from "react-native";
 
-const ExpoIpModule = requireNativeModule("ExpoIp");
+let ExpoIpModule: { getWifiIP(): string } | null = null;
+if (Platform.OS === "android") {
+  try {
+    ExpoIpModule = require("expo-modules-core").requireNativeModule("ExpoIp");
+  } catch {}
+}
 
 export function getWifiIP(): string {
-  return ExpoIpModule.getWifiIP();
+  if (ExpoIpModule) return ExpoIpModule.getWifiIP();
+  return "0.0.0.0";
 }
