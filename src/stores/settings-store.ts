@@ -7,10 +7,6 @@ import { STORAGE_KEYS } from "../constants";
 interface AppSettings {
   language: "system" | "en" | "zh";
   theme: "light" | "dark" | "system";
-  syncEnabled: boolean;
-  webdavUrl: string | null;
-  webdavUser: string | null;
-  webdavPass: string | null;
   hapticFeedback: boolean;
   quickPromptEnabled: boolean;
   voiceAutoTranscribe: boolean;
@@ -25,10 +21,6 @@ interface SettingsState {
 const DEFAULT_SETTINGS: AppSettings = {
   language: "system",
   theme: "light",
-  syncEnabled: false,
-  webdavUrl: null,
-  webdavUser: null,
-  webdavPass: null,
   hapticFeedback: true,
   quickPromptEnabled: true,
   voiceAutoTranscribe: true,

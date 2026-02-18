@@ -33,14 +33,6 @@ export default function SettingsScreen() {
             onPress={() => router.push("/(tabs)/settings/providers")}
           />
           <SettingsRow
-            icon="sync-outline"
-            iconBg="bg-orange-500/10"
-            iconColor="#f97316"
-            label={t("settings.dataSync")}
-            detail={settings.syncEnabled ? t("common.enabled") : t("common.off")}
-            onPress={() => router.push("/(tabs)/settings/sync")}
-          />
-          <SettingsRow
             icon="lock-closed-outline"
             iconBg="bg-green-500/10"
             iconColor="#22c55e"
