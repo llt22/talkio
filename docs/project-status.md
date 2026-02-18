@@ -30,7 +30,7 @@ Avatar 是一款本地优先的移动端多模型 AI 聊天客户端，核心理
 | 动态 System Prompt | ✅ | 挂载身份卡后 API 请求自动注入 system 消息 |
 | 本地数据持久化 | ✅ | MMKV（KV 加密）+ SQLite（结构化）+ Drizzle ORM |
 
-### P1 — 核心差异化（7/9）
+### P1 — 核心差异化（9/9 ✅）
 
 | 功能 | 状态 | 说明 |
 |------|------|------|
@@ -41,8 +41,8 @@ Avatar 是一款本地优先的移动端多模型 AI 聊天客户端，核心理
 | 思维链折叠 | ✅ | `reasoningContent` + `reasoningDuration` 支持折叠 |
 | MCP 工具框架 | ✅ | 工具注册/调度/权限/follow-up 闭环 |
 | 身份卡绑定 MCP | ✅ | `identity.mcpToolIds` + `identity.mcpServerIds` |
-| 模型能力主动探测 | 🔴 未实现 | 仅有关键词推断，无主动请求验证 |
-| 长按菜单 | 🔴 未实现 | 复制/重写/翻译/总结等交互 |
+| 模型能力主动探测 | ✅ | `probeModelCapabilities` + `probeReasoning`，UI 中每个模型旁有 Probe 按钮 |
+| 长按菜单 | ✅ | 复制/重写/翻译/总结/删除（assistant 消息特有重写+翻译+总结） |
 
 ### P2 — 体验增强（5/13）
 
@@ -177,11 +177,11 @@ avatar/
 | 类别 | 已完成 | 未完成 | 总计 |
 |------|--------|--------|------|
 | P0 MVP | 10 | 0 | 10 |
-| P1 核心差异化 | 7 | 2 | 9 |
+| P1 核心差异化 | 9 | 0 | 9 |
 | P2 体验增强 | 6 | 7 | 13 |
-| **总计** | **23** | **9** | **32** |
+| **总计** | **25** | **7** | **32** |
 
-**整体功能完成度：~72%**  
+**整体功能完成度：~78%**  
 **安全修复完成度：4/7 已修复（3 项有意保留）**
 
 ---
@@ -190,9 +190,8 @@ avatar/
 
 ### 短期（发布前）
 
-1. 实现 P1 **长按菜单**（复制/重写/翻译/总结）— 用户高频操作
-2. 考虑 **Network Security Config** 替代全局 cleartext（保留 localhost 白名单）
-3. 添加基础 **GitHub Actions** CI（typecheck + lint）
+1. 考虑 **Network Security Config** 替代全局 cleartext（保留 localhost 白名单）
+2. 添加基础 **GitHub Actions** CI（typecheck + lint）
 
 ### 中期
 
@@ -206,4 +205,4 @@ avatar/
 
 ---
 
-*基于 commit `18c480c` 分析生成*
+*最后更新：2026-02-18*

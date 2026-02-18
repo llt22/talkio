@@ -72,7 +72,10 @@
     "modelCount": "{{count}} 个模型",
     "noIdentity": "未设置角色",
     "micPermissionDenied": "需要麦克风权限才能使用语音输入。",
-    "noSttProvider": "未配置支持语音转文字的 OpenAI 兼容供应商。请添加支持 Whisper API 的供应商。"
+    "noSttProvider": "未配置支持语音转文字的 OpenAI 兼容供应商。请添加支持 Whisper API 的供应商。",
+    "rewrite": "重写",
+    "translate": "翻译",
+    "summarize": "总结"
   },
   "models": {
     "title": "模型",

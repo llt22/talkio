@@ -192,27 +192,50 @@ export default function ChatDetailScreen() {
     ]);
   }, [deleteMessage]);
 
+  const regenerateMessage = useChatStore((s) => s.regenerateMessage);
+
   const handleLongPress = useCallback((message: Message) => {
+    const isAssistant = message.role === "assistant";
+
     if (Platform.OS === "ios") {
+      const options = isAssistant
+        ? [t("common.cancel"), t("common.copy"), t("chat.rewrite"), t("chat.translate"), t("chat.summarize"), t("common.delete")]
+        : [t("common.cancel"), t("common.copy"), t("common.delete")];
+      const destructiveIndex = isAssistant ? 5 : 2;
+
       ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: [t("common.cancel"), t("common.copy"), t("common.delete")],
-          cancelButtonIndex: 0,
-          destructiveButtonIndex: 2,
-        },
+        { options, cancelButtonIndex: 0, destructiveButtonIndex: destructiveIndex },
         (index) => {
-          if (index === 1) copyMessage(message.content);
-          if (index === 2) handleDeleteMessage(message.id);
+          if (isAssistant) {
+            if (index === 1) copyMessage(message.content);
+            if (index === 2) regenerateMessage(message.id);
+            if (index === 3) handleSend(`Translate the following to ${t("common.cancel") === "取消" ? "English" : "Chinese"}:\n\n${message.content}`);
+            if (index === 4) handleSend(`Summarize the following concisely:\n\n${message.content}`);
+            if (index === 5) handleDeleteMessage(message.id);
+          } else {
+            if (index === 1) copyMessage(message.content);
+            if (index === 2) handleDeleteMessage(message.id);
+          }
         },
       );
     } else {
-      Alert.alert(t("chat.messageOptions"), undefined, [
-        { text: t("common.copy"), onPress: () => copyMessage(message.content) },
+      const buttons: Array<{ text: string; onPress?: () => void; style?: "default" | "cancel" | "destructive" }> = [
+        { text: t("common.copy"), onPress: () => { copyMessage(message.content); } },
+      ];
+      if (isAssistant) {
+        buttons.push(
+          { text: t("chat.rewrite"), onPress: () => { regenerateMessage(message.id); } },
+          { text: t("chat.translate"), onPress: () => { handleSend(`Translate the following to ${t("common.cancel") === "取消" ? "English" : "Chinese"}:\n\n${message.content}`); } },
+          { text: t("chat.summarize"), onPress: () => { handleSend(`Summarize the following concisely:\n\n${message.content}`); } },
+        );
+      }
+      buttons.push(
         { text: t("common.delete"), style: "destructive", onPress: () => handleDeleteMessage(message.id) },
         { text: t("common.cancel"), style: "cancel" },
-      ]);
+      );
+      Alert.alert(t("chat.messageOptions"), undefined, buttons);
     }
-  }, [copyMessage, handleDeleteMessage]);
+  }, [copyMessage, handleDeleteMessage, regenerateMessage, handleSend]);
 
   const lastAssistantId = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {

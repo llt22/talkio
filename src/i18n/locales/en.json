@@ -72,7 +72,10 @@
     "modelCount": "{{count}} models",
     "noIdentity": "No role",
     "micPermissionDenied": "Microphone access is required for voice input.",
-    "noSttProvider": "No OpenAI-compatible provider configured for speech-to-text. Please add a provider that supports the Whisper API."
+    "noSttProvider": "No OpenAI-compatible provider configured for speech-to-text. Please add a provider that supports the Whisper API.",
+    "rewrite": "Rewrite",
+    "translate": "Translate",
+    "summarize": "Summarize"
   },
   "models": {
     "title": "Models",
