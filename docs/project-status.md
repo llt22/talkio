@@ -54,7 +54,7 @@ Avatar 是一款本地优先的移动端多模型 AI 聊天客户端，核心理
 | 远程 MCP (Streamable HTTP) | ✅ | |
 | 对话分支 (Branching) | ✅ | |
 | 全局搜索 (FTS5) | ✅ | |
-| 语音输入 | ✅ | 录音 + Whisper 转写，支持 Groq 免费供应商，设置页可选 STT 供应商 |
+| 语音输入 | ✅ | 独立 STT 配置页（Base URL/Key/Model），Groq 免费预设，录音计时器 + 60s 自动停止 |
 | 快捷 Prompt 栏 | ✅ | 继续/解释/翻译/总结/更详细/利弊分析 |
 | 工具调用结果卡片 | ✅ | 可展开查看工具返回内容，状态图标 |
 | 长图导出 | ✅ | ViewShot 截图 + expo-sharing 分享 |
