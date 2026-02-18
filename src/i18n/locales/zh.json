@@ -126,6 +126,8 @@
     "sttSaved": "语音输入设置已保存。",
     "sttFetchModels": "获取模型",
     "sttFetchRequiresFields": "请先填写 Base URL 和 API Key。",
+    "sttShowAll": "显示全部",
+    "sttShowAudio": "仅音频模型",
     "quickPrompts": "快捷提示",
     "voiceAutoTranscribe": "语音自动转写",
     "dataManagement": "数据管理",

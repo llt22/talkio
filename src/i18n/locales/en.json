@@ -126,6 +126,8 @@
     "sttSaved": "Voice input settings saved.",
     "sttFetchModels": "Fetch Models",
     "sttFetchRequiresFields": "Please fill in Base URL and API Key first.",
+    "sttShowAll": "Show All",
+    "sttShowAudio": "Audio Only",
     "quickPrompts": "Quick Prompts",
     "voiceAutoTranscribe": "Voice Auto-transcribe",
     "dataManagement": "Data Management",
