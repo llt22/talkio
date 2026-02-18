@@ -47,7 +47,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
     mermaid.initialize({
       startOnLoad: true,
       theme: '${isDark ? "dark" : "default"}',
-      securityLevel: 'loose',
+      securityLevel: 'strict',
     });
     mermaid.run().then(() => {
       setTimeout(() => {
@@ -70,7 +70,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
         source={{ html }}
         style={{ height, backgroundColor: "transparent" }}
         scrollEnabled={false}
-        originWhitelist={["*"]}
+        originWhitelist={["https://"]}
         javaScriptEnabled
         onMessage={onMessage}
       />

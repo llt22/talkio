@@ -6,6 +6,7 @@ import { useProviderStore } from "../../../src/stores/provider-store";
 import {
   startConfigServer,
   stopConfigServer,
+  getPairingCode,
   type ProviderConfig,
 } from "../../../src/services/config-server";
 
@@ -89,6 +90,16 @@ export default function WebConfigScreen() {
               <Text className="mt-2 text-center text-xs text-amber-600">
                 {t("webConfig.ipNotDetected")}
               </Text>
+            )}
+            {getPairingCode() && (
+              <View className="mt-3 rounded-lg bg-violet-50 p-3">
+                <Text className="text-center text-xs text-text-muted">
+                  {t("webConfig.pairingCodeLabel")}
+                </Text>
+                <Text className="mt-1 text-center text-2xl font-bold tracking-widest text-violet-600">
+                  {getPairingCode()}
+                </Text>
+              </View>
             )}
           </View>
         )}

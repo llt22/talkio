@@ -175,7 +175,7 @@ export function HtmlPreview({ code, language = "html" }: HtmlPreviewProps) {
         <WebView
           source={{ html: wrappedHtml }}
           style={{ height: webViewHeight }}
-          originWhitelist={["*"]}
+          originWhitelist={["https://"]}
           javaScriptEnabled
           scrollEnabled={false}
           onMessage={handleMessage}
@@ -221,7 +221,7 @@ function FullscreenPreview({ code, onClose }: { code: string; onClose: () => voi
       <WebView
         source={{ html: fullscreenHtml }}
         style={{ flex: 1 }}
-        originWhitelist={["*"]}
+        originWhitelist={["https://"]}
         javaScriptEnabled
         scrollEnabled
         nestedScrollEnabled

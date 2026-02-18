@@ -211,7 +211,8 @@
     "startServer": "启动配置服务",
     "stopServer": "停止服务",
     "visitUrl": "在电脑浏览器中访问：",
-    "ipNotDetected": "无法自动检测 WiFi IP，请将 0.0.0.0 替换为手机的 WiFi IP（在手机 WiFi 设置中查看）。"
+    "ipNotDetected": "无法自动检测 WiFi IP，请将 0.0.0.0 替换为手机的 WiFi IP（在手机 WiFi 设置中查看）。",
+    "pairingCodeLabel": "安全配对码（网页端已自动填入）"
   },
   "identityEdit": {
     "name": "名称",

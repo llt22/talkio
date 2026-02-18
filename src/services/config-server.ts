@@ -1,5 +1,3 @@
-import * as server from "expo-http-server";
-import { getWifiIP } from "../../modules/expo-ip";
 import { logger } from "./logger";
 
 const log = logger.withContext("ConfigServer");
@@ -7,6 +5,50 @@ const PORT = 19280;
 
 let isRunning = false;
 let onConfigReceived: ((config: ProviderConfig) => void) | null = null;
+let currentPairingCode: string | null = null;
+
+function getServer() {
+  try {
+    return require("expo-http-server") as typeof import("expo-http-server");
+  } catch (e) {
+    log.error(`expo-http-server not available: ${e}`);
+    return null;
+  }
+}
+
+function getWifiIPSafe(): string {
+  try {
+    const { getWifiIP } = require("../../modules/expo-ip");
+    const ip = getWifiIP();
+    if (ip && ip !== "0.0.0.0") return ip;
+  } catch (e) {
+    log.warn(`Failed to get WiFi IP: ${e}`);
+  }
+  return "0.0.0.0";
+}
+
+function generatePairingCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+function validatePairingCode(request: { body: string }): boolean {
+  if (!currentPairingCode) return false;
+  try {
+    const data = JSON.parse(request.body);
+    return data._pairingCode === currentPairingCode;
+  } catch {
+    return false;
+  }
+}
+
+export function getPairingCode(): string | null {
+  return currentPairingCode;
+}
 
 export interface ProviderConfig {
   name: string;
@@ -121,6 +163,7 @@ const CONFIG_PAGE_HTML = `<!DOCTYPE html>
       }
     };
 
+    const PAIRING_CODE = '__PAIRING_CODE__';
     let lang = navigator.language.startsWith('zh') ? 'zh' : 'en';
     const added = [];
 
@@ -180,7 +223,7 @@ const CONFIG_PAGE_HTML = `<!DOCTYPE html>
       try {
         const res = await fetch('/api/config', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, baseUrl, apiKey }),
+          body: JSON.stringify({ name, baseUrl, apiKey, _pairingCode: PAIRING_CODE }),
         });
         if (res.ok) {
           added.push({ name, baseUrl });
@@ -207,7 +250,7 @@ const CONFIG_PAGE_HTML = `<!DOCTYPE html>
       try {
         const res = await fetch('/api/test', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ baseUrl, apiKey }),
+          body: JSON.stringify({ baseUrl, apiKey, _pairingCode: PAIRING_CODE }),
         });
         const data = await res.json();
         if (data.ok) { showToast(t('testOk'), 'success'); }
@@ -221,14 +264,28 @@ const CONFIG_PAGE_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
+const UNAUTHORIZED_RESPONSE = {
+  statusCode: 403,
+  contentType: "application/json",
+  body: JSON.stringify({ error: "Invalid pairing code" }),
+};
+
 export async function startConfigServer(
   callback: (config: ProviderConfig) => void,
 ): Promise<string> {
+  const server = getServer();
+  if (!server) {
+    throw new Error("HTTP server module is not available");
+  }
+
   // Force stop any leftover native server (e.g. after hot reload)
   try { server.stop(); } catch {}
   isRunning = false;
 
   onConfigReceived = callback;
+  currentPairingCode = generatePairingCode();
+
+  const pageHtml = CONFIG_PAGE_HTML.replace("__PAIRING_CODE__", currentPairingCode);
 
   server.setup(PORT, (event) => {
     log.info(`Server status: ${event.status} - ${event.message}`);
@@ -237,18 +294,17 @@ export async function startConfigServer(
   server.route("/", "GET", async () => ({
     statusCode: 200,
     contentType: "text/html",
-    headers: { "Access-Control-Allow-Origin": "*" },
-    body: CONFIG_PAGE_HTML,
+    body: pageHtml,
   }));
 
   server.route("/api/config", "POST", async (request) => {
+    if (!validatePairingCode(request)) return UNAUTHORIZED_RESPONSE;
     try {
       const config: ProviderConfig = JSON.parse(request.body);
       if (!config.name || !config.baseUrl || !config.apiKey) {
         return {
           statusCode: 400,
           contentType: "application/json",
-          headers: { "Access-Control-Allow-Origin": "*" },
           body: JSON.stringify({ error: "All fields are required" }),
         };
       }
@@ -256,27 +312,25 @@ export async function startConfigServer(
       return {
         statusCode: 200,
         contentType: "application/json",
-        headers: { "Access-Control-Allow-Origin": "*" },
         body: JSON.stringify({ ok: true }),
       };
     } catch {
       return {
         statusCode: 400,
         contentType: "application/json",
-        headers: { "Access-Control-Allow-Origin": "*" },
         body: JSON.stringify({ error: "Invalid JSON" }),
       };
     }
   });
 
   server.route("/api/test", "POST", async (request) => {
+    if (!validatePairingCode(request)) return UNAUTHORIZED_RESPONSE;
     try {
       const { baseUrl, apiKey } = JSON.parse(request.body);
       if (!baseUrl || !apiKey) {
         return {
           statusCode: 400,
           contentType: "application/json",
-          headers: { "Access-Control-Allow-Origin": "*" },
           body: JSON.stringify({ ok: false, error: "baseUrl and apiKey required" }),
         };
       }
@@ -288,7 +342,6 @@ export async function startConfigServer(
         return {
           statusCode: 200,
           contentType: "application/json",
-          headers: { "Access-Control-Allow-Origin": "*" },
           body: JSON.stringify({ ok: true }),
         };
       }
@@ -296,62 +349,31 @@ export async function startConfigServer(
       return {
         statusCode: 200,
         contentType: "application/json",
-        headers: { "Access-Control-Allow-Origin": "*" },
         body: JSON.stringify({ ok: false, error: `${resp.status} ${text.slice(0, 200)}` }),
       };
     } catch (err) {
       return {
         statusCode: 200,
         contentType: "application/json",
-        headers: { "Access-Control-Allow-Origin": "*" },
         body: JSON.stringify({ ok: false, error: err instanceof Error ? err.message : "Unknown" }),
       };
     }
   });
 
-  server.route("/api/test", "OPTIONS", async () => ({
-    statusCode: 200,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
-    body: "",
-  }));
-
-  // CORS preflight
-  server.route("/api/config", "OPTIONS", async () => ({
-    statusCode: 200,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
-    body: "",
-  }));
-
   server.start();
   isRunning = true;
 
-  const ip = await getLocalIP();
+  const ip = getWifiIPSafe();
   const url = `http://${ip}:${PORT}`;
-  log.info(`Config server started at ${url}`);
+  log.info(`Config server started at ${url} (pairing: ${currentPairingCode})`);
   return url;
 }
 
 export function stopConfigServer() {
-  try { server.stop(); } catch {}
+  const server = getServer();
+  try { server?.stop(); } catch {}
   isRunning = false;
   onConfigReceived = null;
+  currentPairingCode = null;
   log.info("Config server stopped");
-}
-
-async function getLocalIP(): Promise<string> {
-  try {
-    const ip = getWifiIP();
-    if (ip && ip !== "0.0.0.0") return ip;
-  } catch (e) {
-    log.warn(`Failed to get WiFi IP: ${e}`);
-  }
-  return "0.0.0.0";
 }

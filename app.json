@@ -20,8 +20,7 @@
         "NSCalendarsUsageDescription": "Access calendar to manage events with AI",
         "NSRemindersUsageDescription": "Create reminders through AI assistant",
         "NSLocationWhenInUseUsageDescription": "Share location with AI for context",
-        "NSMicrophoneUsageDescription": "Voice input for AI chat",
-        "NSContactsUsageDescription": "Access contacts for AI features"
+        "NSMicrophoneUsageDescription": "Voice input for AI chat"
       }
     },
     "android": {
@@ -40,8 +39,7 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "RECORD_AUDIO",
-        "MODIFY_AUDIO_SETTINGS",
-        "READ_CONTACTS"
+        "MODIFY_AUDIO_SETTINGS"
       ]
     },
     "experiments": {
