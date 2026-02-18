@@ -118,9 +118,10 @@ export function ChatInput({
       try {
         // Find a provider that supports transcription (OpenAI-compatible)
         const providers = useProviderStore.getState().providers;
-        const sttProvider = providers.find(
-          (p) => p.enabled && (p.type === "openai" || p.type === "azure-openai"),
-        );
+        const sttId = useSettingsStore.getState().settings.sttProviderId;
+        const sttProvider = sttId
+          ? providers.find((p) => p.id === sttId && p.enabled)
+          : providers.find((p) => p.enabled && (p.type === "openai" || p.type === "azure-openai"));
         if (!sttProvider) {
           Alert.alert(t("common.error"), t("chat.noSttProvider"));
           return;

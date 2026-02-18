@@ -76,7 +76,7 @@ export default function SettingsScreen() {
         <View
           className="overflow-hidden rounded-xl border border-slate-100 bg-white"
         >
-          <View className="flex-row items-center justify-between p-4">
+          <View className="flex-row items-center justify-between p-4 border-b border-slate-50">
             <View className="flex-row items-center">
               <View className="mr-3 h-8 w-8 items-center justify-center rounded-lg bg-gray-500/10">
                 <Ionicons name="hand-left-outline" size={16} color="#6b7280" />
@@ -91,6 +91,53 @@ export default function SettingsScreen() {
               ios_backgroundColor="#e5e7eb"
             />
           </View>
+          <Pressable
+            onPress={() => {
+              const sttCompatible = providers.filter(
+                (p) => p.enabled && (p.type === "openai" || p.type === "azure-openai"),
+              );
+              if (sttCompatible.length === 0) {
+                Alert.alert(t("common.error"), t("settings.noSttProviderHint"));
+                return;
+              }
+              const options = [t("common.cancel"), t("settings.sttAuto"), ...sttCompatible.map((p) => p.name)];
+              if (Platform.OS === "ios") {
+                ActionSheetIOS.showActionSheetWithOptions(
+                  { options, cancelButtonIndex: 0 },
+                  (idx) => {
+                    if (idx === 1) updateSettings({ sttProviderId: null });
+                    else if (idx > 1) updateSettings({ sttProviderId: sttCompatible[idx - 2].id });
+                  },
+                );
+              } else {
+                const buttons = [
+                  { text: t("settings.sttAuto"), onPress: () => updateSettings({ sttProviderId: null }) },
+                  ...sttCompatible.map((p) => ({
+                    text: p.name,
+                    onPress: () => updateSettings({ sttProviderId: p.id }),
+                  })),
+                  { text: t("common.cancel"), style: "cancel" as const },
+                ];
+                Alert.alert(t("settings.sttProvider"), undefined, buttons);
+              }
+            }}
+            className="flex-row items-center justify-between p-4"
+          >
+            <View className="flex-row items-center">
+              <View className="mr-3 h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
+                <Ionicons name="mic-outline" size={16} color="#f97316" />
+              </View>
+              <Text className="text-[15px] font-medium text-text-main">{t("settings.sttProvider")}</Text>
+            </View>
+            <View className="flex-row items-center">
+              <Text className="mr-2 text-sm text-slate-400">
+                {settings.sttProviderId
+                  ? providers.find((p) => p.id === settings.sttProviderId)?.name ?? t("settings.sttAuto")
+                  : t("settings.sttAuto")}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="#cbd5e1" />
+            </View>
+          </Pressable>
         </View>
       </View>
 

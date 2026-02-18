@@ -10,6 +10,7 @@ interface AppSettings {
   hapticFeedback: boolean;
   quickPromptEnabled: boolean;
   voiceAutoTranscribe: boolean;
+  sttProviderId: string | null;
 }
 
 interface SettingsState {
@@ -24,6 +25,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   hapticFeedback: true,
   quickPromptEnabled: true,
   voiceAutoTranscribe: true,
+  sttProviderId: null,
 };
 
 function applyLanguage(lang: AppSettings["language"]) {
