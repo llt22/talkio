@@ -478,7 +478,7 @@ export class ApiClient {
 
   // ── Speech-to-Text ──
 
-  async transcribeAudio(audioUri: string, language?: string): Promise<string> {
+  async transcribeAudio(audioUri: string, language?: string, sttModel?: string): Promise<string> {
     const formData = new FormData();
     const ext = audioUri.split(".").pop() ?? "m4a";
     const mimeMap: Record<string, string> = {
@@ -494,7 +494,10 @@ export class ApiClient {
       name: `recording.${ext}`,
       type: mimeMap[ext] ?? "audio/mp4",
     } as unknown as Blob);
-    formData.append("model", "whisper-1");
+    const defaultModel = this.baseUrl.includes("groq.com")
+      ? "whisper-large-v3-turbo"
+      : "whisper-1";
+    formData.append("model", sttModel || defaultModel);
     if (language) formData.append("language", language);
 
     const headers: Record<string, string> = {};
