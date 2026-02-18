@@ -11,6 +11,7 @@ import type { ConversationParticipant } from "../../types";
 import { useProviderStore } from "../../stores/provider-store";
 import { extractMentionedModelIds } from "../../utils/mention-parser";
 import { useChatStore } from "../../stores/chat-store";
+import { useSettingsStore } from "../../stores/settings-store";
 import { ApiClient } from "../../services/api-client";
 
 interface ChatInputProps {
@@ -149,6 +150,19 @@ export function ChatInput({
     }
   }, [isRecording, isTranscribing, recorder, t]);
 
+  const quickPromptEnabled = useSettingsStore((s) => s.settings.quickPromptEnabled);
+  const hasMessages = useChatStore((s) => s.messages.length > 0);
+  const showQuickPrompts = quickPromptEnabled && hasMessages && !text.trim() && attachedImages.length === 0 && !isGenerating && !isRecording;
+
+  const quickPrompts = [
+    { label: t("quickPrompt.continue"), prompt: t("quickPrompt.continuePrompt") },
+    { label: t("quickPrompt.explain"), prompt: t("quickPrompt.explainPrompt") },
+    { label: t("quickPrompt.translate"), prompt: t("quickPrompt.translatePrompt") },
+    { label: t("quickPrompt.summarize"), prompt: t("quickPrompt.summarizePrompt") },
+    { label: t("quickPrompt.detail"), prompt: t("quickPrompt.detailPrompt") },
+    { label: t("quickPrompt.proscons"), prompt: t("quickPrompt.prosconsPrompt") },
+  ];
+
   const handleTextChange = (value: string) => {
     setText(value);
     if (isGroup && value.endsWith("@")) {
@@ -194,6 +208,25 @@ export function ChatInput({
                 <Ionicons name="close" size={12} color="#fff" />
               </Pressable>
             </View>
+          ))}
+        </ScrollView>
+      )}
+
+      {showQuickPrompts && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="border-b border-slate-100 bg-slate-50/50 px-3 py-2"
+          contentContainerStyle={{ gap: 8 }}
+        >
+          {quickPrompts.map((qp) => (
+            <Pressable
+              key={qp.label}
+              onPress={() => onSend(qp.prompt)}
+              className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5"
+            >
+              <Text className="text-[13px] font-medium text-slate-600">{qp.label}</Text>
+            </Pressable>
           ))}
         </ScrollView>
       )}

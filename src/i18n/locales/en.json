@@ -260,6 +260,20 @@
     "dataManagementDesc": "You can export or delete all your data at any time from the Settings page. We do not collect analytics or telemetry data."
   },
   "htmlPreview": {
-    "writing": "Writing..."
+    "writing": "..."
+  },
+  "quickPrompt": {
+    "continue": "Continue",
+    "continuePrompt": "Please continue.",
+    "explain": "Explain",
+    "explainPrompt": "Can you explain that in more detail?",
+    "translate": "Translate",
+    "translatePrompt": "Please translate your last response to the other language (Chinese if it was English, English if it was Chinese).",
+    "summarize": "Summarize",
+    "summarizePrompt": "Please summarize your last response concisely.",
+    "detail": "More detail",
+    "detailPrompt": "Can you elaborate further with more details and examples?",
+    "proscons": "Pros & Cons",
+    "prosconsPrompt": "What are the pros and cons of this approach?"
   }
 }
