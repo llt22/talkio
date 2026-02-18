@@ -52,10 +52,11 @@ interface ChatState {
   deleteMessageById: (messageId: string) => Promise<void>;
   clearConversationMessages: (conversationId: string) => Promise<void>;
   searchAllMessages: (query: string) => Promise<Message[]>;
+  /** @internal */
+  _abortController: AbortController | null;
 }
 
 let loadSequence = 0;
-let currentAbortController: AbortController | null = null;
 
 export const useChatStore = create<ChatState>((set, get) => ({
   conversations: [],
@@ -64,6 +65,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streamingMessage: null,
   isGenerating: false,
   activeBranchId: null,
+  _abortController: null,
 
   loadConversations: async () => {
     const conversations = await getAllConversations();
@@ -190,22 +192,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const targetModelIds = resolveTargetModels(conv, mentionedModelIds);
 
       const abortController = new AbortController();
-      currentAbortController = abortController;
+      set({ _abortController: abortController });
 
       for (const modelId of targetModelIds) {
         if (abortController.signal.aborted) break;
         await generateResponse(convId, modelId, conv, abortController.signal);
       }
     } finally {
-      currentAbortController = null;
-      set({ isGenerating: false });
+      set({ _abortController: null, isGenerating: false });
     }
   },
 
   stopGeneration: () => {
-    if (currentAbortController) {
-      currentAbortController.abort();
-      currentAbortController = null;
+    const ctrl = get()._abortController;
+    if (ctrl) {
+      ctrl.abort();
+      set({ _abortController: null });
     }
   },
 
@@ -228,13 +230,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
 
     const abortController = new AbortController();
-    currentAbortController = abortController;
+    set({ _abortController: abortController });
 
     try {
       await generateResponse(convId, msg.senderModelId, conv, abortController.signal);
     } finally {
-      currentAbortController = null;
-      set({ isGenerating: false });
+      set({ _abortController: null, isGenerating: false });
     }
   },
 

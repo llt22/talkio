@@ -43,7 +43,7 @@ export class ApiClient {
   async listModels(): Promise<Array<{ id: string; object: string }>> {
     if (this.providerType === "gemini") return this.listModelsGemini();
     // Anthropic, OpenAI, Azure all use /models endpoint
-    const response = await fetch(this.getUrl("/models"), {
+    const response = await this.fetchWithRetry(this.getUrl("/models"), {
       headers: this.getHeaders(),
     });
     if (!response.ok) {
@@ -65,7 +65,7 @@ export class ApiClient {
   async chat(request: ChatApiRequest): Promise<ChatApiResponse> {
     if (this.providerType === "anthropic") return this.chatAnthropic(request);
     if (this.providerType === "gemini") return this.chatGemini(request);
-    const response = await fetch(this.getUrl("/chat/completions"), {
+    const response = await this.fetchWithRetry(this.getUrl("/chat/completions"), {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify({ ...request, stream: false }),
@@ -188,7 +188,7 @@ export class ApiClient {
   private async chatAnthropic(request: ChatApiRequest): Promise<ChatApiResponse> {
     const body = this.toAnthropicBody(request);
     body.stream = false;
-    const response = await fetch(`${this.baseUrl}/messages`, {
+    const response = await this.fetchWithRetry(`${this.baseUrl}/messages`, {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify(body),
@@ -325,7 +325,7 @@ export class ApiClient {
 
   private async listModelsGemini(): Promise<Array<{ id: string; object: string }>> {
     const url = `${this.baseUrl}/models?key=${this.apiKey}`;
-    const response = await fetch(url, { headers: { ...this.customHeaders, "x-goog-api-key": this.apiKey } });
+    const response = await this.fetchWithRetry(url, { headers: { ...this.customHeaders, "x-goog-api-key": this.apiKey } });
     if (!response.ok) throw new Error(`Failed to list models: ${response.status}`);
     const data = await response.json();
     return (data.models ?? []).map((m: any) => ({
@@ -337,7 +337,7 @@ export class ApiClient {
   private async chatGemini(request: ChatApiRequest): Promise<ChatApiResponse> {
     const body = this.toGeminiBody(request);
     const url = `${this.baseUrl}/models/${request.model}:generateContent?key=${this.apiKey}`;
-    const response = await fetch(url, {
+    const response = await this.fetchWithRetry(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...this.customHeaders, "x-goog-api-key": this.apiKey },
       body: JSON.stringify(body),
@@ -528,7 +528,7 @@ export class ApiClient {
     }
 
     const url = this.getUrl("/audio/transcriptions");
-    const response = await fetch(url, {
+    const response = await this.fetchWithRetry(url, {
       method: "POST",
       headers,
       body: formData,
@@ -612,6 +612,30 @@ export class ApiClient {
     } catch {
       return false;
     }
+  }
+
+  private async fetchWithRetry(
+    input: string,
+    init?: RequestInit,
+    maxRetries = 2,
+  ): Promise<Response> {
+    const retryableStatus = new Set([429, 500, 502, 503, 504]);
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(input, init);
+        if (response.ok || !retryableStatus.has(response.status) || attempt === maxRetries) {
+          return response;
+        }
+        lastError = new Error(`HTTP ${response.status}`);
+      } catch (err) {
+        lastError = err;
+        if (attempt === maxRetries) throw err;
+      }
+      // Exponential back-off: 500ms, 1500ms
+      await new Promise((r) => setTimeout(r, 500 * Math.pow(3, attempt)));
+    }
+    throw lastError;
   }
 
   private getHeaders(): Record<string, string> {

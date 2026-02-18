@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 
 export const conversations = sqliteTable("conversations", {
@@ -32,7 +32,7 @@ export const messages = sqliteTable(
     parentMessageId: text("parentMessageId"),
     images: text("images").notNull().default("[]"),
     generatedImages: text("generatedImages").notNull().default("[]"),
-    reasoningDuration: integer("reasoningDuration"),
+    reasoningDuration: real("reasoningDuration"),
     isStreaming: integer("isStreaming").notNull().default(0),
     createdAt: text("createdAt").notNull(),
   },
