@@ -386,24 +386,21 @@ export async function generateResponse(
       toolResults,
       isStreaming: false,
     };
+    const now = new Date().toISOString();
     useChatStore.setState((s) => ({
       messages: [...s.messages, finalMsg],
       streamingMessage: null,
-    }));
-
-    const now = new Date().toISOString();
-    await dbUpdateConversation(conversationId, {
-      lastMessage: content.slice(0, 100),
-      lastMessageAt: now,
-    });
-
-    useChatStore.setState((s) => ({
       conversations: s.conversations.map((c) =>
         c.id === conversationId
           ? { ...c, lastMessage: content.slice(0, 100), lastMessageAt: now, updatedAt: now }
           : c,
       ),
     }));
+
+    dbUpdateConversation(conversationId, {
+      lastMessage: content.slice(0, 100),
+      lastMessageAt: now,
+    }).catch((e) => log.error(`DB conversation update failed: ${e}`));
 
     // Auto-generate conversation title on first response
     log.info(`[generateResponse] Stream complete. ${chunkCount} chunks, ${content.length} chars`);

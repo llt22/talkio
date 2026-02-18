@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { View, Text, Pressable, Modal, Platform, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -13,7 +13,7 @@ interface HtmlPreviewProps {
   language?: string;
 }
 
-export function HtmlPreview({ code, language = "html" }: HtmlPreviewProps) {
+export const HtmlPreview = React.memo(function HtmlPreview({ code, language = "html" }: HtmlPreviewProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"preview" | "code">("code");
   const [debouncedCode, setDebouncedCode] = useState(code);
@@ -30,7 +30,7 @@ export function HtmlPreview({ code, language = "html" }: HtmlPreviewProps) {
     setCodeStable(false);
     const debounceTimer = setTimeout(() => {
       setDebouncedCode(code);
-    }, 800);
+    }, 120);
     // Auto-switch to Preview once code stabilizes (2s without changes)
     const stableTimer = setTimeout(() => {
       setCodeStable(true);
@@ -71,6 +71,8 @@ export function HtmlPreview({ code, language = "html" }: HtmlPreviewProps) {
 </head>
 <body>${debouncedCode}</body>
 </html>`;
+
+  const webViewSource = useMemo(() => ({ html: wrappedHtml }), [wrappedHtml]);
 
   const handleMessage = (event: any) => {
     try {
@@ -172,7 +174,7 @@ export function HtmlPreview({ code, language = "html" }: HtmlPreviewProps) {
       {/* Content: both tabs stay mounted, toggle display to avoid expensive re-renders */}
       <View style={{ display: activeTab === "preview" ? "flex" : "none" }}>
         <WebView
-          source={{ html: wrappedHtml }}
+          source={webViewSource}
           style={{ height: webViewHeight }}
           originWhitelist={["https://"]}
           javaScriptEnabled
@@ -190,7 +192,7 @@ export function HtmlPreview({ code, language = "html" }: HtmlPreviewProps) {
       </Modal>
     </View>
   );
-}
+});
 
 function FullscreenPreview({ code, onClose }: { code: string; onClose: () => void }) {
   const insets = useSafeAreaInsets();

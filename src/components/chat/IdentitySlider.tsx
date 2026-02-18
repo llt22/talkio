@@ -1,3 +1,4 @@
+import React from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useIdentityStore } from "../../stores/identity-store";
@@ -8,7 +9,7 @@ interface IdentitySliderProps {
   onSelect: (identityId: string | null) => void;
 }
 
-export function IdentitySlider({
+export const IdentitySlider = React.memo(function IdentitySlider({
   visible,
   activeIdentityId,
   onSelect,
@@ -81,7 +82,7 @@ export function IdentitySlider({
       </ScrollView>
     </View>
   );
-}
+});
 
 function getIconName(icon: string): keyof typeof Ionicons.glyphMap {
   const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
