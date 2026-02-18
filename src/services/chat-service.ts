@@ -214,6 +214,38 @@ export async function generateResponse(
     };
 
     let chunkCount = 0;
+    let uiDirty = false;
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const UI_THROTTLE_MS = 80;
+
+    const flushUI = () => {
+      flushTimer = null;
+      uiDirty = false;
+      useChatStore.setState((s) => {
+        const msgs = [...s.messages];
+        const idx = msgs.length - 1;
+        if (idx >= 0 && msgs[idx].id === assistantMsg.id) {
+          msgs[idx] = {
+            ...msgs[idx],
+            content,
+            generatedImages: [...generatedImages],
+            reasoningContent: reasoningContent || null,
+            toolCalls: pendingToolCalls.map((tc) => ({
+              id: tc.id,
+              name: tc.name,
+              arguments: tc.arguments,
+            })),
+          };
+        }
+        return { messages: msgs };
+      });
+    };
+
+    const scheduleFlush = () => {
+      uiDirty = true;
+      if (!flushTimer) flushTimer = setTimeout(flushUI, UI_THROTTLE_MS);
+    };
+
     for await (const delta of stream) {
       chunkCount++;
       if (chunkCount === 1) log.info(`[generateResponse] First chunk received`);
@@ -256,25 +288,12 @@ export async function generateResponse(
         }
       }
 
-      useChatStore.setState((s) => {
-        const msgs = [...s.messages];
-        const idx = msgs.length - 1;
-        if (idx >= 0 && msgs[idx].id === assistantMsg.id) {
-          msgs[idx] = {
-            ...msgs[idx],
-            content,
-            generatedImages: [...generatedImages],
-            reasoningContent: reasoningContent || null,
-            toolCalls: pendingToolCalls.map((tc) => ({
-              id: tc.id,
-              name: tc.name,
-              arguments: tc.arguments,
-            })),
-          };
-        }
-        return { messages: msgs };
-      });
+      scheduleFlush();
     }
+
+    // Final flush after stream ends
+    if (flushTimer) clearTimeout(flushTimer);
+    if (uiDirty) flushUI();
 
     // Post-stream: extract markdown images from content
     const mdImageRegex = /!\[[^\]]*\]\((data:image\/[^)]+)\)/g;
@@ -339,10 +358,11 @@ export async function generateResponse(
       const followUpStream = client.streamChat(followUpParams as any, signal);
 
       let followUpContent = "";
-      for await (const delta of followUpStream) {
-        if (delta.content) {
-          followUpContent += delta.content;
-        }
+      let fuDirty = false;
+      let fuTimer: ReturnType<typeof setTimeout> | null = null;
+      const flushFollowUp = () => {
+        fuTimer = null;
+        fuDirty = false;
         useChatStore.setState((s) => {
           const msgs = [...s.messages];
           const idx = msgs.length - 1;
@@ -351,7 +371,16 @@ export async function generateResponse(
           }
           return { messages: msgs };
         });
+      };
+      for await (const delta of followUpStream) {
+        if (delta.content) {
+          followUpContent += delta.content;
+        }
+        fuDirty = true;
+        if (!fuTimer) fuTimer = setTimeout(flushFollowUp, UI_THROTTLE_MS);
       }
+      if (fuTimer) clearTimeout(fuTimer);
+      if (fuDirty) flushFollowUp();
 
       if (followUpContent) {
         content = followUpContent;

@@ -7,6 +7,21 @@ import type {
   ProviderType,
 } from "../types";
 
+const STREAM_READ_TIMEOUT_MS = 30_000;
+
+function readWithTimeout<T>(
+  reader: ReadableStreamDefaultReader<T>,
+  timeoutMs: number,
+): Promise<ReadableStreamReadResult<T>> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Stream read timed out")), timeoutMs);
+    reader.read().then(
+      (result) => { clearTimeout(timer); resolve(result); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
 export class ApiClient {
   private baseUrl: string;
   private apiKey: string;
@@ -136,7 +151,7 @@ export class ApiClient {
 
     try {
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await readWithTimeout(reader, STREAM_READ_TIMEOUT_MS);
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
@@ -441,7 +456,7 @@ export class ApiClient {
     let buffer = "";
     try {
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await readWithTimeout(reader, STREAM_READ_TIMEOUT_MS);
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
