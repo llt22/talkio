@@ -19,6 +19,8 @@ import type { Message } from "../../src/types";
 
 KeyboardController.preload();
 
+const messageKeyExtractor = (item: Message) => item.id;
+
 export default function ChatDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -490,7 +492,7 @@ export default function ChatDetailScreen() {
         ref={listRef}
         data={messages}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={messageKeyExtractor}
         ListFooterComponent={listFooter}
         {...legendListProps}
         onScroll={handleScroll}
