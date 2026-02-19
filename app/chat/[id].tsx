@@ -47,6 +47,8 @@ export default function ChatDetailScreen() {
   const getModelById = useProviderStore((s) => s.getModelById);
   const getIdentityById = useIdentityStore((s) => s.getIdentityById);
   const isGroup = conv?.type === "group";
+  const participants = conv?.participants;
+  const stableParticipants = useMemo(() => participants ?? [], [JSON.stringify(participants)]);
   const [showIdentitySlider, setShowIdentitySlider] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [editingParticipantModelId, setEditingParticipantModelId] = useState<string | null>(null);
@@ -498,7 +500,7 @@ export default function ChatDetailScreen() {
         onSend={handleSend}
         isGenerating={isGenerating}
         isGroup={isGroup}
-        participants={conv.participants}
+        participants={stableParticipants}
       />
     </KeyboardAvoidingView>
     </View>
