@@ -9,6 +9,7 @@ interface MarkdownRendererProps {
   content: string;
 }
 
+// P1: 将样式和规则移到组件外部，避免每次渲染重新创建
 const mdStyles = {
   body: { fontSize: 15, lineHeight: 22, color: "#1f2937" },
   heading1: { fontSize: 22, fontWeight: "700" as const, color: "#111827", marginTop: 8, marginBottom: 4 },
@@ -59,10 +60,21 @@ const rules = {
   },
 };
 
+// P2: 添加内容长度限制，避免超长内容导致卡顿
+const MAX_CONTENT_LENGTH = 50000;
+
 export const MarkdownRenderer = React.memo(function MarkdownRenderer({ content }: MarkdownRendererProps) {
+  // P3: 使用 useMemo 缓存处理后的内容
+  const processedContent = useMemo(() => {
+    if (content.length > MAX_CONTENT_LENGTH) {
+      return content.slice(0, MAX_CONTENT_LENGTH) + "\n\n... (内容过长，已截断)";
+    }
+    return content;
+  }, [content]);
+
   return (
     <Markdown style={mdStyles} rules={rules}>
-      {content}
+      {processedContent}
     </Markdown>
   );
 });

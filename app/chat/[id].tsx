@@ -35,6 +35,9 @@ export default function ChatDetailScreen() {
   const messages = useChatStore((s) => s.messages);
   const streamingMessage = useChatStore((s) => s.streamingMessage);
   const isGenerating = useChatStore((s) => s.isGenerating);
+  const hasMoreMessages = useChatStore((s) => s.hasMoreMessages);
+  const isLoadingMore = useChatStore((s) => s.isLoadingMore);
+  const loadMoreMessages = useChatStore((s) => s.loadMoreMessages);
 
   // Combine settled messages + streaming message for display
   const displayMessages = useMemo(
@@ -53,6 +56,7 @@ export default function ChatDetailScreen() {
   const [editingParticipantModelId, setEditingParticipantModelId] = useState<string | null>(null);
   const userScrolledAway = useRef(false);
   const isDragging = useRef(false);
+  const loadMoreCooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // For single chat, use the first participant
   const currentParticipant = conv?.participants[0];
@@ -62,15 +66,26 @@ export default function ChatDetailScreen() {
     : null;
 
   useEffect(() => {
-    // Delay data loading until navigation animation completes to avoid jank
-    const task = InteractionManager.runAfterInteractions(() => {
-      if (id) setCurrentConversation(id);
-    });
-    return () => {
-      task.cancel();
-      setCurrentConversation(null);
-    };
-  }, [id]);
+    // P1: 立即设置当前会话，但延迟消息加载到导航动画后
+    if (id) {
+      const raf = requestAnimationFrame(() => {
+        setCurrentConversation(id, { deferLoad: true });
+      });
+
+      return () => {
+        cancelAnimationFrame(raf);
+        const previousId = id;
+        InteractionManager.runAfterInteractions(() => {
+          // 仅当仍然停留在该会话时才清理，避免切换对话时误清空
+          if (useChatStore.getState().currentConversationId === previousId) {
+            setCurrentConversation(null);
+          }
+        });
+      };
+    }
+
+    return undefined;
+  }, [id, setCurrentConversation]);
 
   const clearConversationMessages = useChatStore((s) => s.clearConversationMessages);
 
@@ -158,6 +173,7 @@ export default function ChatDetailScreen() {
     if (!isDragging.current) return;
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+    const distanceFromTop = contentOffset.y;
     if (distanceFromBottom > 120) {
       // User scrolled away from bottom
       userScrolledAway.current = true;
@@ -165,7 +181,15 @@ export default function ChatDetailScreen() {
       // User scrolled back to bottom
       userScrolledAway.current = false;
     }
-  }, []);
+    if (distanceFromTop < 120 && hasMoreMessages && !isLoadingMore) {
+      if (!loadMoreCooldownRef.current) {
+        loadMoreMessages();
+        loadMoreCooldownRef.current = setTimeout(() => {
+          loadMoreCooldownRef.current = null;
+        }, 500);
+      }
+    }
+  }, [hasMoreMessages, isLoadingMore, loadMoreMessages]);
 
   const handleScrollBeginDrag = useCallback(() => {
     isDragging.current = true;
@@ -279,16 +303,33 @@ export default function ChatDetailScreen() {
   const lastAssistantIdRef = useRef(lastAssistantId);
   lastAssistantIdRef.current = lastAssistantId;
 
+  // P3: 使用 useMemo 缓存列表配置，避免每次渲染重新创建
+  const legendListProps = useMemo(() => ({
+    contentContainerStyle: { paddingTop: 12, paddingBottom: 8 },
+    recycleItems: true,
+    maintainScrollAtEnd: !userScrolledAway.current,
+    maintainScrollAtEndThreshold: 0.1,
+    scrollEventThrottle: 100,
+    keyboardDismissMode: "on-drag" as const,
+    keyboardShouldPersistTaps: "handled" as const,
+    showsVerticalScrollIndicator: false,
+  }), []);
+
   const renderItem = useCallback(
-    ({ item }: { item: Message }) => (
-      <MessageBubble
-        message={item}
-        isGroup={isGroup}
-        isLastAssistant={item.id === lastAssistantIdRef.current}
-        onLongPress={handleLongPress}
-      />
-    ),
-    [isGroup, handleLongPress],
+    ({ item, index }: { item: Message; index: number }) => {
+      const markdownWindow = 24;
+      const shouldRenderMarkdown = index >= displayMessages.length - markdownWindow;
+      return (
+        <MessageBubble
+          message={item}
+          isGroup={isGroup}
+          isLastAssistant={item.id === lastAssistantIdRef.current}
+          renderMarkdown={shouldRenderMarkdown}
+          onLongPress={handleLongPress}
+        />
+      );
+    },
+    [displayMessages.length, isGroup, handleLongPress],
   );
 
   const handleExport = useCallback(async () => {
@@ -409,17 +450,10 @@ export default function ChatDetailScreen() {
         data={displayMessages}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingTop: 12, paddingBottom: 8 }}
-        recycleItems
-        maintainScrollAtEnd={!userScrolledAway.current}
-        maintainScrollAtEndThreshold={0.1}
+        {...legendListProps}
         onScroll={handleScroll}
-        scrollEventThrottle={100}
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={handleScrollEndDrag}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
       />
 
       <ChatInput

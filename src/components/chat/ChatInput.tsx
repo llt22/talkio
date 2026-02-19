@@ -179,8 +179,7 @@ export const ChatInput = React.memo(function ChatInput({
   }, [isRecording]);
 
   const quickPromptEnabled = useSettingsStore((s) => s.settings.quickPromptEnabled);
-  const messageCount = useChatStore((s) => s.messages.length);
-  const hasMessages = messageCount > 0;
+  const hasMessages = useChatStore((s) => s.messages.length > 0);
   const showQuickPrompts = quickPromptEnabled && hasMessages && !text.trim() && attachedImages.length === 0 && !isGenerating && !isRecording;
 
   const quickPrompts = [

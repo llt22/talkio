@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { InteractionManager } from "react-native";
 import type {
   Conversation,
   ConversationParticipant,
@@ -11,6 +12,8 @@ import {
   getAllConversations,
   insertMessage,
   getMessages as dbGetMessages,
+  getRecentMessages as dbGetRecentMessages,
+  getMessagesBefore as dbGetMessagesBefore,
   searchMessages as dbSearchMessages,
   deleteMessage as dbDeleteMessage,
   clearMessages as dbClearMessages,
@@ -27,6 +30,8 @@ interface ChatState {
   streamingMessage: Message | null;
   isGenerating: boolean;
   activeBranchId: string | null;
+  hasMoreMessages: boolean;
+  isLoadingMore: boolean;
 
   loadConversations: () => Promise<void>;
   createConversation: (
@@ -35,8 +40,14 @@ interface ChatState {
     title?: string,
   ) => Promise<Conversation>;
   deleteConversation: (id: string) => Promise<void>;
-  setCurrentConversation: (id: string | null) => void;
+  setCurrentConversation: (
+    id: string | null,
+    options?: {
+      deferLoad?: boolean;
+    },
+  ) => void;
   loadMessages: (conversationId: string) => Promise<void>;
+  loadMoreMessages: () => Promise<void>;
   updateParticipantIdentity: (
     conversationId: string,
     modelId: string,
@@ -56,7 +67,8 @@ interface ChatState {
   _abortController: AbortController | null;
 }
 
-let loadSequence = 0;
+// P1: 使用 Map 存储每个对话的加载序列，避免全局竞争
+const loadSequences = new Map<string, number>();
 
 export const useChatStore = create<ChatState>((set, get) => ({
   conversations: [],
@@ -65,6 +77,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   streamingMessage: null,
   isGenerating: false,
   activeBranchId: null,
+  hasMoreMessages: true,
+  isLoadingMore: false,
   _abortController: null,
 
   loadConversations: async () => {
@@ -109,9 +123,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
   },
 
-  setCurrentConversation: (id) => {
-    set({ currentConversationId: id, messages: [], streamingMessage: null, activeBranchId: null });
-    if (id) get().loadMessages(id);
+  setCurrentConversation: (id, options) => {
+    // P2: 使用批量更新减少重渲染次数
+    const updates: Partial<ChatState> = { currentConversationId: id };
+    
+    // 只有当切换对话时才清空消息
+    if (id !== get().currentConversationId) {
+      updates.messages = [];
+      updates.streamingMessage = null;
+      updates.activeBranchId = null;
+      updates.hasMoreMessages = true;
+      updates.isLoadingMore = false;
+    }
+    
+    set(updates);
+    if (id) {
+      const load = () => get().loadMessages(id);
+      if (options?.deferLoad) {
+        InteractionManager.runAfterInteractions(load);
+      } else {
+        load();
+      }
+    }
   },
 
   commitStreamingMessage: () => {
@@ -124,11 +157,59 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   loadMessages: async (conversationId) => {
-    const seq = ++loadSequence;
-    const messages = await dbGetMessages(conversationId, get().activeBranchId);
-    // P1-2: Discard stale results if user switched conversations during async load
-    if (seq !== loadSequence) return;
-    set({ messages });
+    // P3: 使用对话特定的序列号，避免竞态条件
+    const currentSeq = (loadSequences.get(conversationId) || 0) + 1;
+    loadSequences.set(conversationId, currentSeq);
+    
+    const pageSize = 40;
+    const messages = await dbGetRecentMessages(conversationId, get().activeBranchId, pageSize);
+    
+    // 检查是否是最新的请求
+    if (loadSequences.get(conversationId) !== currentSeq) return;
+    
+    // P4: 只有当消息真正变化时才更新状态
+    const currentMessages = get().messages;
+    if (currentMessages.length !== messages.length || 
+        JSON.stringify(currentMessages.map(m => m.id)) !== JSON.stringify(messages.map(m => m.id))) {
+      set({
+        messages,
+        hasMoreMessages: messages.length === pageSize,
+        isLoadingMore: false,
+      });
+    }
+  },
+
+  loadMoreMessages: async () => {
+    const state = get();
+    const convId = state.currentConversationId;
+    if (!convId || state.isLoadingMore || !state.hasMoreMessages) return;
+    if (state.messages.length === 0) {
+      set({ hasMoreMessages: false, isLoadingMore: false });
+      return;
+    }
+
+    const before = state.messages[0]?.createdAt;
+    if (!before) return;
+
+    set({ isLoadingMore: true });
+    const pageSize = 40;
+    const more = await dbGetMessagesBefore(convId, state.activeBranchId, before, pageSize);
+
+    if (get().currentConversationId !== convId) {
+      set({ isLoadingMore: false });
+      return;
+    }
+
+    if (more.length === 0) {
+      set({ hasMoreMessages: false, isLoadingMore: false });
+      return;
+    }
+
+    set({
+      messages: [...more, ...state.messages],
+      hasMoreMessages: more.length === pageSize,
+      isLoadingMore: false,
+    });
   },
 
   updateParticipantIdentity: async (conversationId, modelId, identityId) => {
@@ -293,6 +374,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
     set({
       messages: get().currentConversationId === conversationId ? [] : get().messages,
+      hasMoreMessages: get().currentConversationId === conversationId ? false : get().hasMoreMessages,
+      isLoadingMore: false,
       conversations: get().conversations.map((c) =>
         c.id === conversationId
           ? { ...c, lastMessage: null, lastMessageAt: null }

@@ -12,6 +12,7 @@ interface MessageBubbleProps {
   message: Message;
   isGroup?: boolean;
   isLastAssistant?: boolean;
+  renderMarkdown?: boolean;
   onLongPress?: (message: Message) => void;
   onBranch?: (messageId: string) => void;
 }
@@ -20,6 +21,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   message,
   isGroup = false,
   isLastAssistant = false,
+  renderMarkdown = true,
   onLongPress,
   onBranch,
 }: MessageBubbleProps) {
@@ -29,6 +31,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   const isUser = message.role === "user";
 
   const markdownContent = isUser ? message.content : message.content.trimEnd();
+  const shouldRenderMarkdown = renderMarkdown && !message.isStreaming;
 
   // P3: Skip entrance animation for settled (non-streaming) messages
   const Wrapper = message.isStreaming ? MotiView : View;
@@ -121,7 +124,9 @@ export const MessageBubble = React.memo(function MessageBubble({
 
         {showReasoning && message.reasoningContent && (
           <View className="max-w-[90%] rounded-xl bg-slate-50 p-3">
-            <MarkdownRenderer content={message.reasoningContent} />
+            {shouldRenderMarkdown
+              ? <MarkdownRenderer content={message.reasoningContent} />
+              : <Text className="text-[13px] leading-relaxed text-slate-600">{message.reasoningContent}</Text>}
           </View>
         )}
 
@@ -151,7 +156,7 @@ export const MessageBubble = React.memo(function MessageBubble({
             <>
               {markdownContent ? (
                 // P2: Use plain Text during streaming, switch to Markdown after done
-                message.isStreaming
+                message.isStreaming || !shouldRenderMarkdown
                   ? <Text className="text-[15px] leading-relaxed text-gray-800">{markdownContent}</Text>
                   : <MarkdownRenderer content={markdownContent} />
               ) : null}

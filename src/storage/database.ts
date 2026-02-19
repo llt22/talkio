@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, or, isNull, like } from "drizzle-orm";
+import { eq, desc, asc, and, or, isNull, like, lt } from "drizzle-orm";
 import { db, expoDb } from "../../db";
 import { conversations, messages } from "../../db/schema";
 import type { Message, Conversation } from "../types";
@@ -212,6 +212,53 @@ export async function getMessages(
   return rows.map(rowToMessage);
 }
 
+export async function getRecentMessages(
+  conversationId: string,
+  branchId?: string | null,
+  limit = 40,
+): Promise<Message[]> {
+  const conditions = [eq(messages.conversationId, conversationId)];
+
+  if (branchId) {
+    conditions.push(eq(messages.branchId, branchId));
+  } else {
+    conditions.push(isNull(messages.branchId));
+  }
+
+  const rows = await db
+    .select()
+    .from(messages)
+    .where(and(...conditions))
+    .orderBy(desc(messages.createdAt))
+    .limit(limit);
+
+  return rows.map(rowToMessage).reverse();
+}
+
+export async function getMessagesBefore(
+  conversationId: string,
+  branchId: string | null | undefined,
+  before: string,
+  limit = 40,
+): Promise<Message[]> {
+  const conditions = [eq(messages.conversationId, conversationId), lt(messages.createdAt, before)];
+
+  if (branchId) {
+    conditions.push(eq(messages.branchId, branchId));
+  } else {
+    conditions.push(isNull(messages.branchId));
+  }
+
+  const rows = await db
+    .select()
+    .from(messages)
+    .where(and(...conditions))
+    .orderBy(desc(messages.createdAt))
+    .limit(limit);
+
+  return rows.map(rowToMessage).reverse();
+}
+
 export async function searchMessages(query: string): Promise<Message[]> {
   const rows = await db
     .select()
@@ -261,6 +308,8 @@ export {
   deleteConversation as dbDeleteConversation,
   updateConversation as dbUpdateConversation,
   getMessages as dbGetMessages,
+  getRecentMessages as dbGetRecentMessages,
+  getMessagesBefore as dbGetMessagesBefore,
   searchMessages as dbSearchMessages,
   deleteMessage as dbDeleteMessage,
   clearMessages as dbClearMessages,

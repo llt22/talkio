@@ -20,22 +20,16 @@ export const HtmlPreview = React.memo(function HtmlPreview({ code, language = "h
   const [fullscreen, setFullscreen] = useState(false);
   const [userSwitched, setUserSwitched] = useState(false);
   const [codeStable, setCodeStable] = useState(false);
+  const [previewEnabled, setPreviewEnabled] = useState(false);
 
   // Debounce code updates to prevent WebView flashing during streaming
-  const userSwitchedRef = React.useRef(userSwitched);
-  userSwitchedRef.current = userSwitched;
-
   useEffect(() => {
     setCodeStable(false);
     const debounceTimer = setTimeout(() => {
       setDebouncedCode(code);
     }, 120);
-    // Auto-switch to Preview once code stabilizes
     const stableTimer = setTimeout(() => {
       setCodeStable(true);
-      if (!userSwitchedRef.current) {
-        setActiveTab("preview");
-      }
     }, 500);
     return () => {
       clearTimeout(debounceTimer);
@@ -46,6 +40,9 @@ export const HtmlPreview = React.memo(function HtmlPreview({ code, language = "h
   const handleTabSwitch = (tab: "preview" | "code") => {
     setUserSwitched(true);
     setActiveTab(tab);
+    if (tab === "preview") {
+      setPreviewEnabled(true);
+    }
   };
 
   const wrappedHtml = `<!DOCTYPE html>
@@ -153,16 +150,26 @@ export const HtmlPreview = React.memo(function HtmlPreview({ code, language = "h
 
       {/* Content: WebView lazy loaded only when Preview tab is active */}
       {activeTab === "preview" && (
-        <View style={{ height: 400 }}>
-          <WebView
-            source={webViewSource}
-            style={{ flex: 1 }}
-            originWhitelist={["https://"]}
-            javaScriptEnabled
-            scrollEnabled
-            showsVerticalScrollIndicator
-          />
-        </View>
+        previewEnabled ? (
+          <View style={{ height: 400 }}>
+            <WebView
+              source={webViewSource}
+              style={{ flex: 1 }}
+              originWhitelist={["https://"]}
+              javaScriptEnabled
+              scrollEnabled
+              showsVerticalScrollIndicator
+            />
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setPreviewEnabled(true)}
+            className="items-center justify-center px-4 py-6"
+          >
+            <Text className="text-sm font-semibold text-slate-700">Tap to render preview</Text>
+            <Text className="mt-1 text-[11px] text-slate-500">WebView is lazy-loaded to improve performance</Text>
+          </Pressable>
+        )
       )}
       <View style={{ display: activeTab === "code" ? "flex" : "none" }}>
         <MarkdownCodeBlock content={code} language={language} />

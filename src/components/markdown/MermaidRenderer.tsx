@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, useColorScheme } from "react-native";
+import { View, Text, Pressable, useColorScheme } from "react-native";
 import { WebView } from "react-native-webview";
 
 interface MermaidRendererProps {
@@ -12,6 +12,7 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const [height, setHeight] = useState(200);
+  const [active, setActive] = useState(false);
 
   const onMessage = useCallback((event: any) => {
     try {
@@ -25,6 +26,20 @@ export function MermaidRenderer({ code }: MermaidRendererProps) {
   }, []);
 
   const escaped = code.replace(/`/g, "\\`").replace(/<\/script/gi, "<\\/script");
+
+  if (!active) {
+    return (
+      <Pressable
+        onPress={() => setActive(true)}
+        className="my-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+      >
+        <View className="px-4 py-3">
+          <Text className="text-sm font-semibold text-slate-700">Mermaid Diagram</Text>
+          <Text className="mt-1 text-[11px] text-slate-500">Tap to render diagram preview</Text>
+        </View>
+      </Pressable>
+    );
+  }
 
   const html = `<!DOCTYPE html>
 <html>

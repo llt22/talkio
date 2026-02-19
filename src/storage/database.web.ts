@@ -91,6 +91,44 @@ export async function getMessages(
     .slice(offset, offset + limit);
 }
 
+export async function getRecentMessages(
+  conversationId: string,
+  branchId?: string | null,
+  limit = 40,
+): Promise<Message[]> {
+  let filtered = memMessages.filter((m) => m.conversationId === conversationId);
+  if (branchId) {
+    filtered = filtered.filter((m) => m.branchId === branchId);
+  } else {
+    filtered = filtered.filter((m) => m.branchId === null);
+  }
+  return filtered
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, limit)
+    .reverse();
+}
+
+export async function getMessagesBefore(
+  conversationId: string,
+  branchId: string | null | undefined,
+  before: string,
+  limit = 40,
+): Promise<Message[]> {
+  let filtered = memMessages.filter((m) => m.conversationId === conversationId && m.createdAt < before);
+  if (branchId) {
+    filtered = filtered.filter((m) => m.branchId === branchId);
+  } else {
+    filtered = filtered.filter((m) => m.branchId === null);
+  }
+  return filtered
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, limit)
+    .reverse();
+}
+
+export const dbGetRecentMessages = getRecentMessages;
+export const dbGetMessagesBefore = getMessagesBefore;
+
 export async function searchMessages(query: string): Promise<Message[]> {
   const q = query.toLowerCase();
   return memMessages
