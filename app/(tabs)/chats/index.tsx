@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { View, Text, Pressable, TextInput, Alert, Animated } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Swipeable } from "react-native-gesture-handler";
@@ -20,8 +20,6 @@ export default function ChatsScreen() {
   const navigation = useNavigation();
   const conversations = useChatStore((s) => s.conversations);
   const deleteConversation = useChatStore((s) => s.deleteConversation);
-  const getModelById = useProviderStore((s) => s.getModelById);
-  const getIdentityById = useIdentityStore((s) => s.getIdentityById);
   const [filter, setFilter] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -66,77 +64,11 @@ export default function ChatsScreen() {
     [deleteConversation],
   );
 
-  const getProviderById = useProviderStore((s) => s.getProviderById);
-
   const renderItem = useCallback(
-    ({ item }: { item: Conversation }) => {
-      const firstModel = getModelById(item.participants[0]?.modelId);
-      const modelName = firstModel?.displayName ?? t("common.unknown");
-      const provider = firstModel ? getProviderById(firstModel.providerId) : null;
-      const isConnected = provider?.status === "connected";
-      const identity = item.participants[0]?.identityId
-        ? getIdentityById(item.participants[0].identityId)
-        : null;
-
-      return (
-        <Swipeable
-          renderRightActions={(_progress, dragX) => {
-            const scale = dragX.interpolate({
-              inputRange: [-80, 0],
-              outputRange: [1, 0.5],
-              extrapolate: "clamp",
-            });
-            return (
-              <Pressable
-                onPress={() => handleDelete(item.id)}
-                style={{
-                  width: 80,
-                  backgroundColor: "#ef4444",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
-                  <Ionicons name="trash-outline" size={22} color="#fff" />
-                  <Text className="mt-0.5 text-[10px] font-medium text-white">{t("common.delete")}</Text>
-                </Animated.View>
-              </Pressable>
-            );
-          }}
-          overshootRight={false}
-          friction={2}
-        >
-          <Pressable
-            onPress={() => router.push(`/chat/${item.id}`)}
-            className="flex-row items-center gap-4 border-b border-divider bg-white px-4 py-3"
-          >
-            <View className="relative">
-              <View className="h-12 w-12 overflow-hidden rounded-full">
-                <ModelAvatar name={modelName} size="md" />
-              </View>
-              {firstModel && (
-                <View className={`absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${isConnected ? "bg-accent-green" : "bg-slate-300"}`} />
-              )}
-            </View>
-            <View className="flex-1">
-              <View className="flex-row items-center justify-between mb-1">
-                <Text className="flex-1 text-[16px] font-semibold text-text-main" numberOfLines={1}>
-                  {item.type === "group" ? item.title : modelName}
-                </Text>
-                <Text className="ml-2 text-xs text-text-hint">
-                  {formatDate(item.updatedAt, t("common.yesterday"))}
-                </Text>
-              </View>
-              <Text className="text-sm text-text-hint" numberOfLines={1}>
-                {identity ? `${identity.name}: ` : ""}
-                {item.lastMessage ?? t("chats.startConversation")}
-              </Text>
-            </View>
-          </Pressable>
-        </Swipeable>
-      );
-    },
-    [getModelById, getIdentityById, getProviderById, router, handleDelete, t],
+    ({ item }: { item: Conversation }) => (
+      <ConversationItem item={item} onDelete={handleDelete} />
+    ),
+    [handleDelete],
   );
 
   return (
@@ -200,6 +132,87 @@ export default function ChatsScreen() {
     </View>
   );
 }
+
+// ── Memoized conversation list item ──
+const ConversationItem = React.memo(function ConversationItem({
+  item,
+  onDelete,
+}: {
+  item: Conversation;
+  onDelete: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const getModelById = useProviderStore((s) => s.getModelById);
+  const getProviderById = useProviderStore((s) => s.getProviderById);
+  const getIdentityById = useIdentityStore((s) => s.getIdentityById);
+
+  const firstModel = getModelById(item.participants[0]?.modelId);
+  const modelName = firstModel?.displayName ?? t("common.unknown");
+  const provider = firstModel ? getProviderById(firstModel.providerId) : null;
+  const isConnected = provider?.status === "connected";
+  const identity = item.participants[0]?.identityId
+    ? getIdentityById(item.participants[0].identityId)
+    : null;
+
+  return (
+    <Swipeable
+      renderRightActions={(_progress, dragX) => {
+        const scale = dragX.interpolate({
+          inputRange: [-80, 0],
+          outputRange: [1, 0.5],
+          extrapolate: "clamp",
+        });
+        return (
+          <Pressable
+            onPress={() => onDelete(item.id)}
+            style={{
+              width: 80,
+              backgroundColor: "#ef4444",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
+              <Ionicons name="trash-outline" size={22} color="#fff" />
+              <Text className="mt-0.5 text-[10px] font-medium text-white">{t("common.delete")}</Text>
+            </Animated.View>
+          </Pressable>
+        );
+      }}
+      overshootRight={false}
+      friction={2}
+    >
+      <Pressable
+        onPress={() => router.push(`/chat/${item.id}`)}
+        className="flex-row items-center gap-4 border-b border-divider bg-white px-4 py-3"
+      >
+        <View className="relative">
+          <View className="h-12 w-12 overflow-hidden rounded-full">
+            <ModelAvatar name={modelName} size="md" />
+          </View>
+          {firstModel && (
+            <View className={`absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${isConnected ? "bg-accent-green" : "bg-slate-300"}`} />
+          )}
+        </View>
+        <View className="flex-1">
+          <View className="flex-row items-center justify-between mb-1">
+            <Text className="flex-1 text-[16px] font-semibold text-text-main" numberOfLines={1}>
+              {item.type === "group" ? item.title : modelName}
+            </Text>
+            <Text className="ml-2 text-xs text-text-hint">
+              {formatDate(item.updatedAt, t("common.yesterday"))}
+            </Text>
+          </View>
+          <Text className="text-sm text-text-hint" numberOfLines={1}>
+            {identity ? `${identity.name}: ` : ""}
+            {item.lastMessage ?? t("chats.startConversation")}
+          </Text>
+        </View>
+      </Pressable>
+    </Swipeable>
+  );
+});
 
 function formatDate(iso: string, yesterdayLabel: string): string {
   const d = new Date(iso);
