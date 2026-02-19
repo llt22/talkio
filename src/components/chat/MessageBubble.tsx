@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, Image } from "react-native";
-import { useTranslation } from "react-i18next";
 import { MotiView } from "moti";
 import { Ionicons } from "@expo/vector-icons";
 import { ModelAvatar } from "../common/ModelAvatar";
@@ -13,6 +12,8 @@ interface MessageBubbleProps {
   isGroup?: boolean;
   isLastAssistant?: boolean;
   renderMarkdown?: boolean;
+  labelYou?: string;
+  labelThoughtProcess?: string;
   onLongPress?: (message: Message) => void;
   onBranch?: (messageId: string) => void;
 }
@@ -22,10 +23,11 @@ export const MessageBubble = React.memo(function MessageBubble({
   isGroup = false,
   isLastAssistant = false,
   renderMarkdown = true,
+  labelYou = "You",
+  labelThoughtProcess = "Thought Process",
   onLongPress,
   onBranch,
 }: MessageBubbleProps) {
-  const { t } = useTranslation();
   const [showReasoning, setShowReasoning] = useState(false);
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const isUser = message.role === "user";
@@ -50,7 +52,7 @@ export const MessageBubble = React.memo(function MessageBubble({
         <View className="flex-1 flex-col items-end gap-1">
           <View className="mr-1 flex-row items-center gap-2">
             <Text className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              {t("chat.you")}
+              {labelYou}
             </Text>
             <Text className="text-[10px] text-slate-300">{formatTime(message.createdAt)}</Text>
           </View>
@@ -104,7 +106,7 @@ export const MessageBubble = React.memo(function MessageBubble({
             <View className="flex-row items-center gap-2">
               <Ionicons name="bulb-outline" size={16} color="#6b7280" />
               <Text className="text-[13px] font-medium text-slate-600">
-                {t("chat.thoughtProcess")}
+                {labelThoughtProcess}
               </Text>
               {message.reasoningDuration && (
                 <View className="rounded bg-white/80 px-1.5 py-0.5">
@@ -262,6 +264,8 @@ export const MessageBubble = React.memo(function MessageBubble({
   if (prev.isLastAssistant !== next.isLastAssistant) return false;
   if (prev.isGroup !== next.isGroup) return false;
   if (prev.renderMarkdown !== next.renderMarkdown) return false;
+  if (prev.labelYou !== next.labelYou) return false;
+  if (prev.labelThoughtProcess !== next.labelThoughtProcess) return false;
   return true;
 });
 

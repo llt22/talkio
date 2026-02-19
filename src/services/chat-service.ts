@@ -207,11 +207,41 @@ export async function generateResponse(
     let chunkCount = 0;
     let uiDirty = false;
     let flushTimer: ReturnType<typeof setTimeout> | null = null;
-    const UI_THROTTLE_MS = 80;
+    const UI_THROTTLE_MS = 120;
+    const MAX_FLUSH_DELAY_MS = 240;
+    const MIN_CHARS_TO_FLUSH = 32;
+    let lastFlushAt = 0;
+    let lastFlushedContentLength = 0;
+    let lastFlushedReasoningLength = 0;
+    let lastFlushedToolCallsLength = 0;
+    let lastFlushedImagesLength = 0;
+
+    const shouldFlush = () => {
+      const now = Date.now();
+      if (generatedImages.length !== lastFlushedImagesLength) return true;
+      if (pendingToolCalls.length !== lastFlushedToolCallsLength) return true;
+      const contentDelta = content.length - lastFlushedContentLength;
+      const reasoningDelta = reasoningContent.length - lastFlushedReasoningLength;
+      return (
+        contentDelta >= MIN_CHARS_TO_FLUSH ||
+        reasoningDelta >= MIN_CHARS_TO_FLUSH ||
+        now - lastFlushAt >= MAX_FLUSH_DELAY_MS
+      );
+    };
 
     const flushUI = () => {
       flushTimer = null;
+      if (!uiDirty) return;
+      if (!shouldFlush()) {
+        scheduleFlush();
+        return;
+      }
       uiDirty = false;
+      lastFlushAt = Date.now();
+      lastFlushedContentLength = content.length;
+      lastFlushedReasoningLength = reasoningContent.length;
+      lastFlushedToolCallsLength = pendingToolCalls.length;
+      lastFlushedImagesLength = generatedImages.length;
       useChatStore.setState({
         streamingMessage: {
           ...assistantMsg,

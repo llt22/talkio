@@ -39,12 +39,8 @@ export default function ChatDetailScreen() {
   const isLoadingMore = useChatStore((s) => s.isLoadingMore);
   const loadMoreMessages = useChatStore((s) => s.loadMoreMessages);
 
-  // Combine settled messages + streaming message for display
-  const displayMessages = useMemo(
-    () => streamingMessage ? [...messages, streamingMessage] : messages,
-    [messages, streamingMessage],
-  );
-  const hasMessages = displayMessages.length > 0;
+  const hasMessages = messages.length > 0 || !!streamingMessage;
+  const messageCount = messages.length + (streamingMessage ? 1 : 0);
   const setCurrentConversation = useChatStore((s) => s.setCurrentConversation);
   const sendMessage = useChatStore((s) => s.sendMessage);
   const updateParticipantIdentity = useChatStore((s) => s.updateParticipantIdentity);
@@ -157,7 +153,7 @@ export default function ChatDetailScreen() {
   const scrollThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (displayMessages.length === 0 || userScrolledAway.current) return;
+    if (messageCount === 0 || userScrolledAway.current) return;
     // Throttle: only scroll once per 400ms during streaming
     if (scrollThrottleRef.current) return;
     scrollThrottleRef.current = setTimeout(() => {
@@ -166,7 +162,7 @@ export default function ChatDetailScreen() {
         listRef.current?.scrollToOffset({ offset: 9999999, animated: false });
       }
     }, 400);
-  }, [displayMessages.length, streamingContent]);
+  }, [messageCount, streamingContent]);
 
   const handleScroll = useCallback((e: any) => {
     // Only update flag during user drag, ignore programmatic/content-growth scrolls
@@ -307,32 +303,60 @@ export default function ChatDetailScreen() {
   const legendListProps = useMemo(() => ({
     contentContainerStyle: { paddingTop: 12, paddingBottom: 8 },
     recycleItems: true,
+    maintainScrollAtEnd: true,
     maintainScrollAtEndThreshold: 0.1,
+    estimatedItemSize: 120,
+    drawDistance: 200,
+    waitForInitialLayout: true,
+    getItemType: (item: Message) => {
+      if (item.role === "user") return "user";
+      if (item.generatedImages?.length) return "assistant-image";
+      if (item.toolCalls?.length) return "assistant-tool";
+      if (item.reasoningContent) return "assistant-reasoning";
+      return "assistant";
+    },
     scrollEventThrottle: 100,
     keyboardDismissMode: "on-drag" as const,
     keyboardShouldPersistTaps: "handled" as const,
     showsVerticalScrollIndicator: false,
   }), []);
 
-  const displayMessagesLengthRef = useRef(displayMessages.length);
-  displayMessagesLengthRef.current = displayMessages.length;
+  const messageCountRef = useRef(messageCount);
+  messageCountRef.current = messageCount;
 
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => {
       const markdownWindow = 24;
-      const shouldRenderMarkdown = index >= displayMessagesLengthRef.current - markdownWindow;
+      const shouldRenderMarkdown = index >= messageCountRef.current - markdownWindow;
       return (
         <MessageBubble
           message={item}
           isGroup={isGroup}
           isLastAssistant={item.id === lastAssistantIdRef.current}
           renderMarkdown={shouldRenderMarkdown}
+          labelYou={t("chat.you")}
+          labelThoughtProcess={t("chat.thoughtProcess")}
           onLongPress={handleLongPress}
         />
       );
     },
-    [isGroup, handleLongPress],
+    [isGroup, handleLongPress, t],
   );
+
+  const listFooter = useMemo(() => {
+    if (!streamingMessage) return null;
+    return (
+      <MessageBubble
+        message={streamingMessage}
+        isGroup={isGroup}
+        isLastAssistant={false}
+        renderMarkdown
+        labelYou={t("chat.you")}
+        labelThoughtProcess={t("chat.thoughtProcess")}
+        onLongPress={handleLongPress}
+      />
+    );
+  }, [streamingMessage, isGroup, handleLongPress, t]);
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);
@@ -386,7 +410,13 @@ export default function ChatDetailScreen() {
               <Text className="text-xs text-slate-400 mt-1">{new Date(conv.createdAt).toLocaleDateString()}</Text>
             </View>
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} isGroup={isGroup} />
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                isGroup={isGroup}
+                labelYou={t("chat.you")}
+                labelThoughtProcess={t("chat.thoughtProcess")}
+              />
             ))}
             <View className="items-center mt-4 pt-4 border-t border-slate-100 mx-8">
               <Text className="text-[10px] text-slate-300">Avatar AI · {new Date().toLocaleDateString()}</Text>
@@ -449,9 +479,10 @@ export default function ChatDetailScreen() {
 
       <LegendList
         ref={listRef}
-        data={displayMessages}
+        data={messages}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
+        ListFooterComponent={listFooter}
         {...legendListProps}
         onScroll={handleScroll}
         onScrollBeginDrag={handleScrollBeginDrag}
