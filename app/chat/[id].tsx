@@ -98,10 +98,15 @@ export default function ChatDetailScreen() {
   }, [id, clearConversationMessages]);
 
   // P5: Split navigation header into two effects to reduce unnecessary updates
+  const convTitle = conv?.title;
+  const participantCount = conv?.participants.length ?? 0;
+  const modelDisplayName = model?.displayName;
+  const identityName = activeIdentity?.name;
+
   useEffect(() => {
     const title = isGroup
-      ? conv?.title ?? t("chat.group")
-      : model?.displayName ?? t("chat.chatTitle");
+      ? convTitle ?? t("chat.group")
+      : modelDisplayName ?? t("chat.chatTitle");
 
     navigation.setOptions({
       headerTitle: () => (
@@ -114,7 +119,7 @@ export default function ChatDetailScreen() {
             <View className="mt-0.5 flex-row items-center gap-1">
               <Ionicons name="people-outline" size={12} color="#007AFF" />
               <Text className="text-[10px] font-bold uppercase tracking-widest text-primary">
-                {t("chat.modelCount", { count: conv?.participants.length ?? 0 })}
+                {t("chat.modelCount", { count: participantCount })}
               </Text>
               <Ionicons name={showParticipants ? "chevron-up" : "chevron-down"} size={12} color="#007AFF" />
             </View>
@@ -122,7 +127,7 @@ export default function ChatDetailScreen() {
             <View className="mt-0.5 flex-row items-center gap-1">
               <Ionicons name="person-circle-outline" size={12} color="#007AFF" />
               <Text className="text-[10px] font-bold uppercase tracking-widest text-primary">
-                {activeIdentity ? activeIdentity.name : t("chat.mountIdentity")}
+                {identityName ?? t("chat.mountIdentity")}
               </Text>
               <Ionicons name="chevron-down" size={12} color="#007AFF" />
             </View>
@@ -130,7 +135,7 @@ export default function ChatDetailScreen() {
         </Pressable>
       ),
     });
-  }, [conv, model, activeIdentity, isGroup, showParticipants]);
+  }, [convTitle, modelDisplayName, identityName, participantCount, isGroup, showParticipants]);
 
   useEffect(() => {
     navigation.setOptions({

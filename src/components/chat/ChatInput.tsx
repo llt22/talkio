@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { View, TextInput, Pressable, Text, Alert, Platform, Image, ScrollView, ActivityIndicator } from "react-native";
+import { View, TextInput, Pressable, Text, Alert, Platform, ScrollView, ActivityIndicator } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
@@ -228,7 +229,7 @@ export const ChatInput = React.memo(function ChatInput({
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 pt-2">
           {attachedImages.map((img, idx) => (
             <View key={idx} className="mr-2 relative">
-              <Image source={{ uri: img.uri }} className="h-16 w-16 rounded-lg" />
+              <Image source={{ uri: img.uri }} className="h-16 w-16 rounded-lg" contentFit="cover" transition={150} />
               <Pressable
                 onPress={() => removeImage(idx)}
                 className="absolute -right-1 -top-1 h-5 w-5 items-center justify-center rounded-full bg-black/60"

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, Image } from "react-native";
+import { View, Text, Pressable } from "react-native";
+import { Image } from "expo-image";
 import { MotiView } from "moti";
 import { Ionicons } from "@expo/vector-icons";
 import { ModelAvatar } from "../common/ModelAvatar";
@@ -63,7 +64,9 @@ export const MessageBubble = React.memo(function MessageBubble({
                   key={idx}
                   source={{ uri }}
                   className="h-32 w-32 rounded-xl"
-                  resizeMode="cover"
+                  contentFit="cover"
+                  recyclingKey={`user-img-${idx}`}
+                  transition={200}
                 />
               ))}
             </View>
@@ -170,7 +173,9 @@ export const MessageBubble = React.memo(function MessageBubble({
                       source={{ uri }}
                       className="rounded-xl"
                       style={{ width: 240, height: 240 }}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      recyclingKey={`gen-img-${idx}`}
+                      transition={200}
                     />
                   ))}
                 </View>
