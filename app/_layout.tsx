@@ -26,8 +26,9 @@ export default function RootLayout() {
       loadIdentities();
       useIdentityStore.getState().initBuiltInTools();
       loadSettings();
-      loadConversations();
       setReady(true);
+      // 不阻塞 ready，异步加载对话列表
+      loadConversations();
     });
   }, []);
 

@@ -261,6 +261,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   if (prev.message.generatedImages?.length !== next.message.generatedImages?.length) return false;
   if (prev.isLastAssistant !== next.isLastAssistant) return false;
   if (prev.isGroup !== next.isGroup) return false;
+  if (prev.renderMarkdown !== next.renderMarkdown) return false;
   return true;
 });
 

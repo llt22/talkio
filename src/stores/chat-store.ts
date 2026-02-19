@@ -167,10 +167,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // 检查是否是最新的请求
     if (loadSequences.get(conversationId) !== currentSeq) return;
     
-    // P4: 只有当消息真正变化时才更新状态
+    // P4: 只有当消息真正变化时才更新状态（轻量比较：长度+首尾ID）
     const currentMessages = get().messages;
-    if (currentMessages.length !== messages.length || 
-        JSON.stringify(currentMessages.map(m => m.id)) !== JSON.stringify(messages.map(m => m.id))) {
+    const changed =
+      currentMessages.length !== messages.length ||
+      currentMessages[0]?.id !== messages[0]?.id ||
+      currentMessages[currentMessages.length - 1]?.id !== messages[messages.length - 1]?.id;
+    if (changed) {
       set({
         messages,
         hasMoreMessages: messages.length === pageSize,

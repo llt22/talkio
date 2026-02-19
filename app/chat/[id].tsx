@@ -307,7 +307,6 @@ export default function ChatDetailScreen() {
   const legendListProps = useMemo(() => ({
     contentContainerStyle: { paddingTop: 12, paddingBottom: 8 },
     recycleItems: true,
-    maintainScrollAtEnd: !userScrolledAway.current,
     maintainScrollAtEndThreshold: 0.1,
     scrollEventThrottle: 100,
     keyboardDismissMode: "on-drag" as const,
@@ -315,10 +314,13 @@ export default function ChatDetailScreen() {
     showsVerticalScrollIndicator: false,
   }), []);
 
+  const displayMessagesLengthRef = useRef(displayMessages.length);
+  displayMessagesLengthRef.current = displayMessages.length;
+
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => {
       const markdownWindow = 24;
-      const shouldRenderMarkdown = index >= displayMessages.length - markdownWindow;
+      const shouldRenderMarkdown = index >= displayMessagesLengthRef.current - markdownWindow;
       return (
         <MessageBubble
           message={item}
@@ -329,7 +331,7 @@ export default function ChatDetailScreen() {
         />
       );
     },
-    [displayMessages.length, isGroup, handleLongPress],
+    [isGroup, handleLongPress],
   );
 
   const handleExport = useCallback(async () => {
