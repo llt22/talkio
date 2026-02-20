@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { MotiView } from "moti";
@@ -34,7 +34,36 @@ export const MessageBubble = React.memo(function MessageBubble({
   const isUser = message.role === "user";
 
   const markdownContent = isUser ? message.content : message.content.trimEnd();
-  const shouldRenderMarkdown = renderMarkdown && !message.isStreaming;
+
+  // Throttle markdown rendering during streaming to ~300ms intervals
+  const [throttledContent, setThrottledContent] = useState(markdownContent);
+  const throttleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestContentRef = useRef(markdownContent);
+  latestContentRef.current = markdownContent;
+
+  useEffect(() => {
+    if (!message.isStreaming) {
+      // When streaming ends, immediately render final content
+      if (throttleRef.current) clearTimeout(throttleRef.current);
+      setThrottledContent(markdownContent);
+      return;
+    }
+    // During streaming, throttle updates
+    if (!throttleRef.current) {
+      throttleRef.current = setTimeout(() => {
+        throttleRef.current = null;
+        setThrottledContent(latestContentRef.current);
+      }, 300);
+    }
+    return () => {
+      if (throttleRef.current) {
+        clearTimeout(throttleRef.current);
+        throttleRef.current = null;
+      }
+    };
+  }, [markdownContent, message.isStreaming]);
+
+  const displayContent = message.isStreaming ? throttledContent : markdownContent;
 
   // P3: Skip entrance animation for settled (non-streaming) messages
   const Wrapper = message.isStreaming ? MotiView : View;
@@ -129,7 +158,7 @@ export const MessageBubble = React.memo(function MessageBubble({
 
         {showReasoning && message.reasoningContent && (
           <View className="max-w-[90%] rounded-xl bg-slate-50 p-3">
-            {shouldRenderMarkdown
+            {renderMarkdown
               ? <MarkdownRenderer content={message.reasoningContent} />
               : <Text className="text-[13px] leading-relaxed text-slate-600">{message.reasoningContent}</Text>}
           </View>
@@ -159,11 +188,10 @@ export const MessageBubble = React.memo(function MessageBubble({
             </View>
           ) : (
             <>
-              {markdownContent ? (
-                // P2: Use plain Text during streaming, switch to Markdown after done
-                message.isStreaming || !shouldRenderMarkdown
-                  ? <Text className="text-[15px] leading-relaxed text-gray-800">{markdownContent}</Text>
-                  : <MarkdownRenderer content={markdownContent} />
+              {displayContent ? (
+                renderMarkdown
+                  ? <MarkdownRenderer content={displayContent} />
+                  : <Text className="text-[15px] leading-relaxed text-gray-800">{displayContent}</Text>
               ) : null}
               {message.generatedImages && message.generatedImages.length > 0 && (
                 <View className={`flex-row flex-wrap gap-2 ${markdownContent ? "mt-3" : ""}`}>
