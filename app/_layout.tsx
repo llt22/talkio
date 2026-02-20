@@ -48,6 +48,7 @@ export default function RootLayout() {
               headerShadowVisible: false,
               headerStyle: { backgroundColor: "#ffffff" },
               animation: "slide_from_right",
+              headerTitleAlign: "center",
             }}
           />
         </Stack>

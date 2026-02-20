@@ -483,13 +483,15 @@ export default function ChatDetailScreen() {
     navigation.setOptions({
       headerRight: () => (
         <View className="flex-row items-center gap-1">
-          {hasMessages ? (
-            <Pressable onPress={handleExport} disabled={isExporting} className="p-2" hitSlop={4}>
-              <Ionicons name="share-outline" size={20} color="#007AFF" />
-            </Pressable>
-          ) : (
-            <View style={{ width: 36 }} />
-          )}
+          <Pressable
+            onPress={handleExport}
+            disabled={isExporting || !hasMessages}
+            className="p-2"
+            hitSlop={4}
+            style={{ opacity: hasMessages ? 1 : 0 }}
+          >
+            <Ionicons name="share-outline" size={20} color="#007AFF" />
+          </Pressable>
           <Pressable onPress={clearHistory} className="p-2" hitSlop={4}>
             <Ionicons name="create-outline" size={20} color="#007AFF" />
           </Pressable>
