@@ -508,13 +508,17 @@ export default function ChatDetailScreen() {
     );
   }
 
+  // Android uses softwareKeyboardLayoutMode:"resize" (app.json) which handles
+  // keyboard avoidance natively. KAV with behavior="padding" is redundant on
+  // Android and its keyboardVerticalOffset can break layout before messages load.
+  const Container = Platform.OS === "ios" ? KeyboardAvoidingView : View;
+  const containerProps = Platform.OS === "ios"
+    ? { style: { flex: 1 }, behavior: "padding" as const, keyboardVerticalOffset: headerHeight }
+    : { style: { flex: 1 } };
+
   return (
     <View className="flex-1 bg-bg-chat">
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior="padding"
-      keyboardVerticalOffset={headerHeight}
-    >
+    <Container {...containerProps}>
       {/* Group participant panel */}
       {isGroup && showParticipants && conv && (
         <View className="border-b border-slate-100 bg-white px-4 py-2">
@@ -620,7 +624,7 @@ export default function ChatDetailScreen() {
         isGroup={isGroup}
         participants={stableParticipants}
       />
-    </KeyboardAvoidingView>
+    </Container>
     </View>
   );
 }
