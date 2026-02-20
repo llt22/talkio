@@ -371,8 +371,12 @@ export class ApiClient {
       const candidate = parsed.candidates?.[0];
       if (!candidate?.content?.parts) return null;
       for (const part of candidate.content.parts) {
+        // Gemini thinking models return { text: "...", thought: true } for thinking parts.
+        // Check thought flag BEFORE text to avoid treating thinking as regular content.
+        if (part.thought === true && part.text !== undefined) {
+          return { reasoning_content: part.text };
+        }
         if (part.text !== undefined) return { content: part.text };
-        if (part.thought !== undefined) return { reasoning_content: part.thought };
         if (part.functionCall) {
           return {
             tool_calls: [{ index: 0, id: part.functionCall.name, type: "function" as const, function: { name: part.functionCall.name, arguments: JSON.stringify(part.functionCall.args ?? {}) } }],
@@ -420,6 +424,11 @@ export class ApiClient {
     if (request.temperature !== undefined) genConfig.temperature = request.temperature;
     if (request.top_p !== undefined) genConfig.topP = request.top_p;
     if (request.max_tokens !== undefined) genConfig.maxOutputTokens = request.max_tokens;
+    // Map reasoning_effort to Gemini's thinkingConfig
+    if ((request as any).reasoning_effort) {
+      const budgetMap: Record<string, number> = { low: 1024, medium: 8192, high: 24576 };
+      genConfig.thinkingConfig = { thinkingBudget: budgetMap[(request as any).reasoning_effort] ?? 8192 };
+    }
     if (Object.keys(genConfig).length > 0) body.generationConfig = genConfig;
     if (request.tools) {
       body.tools = [{ functionDeclarations: request.tools.map((t) => ({ name: t.function.name, description: t.function.description, parameters: t.function.parameters })) }];
@@ -433,8 +442,11 @@ export class ApiClient {
     let reasoningContent: string | null = null;
     const toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }> = [];
     for (const part of candidate?.content?.parts ?? []) {
-      if (part.text !== undefined) content += part.text;
-      if (part.thought !== undefined) reasoningContent = (reasoningContent ?? "") + part.thought;
+      if (part.thought === true && part.text !== undefined) {
+        reasoningContent = (reasoningContent ?? "") + part.text;
+      } else if (part.text !== undefined) {
+        content += part.text;
+      }
       if (part.functionCall) toolCalls.push({ id: part.functionCall.name, type: "function", function: { name: part.functionCall.name, arguments: JSON.stringify(part.functionCall.args ?? {}) } });
     }
     return {
