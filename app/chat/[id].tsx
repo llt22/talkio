@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { View, Text, Pressable, Platform, Alert, ActionSheetIOS, Modal, ScrollView, ActivityIndicator, InteractionManager } from "react-native";
+import { View, Text, Pressable, Platform, Alert, ActionSheetIOS, InteractionManager } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
-import { captureRef } from "react-native-view-shot";
+import * as FileSystem from "expo-file-system/legacy";
 import { KeyboardAvoidingView, KeyboardController } from "react-native-keyboard-controller";
 import { useTranslation } from "react-i18next";
 import { LegendList } from "@legendapp/list";
@@ -27,8 +27,6 @@ export default function ChatDetailScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const listRef = useRef<LegendListRef>(null);
-  const exportRef = useRef<View>(null);
-  const [showExport, setShowExport] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   const conv = useChatStore(
@@ -158,23 +156,6 @@ export default function ChatDetailScreen() {
       ),
     });
   }, [convTitle, modelDisplayName, identityName, participantCount, isGroup, showParticipants]);
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <View className="flex-row items-center gap-1">
-          {hasMessages && (
-            <Pressable onPress={() => setShowExport(true)} className="p-2" hitSlop={4}>
-              <Ionicons name="image-outline" size={20} color="#007AFF" />
-            </Pressable>
-          )}
-          <Pressable onPress={clearHistory} className="p-2" hitSlop={4}>
-            <Ionicons name="create-outline" size={20} color="#007AFF" />
-          </Pressable>
-        </View>
-      ),
-    });
-  }, [hasMessages, clearHistory]);
 
   const streamingContent = streamingMessage?.content;
   const scrollThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -386,23 +367,56 @@ export default function ChatDetailScreen() {
   }, [streamingMessage, isGroup, handleLongPress, t]);
 
   const handleExport = useCallback(async () => {
+    if (!conv || isExporting) return;
     setIsExporting(true);
     try {
-      // Wait for render
-      await new Promise((r) => setTimeout(r, 500));
-      const uri = await captureRef(exportRef, {
-        format: "png",
-        quality: 1,
-        snapshotContentContainer: true,
-      });
-      setShowExport(false);
-      await Sharing.shareAsync(uri, { mimeType: "image/png" });
+      const title = conv.title || t("chat.chatTitle");
+      const date = new Date(conv.createdAt).toLocaleDateString();
+      let md = `# ${title}\n\n> ${date}\n\n---\n\n`;
+      for (const msg of messages) {
+        const name = msg.role === "user" ? t("chat.you") : (msg.senderName ?? "AI");
+        const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        md += `### ${name}  \`${time}\`\n\n`;
+        if (msg.reasoningContent) {
+          md += `<details>\n<summary>${t("chat.thoughtProcess")}</summary>\n\n${msg.reasoningContent}\n\n</details>\n\n`;
+        }
+        if (msg.content) {
+          md += `${msg.content}\n\n`;
+        }
+        if (msg.images?.length) {
+          md += `*[${msg.images.length} image(s) attached]*\n\n`;
+        }
+        md += `---\n\n`;
+      }
+      md += `\n*Exported from Talkio · ${new Date().toLocaleDateString()}*\n`;
+
+      const safeName = title.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, "_").slice(0, 50);
+      const fileUri = `${FileSystem.cacheDirectory}${safeName}.md`;
+      await FileSystem.writeAsStringAsync(fileUri, md, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(fileUri, { mimeType: "text/markdown", UTI: "net.daringfireball.markdown" });
     } catch (err) {
       Alert.alert(t("common.error"), err instanceof Error ? err.message : "Export failed");
     } finally {
       setIsExporting(false);
     }
-  }, [t]);
+  }, [conv, messages, isExporting, t]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <View className="flex-row items-center gap-1">
+          {hasMessages && (
+            <Pressable onPress={handleExport} disabled={isExporting} className="p-2" hitSlop={4}>
+              <Ionicons name="share-outline" size={20} color="#007AFF" />
+            </Pressable>
+          )}
+          <Pressable onPress={clearHistory} className="p-2" hitSlop={4}>
+            <Ionicons name="create-outline" size={20} color="#007AFF" />
+          </Pressable>
+        </View>
+      ),
+    });
+  }, [hasMessages, clearHistory, handleExport, isExporting]);
 
   if (!conv) {
     return (
@@ -414,52 +428,6 @@ export default function ChatDetailScreen() {
 
   return (
     <View className="flex-1 bg-bg-chat">
-    {/* Export modal - only render content when visible */}
-    {showExport && (
-      <Modal visible animationType="slide" presentationStyle="pageSheet">
-        <View className="flex-1 bg-white">
-          <View className="flex-row items-center justify-between border-b border-slate-100 px-4 py-3 pt-14">
-            <Pressable onPress={() => setShowExport(false)}>
-              <Text className="text-base text-primary">{t("common.cancel")}</Text>
-            </Pressable>
-            <Text className="text-base font-semibold">{t("chat.export")}</Text>
-            <Pressable onPress={handleExport} disabled={isExporting}>
-              {isExporting ? (
-                <ActivityIndicator size="small" color="#007AFF" />
-              ) : (
-                <Text className="text-base font-semibold text-primary">{t("common.save")}</Text>
-              )}
-            </Pressable>
-          </View>
-          <ScrollView className="flex-1" contentContainerStyle={{ paddingVertical: 16 }}>
-            <View ref={exportRef} collapsable={false} className="bg-white pb-6">
-              <View className="items-center py-4 mb-2">
-                <Text className="text-lg font-bold text-slate-800">{conv.title || t("chat.chatTitle")}</Text>
-                <Text className="text-xs text-slate-400 mt-1">{new Date(conv.createdAt).toLocaleDateString()}</Text>
-              </View>
-              {/* P1: Limit export to last 50 messages to avoid rendering hundreds of MessageBubbles */}
-              {messages.length > 50 && (
-                <View className="items-center py-2 mb-2">
-                  <Text className="text-xs text-slate-400">... {messages.length - 50} earlier messages omitted ...</Text>
-                </View>
-              )}
-              {messages.slice(-50).map((msg) => (
-                <MessageBubble
-                  key={msg.id}
-                  message={msg}
-                  isGroup={isGroup}
-                  labelYou={t("chat.you")}
-                  labelThoughtProcess={t("chat.thoughtProcess")}
-                />
-              ))}
-              <View className="items-center mt-4 pt-4 border-t border-slate-100 mx-8">
-                <Text className="text-[10px] text-slate-300">Talkio · {new Date().toLocaleDateString()}</Text>
-              </View>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
-    )}
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior="padding"
