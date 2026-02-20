@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { View, Text, Pressable, Platform, Alert, ActionSheetIOS, InteractionManager } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
@@ -507,12 +506,8 @@ export default function ChatDetailScreen() {
     );
   }
 
-  // On Android, wrap with SafeAreaView to keep content above the system nav bar.
-  // Without this, the input box gets clipped behind the nav bar before messages load.
-  const OuterWrapper = Platform.OS === "android" ? SafeAreaView : View;
-
   return (
-    <OuterWrapper className="flex-1 bg-bg-chat" edges={Platform.OS === "android" ? ["bottom"] as const : undefined}>
+    <View className="flex-1 bg-bg-chat">
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior="padding"
@@ -590,26 +585,17 @@ export default function ChatDetailScreen() {
         onSelect={handleIdentitySelect}
       />
 
-      {/* When list is empty (before messages load), LegendList may not fill flex
-         space properly, pushing ChatInput behind the system nav bar. Use a simple
-         flex-1 spacer in the empty state to guarantee correct layout. */}
-      {messages.length === 0 && !streamingId ? (
-        <View style={{ flex: 1 }} />
-      ) : (
-        <View className="flex-1">
-          <LegendList
-            ref={listRef}
-            data={messages}
-            renderItem={renderItem}
-            keyExtractor={messageKeyExtractor}
-            ListFooterComponent={streamingId ? <StreamingFooter {...streamingFooterProps} /> : null}
-            {...legendListProps}
-            onScroll={handleScroll}
-            onScrollBeginDrag={handleScrollBeginDrag}
-            onScrollEndDrag={handleScrollEndDrag}
-          />
-        </View>
-      )}
+      <LegendList
+        ref={listRef}
+        data={messages}
+        renderItem={renderItem}
+        keyExtractor={messageKeyExtractor}
+        ListFooterComponent={streamingId ? <StreamingFooter {...streamingFooterProps} /> : null}
+        {...legendListProps}
+        onScroll={handleScroll}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onScrollEndDrag={handleScrollEndDrag}
+      />
 
       {showScrollToBottom && (
         <View className="absolute right-4 z-10" style={{ top: "50%" }}>
@@ -631,6 +617,6 @@ export default function ChatDetailScreen() {
         participants={stableParticipants}
       />
     </KeyboardAvoidingView>
-    </OuterWrapper>
+    </View>
   );
 }

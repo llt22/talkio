@@ -4,7 +4,6 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider, initialWindowMetrics } from "react-native-safe-area-context";
 import { useProviderStore } from "../src/stores/provider-store";
 import { useIdentityStore } from "../src/stores/identity-store";
 import { useSettingsStore } from "../src/stores/settings-store";
@@ -37,25 +36,23 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-        <KeyboardProvider>
-          <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false, freezeOnBlur: true }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="chat/[id]"
-              options={{
-                headerShown: true,
-                headerBackTitle: "Back",
-                headerShadowVisible: false,
-                headerStyle: { backgroundColor: "#ffffff" },
-                animation: "slide_from_right",
-                headerTitleAlign: "center",
-              }}
-            />
-          </Stack>
-        </KeyboardProvider>
-      </SafeAreaProvider>
+      <KeyboardProvider>
+        <StatusBar style="dark" />
+        <Stack screenOptions={{ headerShown: false, freezeOnBlur: true }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="chat/[id]"
+            options={{
+              headerShown: true,
+              headerBackTitle: "Back",
+              headerShadowVisible: false,
+              headerStyle: { backgroundColor: "#ffffff" },
+              animation: "slide_from_right",
+              headerTitleAlign: "center",
+            }}
+          />
+        </Stack>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }
