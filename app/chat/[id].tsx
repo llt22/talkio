@@ -36,10 +36,11 @@ export default function ChatDetailScreen() {
   );
   const rawMessages = useChatStore((s) => s.messages);
   const streamingMessage = useChatStore((s) => s.streamingMessage);
-  // Exclude streaming message from list data to avoid duplicate with ListFooterComponent
+  // P1: Only depend on streamingMessage id (not content) to avoid re-filtering on every stream chunk
+  const streamingId = streamingMessage?.id ?? null;
   const messages = useMemo(
-    () => streamingMessage ? rawMessages.filter((m) => m.id !== streamingMessage.id) : rawMessages,
-    [rawMessages, streamingMessage],
+    () => streamingId ? rawMessages.filter((m) => m.id !== streamingId) : rawMessages,
+    [rawMessages, streamingId],
   );
   const isGenerating = useChatStore((s) => s.isGenerating);
   const hasMoreMessages = useChatStore((s) => s.hasMoreMessages);
@@ -55,7 +56,19 @@ export default function ChatDetailScreen() {
   const getIdentityById = useIdentityStore((s) => s.getIdentityById);
   const isGroup = conv?.type === "group";
   const participants = conv?.participants;
-  const stableParticipants = useMemo(() => participants ?? [], [JSON.stringify(participants)]);
+  const prevParticipantsRef = useRef(participants);
+  if (
+    participants !== prevParticipantsRef.current &&
+    participants &&
+    prevParticipantsRef.current &&
+    participants.length === prevParticipantsRef.current.length &&
+    participants.every((p, i) => p.modelId === prevParticipantsRef.current![i].modelId && p.identityId === prevParticipantsRef.current![i].identityId)
+  ) {
+    // shallow-equal: keep previous reference to avoid downstream re-renders
+  } else {
+    prevParticipantsRef.current = participants;
+  }
+  const stableParticipants = prevParticipantsRef.current ?? [];
   const [showIdentitySlider, setShowIdentitySlider] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [editingParticipantModelId, setEditingParticipantModelId] = useState<string | null>(null);
@@ -424,7 +437,13 @@ export default function ChatDetailScreen() {
                 <Text className="text-lg font-bold text-slate-800">{conv.title || t("chat.chatTitle")}</Text>
                 <Text className="text-xs text-slate-400 mt-1">{new Date(conv.createdAt).toLocaleDateString()}</Text>
               </View>
-              {messages.map((msg) => (
+              {/* P1: Limit export to last 50 messages to avoid rendering hundreds of MessageBubbles */}
+              {messages.length > 50 && (
+                <View className="items-center py-2 mb-2">
+                  <Text className="text-xs text-slate-400">... {messages.length - 50} earlier messages omitted ...</Text>
+                </View>
+              )}
+              {messages.slice(-50).map((msg) => (
                 <MessageBubble
                   key={msg.id}
                   message={msg}

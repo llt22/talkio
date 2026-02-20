@@ -259,19 +259,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     await insertMessage(userMsg);
-    set({ messages: [...state.messages, userMsg], isGenerating: true });
+    // P0: 合并消息+会话+生成状态为单次 set，减少重渲染
+    const updatedConversations = state.conversations.map((c) =>
+      c.id === convId
+        ? { ...c, lastMessage: text, lastMessageAt: userMsg.createdAt, updatedAt: userMsg.createdAt }
+        : c,
+    );
+    set({
+      messages: [...state.messages, userMsg],
+      conversations: updatedConversations,
+      isGenerating: true,
+    });
 
     try {
-      await dbUpdateConversation(convId, {
+      dbUpdateConversation(convId, {
         lastMessage: text,
         lastMessageAt: userMsg.createdAt,
-      });
-      const conversations = get().conversations.map((c) =>
-        c.id === convId
-          ? { ...c, lastMessage: text, lastMessageAt: userMsg.createdAt, updatedAt: userMsg.createdAt }
-          : c,
-      );
-      set({ conversations });
+      }).catch(() => {});
 
       const targetModelIds = resolveTargetModels(conv, mentionedModelIds);
 
@@ -350,22 +354,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   deleteMessageById: async (messageId) => {
     await dbDeleteMessage(messageId);
-    const remaining = get().messages.filter((m) => m.id !== messageId);
-    set({ messages: remaining });
+    const state = get();
+    const remaining = state.messages.filter((m) => m.id !== messageId);
+    const convId = state.currentConversationId;
 
-    const convId = get().currentConversationId;
     if (convId) {
       const last = remaining[remaining.length - 1];
-      const updates = {
+      const convUpdates = {
         lastMessage: last?.content ?? null,
         lastMessageAt: last?.createdAt ?? null,
       };
-      await dbUpdateConversation(convId, updates);
+      // P2: 合并 messages + conversations 为单次 set
       set({
-        conversations: get().conversations.map((c) =>
-          c.id === convId ? { ...c, ...updates } : c,
+        messages: remaining,
+        conversations: state.conversations.map((c) =>
+          c.id === convId ? { ...c, ...convUpdates } : c,
         ),
       });
+      dbUpdateConversation(convId, convUpdates).catch(() => {});
+    } else {
+      set({ messages: remaining });
     }
   },
 
