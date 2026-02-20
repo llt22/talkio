@@ -100,8 +100,10 @@ export async function generateResponse(
   }
   log.info(`[generateResponse] Tools ready: ${tools.length} tools`);
 
-  let content = "";
-  let reasoningContent = "";
+  const contentChunks: string[] = [];
+  const reasoningChunks: string[] = [];
+  let contentLen = 0;
+  let reasoningLen = 0;
   const generatedImages: string[] = [];
   const pendingToolCalls: Array<{
     id: string;
@@ -186,27 +188,34 @@ export async function generateResponse(
     let inThinkTag = false;
 
     // Process a text chunk: handle <think> tags
+    // Uses array buffers instead of string concatenation to reduce GC pressure
     const processTextChunk = (raw: string) => {
       let chunk = raw;
       while (chunk) {
         if (inThinkTag) {
           const closeIdx = chunk.indexOf("</think>");
           if (closeIdx !== -1) {
-            reasoningContent += chunk.slice(0, closeIdx);
+            const part = chunk.slice(0, closeIdx);
+            reasoningChunks.push(part);
+            reasoningLen += part.length;
             chunk = chunk.slice(closeIdx + 8);
             inThinkTag = false;
           } else {
-            reasoningContent += chunk;
+            reasoningChunks.push(chunk);
+            reasoningLen += chunk.length;
             chunk = "";
           }
         } else {
           const openIdx = chunk.indexOf("<think>");
           if (openIdx !== -1) {
-            content += chunk.slice(0, openIdx);
+            const part = chunk.slice(0, openIdx);
+            contentChunks.push(part);
+            contentLen += part.length;
             chunk = chunk.slice(openIdx + 7);
             inThinkTag = true;
           } else {
-            content += chunk;
+            contentChunks.push(chunk);
+            contentLen += chunk.length;
             chunk = "";
           }
         }
@@ -231,8 +240,8 @@ export async function generateResponse(
       const now = Date.now();
       if (generatedImages.length !== lastFlushedImagesLength) return true;
       if (pendingToolCalls.length !== lastFlushedToolCallsLength) return true;
-      const contentDelta = content.length - lastFlushedContentLength;
-      const reasoningDelta = reasoningContent.length - lastFlushedReasoningLength;
+      const contentDelta = contentLen - lastFlushedContentLength;
+      const reasoningDelta = reasoningLen - lastFlushedReasoningLength;
       return (
         contentDelta >= MIN_CHARS_TO_FLUSH ||
         reasoningDelta >= MIN_CHARS_TO_FLUSH ||
@@ -249,8 +258,8 @@ export async function generateResponse(
       }
       uiDirty = false;
       lastFlushAt = Date.now();
-      lastFlushedContentLength = content.length;
-      lastFlushedReasoningLength = reasoningContent.length;
+      lastFlushedContentLength = contentLen;
+      lastFlushedReasoningLength = reasoningLen;
       lastFlushedToolCallsLength = pendingToolCalls.length;
       lastFlushedImagesLength = generatedImages.length;
       // Only rebuild arrays when they actually changed
@@ -266,12 +275,14 @@ export async function generateResponse(
       }
       // Only update streaming UI if still viewing the same conversation
       if (useChatStore.getState().currentConversationId === conversationId) {
+        const joinedContent = contentChunks.join("");
+        const joinedReasoning = reasoningChunks.join("");
         useChatStore.setState({
           streamingMessage: {
             ...assistantMsg,
-            content,
+            content: joinedContent,
             generatedImages: cachedImages,
-            reasoningContent: reasoningContent || null,
+            reasoningContent: joinedReasoning || null,
             toolCalls: cachedToolCalls,
           },
         });
@@ -302,11 +313,14 @@ export async function generateResponse(
       }
       // Direct reasoning_content field (DeepSeek R1, etc.)
       if (delta.reasoning_content) {
-        reasoningContent += delta.reasoning_content;
+        reasoningChunks.push(delta.reasoning_content);
+        reasoningLen += delta.reasoning_content.length;
       }
       // Some providers use 'reasoning' field
       if ((delta as any).reasoning) {
-        reasoningContent += (delta as any).reasoning;
+        const r = (delta as any).reasoning;
+        reasoningChunks.push(r);
+        reasoningLen += r.length;
       }
       if (delta.tool_calls) {
         for (const tc of delta.tool_calls) {
@@ -331,6 +345,10 @@ export async function generateResponse(
     // Final flush after stream ends
     if (flushTimer) clearTimeout(flushTimer);
     if (uiDirty) flushUI();
+
+    // Join chunk arrays into final strings
+    let content = contentChunks.join("");
+    const reasoningContent = reasoningChunks.join("");
 
     // Post-stream: extract markdown images from content
     const mdImageRegex = /!\[[^\]]*\]\((data:image\/[^)]+)\)/g;
@@ -399,7 +417,7 @@ export async function generateResponse(
         fuDirty = false;
         useChatStore.setState((s) => ({
           streamingMessage: s.streamingMessage && s.streamingMessage.id === assistantMsg.id
-            ? { ...s.streamingMessage, content: followUpContent || content }
+            ? { ...s.streamingMessage, content: followUpContent || contentChunks.join("") }
             : s.streamingMessage,
         }));
       };
@@ -483,7 +501,7 @@ export async function generateResponse(
     log.error(`Stream error for ${model.displayName}: ${errMsg}\n${errStack}`);
 
     if (signal?.aborted) {
-      await finishMessage(content || "(stopped)");
+      await finishMessage(contentChunks.join("") || "(stopped)");
       return;
     }
     await finishMessage(`[${model.displayName}] Error: ${errMsg}`);

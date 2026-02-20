@@ -167,7 +167,7 @@ export const MessageBubble = React.memo(function MessageBubble({
           <View className="max-w-[90%] rounded-xl bg-slate-50 p-3">
             {renderMarkdown
               ? <MarkdownRenderer content={message.reasoningContent} />
-              : <Text className="text-[13px] leading-relaxed text-slate-600">{message.reasoningContent}</Text>}
+              : <Text className="text-[13px] leading-relaxed text-slate-600" textBreakStrategy="simple">{message.reasoningContent}</Text>}
           </View>
         )}
 
@@ -198,7 +198,7 @@ export const MessageBubble = React.memo(function MessageBubble({
               {displayContent ? (
                 renderMarkdown
                   ? <MarkdownRenderer content={displayContent} />
-                  : <Text className="text-[15px] leading-relaxed text-gray-800">{displayContent}</Text>
+                  : <Text className="text-[15px] leading-relaxed text-gray-800" textBreakStrategy="simple">{displayContent}</Text>
               ) : null}
               {message.generatedImages && message.generatedImages.length > 0 && (
                 <View className={`flex-row flex-wrap gap-2 ${markdownContent ? "mt-3" : ""}`}>
