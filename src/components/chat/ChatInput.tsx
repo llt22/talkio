@@ -30,7 +30,7 @@ export const ChatInput = React.memo(function ChatInput({
 }: ChatInputProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const bottomPad = Platform.OS === "ios" ? insets.bottom : insets.bottom + 10;
+  const bottomPad = Platform.OS === "ios" ? insets.bottom : Math.max(insets.bottom, 24);
   const [text, setText] = useState("");
   const [attachedImages, setAttachedImages] = useState<{ uri: string; base64: string }[]>([]);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
