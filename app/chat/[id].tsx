@@ -117,6 +117,7 @@ export default function ChatDetailScreen() {
   const [editingParticipantModelId, setEditingParticipantModelId] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const userScrolledAway = useRef(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const isDragging = useRef(false);
   const loadMoreCooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -237,9 +238,11 @@ export default function ChatDetailScreen() {
     if (distanceFromBottom > 120) {
       // User scrolled away from bottom
       userScrolledAway.current = true;
+      setShowScrollToBottom(true);
     } else if (distanceFromBottom < 80) {
       // User scrolled back to bottom
       userScrolledAway.current = false;
+      setShowScrollToBottom(false);
     }
     if (distanceFromTop < 120 && hasMoreMessages && !isLoadingMore) {
       if (!loadMoreCooldownRef.current) {
@@ -254,6 +257,7 @@ export default function ChatDetailScreen() {
   const handleScrollBeginDrag = useCallback(() => {
     isDragging.current = true;
     userScrolledAway.current = true;
+    setShowScrollToBottom(true);
   }, []);
 
   const handleScrollEndDrag = useCallback(() => {
@@ -263,10 +267,17 @@ export default function ChatDetailScreen() {
   const handleSend = useCallback(
     (text: string, mentionedModelIds?: string[], images?: string[]) => {
       userScrolledAway.current = false;
+      setShowScrollToBottom(false);
       sendMessage(text, mentionedModelIds, images);
     },
     [sendMessage],
   );
+
+  const scrollToBottom = useCallback(() => {
+    userScrolledAway.current = false;
+    setShowScrollToBottom(false);
+    listRef.current?.scrollToOffset({ offset: 9999999, animated: true });
+  }, []);
 
   const handleIdentitySelect = useCallback(
     (identityId: string | null) => {
@@ -581,6 +592,17 @@ export default function ChatDetailScreen() {
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={handleScrollEndDrag}
       />
+
+      {showScrollToBottom && (
+        <Pressable
+          onPress={scrollToBottom}
+          className="absolute right-4 bottom-24 z-10 h-10 w-10 items-center justify-center rounded-full bg-white shadow-md"
+          style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 4 }}
+          hitSlop={8}
+        >
+          <Ionicons name="chevron-down" size={20} color="#007AFF" />
+        </Pressable>
+      )}
 
       <ChatInput
         onSend={handleSend}
