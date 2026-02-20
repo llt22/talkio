@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { View } from "react-native";
-import Markdown from "react-native-markdown-display";
+import Markdown from "@ronradtke/react-native-markdown-display";
 import { MarkdownCodeBlock } from "./MarkdownCodeBlock";
 import { MermaidRenderer } from "./MermaidRenderer";
 import { HtmlPreview } from "../common/HtmlPreview";
