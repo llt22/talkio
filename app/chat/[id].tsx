@@ -34,8 +34,13 @@ export default function ChatDetailScreen() {
   const conv = useChatStore(
     useCallback((s) => s.conversations.find((c) => c.id === id), [id]),
   );
-  const messages = useChatStore((s) => s.messages);
+  const rawMessages = useChatStore((s) => s.messages);
   const streamingMessage = useChatStore((s) => s.streamingMessage);
+  // Exclude streaming message from list data to avoid duplicate with ListFooterComponent
+  const messages = useMemo(
+    () => streamingMessage ? rawMessages.filter((m) => m.id !== streamingMessage.id) : rawMessages,
+    [rawMessages, streamingMessage],
+  );
   const isGenerating = useChatStore((s) => s.isGenerating);
   const hasMoreMessages = useChatStore((s) => s.hasMoreMessages);
   const isLoadingMore = useChatStore((s) => s.isLoadingMore);

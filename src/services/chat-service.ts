@@ -118,7 +118,7 @@ export async function generateResponse(
     }
     const finalMsg = { ...assistantMsg, content: finalContent, isStreaming: false };
     useChatStore.setState((s) => ({
-      messages: [...s.messages, finalMsg],
+      messages: [...s.messages.filter((m) => m.id !== finalMsg.id), finalMsg],
       streamingMessage: null,
     }));
   };
@@ -427,7 +427,7 @@ export async function generateResponse(
     };
     const now = new Date().toISOString();
     useChatStore.setState((s) => ({
-      messages: [...s.messages, finalMsg],
+      messages: [...s.messages.filter((m) => m.id !== finalMsg.id), finalMsg],
       streamingMessage: null,
       conversations: s.conversations.map((c) =>
         c.id === conversationId
