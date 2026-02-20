@@ -238,11 +238,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (conv.participants.some((p) => p.modelId === modelId)) return;
 
     const participants = [...conv.participants, { modelId, identityId: null }];
-    await dbUpdateConversation(conversationId, { participants });
+    // Update title if it follows the default "Model Group (N)" pattern
+    const titleUpdate = /^Model Group \(\d+\)$/.test(conv.title)
+      ? { title: `Model Group (${participants.length})` }
+      : {};
+    await dbUpdateConversation(conversationId, { participants, ...titleUpdate });
 
     set({
       conversations: get().conversations.map((c) =>
-        c.id === conversationId ? { ...c, participants } : c,
+        c.id === conversationId ? { ...c, participants, ...titleUpdate } : c,
       ),
     });
   },
@@ -253,11 +257,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (conv.participants.length <= 1) return;
 
     const participants = conv.participants.filter((p) => p.modelId !== modelId);
-    await dbUpdateConversation(conversationId, { participants });
+    const titleUpdate = /^Model Group \(\d+\)$/.test(conv.title)
+      ? { title: `Model Group (${participants.length})` }
+      : {};
+    await dbUpdateConversation(conversationId, { participants, ...titleUpdate });
 
     set({
       conversations: get().conversations.map((c) =>
-        c.id === conversationId ? { ...c, participants } : c,
+        c.id === conversationId ? { ...c, participants, ...titleUpdate } : c,
       ),
     });
   },
