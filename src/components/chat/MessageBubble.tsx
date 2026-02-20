@@ -48,7 +48,12 @@ export const MessageBubble = React.memo(function MessageBubble({
       setThrottledContent(markdownContent);
       return;
     }
-    // During streaming, throttle updates
+    // First content arrives: show immediately (no blank gap)
+    if (markdownContent && !throttledContent) {
+      setThrottledContent(markdownContent);
+      return;
+    }
+    // During streaming, throttle subsequent updates
     if (!throttleRef.current) {
       throttleRef.current = setTimeout(() => {
         throttleRef.current = null;
