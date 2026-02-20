@@ -69,8 +69,12 @@ export const MessageBubble = React.memo(function MessageBubble({
   const displayContent = message.isStreaming ? throttledContent : markdownContent;
 
   // P3: Skip entrance animation for settled (non-streaming) messages
-  const Wrapper = message.isStreaming ? MotiView : View;
-  const wrapperAnimProps = message.isStreaming
+  // P7: Only animate once on first mount; subsequent content updates skip MotiView overhead
+  const hasAnimatedRef = useRef(false);
+  const shouldAnimate = message.isStreaming && !hasAnimatedRef.current;
+  if (message.isStreaming && displayContent) hasAnimatedRef.current = true;
+  const Wrapper = shouldAnimate ? MotiView : View;
+  const wrapperAnimProps = shouldAnimate
     ? { from: { opacity: 0, translateY: 8 }, animate: { opacity: 1, translateY: 0 }, transition: { type: "timing" as const, duration: 250 } }
     : {};
 
@@ -305,7 +309,16 @@ export const MessageBubble = React.memo(function MessageBubble({
   return true;
 });
 
+const timeCache = new Map<string, string>();
 function formatTime(iso: string): string {
+  let cached = timeCache.get(iso);
+  if (cached) return cached;
   const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).toUpperCase();
+  cached = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).toUpperCase();
+  timeCache.set(iso, cached);
+  if (timeCache.size > 500) {
+    const first = timeCache.keys().next().value;
+    if (first) timeCache.delete(first);
+  }
+  return cached;
 }

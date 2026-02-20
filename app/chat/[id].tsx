@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { View, Text, Pressable, Platform, Alert, ActionSheetIOS, InteractionManager } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
@@ -22,6 +22,34 @@ KeyboardController.preload();
 
 const messageKeyExtractor = (item: Message) => item.id;
 
+// Self-contained streaming footer: subscribes to streamingMessage internally
+// so the parent ChatDetailScreen doesn't re-render on every streaming flush
+const StreamingFooter = React.memo(function StreamingFooter({
+  isGroup,
+  labelYou,
+  labelThoughtProcess,
+  onLongPress,
+}: {
+  isGroup: boolean;
+  labelYou: string;
+  labelThoughtProcess: string;
+  onLongPress?: (message: Message) => void;
+}) {
+  const streamingMessage = useChatStore((s) => s.streamingMessage);
+  if (!streamingMessage) return null;
+  return (
+    <MessageBubble
+      message={streamingMessage}
+      isGroup={isGroup}
+      isLastAssistant={false}
+      renderMarkdown
+      labelYou={labelYou}
+      labelThoughtProcess={labelThoughtProcess}
+      onLongPress={onLongPress}
+    />
+  );
+});
+
 export default function ChatDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,13 +58,27 @@ export default function ChatDetailScreen() {
   const listRef = useRef<LegendListRef>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  const conv = useChatStore(
+  const rawConv = useChatStore(
     useCallback((s) => s.conversations.find((c) => c.id === id), [id]),
   );
+  // Stabilize conv reference: only update when fields we render actually change
+  const prevConvRef = useRef(rawConv);
+  if (
+    rawConv !== prevConvRef.current &&
+    rawConv && prevConvRef.current &&
+    rawConv.id === prevConvRef.current.id &&
+    rawConv.type === prevConvRef.current.type &&
+    rawConv.title === prevConvRef.current.title &&
+    rawConv.participants === prevConvRef.current.participants
+  ) {
+    // lastMessage/lastMessageAt/updatedAt changed but we don't render those — keep old ref
+  } else {
+    prevConvRef.current = rawConv;
+  }
+  const conv = prevConvRef.current;
   const rawMessages = useChatStore((s) => s.messages);
-  const streamingMessage = useChatStore((s) => s.streamingMessage);
-  // P1: Only depend on streamingMessage id (not content) to avoid re-filtering on every stream chunk
-  const streamingId = streamingMessage?.id ?? null;
+  // P6: Only subscribe to streamingMessage id at parent level — the footer subscribes to the full object
+  const streamingId = useChatStore((s) => s.streamingMessage?.id ?? null);
   const messages = useMemo(
     () => streamingId ? rawMessages.filter((m) => m.id !== streamingId) : rawMessages,
     [rawMessages, streamingId],
@@ -46,8 +88,8 @@ export default function ChatDetailScreen() {
   const isLoadingMore = useChatStore((s) => s.isLoadingMore);
   const loadMoreMessages = useChatStore((s) => s.loadMoreMessages);
 
-  const hasMessages = messages.length > 0 || !!streamingMessage;
-  const messageCount = messages.length + (streamingMessage ? 1 : 0);
+  const hasMessages = messages.length > 0 || !!streamingId;
+  const messageCount = messages.length + (streamingId ? 1 : 0);
   const setCurrentConversation = useChatStore((s) => s.setCurrentConversation);
   const sendMessage = useChatStore((s) => s.sendMessage);
   const updateParticipantIdentity = useChatStore((s) => s.updateParticipantIdentity);
@@ -161,20 +203,30 @@ export default function ChatDetailScreen() {
     });
   }, [convTitle, modelDisplayName, identityName, participantCount, isGroup, showParticipants]);
 
-  const streamingContent = streamingMessage?.content;
+  // P6: Track streaming content changes via store subscription instead of re-rendering parent
   const scrollThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevStreamingContentRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    return useChatStore.subscribe((state) => {
+      const content = state.streamingMessage?.content;
+      if (!content || content === prevStreamingContentRef.current) return;
+      prevStreamingContentRef.current = content;
+      if (userScrolledAway.current) return;
+      if (scrollThrottleRef.current) return;
+      scrollThrottleRef.current = setTimeout(() => {
+        scrollThrottleRef.current = null;
+        if (!userScrolledAway.current) {
+          listRef.current?.scrollToOffset({ offset: 9999999, animated: false });
+        }
+      }, 400);
+    });
+  }, []);
 
+  // Also scroll when new messages arrive (non-streaming)
   useEffect(() => {
     if (messageCount === 0 || userScrolledAway.current) return;
-    // Throttle: only scroll once per 400ms during streaming
-    if (scrollThrottleRef.current) return;
-    scrollThrottleRef.current = setTimeout(() => {
-      scrollThrottleRef.current = null;
-      if (!userScrolledAway.current) {
-        listRef.current?.scrollToOffset({ offset: 9999999, animated: false });
-      }
-    }, 400);
-  }, [messageCount, streamingContent]);
+    listRef.current?.scrollToOffset({ offset: 9999999, animated: false });
+  }, [messageCount]);
 
   const handleScroll = useCallback((e: any) => {
     // Only update flag during user drag, ignore programmatic/content-growth scrolls
@@ -317,12 +369,13 @@ export default function ChatDetailScreen() {
   }, [copyMessage, handleDeleteMessage, regenerateMessage, handleSend]);
 
   const lastAssistantId = useMemo(() => {
-    if (streamingMessage?.role === "assistant") return streamingMessage.id;
+    // During streaming, the streaming message is always the latest assistant
+    if (streamingId) return streamingId;
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "assistant") return messages[i].id;
     }
     return null;
-  }, [messages, streamingMessage]);
+  }, [messages, streamingId]);
 
   const lastAssistantIdRef = useRef(lastAssistantId);
   lastAssistantIdRef.current = lastAssistantId;
@@ -371,20 +424,12 @@ export default function ChatDetailScreen() {
     [isGroup, handleLongPress, t],
   );
 
-  const listFooter = useMemo(() => {
-    if (!streamingMessage) return null;
-    return (
-      <MessageBubble
-        message={streamingMessage}
-        isGroup={isGroup}
-        isLastAssistant={false}
-        renderMarkdown
-        labelYou={t("chat.you")}
-        labelThoughtProcess={t("chat.thoughtProcess")}
-        onLongPress={handleLongPress}
-      />
-    );
-  }, [streamingMessage, isGroup, handleLongPress, t]);
+  const streamingFooterProps = useMemo(() => ({
+    isGroup,
+    labelYou: t("chat.you"),
+    labelThoughtProcess: t("chat.thoughtProcess"),
+    onLongPress: handleLongPress,
+  }), [isGroup, handleLongPress, t]);
 
   const handleExport = useCallback(async () => {
     if (!conv || isExporting) return;
@@ -530,7 +575,7 @@ export default function ChatDetailScreen() {
         data={messages}
         renderItem={renderItem}
         keyExtractor={messageKeyExtractor}
-        ListFooterComponent={listFooter}
+        ListFooterComponent={streamingId ? <StreamingFooter {...streamingFooterProps} /> : null}
         {...legendListProps}
         onScroll={handleScroll}
         onScrollBeginDrag={handleScrollBeginDrag}
