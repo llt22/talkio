@@ -395,6 +395,7 @@ export default function ChatDetailScreen() {
 
   // P3: 使用 useMemo 缓存列表配置，避免每次渲染重新创建
   const legendListProps = useMemo(() => ({
+    style: { flex: 1 } as const,
     contentContainerStyle: { paddingTop: 12, paddingBottom: 8 },
     recycleItems: true,
     maintainScrollAtEnd: true,
