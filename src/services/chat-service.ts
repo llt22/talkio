@@ -117,10 +117,19 @@ export async function generateResponse(
       log.error(`DB update failed: ${e}`);
     }
     const finalMsg = { ...assistantMsg, content: finalContent, isStreaming: false };
-    useChatStore.setState((s) => ({
-      messages: [...s.messages.filter((m) => m.id !== finalMsg.id), finalMsg],
-      streamingMessage: null,
-    }));
+    useChatStore.setState((s) => {
+      // Only update UI state if still viewing the same conversation
+      if (s.currentConversationId !== conversationId) {
+        // Different conversation active — just clear streaming if it belongs to us
+        return s.streamingMessage?.id === assistantMsg.id
+          ? { streamingMessage: null }
+          : {};
+      }
+      return {
+        messages: [...s.messages.filter((m) => m.id !== finalMsg.id), finalMsg],
+        streamingMessage: s.streamingMessage?.id === assistantMsg.id ? null : s.streamingMessage,
+      };
+    });
   };
 
   try {
@@ -255,15 +264,18 @@ export async function generateResponse(
       if (generatedImages.length !== cachedImages.length) {
         cachedImages = [...generatedImages];
       }
-      useChatStore.setState({
-        streamingMessage: {
-          ...assistantMsg,
-          content,
-          generatedImages: cachedImages,
-          reasoningContent: reasoningContent || null,
-          toolCalls: cachedToolCalls,
-        },
-      });
+      // Only update streaming UI if still viewing the same conversation
+      if (useChatStore.getState().currentConversationId === conversationId) {
+        useChatStore.setState({
+          streamingMessage: {
+            ...assistantMsg,
+            content,
+            generatedImages: cachedImages,
+            reasoningContent: reasoningContent || null,
+            toolCalls: cachedToolCalls,
+          },
+        });
+      }
     };
 
     const scheduleFlush = () => {
@@ -426,15 +438,27 @@ export async function generateResponse(
       isStreaming: false,
     };
     const now = new Date().toISOString();
-    useChatStore.setState((s) => ({
-      messages: [...s.messages.filter((m) => m.id !== finalMsg.id), finalMsg],
-      streamingMessage: null,
-      conversations: s.conversations.map((c) =>
-        c.id === conversationId
-          ? { ...c, lastMessage: content.slice(0, 100), lastMessageAt: now, updatedAt: now }
-          : c,
-      ),
-    }));
+    useChatStore.setState((s) => {
+      const updates: Partial<typeof s> = {
+        // Always update conversation metadata (lastMessage) regardless of which conversation is active
+        conversations: s.conversations.map((c) =>
+          c.id === conversationId
+            ? { ...c, lastMessage: content.slice(0, 100), lastMessageAt: now, updatedAt: now }
+            : c,
+        ),
+      };
+      if (s.currentConversationId === conversationId) {
+        // Still viewing same conversation — commit message to list
+        updates.messages = [...s.messages.filter((m) => m.id !== finalMsg.id), finalMsg];
+        updates.streamingMessage = s.streamingMessage?.id === assistantMsg.id ? null : s.streamingMessage;
+      } else {
+        // Switched away — only clear streaming if it belongs to us
+        if (s.streamingMessage?.id === assistantMsg.id) {
+          updates.streamingMessage = null;
+        }
+      }
+      return updates;
+    });
 
     dbUpdateConversation(conversationId, {
       lastMessage: content.slice(0, 100),

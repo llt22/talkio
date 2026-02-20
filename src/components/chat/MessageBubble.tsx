@@ -45,6 +45,7 @@ export const MessageBubble = React.memo(function MessageBubble({
     if (!message.isStreaming) {
       // When streaming ends, immediately render final content
       if (throttleRef.current) clearTimeout(throttleRef.current);
+      throttleRef.current = null;
       setThrottledContent(markdownContent);
       return;
     }
@@ -53,19 +54,14 @@ export const MessageBubble = React.memo(function MessageBubble({
       setThrottledContent(markdownContent);
       return;
     }
-    // During streaming, throttle subsequent updates
+    // During streaming, throttle subsequent updates — do NOT clear timer on each content change
     if (!throttleRef.current) {
       throttleRef.current = setTimeout(() => {
         throttleRef.current = null;
         setThrottledContent(latestContentRef.current);
       }, 300);
     }
-    return () => {
-      if (throttleRef.current) {
-        clearTimeout(throttleRef.current);
-        throttleRef.current = null;
-      }
-    };
+    // No cleanup: let the timer fire naturally; latestContentRef ensures latest content is used
   }, [markdownContent, message.isStreaming]);
 
   const displayContent = message.isStreaming ? throttledContent : markdownContent;
