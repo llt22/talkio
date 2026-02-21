@@ -14,6 +14,7 @@ import { useProviderStore } from "../../src/stores/provider-store";
 import { useIdentityStore } from "../../src/stores/identity-store";
 import { useMessages } from "../../src/hooks/useMessages";
 import { useConversations } from "../../src/hooks/useConversations";
+import { useConversationBlocks } from "../../src/hooks/useMessageBlocks";
 import { MessageBubble } from "../../src/components/chat/MessageBubble";
 import { ChatInput } from "../../src/components/chat/ChatInput";
 import { IdentitySlider } from "../../src/components/chat/IdentitySlider";
@@ -37,6 +38,7 @@ export default function ChatDetailScreen() {
   const conv = useMemo(() => allConversations.find((c) => c.id === id), [allConversations, id]);
   const activeBranchId = useChatStore((s) => s.activeBranchId);
   const messages = useMessages(id ?? null, activeBranchId);
+  const blocksByMessage = useConversationBlocks(id ?? null);
   const isGenerating = useChatStore((s) => s.isGenerating);
 
   const hasMessages = messages.length > 0;
@@ -305,6 +307,9 @@ export default function ChatDetailScreen() {
   const messageCountRef = useRef(messageCount);
   messageCountRef.current = messageCount;
 
+  const blocksByMessageRef = useRef(blocksByMessage);
+  blocksByMessageRef.current = blocksByMessage;
+
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => {
       const markdownWindow = 24;
@@ -312,6 +317,7 @@ export default function ChatDetailScreen() {
       return (
         <MessageBubble
           message={item}
+          blocks={blocksByMessageRef.current[item.id]}
           isGroup={isGroup}
           isLastAssistant={item.id === lastAssistantIdRef.current}
           renderMarkdown={shouldRenderMarkdown}

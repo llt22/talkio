@@ -5,11 +5,13 @@ import { MotiView } from "moti";
 import { Ionicons } from "@expo/vector-icons";
 import { ModelAvatar } from "../common/ModelAvatar";
 import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
-import type { Message } from "../../types";
+import type { Message, MessageBlock } from "../../types";
+import { MessageBlockType, MessageBlockStatus, MessageStatus } from "../../types";
 import { useChatStore } from "../../stores/chat-store";
 
 interface MessageBubbleProps {
   message: Message;
+  blocks?: MessageBlock[];
   isGroup?: boolean;
   isLastAssistant?: boolean;
   renderMarkdown?: boolean;
@@ -21,6 +23,7 @@ interface MessageBubbleProps {
 
 export const MessageBubble = React.memo(function MessageBubble({
   message,
+  blocks,
   isGroup = false,
   isLastAssistant = false,
   renderMarkdown = true,
@@ -33,12 +36,14 @@ export const MessageBubble = React.memo(function MessageBubble({
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const isUser = message.role === "user";
 
-  const markdownContent = isUser ? message.content : message.content.trimEnd();
-
-  // No component-level throttle — chat-service.ts already throttles streamingMessage
-  // updates at ~120ms intervals. A second throttle here would only cause stale content
-  // and layout jumps when it catches up. (cherry-studio-app also renders directly.)
+  // Resolve content from blocks (preferred) or flat message fields (fallback)
+  const mainTextBlock = blocks?.find((b) => b.type === MessageBlockType.MAIN_TEXT);
+  const thinkingBlock = blocks?.find((b) => b.type === MessageBlockType.THINKING);
+  const rawContent = mainTextBlock ? mainTextBlock.content : message.content;
+  const markdownContent = isUser ? rawContent : rawContent.trimEnd();
   const displayContent = markdownContent;
+  const reasoningContent = thinkingBlock ? thinkingBlock.content : message.reasoningContent;
+  const isStreaming = message.status === MessageStatus.STREAMING || message.isStreaming;
 
   // P3/P7: No wrapper animation — avoids layout jumps during streaming→settled transition.
   // The streaming dots inside the bubble already provide visual feedback for new messages.
@@ -101,7 +106,7 @@ export const MessageBubble = React.memo(function MessageBubble({
           <Text className="text-[10px] text-slate-300">{formatTime(message.createdAt)}</Text>
         </View>
 
-        {message.reasoningContent && (
+        {reasoningContent && (
           <Pressable
             onPress={() => setShowReasoning(!showReasoning)}
             className="max-w-[90%] flex-row items-center justify-between rounded-xl bg-slate-200/50 px-3 py-2.5"
@@ -127,11 +132,11 @@ export const MessageBubble = React.memo(function MessageBubble({
           </Pressable>
         )}
 
-        {showReasoning && message.reasoningContent && (
+        {showReasoning && reasoningContent && (
           <View className="max-w-[90%] rounded-xl bg-slate-50 p-3">
             {renderMarkdown
-              ? <MarkdownRenderer content={message.reasoningContent} />
-              : <Text className="text-[13px] leading-relaxed text-slate-600" textBreakStrategy="simple">{message.reasoningContent}</Text>}
+              ? <MarkdownRenderer content={reasoningContent} />
+              : <Text className="text-[13px] leading-relaxed text-slate-600" textBreakStrategy="simple">{reasoningContent}</Text>}
           </View>
         )}
 
@@ -140,7 +145,7 @@ export const MessageBubble = React.memo(function MessageBubble({
           className="max-w-[90%] rounded-2xl border border-slate-100 bg-[#F2F2F7] px-4 py-3"
           style={{ borderTopLeftRadius: 0 }}
         >
-          {message.isStreaming && !message.content && !message.generatedImages?.length ? (
+          {isStreaming && !rawContent && !message.generatedImages?.length ? (
             <View className="flex-row items-center gap-1.5 py-1">
               {[0, 1, 2].map((i) => (
                 <MotiView
@@ -232,7 +237,7 @@ export const MessageBubble = React.memo(function MessageBubble({
           </View>
         )}
 
-        {isLastAssistant && !message.isStreaming && (
+        {isLastAssistant && !isStreaming && (
           <View className="ml-1 flex-row items-center gap-1">
             <Pressable
               onPress={() => {
@@ -261,10 +266,12 @@ export const MessageBubble = React.memo(function MessageBubble({
   // Only re-render when these change
   if (prev.message.id !== next.message.id) return false;
   if (prev.message.content !== next.message.content) return false;
+  if (prev.message.status !== next.message.status) return false;
   if (prev.message.isStreaming !== next.message.isStreaming) return false;
   if (prev.message.reasoningContent !== next.message.reasoningContent) return false;
   if (prev.message.toolCalls.length !== next.message.toolCalls.length) return false;
   if (prev.message.generatedImages?.length !== next.message.generatedImages?.length) return false;
+  if (prev.blocks !== next.blocks) return false;
   if (prev.isLastAssistant !== next.isLastAssistant) return false;
   if (prev.isGroup !== next.isGroup) return false;
   if (prev.renderMarkdown !== next.renderMarkdown) return false;
