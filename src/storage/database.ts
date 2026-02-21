@@ -2,6 +2,7 @@ import { eq, desc, asc, and, or, isNull, like, lt } from "drizzle-orm";
 import { db, expoDb } from "../../db";
 import { conversations, messages } from "../../db/schema";
 import type { Message, Conversation } from "../types";
+import { MessageStatus } from "../types";
 
 // ─── Init: ensure tables exist (Drizzle push or manual) ───
 export async function initDatabase(): Promise<void> {
@@ -48,6 +49,8 @@ export async function initDatabase(): Promise<void> {
     `ALTER TABLE messages ADD COLUMN images TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE messages ADD COLUMN generatedImages TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE messages ADD COLUMN reasoningDuration REAL`,
+    `ALTER TABLE messages ADD COLUMN status TEXT NOT NULL DEFAULT 'success'`,
+    `ALTER TABLE messages ADD COLUMN errorMessage TEXT`,
   ];
   for (const sql of migrations) {
     try {
@@ -103,6 +106,8 @@ export function rowToMessage(row: typeof messages.$inferSelect): Message {
     branchId: row.branchId ?? null,
     parentMessageId: row.parentMessageId ?? null,
     isStreaming: row.isStreaming === 1,
+    status: ((row as any).status as MessageStatus) || (row.isStreaming === 1 ? MessageStatus.STREAMING : MessageStatus.SUCCESS),
+    errorMessage: (row as any).errorMessage ?? null,
     createdAt: row.createdAt,
   };
 }
@@ -174,6 +179,13 @@ export async function insertMessage(msg: Message): Promise<void> {
     isStreaming: msg.isStreaming ? 1 : 0,
     createdAt: msg.createdAt,
   });
+  // Write status + errorMessage via raw SQL since drizzle schema may not have them yet
+  if (msg.status || msg.errorMessage) {
+    expoDb.runSync(
+      `UPDATE messages SET status = ?, errorMessage = ? WHERE id = ?`,
+      [msg.status ?? MessageStatus.SUCCESS, msg.errorMessage ?? null, msg.id],
+    );
+  }
 }
 
 export async function updateMessage(id: string, updates: Partial<Message>): Promise<void> {
@@ -186,6 +198,8 @@ export async function updateMessage(id: string, updates: Partial<Message>): Prom
   if (updates.toolCalls !== undefined) values.toolCalls = JSON.stringify(updates.toolCalls);
   if (updates.toolResults !== undefined) values.toolResults = JSON.stringify(updates.toolResults);
   if (updates.isStreaming !== undefined) values.isStreaming = updates.isStreaming ? 1 : 0;
+  if (updates.status !== undefined) (values as any).status = updates.status;
+  if (updates.errorMessage !== undefined) (values as any).errorMessage = updates.errorMessage;
 
   if (Object.keys(values).length > 0) {
     await db.update(messages).set(values).where(eq(messages.id, id));

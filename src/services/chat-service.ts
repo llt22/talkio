@@ -6,6 +6,7 @@ import type {
   ChatApiToolDef,
   Identity,
 } from "../types";
+import { MessageStatus } from "../types";
 import { generateId } from "../utils/id";
 import { ApiClient } from "./api-client";
 import { executeTool, toolToApiDef, discoveredToolToApiDef } from "./mcp-client";
@@ -18,6 +19,7 @@ import {
   getConversation as dbGetConversation,
   getRecentMessages as dbGetRecentMessages,
 } from "../storage/database";
+import { batchUpdateMessage, flushBatchUpdates } from "../storage/batch-writer";
 import { useProviderStore } from "../stores/provider-store";
 import { useIdentityStore } from "../stores/identity-store";
 import { useChatStore } from "../stores/chat-store";
@@ -88,6 +90,8 @@ export async function generateResponse(
     branchId: chatStore.activeBranchId,
     parentMessageId: null,
     isStreaming: true,
+    status: MessageStatus.STREAMING,
+    errorMessage: null,
     createdAt: new Date().toISOString(),
   };
 
@@ -262,15 +266,15 @@ export async function generateResponse(
       if (generatedImages.length !== cachedImages.length) {
         cachedImages = [...generatedImages];
       }
-      // Write streaming content to DB — useLiveQuery will auto-update UI
+      // Batch streaming content to DB — merged + flushed every 180ms
       const joinedContent = contentChunks.join("");
       const joinedReasoning = reasoningChunks.join("");
-      dbUpdateMessage(assistantMsg.id, {
+      batchUpdateMessage(assistantMsg.id, {
         content: joinedContent,
         generatedImages: cachedImages,
         reasoningContent: joinedReasoning || null,
         toolCalls: cachedToolCalls,
-      }).catch((e) => log.error(`DB streaming flush failed: ${e}`));
+      });
     };
 
     const scheduleFlush = () => {
@@ -353,7 +357,7 @@ export async function generateResponse(
 
     if (pendingToolCalls.length > 0) {
       toolResults = await executeToolCalls(pendingToolCalls);
-      dbUpdateMessage(assistantMsg.id, { toolResults }).catch((e) => log.error(`DB tool results update failed: ${e}`));
+      batchUpdateMessage(assistantMsg.id, { toolResults });
 
       const assistantApiMsg: ChatApiMessage = {
         role: "assistant",
@@ -395,9 +399,9 @@ export async function generateResponse(
       const flushFollowUp = () => {
         fuTimer = null;
         fuDirty = false;
-        dbUpdateMessage(assistantMsg.id, {
+        batchUpdateMessage(assistantMsg.id, {
           content: followUpContent || content,
-        }).catch((e) => log.error(`DB follow-up flush failed: ${e}`));
+        });
       };
       for await (const delta of followUpStream) {
         if (delta.content) {
@@ -414,6 +418,8 @@ export async function generateResponse(
       }
     }
 
+    // Flush any pending batched updates before final commit
+    await flushBatchUpdates([assistantMsg.id]);
     await dbUpdateMessage(assistantMsg.id, {
       content,
       generatedImages,
@@ -421,6 +427,7 @@ export async function generateResponse(
       toolCalls: toolCallsSnapshot,
       toolResults,
       isStreaming: false,
+      status: MessageStatus.SUCCESS,
     });
 
     // Commit: finalize message in DB — useLiveQuery handles UI automatically
@@ -450,9 +457,16 @@ export async function generateResponse(
 
     if (signal?.aborted) {
       await finishMessage(contentChunks.join("") || "(stopped)");
+      // Mark as paused (user-initiated stop)
+      dbUpdateMessage(assistantMsg.id, { status: MessageStatus.PAUSED }).catch(() => {});
       return;
     }
     await finishMessage(`[${model.displayName}] Error: ${errMsg}`);
+    // Persist error status and message
+    dbUpdateMessage(assistantMsg.id, {
+      status: MessageStatus.ERROR,
+      errorMessage: errMsg,
+    }).catch(() => {});
   }
 }
 

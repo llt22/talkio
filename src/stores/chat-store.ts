@@ -4,6 +4,7 @@ import type {
   ConversationParticipant,
   Message,
 } from "../types";
+import { MessageStatus } from "../types";
 import {
   insertConversation,
   updateConversation as dbUpdateConversation,
@@ -155,6 +156,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       branchId: get().activeBranchId,
       parentMessageId: null,
       isStreaming: false,
+      status: MessageStatus.SUCCESS,
+      errorMessage: null,
       createdAt: new Date().toISOString(),
     };
 

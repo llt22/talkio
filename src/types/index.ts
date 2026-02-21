@@ -129,6 +129,14 @@ export interface ToolResult {
   content: string;
 }
 
+export enum MessageStatus {
+  PENDING = "pending",
+  STREAMING = "streaming",
+  SUCCESS = "success",
+  ERROR = "error",
+  PAUSED = "paused",
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -145,7 +153,10 @@ export interface Message {
   toolResults: ToolResult[];
   branchId: string | null;
   parentMessageId: string | null;
+  /** @deprecated Use status instead */
   isStreaming: boolean;
+  status: MessageStatus;
+  errorMessage: string | null;
   createdAt: string;
 }
 
