@@ -43,7 +43,10 @@ export default function RootLayout() {
               headerBackTitle: "Back",
               headerShadowVisible: false,
               headerStyle: { backgroundColor: "#ffffff" },
-              animation: "slide_from_right",
+              animation: "ios_from_right",
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              gestureDirection: "horizontal",
               headerTitleAlign: "center",
             }}
           />
