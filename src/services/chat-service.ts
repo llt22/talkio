@@ -15,6 +15,8 @@ import {
   insertMessage,
   updateMessage as dbUpdateMessage,
   updateConversation as dbUpdateConversation,
+  getConversation as dbGetConversation,
+  getRecentMessages as dbGetRecentMessages,
 } from "../storage/database";
 import { useProviderStore } from "../stores/provider-store";
 import { useIdentityStore } from "../stores/identity-store";
@@ -64,7 +66,9 @@ export async function generateResponse(
     ? identityStore.getIdentityById(participant.identityId)
     : undefined;
 
-  const apiMessages = buildApiMessages(chatStore.messages, modelId, identity);
+  // Read messages from DB (single source of truth)
+  const dbMessages = await dbGetRecentMessages(conversationId, chatStore.activeBranchId, 100);
+  const apiMessages = buildApiMessages(dbMessages, modelId, identity);
 
   // Create assistant message FIRST so loading animation appears immediately
   const assistantMsg: Message = {
@@ -88,7 +92,6 @@ export async function generateResponse(
   };
 
   await insertMessage(assistantMsg);
-  useChatStore.setState({ streamingMessage: assistantMsg });
 
   // Discover tools AFTER showing loading animation
   log.info(`[generateResponse] Building tools for ${model.displayName}...`);
@@ -118,20 +121,6 @@ export async function generateResponse(
     } catch (e) {
       log.error(`DB update failed: ${e}`);
     }
-    const finalMsg = { ...assistantMsg, content: finalContent, isStreaming: false };
-    useChatStore.setState((s) => {
-      // Only update UI state if still viewing the same conversation
-      if (s.currentConversationId !== conversationId) {
-        // Different conversation active — just clear streaming if it belongs to us
-        return s.streamingMessage?.id === assistantMsg.id
-          ? { streamingMessage: null }
-          : {};
-      }
-      return {
-        messages: [...s.messages.filter((m) => m.id !== finalMsg.id), finalMsg],
-        streamingMessage: s.streamingMessage?.id === assistantMsg.id ? null : s.streamingMessage,
-      };
-    });
   };
 
   try {
@@ -273,20 +262,15 @@ export async function generateResponse(
       if (generatedImages.length !== cachedImages.length) {
         cachedImages = [...generatedImages];
       }
-      // Only update streaming UI if still viewing the same conversation
-      if (useChatStore.getState().currentConversationId === conversationId) {
-        const joinedContent = contentChunks.join("");
-        const joinedReasoning = reasoningChunks.join("");
-        useChatStore.setState({
-          streamingMessage: {
-            ...assistantMsg,
-            content: joinedContent,
-            generatedImages: cachedImages,
-            reasoningContent: joinedReasoning || null,
-            toolCalls: cachedToolCalls,
-          },
-        });
-      }
+      // Write streaming content to DB — useLiveQuery will auto-update UI
+      const joinedContent = contentChunks.join("");
+      const joinedReasoning = reasoningChunks.join("");
+      dbUpdateMessage(assistantMsg.id, {
+        content: joinedContent,
+        generatedImages: cachedImages,
+        reasoningContent: joinedReasoning || null,
+        toolCalls: cachedToolCalls,
+      }).catch((e) => log.error(`DB streaming flush failed: ${e}`));
     };
 
     const scheduleFlush = () => {
@@ -369,11 +353,7 @@ export async function generateResponse(
 
     if (pendingToolCalls.length > 0) {
       toolResults = await executeToolCalls(pendingToolCalls);
-      useChatStore.setState((s) => ({
-        streamingMessage: s.streamingMessage && s.streamingMessage.id === assistantMsg.id
-          ? { ...s.streamingMessage, toolResults }
-          : s.streamingMessage,
-      }));
+      dbUpdateMessage(assistantMsg.id, { toolResults }).catch((e) => log.error(`DB tool results update failed: ${e}`));
 
       const assistantApiMsg: ChatApiMessage = {
         role: "assistant",
@@ -415,11 +395,9 @@ export async function generateResponse(
       const flushFollowUp = () => {
         fuTimer = null;
         fuDirty = false;
-        useChatStore.setState((s) => ({
-          streamingMessage: s.streamingMessage && s.streamingMessage.id === assistantMsg.id
-            ? { ...s.streamingMessage, content: followUpContent || content }
-            : s.streamingMessage,
-        }));
+        dbUpdateMessage(assistantMsg.id, {
+          content: followUpContent || content,
+        }).catch((e) => log.error(`DB follow-up flush failed: ${e}`));
       };
       for await (const delta of followUpStream) {
         if (delta.content) {
@@ -445,38 +423,8 @@ export async function generateResponse(
       isStreaming: false,
     });
 
-    // Commit: move streaming message into settled messages array
-    const finalMsg: Message = {
-      ...assistantMsg,
-      content,
-      generatedImages: [...generatedImages],
-      reasoningContent: reasoningContent || null,
-      toolCalls: toolCallsSnapshot,
-      toolResults,
-      isStreaming: false,
-    };
+    // Commit: finalize message in DB — useLiveQuery handles UI automatically
     const now = new Date().toISOString();
-    useChatStore.setState((s) => {
-      const updates: Partial<typeof s> = {
-        // Always update conversation metadata (lastMessage) regardless of which conversation is active
-        conversations: s.conversations.map((c) =>
-          c.id === conversationId
-            ? { ...c, lastMessage: content.slice(0, 100), lastMessageAt: now, updatedAt: now }
-            : c,
-        ),
-      };
-      if (s.currentConversationId === conversationId) {
-        // Still viewing same conversation — commit message to list
-        updates.messages = [...s.messages.filter((m) => m.id !== finalMsg.id), finalMsg];
-        updates.streamingMessage = s.streamingMessage?.id === assistantMsg.id ? null : s.streamingMessage;
-      } else {
-        // Switched away — only clear streaming if it belongs to us
-        if (s.streamingMessage?.id === assistantMsg.id) {
-          updates.streamingMessage = null;
-        }
-      }
-      return updates;
-    });
 
     dbUpdateConversation(conversationId, {
       lastMessage: content.slice(0, 100),
@@ -485,7 +433,7 @@ export async function generateResponse(
 
     // Auto-generate conversation title on first response
     log.info(`[generateResponse] Stream complete. ${chunkCount} chunks, ${content.length} chars`);
-    autoGenerateTitle(conversationId, client, model, chatStore.messages, content).catch(() => {});
+    autoGenerateTitle(conversationId, client, model, dbMessages, content).catch(() => {});
   } catch (err) {
     let errMsg: string;
     if (err instanceof Error) {
@@ -519,7 +467,7 @@ async function autoGenerateTitle(
   const assistantCount = previousMessages.filter((m) => m.role === "assistant").length;
   if (assistantCount > 0) return; // already has prior responses
 
-  const conv = useChatStore.getState().conversations.find((c) => c.id === conversationId);
+  const conv = await dbGetConversation(conversationId);
   if (!conv) return;
 
   // Skip if title was manually set (not the default "Model Group" or model name pattern)
@@ -551,11 +499,6 @@ async function autoGenerateTitle(
     if (!title || title.length > 60) return;
 
     await dbUpdateConversation(conversationId, { title });
-    useChatStore.setState((s) => ({
-      conversations: s.conversations.map((c) =>
-        c.id === conversationId ? { ...c, title } : c,
-      ),
-    }));
   } catch {
     // Non-critical, silently fail
   }

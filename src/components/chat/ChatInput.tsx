@@ -20,6 +20,7 @@ interface ChatInputProps {
   isGenerating: boolean;
   isGroup?: boolean;
   participants?: ConversationParticipant[];
+  hasMessages?: boolean;
 }
 
 export const ChatInput = React.memo(function ChatInput({
@@ -27,6 +28,7 @@ export const ChatInput = React.memo(function ChatInput({
   isGenerating,
   isGroup = false,
   participants = [],
+  hasMessages = false,
 }: ChatInputProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -180,7 +182,6 @@ export const ChatInput = React.memo(function ChatInput({
   }, [isRecording]);
 
   const quickPromptEnabled = useSettingsStore((s) => s.settings.quickPromptEnabled);
-  const hasMessages = useChatStore((s) => s.messages.length > 0 || !!s.streamingMessage);
   const showQuickPrompts = quickPromptEnabled && hasMessages && !text.trim() && attachedImages.length === 0 && !isGenerating && !isRecording;
 
   const quickPrompts = [

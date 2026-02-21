@@ -7,7 +7,6 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useProviderStore } from "../src/stores/provider-store";
 import { useIdentityStore } from "../src/stores/identity-store";
 import { useSettingsStore } from "../src/stores/settings-store";
-import { useChatStore } from "../src/stores/chat-store";
 import { hydrateStorage } from "../src/storage/mmkv";
 import { initDatabase } from "../src/storage/database";
 import "../src/i18n";
@@ -18,7 +17,6 @@ export default function RootLayout() {
   const loadProviders = useProviderStore((s) => s.loadProviders);
   const loadIdentities = useIdentityStore((s) => s.loadIdentities);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
-  const loadConversations = useChatStore((s) => s.loadConversations);
 
   useEffect(() => {
     Promise.all([hydrateStorage(), initDatabase()]).then(() => {
@@ -27,8 +25,6 @@ export default function RootLayout() {
       useIdentityStore.getState().initBuiltInTools();
       loadSettings();
       setReady(true);
-      // 不阻塞 ready，异步加载对话列表
-      loadConversations();
     });
   }, []);
 

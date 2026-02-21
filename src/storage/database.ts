@@ -71,7 +71,7 @@ function safeJsonParse<T>(value: unknown, fallback: T): T {
 }
 
 // ─── Row converters ───
-function rowToConversation(row: typeof conversations.$inferSelect): Conversation {
+export function rowToConversation(row: typeof conversations.$inferSelect): Conversation {
   return {
     id: row.id,
     type: row.type as Conversation["type"],
@@ -85,7 +85,7 @@ function rowToConversation(row: typeof conversations.$inferSelect): Conversation
   };
 }
 
-function rowToMessage(row: typeof messages.$inferSelect): Message {
+export function rowToMessage(row: typeof messages.$inferSelect): Message {
   return {
     id: row.id,
     conversationId: row.conversationId,

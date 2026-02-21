@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { InteractionManager } from "react-native";
 import type {
   Conversation,
   ConversationParticipant,
@@ -9,11 +8,9 @@ import {
   insertConversation,
   updateConversation as dbUpdateConversation,
   deleteConversation as dbDeleteConversation,
-  getAllConversations,
   insertMessage,
-  getMessages as dbGetMessages,
+  getConversation as dbGetConversation,
   getRecentMessages as dbGetRecentMessages,
-  getMessagesBefore as dbGetMessagesBefore,
   searchMessages as dbSearchMessages,
   deleteMessage as dbDeleteMessage,
   clearMessages as dbClearMessages,
@@ -23,31 +20,22 @@ import { generateId } from "../utils/id";
 import { useProviderStore } from "./provider-store";
 import { resolveTargetModels, generateResponse } from "../services/chat-service";
 
+// DB-driven architecture: messages and conversations are read via useLiveQuery hooks.
+// This store only holds ephemeral UI state and action methods that write to DB.
 interface ChatState {
-  conversations: Conversation[];
   currentConversationId: string | null;
-  messages: Message[];
-  streamingMessage: Message | null;
   isGenerating: boolean;
   activeBranchId: string | null;
-  hasMoreMessages: boolean;
-  isLoadingMore: boolean;
+  /** @internal */
+  _abortController: AbortController | null;
 
-  loadConversations: () => Promise<void>;
   createConversation: (
     type: "single" | "group",
     participants: ConversationParticipant[],
     title?: string,
   ) => Promise<Conversation>;
   deleteConversation: (id: string) => Promise<void>;
-  setCurrentConversation: (
-    id: string | null,
-    options?: {
-      deferLoad?: boolean;
-    },
-  ) => void;
-  loadMessages: (conversationId: string) => Promise<void>;
-  loadMoreMessages: () => Promise<void>;
+  setCurrentConversation: (id: string | null) => void;
   updateParticipantIdentity: (
     conversationId: string,
     modelId: string,
@@ -55,38 +43,21 @@ interface ChatState {
   ) => Promise<void>;
   addParticipant: (conversationId: string, modelId: string) => Promise<void>;
   removeParticipant: (conversationId: string, modelId: string) => Promise<void>;
-
-  commitStreamingMessage: () => void;
   sendMessage: (text: string, mentionedModelIds?: string[], images?: string[]) => Promise<void>;
   stopGeneration: () => void;
   regenerateMessage: (messageId: string) => Promise<void>;
-  branchFromMessage: (messageId: string) => Promise<string>;
+  branchFromMessage: (messageId: string, messages: Message[]) => Promise<string>;
   switchBranch: (branchId: string | null) => void;
   deleteMessageById: (messageId: string) => Promise<void>;
   clearConversationMessages: (conversationId: string) => Promise<void>;
   searchAllMessages: (query: string) => Promise<Message[]>;
-  /** @internal */
-  _abortController: AbortController | null;
 }
 
-// P1: 使用 Map 存储每个对话的加载序列，避免全局竞争
-const loadSequences = new Map<string, number>();
-
 export const useChatStore = create<ChatState>((set, get) => ({
-  conversations: [],
   currentConversationId: null,
-  messages: [],
-  streamingMessage: null,
   isGenerating: false,
   activeBranchId: null,
-  hasMoreMessages: true,
-  isLoadingMore: false,
   _abortController: null,
-
-  loadConversations: async () => {
-    const conversations = await getAllConversations();
-    set({ conversations });
-  },
 
   createConversation: async (type, participants, title) => {
     const providerStore = useProviderStore.getState();
@@ -110,171 +81,61 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     await insertConversation(conv);
-    set({ conversations: [conv, ...get().conversations] });
+    // useLiveQuery in useConversations will auto-update the list
     return conv;
   },
 
   deleteConversation: async (id) => {
     await dbDeleteConversation(id);
-    const conversations = get().conversations.filter((c) => c.id !== id);
-    set({
-      conversations,
-      currentConversationId:
-        get().currentConversationId === id ? null : get().currentConversationId,
-      messages: get().currentConversationId === id ? [] : get().messages,
-    });
+    // useLiveQuery auto-updates; clear currentConversationId if needed
+    if (get().currentConversationId === id) {
+      set({ currentConversationId: null, activeBranchId: null });
+    }
   },
 
-  setCurrentConversation: (id, options) => {
-    // P2: 使用批量更新减少重渲染次数
-    const updates: Partial<ChatState> = { currentConversationId: id };
-    
-    // 只有当切换对话时才清空消息
+  setCurrentConversation: (id) => {
     if (id !== get().currentConversationId) {
-      updates.messages = [];
-      updates.streamingMessage = null;
-      updates.activeBranchId = null;
-      updates.hasMoreMessages = true;
-      updates.isLoadingMore = false;
+      set({ currentConversationId: id, activeBranchId: null });
     }
-    
-    set(updates);
-    if (id) {
-      const load = () => get().loadMessages(id);
-      if (options?.deferLoad) {
-        InteractionManager.runAfterInteractions(load);
-      } else {
-        load();
-      }
-    }
-  },
-
-  commitStreamingMessage: () => {
-    const sm = get().streamingMessage;
-    if (!sm) return;
-    set((s) => ({
-      messages: [...s.messages, sm],
-      streamingMessage: null,
-    }));
-  },
-
-  loadMessages: async (conversationId) => {
-    // P3: 使用对话特定的序列号，避免竞态条件
-    const currentSeq = (loadSequences.get(conversationId) || 0) + 1;
-    loadSequences.set(conversationId, currentSeq);
-    
-    const pageSize = 40;
-    const messages = await dbGetRecentMessages(conversationId, get().activeBranchId, pageSize);
-    
-    // 检查是否是最新的请求
-    if (loadSequences.get(conversationId) !== currentSeq) return;
-    
-    // P4: 只有当消息真正变化时才更新状态（轻量比较：长度+首尾ID）
-    const currentMessages = get().messages;
-    const changed =
-      currentMessages.length !== messages.length ||
-      currentMessages[0]?.id !== messages[0]?.id ||
-      currentMessages[currentMessages.length - 1]?.id !== messages[messages.length - 1]?.id;
-    if (changed) {
-      set({
-        messages,
-        hasMoreMessages: messages.length === pageSize,
-        isLoadingMore: false,
-      });
-    }
-  },
-
-  loadMoreMessages: async () => {
-    const state = get();
-    const convId = state.currentConversationId;
-    if (!convId || state.isLoadingMore || !state.hasMoreMessages) return;
-    if (state.messages.length === 0) {
-      set({ hasMoreMessages: false, isLoadingMore: false });
-      return;
-    }
-
-    const before = state.messages[0]?.createdAt;
-    if (!before) return;
-
-    set({ isLoadingMore: true });
-    const pageSize = 40;
-    const more = await dbGetMessagesBefore(convId, state.activeBranchId, before, pageSize);
-
-    if (get().currentConversationId !== convId) {
-      set({ isLoadingMore: false });
-      return;
-    }
-
-    if (more.length === 0) {
-      set({ hasMoreMessages: false, isLoadingMore: false });
-      return;
-    }
-
-    set({
-      messages: [...more, ...state.messages],
-      hasMoreMessages: more.length === pageSize,
-      isLoadingMore: false,
-    });
   },
 
   updateParticipantIdentity: async (conversationId, modelId, identityId) => {
-    const conv = get().conversations.find((c) => c.id === conversationId);
+    const conv = await dbGetConversation(conversationId);
     if (!conv) return;
-
     const participants = conv.participants.map((p) =>
       p.modelId === modelId ? { ...p, identityId } : p,
     );
     await dbUpdateConversation(conversationId, { participants });
-
-    const conversations = get().conversations.map((c) =>
-      c.id === conversationId ? { ...c, participants } : c,
-    );
-    set({ conversations });
+    // useLiveQuery auto-updates
   },
 
   addParticipant: async (conversationId, modelId) => {
-    const conv = get().conversations.find((c) => c.id === conversationId);
+    const conv = await dbGetConversation(conversationId);
     if (!conv) return;
     if (conv.participants.some((p) => p.modelId === modelId)) return;
-
     const participants = [...conv.participants, { modelId, identityId: null }];
-    // Update title if it follows the default "Model Group (N)" pattern
     const titleUpdate = /^Model Group \(\d+\)$/.test(conv.title)
       ? { title: `Model Group (${participants.length})` }
       : {};
     await dbUpdateConversation(conversationId, { participants, ...titleUpdate });
-
-    set({
-      conversations: get().conversations.map((c) =>
-        c.id === conversationId ? { ...c, participants, ...titleUpdate } : c,
-      ),
-    });
   },
 
   removeParticipant: async (conversationId, modelId) => {
-    const conv = get().conversations.find((c) => c.id === conversationId);
+    const conv = await dbGetConversation(conversationId);
     if (!conv) return;
     if (conv.participants.length <= 1) return;
-
     const participants = conv.participants.filter((p) => p.modelId !== modelId);
     const titleUpdate = /^Model Group \(\d+\)$/.test(conv.title)
       ? { title: `Model Group (${participants.length})` }
       : {};
     await dbUpdateConversation(conversationId, { participants, ...titleUpdate });
-
-    set({
-      conversations: get().conversations.map((c) =>
-        c.id === conversationId ? { ...c, participants, ...titleUpdate } : c,
-      ),
-    });
   },
 
   sendMessage: async (text, mentionedModelIds, images) => {
-    const state = get();
-    const convId = state.currentConversationId;
+    const convId = get().currentConversationId;
     if (!convId) return;
 
-    const conv = state.conversations.find((c) => c.id === convId);
+    const conv = await dbGetConversation(convId);
     if (!conv) return;
 
     const userMsg: Message = {
@@ -291,33 +152,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       reasoningDuration: null,
       toolCalls: [],
       toolResults: [],
-      branchId: state.activeBranchId,
+      branchId: get().activeBranchId,
       parentMessageId: null,
       isStreaming: false,
       createdAt: new Date().toISOString(),
     };
 
+    // Write to DB — useLiveQuery auto-updates UI
     await insertMessage(userMsg);
-    // P0: 合并消息+会话+生成状态为单次 set，减少重渲染
-    const updatedConversations = state.conversations.map((c) =>
-      c.id === convId
-        ? { ...c, lastMessage: text, lastMessageAt: userMsg.createdAt, updatedAt: userMsg.createdAt }
-        : c,
-    );
-    set({
-      messages: [...state.messages, userMsg],
-      conversations: updatedConversations,
-      isGenerating: true,
-    });
+    dbUpdateConversation(convId, {
+      lastMessage: text,
+      lastMessageAt: userMsg.createdAt,
+    }).catch(() => {});
+
+    set({ isGenerating: true });
 
     try {
-      dbUpdateConversation(convId, {
-        lastMessage: text,
-        lastMessageAt: userMsg.createdAt,
-      }).catch(() => {});
-
       const targetModelIds = resolveTargetModels(conv, mentionedModelIds);
-
       const abortController = new AbortController();
       set({ _abortController: abortController });
 
@@ -339,22 +190,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   regenerateMessage: async (messageId) => {
-    const state = get();
-    const convId = state.currentConversationId;
-    if (!convId || state.isGenerating) return;
+    const convId = get().currentConversationId;
+    if (!convId || get().isGenerating) return;
 
-    const msg = state.messages.find((m) => m.id === messageId);
+    // Read from DB to get message details
+    const allMessages = await dbGetRecentMessages(convId, get().activeBranchId, 200);
+    const msg = allMessages.find((m) => m.id === messageId);
     if (!msg || msg.role !== "assistant" || !msg.senderModelId) return;
 
-    const conv = state.conversations.find((c) => c.id === convId);
+    const conv = await dbGetConversation(convId);
     if (!conv) return;
 
-    // Delete the old assistant message
+    // Delete the old assistant message from DB — useLiveQuery auto-updates
     await dbDeleteMessage(messageId);
-    set({
-      messages: state.messages.filter((m) => m.id !== messageId),
-      isGenerating: true,
-    });
+    set({ isGenerating: true });
 
     const abortController = new AbortController();
     set({ _abortController: abortController });
@@ -366,53 +215,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  branchFromMessage: async (messageId) => {
+  branchFromMessage: async (messageId, messages) => {
     const branchId = generateId();
-    const state = get();
-    const msgIndex = state.messages.findIndex((m) => m.id === messageId);
+    const msgIndex = messages.findIndex((m) => m.id === messageId);
     if (msgIndex < 0) return branchId;
 
-    const branchedMessages = state.messages.slice(0, msgIndex + 1).map((m) => ({
+    const branchedMessages = messages.slice(0, msgIndex + 1).map((m) => ({
       ...m,
       id: generateId(),
       branchId,
     }));
 
     await dbInsertMessages(branchedMessages);
-
     set({ activeBranchId: branchId });
-    await get().loadMessages(get().currentConversationId!);
+    // useLiveQuery with new branchId will auto-load the branched messages
     return branchId;
   },
 
   switchBranch: (branchId) => {
     set({ activeBranchId: branchId });
-    const convId = get().currentConversationId;
-    if (convId) get().loadMessages(convId);
+    // useLiveQuery reacts to branchId change in the component
   },
 
   deleteMessageById: async (messageId) => {
+    // Delete from DB — useLiveQuery auto-updates
     await dbDeleteMessage(messageId);
-    const state = get();
-    const remaining = state.messages.filter((m) => m.id !== messageId);
-    const convId = state.currentConversationId;
-
+    // Update conversation lastMessage metadata
+    const convId = get().currentConversationId;
     if (convId) {
+      const remaining = await dbGetRecentMessages(convId, get().activeBranchId, 1);
       const last = remaining[remaining.length - 1];
-      const convUpdates = {
+      dbUpdateConversation(convId, {
         lastMessage: last?.content ?? null,
         lastMessageAt: last?.createdAt ?? null,
-      };
-      // P2: 合并 messages + conversations 为单次 set
-      set({
-        messages: remaining,
-        conversations: state.conversations.map((c) =>
-          c.id === convId ? { ...c, ...convUpdates } : c,
-        ),
-      });
-      dbUpdateConversation(convId, convUpdates).catch(() => {});
-    } else {
-      set({ messages: remaining });
+      }).catch(() => {});
     }
   },
 
@@ -422,20 +258,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       lastMessage: null,
       lastMessageAt: null,
     });
-    set({
-      messages: get().currentConversationId === conversationId ? [] : get().messages,
-      hasMoreMessages: get().currentConversationId === conversationId ? false : get().hasMoreMessages,
-      isLoadingMore: false,
-      conversations: get().conversations.map((c) =>
-        c.id === conversationId
-          ? { ...c, lastMessage: null, lastMessageAt: null }
-          : c,
-      ),
-    });
+    // useLiveQuery auto-updates both messages and conversations
   },
 
   searchAllMessages: async (query) => {
     return dbSearchMessages(query);
   },
 }));
-

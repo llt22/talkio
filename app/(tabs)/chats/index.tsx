@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useChatStore } from "../../../src/stores/chat-store";
 import { useProviderStore } from "../../../src/stores/provider-store";
 import { useIdentityStore } from "../../../src/stores/identity-store";
+import { useConversations } from "../../../src/hooks/useConversations";
 import { ModelAvatar } from "../../../src/components/common/ModelAvatar";
 import { EmptyState } from "../../../src/components/common/EmptyState";
 import type { Conversation } from "../../../src/types";
@@ -18,7 +19,7 @@ export default function ChatsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
-  const conversations = useChatStore((s) => s.conversations);
+  const conversations = useConversations();
   const deleteConversation = useChatStore((s) => s.deleteConversation);
   const [filter, setFilter] = useState<FilterType>("all");
   const [searchQuery, setSearchQuery] = useState("");

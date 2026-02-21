@@ -9,7 +9,8 @@ let _db: ReturnType<typeof drizzle> | null = null;
 
 function getExpoDb(): SQLite.SQLiteDatabase {
   if (!_expoDb) {
-    _expoDb = SQLite.openDatabaseSync(DATABASE_NAME);
+    _expoDb = SQLite.openDatabaseSync(DATABASE_NAME, { enableChangeListener: true });
+    _expoDb.execSync("PRAGMA journal_mode = WAL");
     _expoDb.execSync("PRAGMA foreign_keys = ON");
   }
   return _expoDb;

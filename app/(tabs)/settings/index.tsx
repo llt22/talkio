@@ -6,7 +6,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { useProviderStore } from "../../../src/stores/provider-store";
 import { useSettingsStore } from "../../../src/stores/settings-store";
 import { shareBackup, restoreBackup } from "../../../src/services/backup-service";
-import { useChatStore } from "../../../src/stores/chat-store";
+
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
@@ -134,7 +134,7 @@ export default function SettingsScreen() {
                 const response = await fetch(uri);
                 const jsonContent = await response.text();
                 const stats = await restoreBackup(jsonContent);
-                await useChatStore.getState().loadConversations();
+                // useLiveQuery auto-updates conversation list after DB restore
                 Alert.alert(
                   t("settings.restoreSuccess"),
                   t("settings.restoreDetail", { conversations: stats.conversations, messages: stats.messages }),

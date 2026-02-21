@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
-import { View, Text, Pressable, Platform, Alert, ActionSheetIOS, InteractionManager } from "react-native";
+import { View, Text, Pressable, Platform, Alert, ActionSheetIOS } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
@@ -12,6 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useChatStore } from "../../src/stores/chat-store";
 import { useProviderStore } from "../../src/stores/provider-store";
 import { useIdentityStore } from "../../src/stores/identity-store";
+import { useMessages } from "../../src/hooks/useMessages";
+import { useConversations } from "../../src/hooks/useConversations";
 import { MessageBubble } from "../../src/components/chat/MessageBubble";
 import { ChatInput } from "../../src/components/chat/ChatInput";
 import { IdentitySlider } from "../../src/components/chat/IdentitySlider";
@@ -30,38 +32,12 @@ export default function ChatDetailScreen() {
   const listRef = useRef<LegendListRef>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  const rawConv = useChatStore(
-    useCallback((s) => s.conversations.find((c) => c.id === id), [id]),
-  );
-  // Stabilize conv reference: only update when fields we render actually change
-  const prevConvRef = useRef(rawConv);
-  if (
-    rawConv !== prevConvRef.current &&
-    rawConv && prevConvRef.current &&
-    rawConv.id === prevConvRef.current.id &&
-    rawConv.type === prevConvRef.current.type &&
-    rawConv.title === prevConvRef.current.title &&
-    rawConv.participants === prevConvRef.current.participants
-  ) {
-    // lastMessage/lastMessageAt/updatedAt changed but we don't render those — keep old ref
-  } else {
-    prevConvRef.current = rawConv;
-  }
-  const conv = prevConvRef.current;
-  const settledMessages = useChatStore((s) => s.messages);
-  const streamingMessage = useChatStore((s) => s.streamingMessage);
-  // Merge streaming message into data array so LegendList's maintainScrollAtEnd
-  // can track its height changes natively (inspired by cherry-studio-app)
-  const messages = useMemo(() => {
-    if (!streamingMessage) return settledMessages;
-    // Filter out any duplicate (streaming msg may already be in settled during commit)
-    const filtered = settledMessages.filter((m) => m.id !== streamingMessage.id);
-    return [...filtered, streamingMessage];
-  }, [settledMessages, streamingMessage]);
+  // DB-driven: conversations and messages come from useLiveQuery hooks
+  const allConversations = useConversations();
+  const conv = useMemo(() => allConversations.find((c) => c.id === id), [allConversations, id]);
+  const activeBranchId = useChatStore((s) => s.activeBranchId);
+  const messages = useMessages(id ?? null, activeBranchId);
   const isGenerating = useChatStore((s) => s.isGenerating);
-  const hasMoreMessages = useChatStore((s) => s.hasMoreMessages);
-  const isLoadingMore = useChatStore((s) => s.isLoadingMore);
-  const loadMoreMessages = useChatStore((s) => s.loadMoreMessages);
 
   const hasMessages = messages.length > 0;
   const messageCount = messages.length;
@@ -92,7 +68,6 @@ export default function ChatDetailScreen() {
   const [editingParticipantModelId, setEditingParticipantModelId] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const loadMoreCooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // For single chat, use the first participant
   const currentParticipant = conv?.participants[0];
@@ -102,24 +77,16 @@ export default function ChatDetailScreen() {
     : null;
 
   useEffect(() => {
-    // P1: 立即设置当前会话，但延迟消息加载到导航动画后
     if (id) {
-      const raf = requestAnimationFrame(() => {
-        setCurrentConversation(id, { deferLoad: true });
-      });
-
+      setCurrentConversation(id);
       return () => {
-        cancelAnimationFrame(raf);
         const previousId = id;
-        InteractionManager.runAfterInteractions(() => {
-          // 仅当仍然停留在该会话时才清理，避免切换对话时误清空
-          if (useChatStore.getState().currentConversationId === previousId) {
-            setCurrentConversation(null);
-          }
-        });
+        // Only clear if still on this conversation
+        if (useChatStore.getState().currentConversationId === previousId) {
+          setCurrentConversation(null);
+        }
       };
     }
-
     return undefined;
   }, [id, setCurrentConversation]);
 
@@ -177,25 +144,13 @@ export default function ChatDetailScreen() {
     });
   }, [convTitle, modelDisplayName, identityName, participantCount, isGroup, showParticipants]);
 
-  // Scroll management: all content is now in data items (including streaming),
-  // so LegendList's maintainScrollAtEnd handles auto-scrolling natively.
-  // We only track distance from bottom for the "scroll to bottom" button.
+  // Scroll management: all content is data items, maintainScrollAtEnd handles auto-scrolling.
+  // useLiveQuery loads all messages, no pagination needed.
   const handleScroll = useCallback((e: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-    const distanceFromTop = contentOffset.y;
-    // Show/hide scroll-to-bottom button
     setShowScrollToBottom(distanceFromBottom > 100);
-    // Load more when near top
-    if (distanceFromTop < 120 && hasMoreMessages && !isLoadingMore) {
-      if (!loadMoreCooldownRef.current) {
-        loadMoreMessages();
-        loadMoreCooldownRef.current = setTimeout(() => {
-          loadMoreCooldownRef.current = null;
-        }, 500);
-      }
-    }
-  }, [hasMoreMessages, isLoadingMore, loadMoreMessages]);
+  }, []);
 
   const handleSend = useCallback(
     (text: string, mentionedModelIds?: string[], images?: string[]) => {
@@ -535,6 +490,7 @@ export default function ChatDetailScreen() {
         isGenerating={isGenerating}
         isGroup={isGroup}
         participants={stableParticipants}
+        hasMessages={hasMessages}
       />
     </KeyboardAvoidingView>
     </View>
