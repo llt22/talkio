@@ -1,8 +1,8 @@
 import { eq, desc, asc, and, or, isNull, like, lt } from "drizzle-orm";
 import { db, expoDb } from "../../db";
-import { conversations, messages } from "../../db/schema";
-import type { Message, Conversation } from "../types";
-import { MessageStatus } from "../types";
+import { conversations, messages, messageBlocks } from "../../db/schema";
+import type { Message, Conversation, MessageBlock } from "../types";
+import { MessageStatus, MessageBlockType, MessageBlockStatus } from "../types";
 
 // ─── Init: ensure tables exist (Drizzle push or manual) ───
 export async function initDatabase(): Promise<void> {
@@ -42,6 +42,21 @@ export async function initDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_messages_branch ON messages(branchId);
     CREATE INDEX IF NOT EXISTS idx_messages_conv_created ON messages(conversationId, createdAt);
     CREATE INDEX IF NOT EXISTS idx_messages_conv_branch_created ON messages(conversationId, branchId, createdAt);
+
+    CREATE TABLE IF NOT EXISTS message_blocks (
+      id TEXT PRIMARY KEY,
+      messageId TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'main_text',
+      content TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'success',
+      metadata TEXT,
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT,
+      FOREIGN KEY (messageId) REFERENCES messages(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_blocks_message ON message_blocks(messageId);
+    CREATE INDEX IF NOT EXISTS idx_blocks_message_order ON message_blocks(messageId, sortOrder);
   `);
 
   // Migration: add missing columns
@@ -319,6 +334,62 @@ export async function insertMessages(msgs: Message[]): Promise<void> {
       createdAt: msg.createdAt,
     })),
   );
+}
+
+// ─── Message Blocks ───
+
+export function rowToBlock(row: typeof messageBlocks.$inferSelect): MessageBlock {
+  return {
+    id: row.id,
+    messageId: row.messageId,
+    type: row.type as MessageBlockType,
+    content: row.content || "",
+    status: row.status as MessageBlockStatus,
+    metadata: safeJsonParse<Record<string, unknown> | null>(row.metadata, null),
+    sortOrder: row.sortOrder ?? 0,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt ?? null,
+  };
+}
+
+export async function insertBlock(block: MessageBlock): Promise<void> {
+  await db.insert(messageBlocks).values({
+    id: block.id,
+    messageId: block.messageId,
+    type: block.type,
+    content: block.content,
+    status: block.status,
+    metadata: block.metadata ? JSON.stringify(block.metadata) : null,
+    sortOrder: block.sortOrder,
+    createdAt: block.createdAt,
+    updatedAt: block.updatedAt,
+  });
+}
+
+export async function updateBlock(id: string, updates: Partial<MessageBlock>): Promise<void> {
+  const values: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+  if (updates.content !== undefined) values.content = updates.content;
+  if (updates.status !== undefined) values.status = updates.status;
+  if (updates.type !== undefined) values.type = updates.type;
+  if (updates.metadata !== undefined) values.metadata = updates.metadata ? JSON.stringify(updates.metadata) : null;
+  if (updates.sortOrder !== undefined) values.sortOrder = updates.sortOrder;
+
+  if (Object.keys(values).length > 1) {
+    await db.update(messageBlocks).set(values).where(eq(messageBlocks.id, id));
+  }
+}
+
+export async function getBlocksByMessageId(messageId: string): Promise<MessageBlock[]> {
+  const rows = await db
+    .select()
+    .from(messageBlocks)
+    .where(eq(messageBlocks.messageId, messageId))
+    .orderBy(asc(messageBlocks.sortOrder));
+  return rows.map(rowToBlock);
+}
+
+export async function deleteBlocksByMessageId(messageId: string): Promise<void> {
+  await db.delete(messageBlocks).where(eq(messageBlocks.messageId, messageId));
 }
 
 // Re-export for backward compat

@@ -18,8 +18,12 @@ import {
   updateConversation as dbUpdateConversation,
   getConversation as dbGetConversation,
   getRecentMessages as dbGetRecentMessages,
+  insertBlock,
+  updateBlock as dbUpdateBlock,
 } from "../storage/database";
 import { batchUpdateMessage, flushBatchUpdates } from "../storage/batch-writer";
+import { batchUpdateBlock, flushBlockBatchUpdates } from "../storage/block-batch-writer";
+import { MessageBlockType, MessageBlockStatus } from "../types";
 import { useProviderStore } from "../stores/provider-store";
 import { useIdentityStore } from "../stores/identity-store";
 import { useChatStore } from "../stores/chat-store";
@@ -96,6 +100,21 @@ export async function generateResponse(
   };
 
   await insertMessage(assistantMsg);
+
+  // Create initial MAIN_TEXT block for the assistant message
+  const mainTextBlockId = generateId();
+  let thinkingBlockId: string | null = null;
+  await insertBlock({
+    id: mainTextBlockId,
+    messageId: assistantMsg.id,
+    type: MessageBlockType.MAIN_TEXT,
+    content: "",
+    status: MessageBlockStatus.STREAMING,
+    metadata: null,
+    sortOrder: 1,
+    createdAt: assistantMsg.createdAt,
+    updatedAt: null,
+  });
 
   // Discover tools AFTER showing loading animation
   log.info(`[generateResponse] Building tools for ${model.displayName}...`);
@@ -275,6 +294,33 @@ export async function generateResponse(
         reasoningContent: joinedReasoning || null,
         toolCalls: cachedToolCalls,
       });
+      // Update MAIN_TEXT block
+      batchUpdateBlock(mainTextBlockId, {
+        content: joinedContent,
+        status: MessageBlockStatus.STREAMING,
+      });
+      // Create or update THINKING block if reasoning content exists
+      if (joinedReasoning) {
+        if (!thinkingBlockId) {
+          thinkingBlockId = generateId();
+          insertBlock({
+            id: thinkingBlockId,
+            messageId: assistantMsg.id,
+            type: MessageBlockType.THINKING,
+            content: joinedReasoning,
+            status: MessageBlockStatus.STREAMING,
+            metadata: null,
+            sortOrder: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: null,
+          }).catch((e) => log.error(`Insert thinking block failed: ${e}`));
+        } else {
+          batchUpdateBlock(thinkingBlockId, {
+            content: joinedReasoning,
+            status: MessageBlockStatus.STREAMING,
+          });
+        }
+      }
     };
 
     const scheduleFlush = () => {
@@ -420,6 +466,10 @@ export async function generateResponse(
 
     // Flush any pending batched updates before final commit
     await flushBatchUpdates([assistantMsg.id]);
+    const blockIdsToFlush = [mainTextBlockId];
+    if (thinkingBlockId) blockIdsToFlush.push(thinkingBlockId);
+    await flushBlockBatchUpdates(blockIdsToFlush);
+
     await dbUpdateMessage(assistantMsg.id, {
       content,
       generatedImages,
@@ -429,6 +479,11 @@ export async function generateResponse(
       isStreaming: false,
       status: MessageStatus.SUCCESS,
     });
+    // Finalize blocks
+    await dbUpdateBlock(mainTextBlockId, { content, status: MessageBlockStatus.SUCCESS });
+    if (thinkingBlockId && reasoningContent) {
+      await dbUpdateBlock(thinkingBlockId, { content: reasoningContent, status: MessageBlockStatus.SUCCESS });
+    }
 
     // Commit: finalize message in DB — useLiveQuery handles UI automatically
     const now = new Date().toISOString();

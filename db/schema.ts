@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 
+
 export const conversations = sqliteTable("conversations", {
   id: text("id").primaryKey(),
   type: text("type").notNull().default("single"),
@@ -42,13 +43,42 @@ export const messages = sqliteTable(
   ],
 );
 
+export const messageBlocks = sqliteTable(
+  "message_blocks",
+  {
+    id: text("id").primaryKey(),
+    messageId: text("messageId")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    type: text("type").notNull().default("main_text"),
+    content: text("content").notNull().default(""),
+    status: text("status").notNull().default("success"),
+    metadata: text("metadata"),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    createdAt: text("createdAt").notNull(),
+    updatedAt: text("updatedAt"),
+  },
+  (table) => [
+    index("idx_blocks_message").on(table.messageId),
+    index("idx_blocks_message_order").on(table.messageId, table.sortOrder),
+  ],
+);
+
 export const conversationsRelations = relations(conversations, ({ many }) => ({
   messages: many(messages),
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const messagesRelations = relations(messages, ({ one, many }) => ({
   conversation: one(conversations, {
     fields: [messages.conversationId],
     references: [conversations.id],
+  }),
+  blocks: many(messageBlocks),
+}));
+
+export const messageBlocksRelations = relations(messageBlocks, ({ one }) => ({
+  message: one(messages, {
+    fields: [messageBlocks.messageId],
+    references: [messages.id],
   }),
 }));

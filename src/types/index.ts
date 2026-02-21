@@ -137,6 +137,33 @@ export enum MessageStatus {
   PAUSED = "paused",
 }
 
+export enum MessageBlockType {
+  MAIN_TEXT = "main_text",
+  THINKING = "thinking",
+  TOOL = "tool",
+  IMAGE = "image",
+  ERROR = "error",
+}
+
+export enum MessageBlockStatus {
+  PENDING = "pending",
+  STREAMING = "streaming",
+  SUCCESS = "success",
+  ERROR = "error",
+}
+
+export interface MessageBlock {
+  id: string;
+  messageId: string;
+  type: MessageBlockType;
+  content: string;
+  status: MessageBlockStatus;
+  metadata: Record<string, unknown> | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
