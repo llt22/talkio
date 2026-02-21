@@ -37,6 +37,8 @@ export default function ChatDetailScreen() {
   // DB-driven: conversations and messages come from useLiveQuery hooks
   const allConversations = useConversations();
   const conv = useMemo(() => allConversations.find((c) => c.id === id), [allConversations, id]);
+  const hasLoadedRef = useRef(false);
+  if (allConversations.length > 0 || conv) hasLoadedRef.current = true;
   const activeBranchId = useChatStore((s) => s.activeBranchId);
   const messages = useMessages(id ?? null, activeBranchId);
   const blocksByMessage = useConversationBlocks(id ?? null);
@@ -365,6 +367,10 @@ export default function ChatDetailScreen() {
   }, [hasMessages, clearHistory, handleExport, isExporting]);
 
   if (!conv) {
+    // Still loading from DB — show blank screen instead of error
+    if (!hasLoadedRef.current) {
+      return <View className="flex-1 bg-white" />;
+    }
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <Text className="text-text-muted">{t("chat.conversationNotFound")}</Text>
