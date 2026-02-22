@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { Identity, McpTool, McpServer } from "../types";
 import { getItem, setItem } from "../storage/mmkv";
-import { STORAGE_KEYS, DEFAULT_IDENTITY_PARAMS, PRESET_IDENTITIES } from "../constants";
+import { STORAGE_KEYS, DEFAULT_IDENTITY_PARAMS, PRESET_IDENTITIES, PRESET_IDENTITIES_VERSION } from "../constants";
 import { generateId } from "../utils/id";
 import i18n from "../i18n";
 import { BUILT_IN_TOOLS, registerBuiltInTools } from "../services/built-in-tools";
@@ -96,8 +96,9 @@ export const useIdentityStore = create<IdentityState>((set, get) => ({
     const mcpTools = getItem<McpTool[]>(STORAGE_KEYS.MCP_TOOLS) ?? [];
     const mcpServers = getItem<McpServer[]>(STORAGE_KEYS.MCP_SERVERS) ?? [];
 
-    // Seed preset identities on first load
-    if (identities.length === 0) {
+    // Seed or update preset identities when version changes
+    const savedVersion = getItem<number>(STORAGE_KEYS.PRESET_VERSION) ?? 0;
+    if (identities.length === 0 || savedVersion < PRESET_IDENTITIES_VERSION) {
       identities = PRESET_IDENTITIES.map((preset) => ({
         id: generateId(),
         name: i18n.t(preset.nameKey),
@@ -109,6 +110,7 @@ export const useIdentityStore = create<IdentityState>((set, get) => ({
         createdAt: new Date().toISOString(),
       }));
       setItem(STORAGE_KEYS.IDENTITIES, identities);
+      setItem(STORAGE_KEYS.PRESET_VERSION, PRESET_IDENTITIES_VERSION);
     }
 
     set({ identities, mcpTools, mcpServers });

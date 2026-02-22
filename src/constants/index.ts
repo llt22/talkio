@@ -72,6 +72,8 @@ export const PROVIDER_TYPE_OPTIONS: { value: import("../types").ProviderType; la
   { value: "azure-openai", label: "Azure OpenAI" },
 ];
 
+export const PRESET_IDENTITIES_VERSION = 2;
+
 export const PRESET_IDENTITIES: Array<{
   nameKey: string;
   icon: string;
@@ -103,6 +105,7 @@ export const STORAGE_KEYS = {
   MCP_SERVERS: "mcp_servers",
   SHORTCUTS: "shortcuts",
   SETTINGS: "settings",
+  PRESET_VERSION: "preset_identities_version",
 } as const;
 
 export const TAG_COLORS: Record<string, { bg: string; text: string }> = {
