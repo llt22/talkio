@@ -177,19 +177,21 @@ export default function ChatDetailScreen() {
 
   const handleSend = useCallback(
     (text: string, mentionedModelIds?: string[], images?: string[]) => {
+      showScrollToBottomRef.current = false;
       setShowScrollToBottom(false);
       sendMessage(text, mentionedModelIds, images);
       // DB write → useLiveQuery has a micro-delay; nudge scroll after data arrives
       setTimeout(() => {
-        listRef.current?.scrollToOffset({ offset: 9999999, animated: true });
+        listRef.current?.scrollToEnd({ animated: true });
       }, 150);
     },
     [sendMessage],
   );
 
   const scrollToBottom = useCallback(() => {
+    showScrollToBottomRef.current = false;
     setShowScrollToBottom(false);
-    listRef.current?.scrollToOffset({ offset: 9999999, animated: true });
+    listRef.current?.scrollToEnd({ animated: true });
   }, []);
 
   const handleIdentitySelect = useCallback(
@@ -285,7 +287,7 @@ export default function ChatDetailScreen() {
     contentContainerStyle: { paddingTop: 12, paddingBottom: 8 },
     recycleItems: false,
     alignItemsAtEnd: false,
-    maintainScrollAtEnd: { onLayout: true, onItemLayout: true, onDataChange: true },
+    maintainScrollAtEnd: { onLayout: false, onItemLayout: false, onDataChange: true },
     maintainScrollAtEndThreshold: 0.05,
     estimatedItemSize: 120,
     drawDistance: 200,
