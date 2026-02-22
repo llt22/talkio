@@ -29,6 +29,7 @@ export async function buildApiMessages(
   messages: Message[],
   targetModelId: string,
   identity: Identity | undefined,
+  targetIdentityId?: string | null,
 ): Promise<ChatApiMessage[]> {
   const apiMessages: ChatApiMessage[] = [];
 
@@ -60,12 +61,19 @@ export async function buildApiMessages(
 
     const apiMsg: ChatApiMessage = { role: msg.role, content };
 
-    if (msg.role === "assistant" && msg.senderModelId !== targetModelId && msg.senderName) {
-      // Convert other models' responses to "user" role to avoid "must end with user message" errors
-      apiMsg.role = "user";
-      const prefix = `[${msg.senderName} said]: `;
-      if (typeof apiMsg.content === "string") {
-        apiMsg.content = prefix + apiMsg.content;
+    if (msg.role === "assistant" && msg.senderName) {
+      // Determine if this message is from "self" (same participant) or "other".
+      // Same modelId + same identityId = self; otherwise = other.
+      const isSelf = msg.senderModelId === targetModelId
+        && (msg.identityId ?? null) === (targetIdentityId ?? null);
+
+      if (!isSelf) {
+        // Convert other participants' responses to "user" role
+        apiMsg.role = "user";
+        const prefix = `[${msg.senderName} said]: `;
+        if (typeof apiMsg.content === "string") {
+          apiMsg.content = prefix + apiMsg.content;
+        }
       }
     }
 
