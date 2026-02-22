@@ -198,8 +198,7 @@ export const ChatInput = React.memo(function ChatInput({
   }, [isRecording]);
 
   const quickPromptEnabled = useSettingsStore((s) => s.settings.quickPromptEnabled);
-  const showQuickPrompts = !text.trim() && attachedImages.length === 0 && !isGenerating && !isRecording
-    && (isGroup || (quickPromptEnabled && hasMessages));
+  const showQuickPrompts = quickPromptEnabled && hasMessages && !text.trim() && attachedImages.length === 0 && !isGenerating && !isRecording;
 
   const quickPrompts = [
     { label: t("quickPrompt.continue"), prompt: t("quickPrompt.continuePrompt") },
@@ -296,20 +295,7 @@ export const ChatInput = React.memo(function ChatInput({
           className="border-b border-border-light bg-bg-hover px-3 py-2"
           contentContainerStyle={{ gap: 8 }}
         >
-          {isGroup && (
-            <Pressable
-              onPress={() => setShowRoundPicker((v) => !v)}
-              className={`flex-row items-center gap-1.5 rounded-full border px-3.5 py-1.5 active:opacity-70 ${
-                showRoundPicker ? "border-blue-300 bg-blue-50" : "border-border-light bg-bg-card"
-              }`}
-            >
-              <Ionicons name="chatbubbles" size={13} color={showRoundPicker ? "#2563eb" : "#6b7280"} />
-              <Text className={`text-[13px] font-medium ${showRoundPicker ? "text-blue-600" : "text-text-muted"}`}>
-                {t("chat.autoDiscuss")}
-              </Text>
-            </Pressable>
-          )}
-          {quickPromptEnabled && hasMessages && quickPrompts.map((qp) => (
+          {quickPrompts.map((qp) => (
             <Pressable
               key={qp.label}
               onPress={() => onSend(qp.prompt)}
@@ -414,13 +400,11 @@ export const ChatInput = React.memo(function ChatInput({
           ) : (
             <Pressable
               onPress={() => setShowRoundPicker((v) => !v)}
-              className={`flex-row items-center gap-1 rounded-full border px-3 py-1.5 active:opacity-70 ${
-                showRoundPicker ? "border-blue-300 bg-blue-50" : "border-transparent"
-              }`}
+              className="flex-row items-center gap-1 rounded-full px-3 py-1.5 active:opacity-70"
               disabled={isGenerating}
             >
-              <Ionicons name="chatbubbles-outline" size={16} color={showRoundPicker ? "#2563eb" : colors.textSecondary} />
-              <Text className={`text-[12px] font-medium ${showRoundPicker ? "text-blue-600" : "text-text-muted"}`}>
+              <Ionicons name="chatbubbles-outline" size={16} color={colors.textSecondary} />
+              <Text className="text-[12px] font-medium text-text-muted">
                 {t("chat.autoDiscuss")}
               </Text>
             </Pressable>
