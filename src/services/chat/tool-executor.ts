@@ -6,16 +6,16 @@ import { logger } from "../logger";
 
 const log = logger.withContext("ToolExecutor");
 
-// Module-level cache: maps tool name → { server, tool } for routing executeToolCalls
-let _discoveredToolsCache: Map<string, { server: McpServer; tool: DiscoveredTool }> = new Map();
+export type RemoteToolsCache = Map<string, { server: McpServer; tool: DiscoveredTool }>;
 
 export async function buildTools(
   model: { capabilities: { toolCall: boolean } },
   identity: Identity | undefined,
-): Promise<ChatApiToolDef[]> {
+): Promise<{ toolDefs: ChatApiToolDef[]; remoteToolsCache: RemoteToolsCache }> {
+  const emptyResult = { toolDefs: [], remoteToolsCache: new Map() as RemoteToolsCache };
   // Skip tools entirely if model doesn't support tool calls or no identity bound
-  if (!model.capabilities.toolCall) return [];
-  if (!identity) return [];
+  if (!model.capabilities.toolCall) return emptyResult;
+  if (!identity) return emptyResult;
 
   const identityStore = useIdentityStore.getState();
   const seen = new Set<string>();
@@ -35,9 +35,9 @@ export async function buildTools(
   }
 
   // 2. Remote MCP servers — use persistent connections, discover in parallel
-  _discoveredToolsCache = new Map();
-  const enabledServers = identity.mcpServerIds?.length
-    ? identityStore.mcpServers.filter((s) => s.enabled && identity.mcpServerIds!.includes(s.id))
+  const remoteToolsCache: RemoteToolsCache = new Map();
+  const enabledServers = identity.mcpServerIds.length
+    ? identityStore.mcpServers.filter((s) => s.enabled && identity.mcpServerIds.includes(s.id))
     : [];
 
   const DISCOVERY_TIMEOUT = 10000; // 10s per server
@@ -60,7 +60,7 @@ export async function buildTools(
           if (!seen.has(tool.name)) {
             seen.add(tool.name);
             result.push(discoveredToolToApiDef(tool));
-            _discoveredToolsCache.set(tool.name, { server, tool });
+            remoteToolsCache.set(tool.name, { server, tool });
           }
         }
       } else {
@@ -69,11 +69,12 @@ export async function buildTools(
     }
   }
 
-  return result;
+  return { toolDefs: result, remoteToolsCache };
 }
 
 export async function executeToolCalls(
   toolCalls: Array<{ id: string; name: string; arguments: string }>,
+  remoteToolsCache: RemoteToolsCache = new Map(),
 ): Promise<Array<{ toolCallId: string; content: string }>> {
   const identityStore = useIdentityStore.getState();
   const results: Array<{ toolCallId: string; content: string }> = [];
@@ -85,7 +86,7 @@ export async function executeToolCalls(
     } catch { /* empty args */ }
 
     // Check remote tools cache first (from buildTools discovery)
-    const remote = _discoveredToolsCache.get(tc.name);
+    const remote = remoteToolsCache.get(tc.name);
     if (remote) {
       const EXEC_TIMEOUT = 30000; // 30s for tool execution
       try {

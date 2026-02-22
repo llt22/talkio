@@ -389,6 +389,7 @@ export async function insertMessages(msgs: Message[]): Promise<void> {
       senderModelId: msg.senderModelId,
       senderName: msg.senderName,
       identityId: msg.identityId,
+      participantId: msg.participantId,
       content: msg.content,
       images: JSON.stringify(msg.images ?? []),
       generatedImages: JSON.stringify(msg.generatedImages ?? []),
@@ -399,6 +400,9 @@ export async function insertMessages(msgs: Message[]): Promise<void> {
       branchId: msg.branchId,
       parentMessageId: msg.parentMessageId,
       isStreaming: msg.isStreaming ? 1 : 0,
+      status: msg.status ?? MessageStatus.SUCCESS,
+      errorMessage: msg.errorMessage ?? null,
+      tokenUsage: msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
       createdAt: msg.createdAt,
     })),
   );

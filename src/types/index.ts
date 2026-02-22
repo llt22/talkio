@@ -57,7 +57,7 @@ export interface Identity {
   systemPrompt: string;
   params: IdentityParams;
   mcpToolIds: string[];
-  mcpServerIds?: string[];
+  mcpServerIds: string[];
   createdAt: string;
 }
 
@@ -195,14 +195,6 @@ export interface Message {
   createdAt: string;
 }
 
-export interface Shortcut {
-  id: string;
-  displayName: string;
-  modelId: string;
-  identityId: string;
-  pinned: boolean;
-  createdAt: string;
-}
 
 export interface ChatApiToolCall {
   id: string;
@@ -262,8 +254,4 @@ export interface ChatApiResponse {
   choices: ChatApiChoice[];
   model: string;
   usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
-}
-
-export interface ConversationFilter {
-  type: "all" | "experts" | "work" | "creatives";
 }

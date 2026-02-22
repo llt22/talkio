@@ -1,4 +1,5 @@
 export const APP_NAME = "Talkio";
+export const DEFAULT_GROUP_TITLE_PREFIX = "Model Group";
 
 export const DEFAULT_IDENTITY_PARAMS = {
   temperature: 0.7,
@@ -103,7 +104,7 @@ export const STORAGE_KEYS = {
   CONVERSATIONS: "conversations",
   MCP_TOOLS: "mcp_tools",
   MCP_SERVERS: "mcp_servers",
-  SHORTCUTS: "shortcuts",
+
   SETTINGS: "settings",
   PRESET_VERSION: "preset_identities_version",
 } as const;

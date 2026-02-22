@@ -18,8 +18,9 @@ import {
   insertMessages as dbInsertMessages,
 } from "../storage/database";
 import { generateId } from "../utils/id";
+import { DEFAULT_GROUP_TITLE_PREFIX } from "../constants";
 import { useProviderStore } from "./provider-store";
-import { resolveTargetParticipants, generateResponseV2 } from "../services/chat-service";
+import { resolveTargetParticipants, generateResponseV2 } from "../services/chat";
 import { logger } from "../services/logger";
 
 const log = logger.withContext("ChatStore");
@@ -68,7 +69,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const defaultTitle =
       title ??
       (type === "group"
-        ? `Model Group (${participants.length})`
+        ? `${DEFAULT_GROUP_TITLE_PREFIX} (${participants.length})`
         : providerStore.getModelById(participants[0]?.modelId)?.displayName ??
           "New Chat");
 
@@ -128,10 +129,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Auto-update title: if it's a default single-chat title (model name) or group pattern
     const firstModelName = providerStore.getModelById(conv.participants[0]?.modelId)?.displayName;
     const isDefaultTitle =
-      /^Model Group \(\d+\)$/.test(conv.title) ||
+      new RegExp(`^${DEFAULT_GROUP_TITLE_PREFIX} \\(\\d+\\)$`).test(conv.title) ||
       (conv.type === "single" && conv.title === firstModelName);
     const titleUpdate = isDefaultTitle
-      ? { title: `Model Group (${participants.length})` }
+      ? { title: `${DEFAULT_GROUP_TITLE_PREFIX} (${participants.length})` }
       : {};
 
     await dbUpdateConversation(conversationId, { participants, ...typeUpdate, ...titleUpdate });
@@ -142,8 +143,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (!conv) return;
     if (conv.participants.length <= 1) return;
     const participants = conv.participants.filter((p) => p.id !== participantId);
-    const titleUpdate = /^Model Group \(\d+\)$/.test(conv.title)
-      ? { title: `Model Group (${participants.length})` }
+    const titleUpdate = new RegExp(`^${DEFAULT_GROUP_TITLE_PREFIX} \\(\\d+\\)$`).test(conv.title)
+      ? { title: `${DEFAULT_GROUP_TITLE_PREFIX} (${participants.length})` }
       : {};
     await dbUpdateConversation(conversationId, { participants, ...titleUpdate });
   },
@@ -230,7 +231,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ _abortController: abortController });
 
     try {
-      await generateResponseV2(convId, msg.senderModelId, conv, abortController.signal);
+      await generateResponseV2(convId, msg.senderModelId, conv, abortController.signal, msg.participantId ?? undefined);
     } finally {
       set({ _abortController: null, isGenerating: false });
     }

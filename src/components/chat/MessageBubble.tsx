@@ -54,7 +54,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   const markdownContent = isUser ? rawContent : rawContent.trimEnd();
   const displayContent = markdownContent;
   const reasoningContent = thinkingBlock ? thinkingBlock.content : message.reasoningContent;
-  const isStreaming = message.status === MessageStatus.STREAMING || message.isStreaming;
+  const isStreaming = message.status === MessageStatus.STREAMING;
 
   const handleLongPress = useCallback(() => {
     const actions: { label: string; action: () => void; destructive?: boolean }[] = [];
@@ -301,7 +301,6 @@ export const MessageBubble = React.memo(function MessageBubble({
   if (prev.message.id !== next.message.id) return false;
   if (prev.message.content !== next.message.content) return false;
   if (prev.message.status !== next.message.status) return false;
-  if (prev.message.isStreaming !== next.message.isStreaming) return false;
   if (prev.message.reasoningContent !== next.message.reasoningContent) return false;
   if (prev.message.toolCalls.length !== next.message.toolCalls.length) return false;
   if (prev.message.generatedImages?.length !== next.message.generatedImages?.length) return false;

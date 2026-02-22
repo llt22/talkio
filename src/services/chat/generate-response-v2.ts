@@ -31,9 +31,10 @@ import { useProviderStore } from "../../stores/provider-store";
 import { useIdentityStore } from "../../stores/identity-store";
 import { useChatStore } from "../../stores/chat-store";
 import { logger } from "../logger";
+import { DEFAULT_GROUP_TITLE_PREFIX } from "../../constants";
 import { createLanguageModel } from "../ai-provider";
 import { buildApiMessages } from "./message-builder";
-import { buildTools, executeToolCalls } from "./tool-executor";
+import { buildTools, executeToolCalls, type RemoteToolsCache } from "./tool-executor";
 import { toModelMessages, toAiSdkTools } from "./ai-sdk-converter";
 
 const log = logger.withContext("ChatServiceV2");
@@ -97,7 +98,7 @@ export async function generateResponseV2(
     toolResults: [],
     branchId: chatStore.activeBranchId,
     parentMessageId: null,
-    isStreaming: true,
+    isStreaming: false,
     status: MessageStatus.STREAMING,
     errorMessage: null,
     tokenUsage: null,
@@ -124,8 +125,11 @@ export async function generateResponseV2(
   // Discover tools AFTER showing loading animation
   log.info(`[v2] Building tools for ${model.displayName}...`);
   let toolDefs: ChatApiToolDef[] = [];
+  let remoteToolsCache: RemoteToolsCache = new Map();
   try {
-    toolDefs = await buildTools(model, identity);
+    const toolsResult = await buildTools(model, identity);
+    toolDefs = toolsResult.toolDefs;
+    remoteToolsCache = toolsResult.remoteToolsCache;
   } catch (err) {
     log.warn(`[v2] buildTools failed: ${err instanceof Error ? err.message : err}`);
   }
@@ -134,7 +138,7 @@ export async function generateResponseV2(
   // Helper: always mark message as done, never throws
   const finishMessage = async (finalContent: string) => {
     try {
-      await dbUpdateMessage(assistantMsg.id, { content: finalContent, isStreaming: false });
+      await dbUpdateMessage(assistantMsg.id, { content: finalContent, status: MessageStatus.SUCCESS });
     } catch (e) {
       log.error(`DB update failed: ${e}`);
     }
@@ -151,7 +155,7 @@ export async function generateResponseV2(
       log.info(`[v2] Executing tool: ${toolName}`);
       const results = await executeToolCalls([
         { id: generateId(), name: toolName, arguments: JSON.stringify(args) },
-      ]);
+      ], remoteToolsCache);
       return results[0]?.content ?? "No result";
     };
     const sdkTools = toolDefs.length > 0 ? toAiSdkTools(toolDefs, toolExecutor) : undefined;
@@ -403,7 +407,6 @@ export async function generateResponseV2(
       toolCalls: pendingToolCalls,
       toolResults: pendingToolResults,
       tokenUsage,
-      isStreaming: false,
       status: MessageStatus.SUCCESS,
     });
 
@@ -468,7 +471,7 @@ async function autoGenerateTitleV2(
   const conv = await dbGetConversation(conversationId);
   if (!conv) return;
 
-  const isDefaultTitle = conv.title.startsWith("Model Group") || conv.title === model.displayName;
+  const isDefaultTitle = conv.title.startsWith(DEFAULT_GROUP_TITLE_PREFIX) || conv.title === model.displayName;
   if (!isDefaultTitle) return;
 
   const userMsg = previousMessages.find((m) => m.role === "user");

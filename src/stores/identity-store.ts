@@ -69,8 +69,8 @@ export const useIdentityStore = create<IdentityState>((set, get) => ({
     let identitiesChanged = false;
     const cleanedIdentities = identities.map((identity) => {
       const cleanToolIds = identity.mcpToolIds.filter((id) => validToolIds.has(id));
-      const cleanServerIds = (identity.mcpServerIds ?? []).filter((id) => validServerIds.has(id));
-      if (cleanToolIds.length !== identity.mcpToolIds.length || cleanServerIds.length !== (identity.mcpServerIds?.length ?? 0)) {
+      const cleanServerIds = identity.mcpServerIds.filter((id) => validServerIds.has(id));
+      if (cleanToolIds.length !== identity.mcpToolIds.length || cleanServerIds.length !== identity.mcpServerIds.length) {
         identitiesChanged = true;
         return { ...identity, mcpToolIds: cleanToolIds, mcpServerIds: cleanServerIds };
       }
