@@ -71,7 +71,7 @@ export async function generateResponseV2(
 
   // Read messages from DB (single source of truth)
   const dbMessages = await dbGetRecentMessages(conversationId, chatStore.activeBranchId, 100);
-  const apiMessages = await buildApiMessages(dbMessages, modelId, identity, identity?.id);
+  const apiMessages = await buildApiMessages(dbMessages, modelId, identity, identity?.id, conv);
 
   // Create assistant message FIRST so loading animation appears immediately
   const assistantMsg: Message = {

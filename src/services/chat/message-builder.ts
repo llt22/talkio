@@ -30,12 +30,18 @@ export async function buildApiMessages(
   targetModelId: string,
   identity: Identity | undefined,
   targetIdentityId?: string | null,
+  conv?: { participants: { modelId: string }[] },
 ): Promise<ChatApiMessage[]> {
   const apiMessages: ChatApiMessage[] = [];
 
   if (identity) {
     apiMessages.push({ role: "system", content: identity.systemPrompt });
   }
+
+  // Check if the same model appears multiple times in the conversation
+  const hasDuplicateModels = conv
+    ? conv.participants.filter((p) => p.modelId === targetModelId).length > 1
+    : false;
 
   for (const msg of messages) {
     if (msg.role === "system") continue;
@@ -63,9 +69,21 @@ export async function buildApiMessages(
 
     if (msg.role === "assistant" && msg.senderName) {
       // Determine if this message is from "self" (same participant) or "other".
-      // Same modelId + same identityId = self; otherwise = other.
-      const isSelf = msg.senderModelId === targetModelId
-        && (msg.identityId ?? null) === (targetIdentityId ?? null);
+      let isSelf: boolean;
+      if (msg.senderModelId !== targetModelId) {
+        // Different model — definitely not self
+        isSelf = false;
+      } else if (hasDuplicateModels) {
+        // Same model appears multiple times — use identityId to distinguish.
+        // Both null identities with same model = ambiguous, treat as other
+        // to ensure each participant gets its own turn.
+        const msgIdentity = msg.identityId ?? null;
+        const targetIdentity = targetIdentityId ?? null;
+        isSelf = msgIdentity !== null && msgIdentity === targetIdentity;
+      } else {
+        // Single instance of this model — it's self
+        isSelf = true;
+      }
 
       if (!isSelf) {
         // Convert other participants' responses to "user" role
