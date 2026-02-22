@@ -73,35 +73,17 @@ export const PROVIDER_TYPE_OPTIONS: { value: import("../types").ProviderType; la
 ];
 
 export const PRESET_IDENTITIES: Array<{
-  name: string;
+  nameKey: string;
   icon: string;
-  systemPrompt: string;
+  promptKey: string;
 }> = [
-  {
-    name: "Translator",
-    icon: "translate",
-    systemPrompt: "You are a professional translator. Translate the user's text accurately while preserving tone and nuance. If the source language is Chinese, translate to English; otherwise translate to Chinese.",
-  },
-  {
-    name: "Coder",
-    icon: "code",
-    systemPrompt: "You are a senior software engineer. Write clean, efficient code with brief explanations. Follow best practices and suggest improvements when relevant.",
-  },
-  {
-    name: "Writer",
-    icon: "writing",
-    systemPrompt: "You are a skilled writer and editor. Help polish, rewrite, or create text that is clear, engaging, and well-structured. Match the user's desired tone and style.",
-  },
-  {
-    name: "Analyst",
-    icon: "research",
-    systemPrompt: "You are a data analyst and researcher. Provide thorough, evidence-based analysis. Break down complex topics into clear insights and actionable conclusions.",
-  },
-  {
-    name: "Creative",
-    icon: "design",
-    systemPrompt: "You are a creative brainstorming partner. Generate imaginative ideas, explore unconventional angles, and help the user think outside the box.",
-  },
+  { nameKey: "presets.socrates.name", icon: "research", promptKey: "presets.socrates.prompt" },
+  { nameKey: "presets.blunt.name", icon: "security", promptKey: "presets.blunt.prompt" },
+  { nameKey: "presets.warm.name", icon: "general", promptKey: "presets.warm.prompt" },
+  { nameKey: "presets.minimalist.name", icon: "architecture", promptKey: "presets.minimalist.prompt" },
+  { nameKey: "presets.divergent.name", icon: "design", promptKey: "presets.divergent.prompt" },
+  { nameKey: "presets.roast.name", icon: "finance", promptKey: "presets.roast.prompt" },
+  { nameKey: "presets.humor.name", icon: "marketing", promptKey: "presets.humor.prompt" },
 ];
 
 export const QUICK_PROMPTS = [

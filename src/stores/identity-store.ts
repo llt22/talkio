@@ -3,6 +3,7 @@ import type { Identity, McpTool, McpServer } from "../types";
 import { getItem, setItem } from "../storage/mmkv";
 import { STORAGE_KEYS, DEFAULT_IDENTITY_PARAMS, PRESET_IDENTITIES } from "../constants";
 import { generateId } from "../utils/id";
+import i18n from "../i18n";
 import { BUILT_IN_TOOLS, registerBuiltInTools } from "../services/built-in-tools";
 
 interface IdentityState {
@@ -98,8 +99,10 @@ export const useIdentityStore = create<IdentityState>((set, get) => ({
     // Seed preset identities on first load
     if (identities.length === 0) {
       identities = PRESET_IDENTITIES.map((preset) => ({
-        ...preset,
         id: generateId(),
+        name: i18n.t(preset.nameKey),
+        icon: preset.icon,
+        systemPrompt: i18n.t(preset.promptKey),
         params: { ...DEFAULT_IDENTITY_PARAMS },
         mcpToolIds: [],
         mcpServerIds: [],
