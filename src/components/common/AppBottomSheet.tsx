@@ -63,3 +63,5 @@ export const AppBottomSheet = forwardRef<BottomSheetMethods, AppBottomSheetProps
     );
   },
 );
+
+AppBottomSheet.displayName = "AppBottomSheet";
