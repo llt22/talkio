@@ -154,7 +154,7 @@ export default function IdentityEditScreen() {
           <View className="mt-3 flex-row items-center gap-2">
             <Pressable
               onPress={() => setShowModelPicker(true)}
-              className="flex-1 flex-row items-center justify-between rounded-lg border border-purple-200 bg-white px-3 py-2.5"
+              className="flex-1 flex-row items-center justify-between rounded-lg border border-purple-200 bg-white px-3 py-2.5 active:opacity-80"
             >
               <Text className="text-xs text-text-muted" numberOfLines={1}>
                 {selectedAiModel?.displayName ?? t("identityEdit.aiSelectModel")}
@@ -185,7 +185,7 @@ export default function IdentityEditScreen() {
         <View className="bg-white rounded-t-2xl max-h-[50%] pb-8">
           <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-100">
             <Text className="text-base font-semibold text-text-main">{t("identityEdit.selectModel")}</Text>
-            <Pressable onPress={() => setShowModelPicker(false)}>
+            <Pressable onPress={() => setShowModelPicker(false)} className="active:opacity-60">
               <Ionicons name="close" size={22} color="#6b7280" />
             </Pressable>
           </View>
@@ -195,7 +195,7 @@ export default function IdentityEditScreen() {
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => { setAiModelId(item.id); setShowModelPicker(false); }}
-                className={`flex-row items-center px-4 py-3 ${item.id === aiModelId ? "bg-purple-50" : ""}`}
+                className={`flex-row items-center px-4 py-3 active:bg-slate-50 ${item.id === aiModelId ? "bg-purple-50" : ""}`}
               >
                 <Text className={`flex-1 text-sm ${item.id === aiModelId ? "font-semibold text-purple-700" : "text-text-main"}`}>
                   {item.displayName}
@@ -300,7 +300,7 @@ export default function IdentityEditScreen() {
       )}
 
       <View className="px-4 pb-8 pt-6">
-        <Pressable onPress={handleSave} className="items-center rounded-2xl bg-primary py-4">
+        <Pressable onPress={handleSave} className="items-center rounded-2xl bg-primary py-4 active:opacity-80">
           <Text className="text-base font-semibold text-white">
             {isNew ? t("identityEdit.createIdentity") : t("identityEdit.saveChanges")}
           </Text>

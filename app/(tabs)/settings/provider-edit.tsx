@@ -217,7 +217,7 @@ export default function ProviderEditScreen() {
           {/* OpenAI Compatible — hero card */}
           <Pressable
             onPress={selectCustom}
-            className="mb-3 flex-row items-center rounded-2xl border-2 border-primary/30 bg-primary/5 px-5 py-4"
+            className="mb-3 flex-row items-center rounded-2xl border-2 border-primary/30 bg-primary/5 px-5 py-4 active:opacity-80"
           >
             <View className="mr-4 h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
               <Ionicons name="link-outline" size={26} color="#007AFF" />
@@ -235,7 +235,7 @@ export default function ProviderEditScreen() {
               <Pressable
                 key={key}
                 onPress={() => applyPreset(key)}
-                className="w-[47%] items-center rounded-2xl border border-slate-200 bg-white px-3 py-4"
+                className="w-[47%] items-center rounded-2xl border border-slate-200 bg-white px-3 py-4 active:opacity-80"
               >
                 <Ionicons name={(PRESET_ICONS[key] ?? "ellipse-outline") as any} size={24} color="#007AFF" />
                 <Text className="mt-1.5 text-[14px] font-semibold text-slate-800">{preset.name}</Text>
@@ -252,7 +252,7 @@ export default function ProviderEditScreen() {
           {selectedPreset && !isCustom && (
             <Pressable
               onPress={() => { setSelectedPreset(null); setConnected(null); }}
-              className="mb-4 flex-row items-center rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3"
+              className="mb-4 flex-row items-center rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 active:opacity-80"
             >
               <Ionicons
                 name={(PRESET_ICONS[selectedPreset] ?? "ellipse-outline") as any}
@@ -330,7 +330,7 @@ export default function ProviderEditScreen() {
                 secureTextEntry={!showApiKey}
                 autoCapitalize="none"
               />
-              <Pressable onPress={() => setShowApiKey(!showApiKey)} className="ml-2 p-1">
+              <Pressable onPress={() => setShowApiKey(!showApiKey)} className="ml-2 p-1 active:opacity-60">
                 <Ionicons name={showApiKey ? "eye-off" : "eye"} size={20} color="#94a3b8" />
               </Pressable>
             </View>
@@ -374,7 +374,7 @@ export default function ProviderEditScreen() {
               <View className="px-4 py-3.5">
                 <View className="flex-row items-center justify-between mb-2">
                   <Text className="text-[14px] text-slate-700">{t("providerEdit.customHeaders")}</Text>
-                  <Pressable onPress={addCustomHeader} className="flex-row items-center">
+                  <Pressable onPress={addCustomHeader} className="flex-row items-center active:opacity-60">
                     <Ionicons name="add-circle-outline" size={16} color="#007AFF" />
                     <Text className="ml-1 text-[13px] font-medium text-primary">{t("common.add")}</Text>
                   </Pressable>
@@ -397,7 +397,7 @@ export default function ProviderEditScreen() {
                       placeholderTextColor="#cbd5e1"
                       autoCapitalize="none"
                     />
-                    <Pressable onPress={() => removeCustomHeader(idx)} className="p-1">
+                    <Pressable onPress={() => removeCustomHeader(idx)} className="p-1 active:opacity-60">
                       <Ionicons name="close-circle" size={20} color="#ef4444" />
                     </Pressable>
                   </View>
@@ -456,13 +456,13 @@ export default function ProviderEditScreen() {
                 <Pressable onPress={() => {
                   const allEnabled = displayModels.every((m) => m.enabled);
                   setProviderModelsEnabled(savedProviderId, !allEnabled);
-                }}>
+                }} className="active:opacity-60">
                   <Text className="text-[13px] font-medium text-primary">
                     {displayModels.every((m) => m.enabled) ? t("providerEdit.deselectAll") : t("providerEdit.selectAll")}
                   </Text>
                 </Pressable>
               )}
-              <Pressable onPress={handleRefreshModels} disabled={pulling} className="flex-row items-center">
+              <Pressable onPress={handleRefreshModels} disabled={pulling} className="flex-row items-center active:opacity-60">
                 {pulling ? (
                   <ActivityIndicator size="small" color="#007AFF" />
                 ) : (
@@ -487,7 +487,7 @@ export default function ProviderEditScreen() {
               autoCapitalize="none"
             />
             {modelSearch ? (
-              <Pressable onPress={() => setModelSearch("")}>
+              <Pressable onPress={() => setModelSearch("")} className="active:opacity-60">
                 <Ionicons name="close-circle" size={16} color="#94a3b8" />
               </Pressable>
             ) : null}
@@ -554,7 +554,7 @@ export default function ProviderEditScreen() {
                       finally { setProbingModelId(null); }
                     }}
                     disabled={probingModelId === m.id}
-                    className="flex-row items-center rounded-md bg-blue-50 px-2 py-0.5"
+                    className="flex-row items-center rounded-md bg-blue-50 px-2 py-0.5 active:opacity-60"
                   >
                     {probingModelId === m.id ? (
                       <ActivityIndicator size="small" color="#007AFF" />

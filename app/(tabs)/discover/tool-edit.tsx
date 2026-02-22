@@ -84,6 +84,7 @@ export default function ToolEditScreen() {
           <Pressable
             onPress={() => setHeaders([...headers, { name: "", value: "" }])}
             hitSlop={8}
+            className="active:opacity-60"
           >
             <Ionicons name="add-circle-outline" size={22} color="#007AFF" />
           </Pressable>
@@ -118,6 +119,7 @@ export default function ToolEditScreen() {
             <Pressable
               onPress={() => setHeaders(headers.filter((_, j) => j !== i))}
               hitSlop={8}
+              className="active:opacity-60"
             >
               <Ionicons name="close-circle" size={20} color="#ef4444" />
             </Pressable>
@@ -159,7 +161,7 @@ export default function ToolEditScreen() {
             }
           }}
           disabled={testing}
-          className="flex-row items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 py-3"
+          className="flex-row items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 py-3 active:opacity-70"
         >
           {testing ? (
             <ActivityIndicator size="small" color="#007AFF" />

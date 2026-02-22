@@ -41,7 +41,7 @@ export const ModelPickerModal = React.memo(function ModelPickerModal({
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={{ flex: 1, backgroundColor: "#fff", paddingTop: insets.top }}>
         <View className="flex-row items-center justify-between border-b border-slate-100 px-4 py-3">
-          <Pressable onPress={onClose} hitSlop={8}>
+          <Pressable onPress={onClose} hitSlop={8} className="active:opacity-60">
             <Text className="text-base text-primary">{t("common.cancel")}</Text>
           </Pressable>
           <Text className="text-base font-semibold">{t("chat.addMember")}</Text>
@@ -60,7 +60,7 @@ export const ModelPickerModal = React.memo(function ModelPickerModal({
               autoFocus
             />
             {search.length > 0 && (
-              <Pressable onPress={() => setSearch("")}>
+              <Pressable onPress={() => setSearch("")} className="active:opacity-60">
                 <Ionicons name="close-circle" size={18} color="#94a3b8" />
               </Pressable>
             )}

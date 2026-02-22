@@ -28,7 +28,7 @@ export const IdentitySlider = React.memo(function IdentitySlider({
         {activeIdentityId && (
           <Pressable
             onPress={() => onSelect(null)}
-            className="w-[160px] flex-shrink-0 items-start gap-2 rounded-2xl border border-red-200 bg-red-50 p-3"
+            className="w-[160px] flex-shrink-0 items-start gap-2 rounded-2xl border border-red-200 bg-red-50 p-3 active:opacity-80"
           >
             <View className="h-8 w-8 items-center justify-center rounded-lg bg-red-100">
               <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
@@ -46,7 +46,7 @@ export const IdentitySlider = React.memo(function IdentitySlider({
             <Pressable
               key={identity.id}
               onPress={() => onSelect(identity.id)}
-              className={`w-[160px] flex-shrink-0 items-start gap-2 rounded-2xl border p-3 ${
+              className={`w-[160px] flex-shrink-0 items-start gap-2 rounded-2xl border p-3 active:opacity-80 ${
                 isActive
                   ? "border-primary/20 bg-primary/5"
                   : "border-border-light bg-white"

@@ -215,7 +215,7 @@ export default function SttSettingsScreen() {
                   setModel(id);
                   updateSettings({ sttBaseUrl: baseUrl.trim(), sttApiKey: apiKey.trim(), sttModel: id });
                 }}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex-row items-center justify-between"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex-row items-center justify-between active:bg-slate-50"
               >
                 <Text className="flex-1 text-[15px] text-slate-900" numberOfLines={1}>{id}</Text>
                 {model === id && <Ionicons name="checkmark-circle" size={20} color="#007AFF" />}

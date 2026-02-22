@@ -30,7 +30,7 @@ export default function ProvidersScreen() {
             key={p.id}
             onPress={() => router.push({ pathname: "/(tabs)/settings/provider-edit", params: { id: p.id } })}
             android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-            className={`mx-4 mt-3 rounded-xl bg-white p-4 ${p.enabled === false ? "opacity-50" : ""}`}
+            className={`mx-4 mt-3 rounded-xl bg-white p-4 active:opacity-80 ${p.enabled === false ? "opacity-50" : ""}`}
           >
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
