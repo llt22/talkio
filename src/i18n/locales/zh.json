@@ -104,6 +104,8 @@
     "temp": "温度：{{value}}",
     "tools": "工具：{{count}}",
     "editIdentity": "\u7f16\u8f91\u89d2\u8272",
+    "removeRole": "\u79fb\u9664\u89d2\u8272",
+    "removeRoleHint": "\u6e05\u9664\u5f53\u524d\u89d2\u8272\u8bbe\u5b9a",
     "editTool": "\u7f16\u8f91\u5de5\u5177",
     "builtInTools": "\u5185\u7f6e\u5de5\u5177",
     "noCustomTools": "\u6682\u65e0\u81ea\u5b9a\u4e49 MCP \u5de5\u5177",

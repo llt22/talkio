@@ -1,12 +1,16 @@
-import React from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
+import BottomSheet, { BottomSheetBackdrop, BottomSheetView, type BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
+import type { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useIdentityStore } from "../../stores/identity-store";
 
 interface IdentitySliderProps {
   visible: boolean;
   activeIdentityId: string | null;
   onSelect: (identityId: string | null) => void;
+  onClose: () => void;
   label?: string;
 }
 
@@ -14,81 +18,121 @@ export const IdentitySlider = React.memo(function IdentitySlider({
   visible,
   activeIdentityId,
   onSelect,
+  onClose,
   label,
 }: IdentitySliderProps) {
+  const { t } = useTranslation();
   const identities = useIdentityStore((s) => s.identities);
+  const sheetRef = useRef<BottomSheetMethods>(null);
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (visible) {
+      sheetRef.current?.snapToIndex(0);
+    } else {
+      sheetRef.current?.close();
+    }
+  }, [visible]);
+
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const handleSelect = useCallback((identityId: string | null) => {
+    onSelect(identityId);
+  }, [onSelect]);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.3} />
+    ),
+    [],
+  );
 
   return (
-    <View className="w-full pb-4 pt-2">
-      {label && (
-        <View className="flex-row items-center gap-1.5 px-4 pb-2">
-          <Ionicons name="person-circle-outline" size={14} color="#007AFF" />
-          <Text className="text-[12px] font-semibold text-primary" numberOfLines={1}>{label}</Text>
-        </View>
-      )}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-      >
-        {activeIdentityId && (
-          <Pressable
-            onPress={() => onSelect(null)}
-            className="w-[160px] flex-shrink-0 items-start gap-2 rounded-2xl border border-red-200 bg-red-50 p-3 active:opacity-80"
-          >
-            <View className="h-8 w-8 items-center justify-center rounded-lg bg-red-100">
-              <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
-            </View>
-            <View>
-              <Text className="text-xs font-bold text-red-500">Remove</Text>
-              <Text className="text-[10px] leading-tight text-red-400">Clear identity</Text>
-            </View>
+    <BottomSheet
+      ref={sheetRef}
+      index={-1}
+      snapPoints={["55%"]}
+      enablePanDownToClose
+      backdropComponent={renderBackdrop}
+      onClose={handleClose}
+      handleIndicatorStyle={{ backgroundColor: "#d1d5db", width: 36 }}
+      backgroundStyle={{ backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
+    >
+      <BottomSheetView style={{ flex: 1 }}>
+        {/* Header */}
+        <View className="flex-row items-center justify-between border-b border-slate-100 px-4 pb-3">
+          <View className="flex-1">
+            <Text className="text-base font-semibold text-slate-900">
+              {label ?? t("personas.editIdentity")}
+            </Text>
+          </View>
+          <Pressable onPress={handleClose} hitSlop={8} className="active:opacity-60">
+            <Ionicons name="close" size={20} color="#9ca3af" />
           </Pressable>
-        )}
+        </View>
 
-        {identities.map((identity) => {
-          const isActive = identity.id === activeIdentityId;
-          return (
+        {/* Identity list */}
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Remove current role */}
+          {activeIdentityId && (
             <Pressable
-              key={identity.id}
-              onPress={() => onSelect(identity.id)}
-              className={`w-[160px] flex-shrink-0 items-start gap-2 rounded-2xl border p-3 active:opacity-80 ${
-                isActive
-                  ? "border-primary/20 bg-primary/5"
-                  : "border-border-light bg-white"
-              }`}
+              onPress={() => handleSelect(null)}
+              className="mb-2 flex-row items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 active:opacity-80"
             >
-              <View
-                className={`h-8 w-8 items-center justify-center rounded-lg ${
-                  isActive ? "bg-primary" : "bg-slate-100"
-                }`}
-              >
-                <Ionicons
-                  name={getIconName(identity.icon)}
-                  size={18}
-                  color={isActive ? "#fff" : "#64748b"}
-                />
+              <View className="h-9 w-9 items-center justify-center rounded-lg bg-red-100">
+                <Ionicons name="close-circle-outline" size={20} color="#ef4444" />
               </View>
-              <View>
-                <Text
-                  className={`text-xs font-bold ${
-                    isActive ? "text-primary" : "text-text-main"
-                  }`}
-                  numberOfLines={1}
-                >
-                  {identity.name}
-                </Text>
-                <Text className="text-[10px] leading-tight text-text-muted" numberOfLines={2}>
-                  {identity.systemPrompt.slice(0, 60)}
-                </Text>
+              <View className="flex-1">
+                <Text className="text-[14px] font-semibold text-red-500">{t("personas.removeRole")}</Text>
+                <Text className="text-[12px] text-red-400">{t("personas.removeRoleHint")}</Text>
               </View>
             </Pressable>
-          );
-        })}
-      </ScrollView>
-    </View>
+          )}
+
+          {identities.map((identity) => {
+            const isActive = identity.id === activeIdentityId;
+            return (
+              <Pressable
+                key={identity.id}
+                onPress={() => handleSelect(identity.id)}
+                className={`mb-2 flex-row items-center gap-3 rounded-xl border px-4 py-3 active:opacity-80 ${
+                  isActive ? "border-primary/30 bg-primary/5" : "border-slate-100 bg-white"
+                }`}
+              >
+                <View
+                  className={`h-9 w-9 items-center justify-center rounded-lg ${
+                    isActive ? "bg-primary" : "bg-slate-100"
+                  }`}
+                >
+                  <Ionicons
+                    name={getIconName(identity.icon)}
+                    size={20}
+                    color={isActive ? "#fff" : "#64748b"}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-[14px] font-semibold ${isActive ? "text-primary" : "text-slate-900"}`}
+                    numberOfLines={1}
+                  >
+                    {identity.name}
+                  </Text>
+                  <Text className="text-[12px] leading-tight text-slate-400" numberOfLines={2}>
+                    {identity.systemPrompt.slice(0, 80)}
+                  </Text>
+                </View>
+                {isActive && <Ionicons name="checkmark-circle" size={20} color="#007AFF" />}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </BottomSheetView>
+    </BottomSheet>
   );
 });
 

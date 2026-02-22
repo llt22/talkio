@@ -188,6 +188,11 @@ export default function ChatDetailScreen() {
     [id, editingParticipantId, currentParticipant, updateParticipantIdentity],
   );
 
+  const handleIdentitySliderClose = useCallback(() => {
+    setShowIdentitySlider(false);
+    setEditingParticipantId(null);
+  }, []);
+
   const handleHeaderPress = useCallback(() => {
     if (isGroup) {
       setShowParticipants((v) => !v);
@@ -480,6 +485,7 @@ export default function ChatDetailScreen() {
             : currentParticipant?.identityId ?? null
         }
         onSelect={handleIdentitySelect}
+        onClose={handleIdentitySliderClose}
         label={
           isGroup && editingParticipantId
             ? (() => {

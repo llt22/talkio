@@ -104,6 +104,8 @@
     "temp": "Temp: {{value}}",
     "tools": "Tools: {{count}}",
     "editIdentity": "Edit Role",
+    "removeRole": "Remove Role",
+    "removeRoleHint": "Clear the current role assignment",
     "editTool": "Edit Tool",
     "builtInTools": "Built-in Tools",
     "noCustomTools": "No custom MCP tools yet",
