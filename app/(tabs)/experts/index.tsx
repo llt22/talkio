@@ -130,16 +130,16 @@ export default function ModelsScreen() {
               <Pressable
                 onPress={() => handleStartChat(item)}
                 android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                className={`flex-row items-center bg-white px-5 py-3 active:bg-slate-50 ${isSelected ? "bg-blue-50/50" : ""}`}
+                className={`flex-row items-center gap-4 border-b border-divider bg-white px-4 py-3 active:bg-slate-50 ${isSelected ? "bg-blue-50/50" : ""}`}
               >
                 <View className="h-10 w-10 overflow-hidden rounded-lg">
                   <ModelAvatar name={item.displayName} size="sm" />
                 </View>
-                <View className={`ml-3 flex-1 ${!isLast ? "border-b border-slate-100" : ""} pb-3`}>
+                <View className="flex-1">
                   <Text className="text-[16px] font-medium text-text-main" numberOfLines={1}>
                     {item.displayName}
                   </Text>
-                  <Text className="text-[13px] text-slate-400" numberOfLines={1}>
+                  <Text className="text-[13px] text-text-hint" numberOfLines={1}>
                     {item.modelId}
                   </Text>
                 </View>
