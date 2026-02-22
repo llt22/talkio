@@ -272,7 +272,7 @@ export default function ChatDetailScreen() {
     recycleItems: true,
     alignItemsAtEnd: true,
     maintainScrollAtEnd: { onLayout: true, onItemLayout: true, onDataChange: true },
-    maintainScrollAtEndThreshold: 0.2,
+    maintainScrollAtEndThreshold: 0.05,
     estimatedItemSize: 120,
     drawDistance: 200,
     waitForInitialLayout: true,
