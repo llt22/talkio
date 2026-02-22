@@ -50,6 +50,11 @@ interface ChatState {
     participantId: string,
     identityId: string | null,
   ) => Promise<void>;
+  updateParticipantModel: (
+    conversationId: string,
+    participantId: string,
+    newModelId: string,
+  ) => Promise<void>;
   addParticipant: (conversationId: string, modelId: string) => Promise<void>;
   removeParticipant: (conversationId: string, participantId: string) => Promise<void>;
   sendMessage: (text: string, mentionedModelIds?: string[], images?: string[]) => Promise<void>;
@@ -120,6 +125,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
     );
     await dbUpdateConversation(conversationId, { participants });
     // useLiveQuery auto-updates
+  },
+
+  updateParticipantModel: async (conversationId, participantId, newModelId) => {
+    const conv = await dbGetConversation(conversationId);
+    if (!conv) return;
+    const participants = conv.participants.map((p) =>
+      p.id === participantId ? { ...p, modelId: newModelId } : p,
+    );
+    // Auto-update title for single chats
+    const providerStore = useProviderStore.getState();
+    const oldModel = providerStore.getModelById(conv.participants.find((p) => p.id === participantId)?.modelId ?? "");
+    const newModel = providerStore.getModelById(newModelId);
+    const titleUpdate =
+      conv.type === "single" && oldModel && conv.title === oldModel.displayName && newModel
+        ? { title: newModel.displayName }
+        : {};
+    await dbUpdateConversation(conversationId, { participants, ...titleUpdate });
   },
 
   addParticipant: async (conversationId, modelId) => {

@@ -8,7 +8,6 @@ interface AppSettings {
   language: "system" | "en" | "zh";
   theme: "light" | "dark" | "system";
   hapticFeedback: boolean;
-  quickPromptEnabled: boolean;
   voiceAutoTranscribe: boolean;
   sttBaseUrl: string;
   sttApiKey: string;
@@ -25,7 +24,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   language: "system",
   theme: "light",
   hapticFeedback: true,
-  quickPromptEnabled: true,
   voiceAutoTranscribe: true,
   sttBaseUrl: "https://api.groq.com/openai/v1",
   sttApiKey: "",

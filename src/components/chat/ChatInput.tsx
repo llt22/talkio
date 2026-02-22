@@ -28,6 +28,8 @@ interface ChatInputProps {
   onStopAutoDiscuss?: () => void;
   autoDiscussRemaining?: number;
   autoDiscussTotalRounds?: number;
+  modelName?: string;
+  onSwitchModel?: () => void;
 }
 
 export const ChatInput = React.memo(function ChatInput({
@@ -40,6 +42,8 @@ export const ChatInput = React.memo(function ChatInput({
   onStopAutoDiscuss,
   autoDiscussRemaining = 0,
   autoDiscussTotalRounds = 0,
+  modelName,
+  onSwitchModel,
 }: ChatInputProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -197,18 +201,6 @@ export const ChatInput = React.memo(function ChatInput({
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  const quickPromptEnabled = useSettingsStore((s) => s.settings.quickPromptEnabled);
-  const showQuickPrompts = quickPromptEnabled && hasMessages && !text.trim() && attachedImages.length === 0 && !isGenerating && !isRecording;
-
-  const quickPrompts = [
-    { label: t("quickPrompt.continue"), prompt: t("quickPrompt.continuePrompt") },
-    { label: t("quickPrompt.explain"), prompt: t("quickPrompt.explainPrompt") },
-    { label: t("quickPrompt.translate"), prompt: t("quickPrompt.translatePrompt") },
-    { label: t("quickPrompt.summarize"), prompt: t("quickPrompt.summarizePrompt") },
-    { label: t("quickPrompt.detail"), prompt: t("quickPrompt.detailPrompt") },
-    { label: t("quickPrompt.proscons"), prompt: t("quickPrompt.prosconsPrompt") },
-  ];
-
   const handleTextChange = (value: string) => {
     setText(value);
     if (isGroup && value.endsWith("@")) {
@@ -217,7 +209,6 @@ export const ChatInput = React.memo(function ChatInput({
       setShowMentionPicker(false);
     }
   };
-
 
   const insertMention = (modelId: string) => {
     const model = getModelById(modelId);
@@ -258,9 +249,9 @@ export const ChatInput = React.memo(function ChatInput({
 
       {/* Auto-discuss round picker */}
       {showRoundPicker && !isAutoDiscussing && (
-        <View className="border-b border-blue-100 bg-blue-50/50 px-4 py-3">
-          <Text className="mb-2.5 text-[12px] text-text-muted">{t("chat.autoDiscussHint")}</Text>
-          <View className="flex-row gap-2">
+        <View className="px-4 py-3">
+          <Text className="mb-3 text-[13px] text-text-muted">{t("chat.autoDiscussHint")}</Text>
+          <View className="flex-row gap-2.5">
             {[3, 5, 10].map((n) => (
               <Pressable
                 key={n}
@@ -278,33 +269,14 @@ export const ChatInput = React.memo(function ChatInput({
                     onStartAutoDiscuss?.(n);
                   }
                 }}
-                className="flex-1 items-center rounded-xl border border-blue-200 bg-white py-2.5 active:bg-blue-50"
+                className="flex-1 items-center rounded-2xl border border-border-light bg-bg-secondary py-3 active:bg-bg-hover"
               >
-                <Text className="text-[15px] font-bold text-blue-600">{n}</Text>
-                <Text className="text-[10px] text-text-muted">{t("chat.autoDiscussRounds", { count: n })}</Text>
+                <Text className="text-[18px] font-bold text-primary">{n}</Text>
+                <Text className="mt-0.5 text-[11px] text-text-hint">{t("chat.autoDiscussRounds", { count: n })}</Text>
               </Pressable>
             ))}
           </View>
         </View>
-      )}
-
-      {showQuickPrompts && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="border-b border-border-light bg-bg-hover px-3 py-2"
-          contentContainerStyle={{ gap: 8 }}
-        >
-          {quickPrompts.map((qp) => (
-            <Pressable
-              key={qp.label}
-              onPress={() => onSend(qp.prompt)}
-              className="rounded-full border border-border-light bg-bg-card px-3.5 py-1.5 active:bg-bg-hover"
-            >
-              <Text className="text-[13px] font-medium text-text-muted">{qp.label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
       )}
 
       {showMentionPicker && isGroup && (
@@ -333,113 +305,157 @@ export const ChatInput = React.memo(function ChatInput({
         </View>
       )}
 
-      {/* Row 1: Input area */}
-      <View className="px-4 pt-2.5 pb-1.5">
-        {isRecording ? (
-          <View className="flex-row items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 min-h-[44px]">
-            <View className="mr-2 h-2 w-2 rounded-full bg-red-500" />
-            <Text className="text-base font-semibold text-red-600">
-              {`${Math.floor(recordingDuration / 60).toString().padStart(2, "0")}:${(recordingDuration % 60).toString().padStart(2, "0")}`}
-            </Text>
-            <Text className="ml-2 text-xs text-red-400">/01:00</Text>
-          </View>
-        ) : (
-          <View className="flex-row items-end rounded-2xl border border-border-light/50 bg-bg-input px-3">
-            <TextInput
-              ref={inputRef}
-              className="max-h-24 min-h-[44px] flex-1 text-[16px] text-text-main py-2.5"
-              placeholder={isGroup ? t("chat.messageGroup") : t("chat.message")}
-              placeholderTextColor={colors.textHint}
-              value={text}
-              onChangeText={handleTextChange}
-              multiline
-              editable={!isGenerating && !isAutoDiscussing}
-            />
-            {(text.trim() || attachedImages.length > 0) && !isGenerating && (
-              <Pressable
-                onPress={handleSend}
-                className="mb-1.5 ml-1 h-8 w-8 items-center justify-center rounded-full bg-primary active:opacity-70"
-              >
-                <Ionicons name="arrow-up" size={16} color="#fff" />
-              </Pressable>
-            )}
-          </View>
-        )}
-      </View>
-
-      {/* Row 2: Action bar */}
-      <View className="flex-row items-center px-4 pb-1.5 gap-1">
-        {/* Image attach */}
-        {supportsVision && (
-          <Pressable onPress={handleAttach} className="p-2 active:opacity-60" disabled={isGenerating || isAutoDiscussing}>
-            <Ionicons name="image-outline" size={20} color={isGenerating || isAutoDiscussing ? colors.textHint : colors.textSecondary} />
-          </Pressable>
-        )}
-
-        {/* Hosting / Auto-discuss button (group only) */}
-        {isGroup && (
-          isAutoDiscussing ? (
-            <Pressable
-              onPress={onStopAutoDiscuss}
-              className="flex-row items-center gap-1.5 rounded-full border border-blue-300 bg-blue-50 px-3 py-1.5 active:opacity-70"
-            >
+      {/* ── Auto-discuss control panel (replaces input when hosting) ── */}
+      {isAutoDiscussing ? (
+        <View className="px-4 pt-3 pb-2">
+          <View className="rounded-2xl bg-primary/8 px-4 py-4">
+            {/* Progress info */}
+            <View className="flex-row items-center justify-center mb-3">
               <MotiView
                 from={{ opacity: 0.4 }}
                 animate={{ opacity: 1 }}
                 transition={{ type: "timing", duration: 800, loop: true }}
               >
-                <Ionicons name="chatbubbles" size={14} color="#2563eb" />
+                <Ionicons name="chatbubbles" size={20} color={colors.accent} />
               </MotiView>
-              <Text className="text-[12px] font-semibold text-blue-700">
-                {t("chat.autoDiscussRunning")} {t("chat.autoDiscussProgress", { current: autoDiscussTotalRounds - autoDiscussRemaining + 1, total: autoDiscussTotalRounds })}
+              <Text className="ml-2 text-[15px] font-semibold text-primary">
+                {t("chat.autoDiscussRunning")}
               </Text>
-              <View className="ml-0.5 h-4 w-4 items-center justify-center rounded-full bg-red-500">
-                <Ionicons name="stop" size={8} color="#fff" />
-              </View>
-            </Pressable>
-          ) : (
+            </View>
+
+            {/* Progress bar */}
+            <View className="mb-3.5 rounded-full h-1.5 overflow-hidden bg-primary/15">
+              <View
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${((autoDiscussTotalRounds - autoDiscussRemaining + 1) / autoDiscussTotalRounds) * 100}%` }}
+              />
+            </View>
+
+            <Text className="text-center text-[13px] text-text-muted mb-4">
+              {t("chat.autoDiscussProgress", { current: autoDiscussTotalRounds - autoDiscussRemaining + 1, total: autoDiscussTotalRounds })}
+            </Text>
+
+            {/* Stop button */}
             <Pressable
-              onPress={() => setShowRoundPicker((v) => !v)}
-              className="flex-row items-center gap-1 rounded-full px-3 py-1.5 active:opacity-70"
-              disabled={isGenerating}
+              onPress={onStopAutoDiscuss}
+              className="flex-row items-center justify-center gap-2 rounded-xl bg-bg-card py-3 active:bg-bg-hover"
+              style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}
             >
-              <Ionicons name="chatbubbles-outline" size={16} color={colors.textSecondary} />
-              <Text className="text-[12px] font-medium text-text-muted">
-                {t("chat.autoDiscuss")}
-              </Text>
+              <View className="h-5 w-5 items-center justify-center rounded-full bg-error">
+                <Ionicons name="stop" size={10} color="#fff" />
+              </View>
+              <Text className="text-[14px] font-semibold text-error">{t("chat.autoDiscussStop")}</Text>
             </Pressable>
-          )
-        )}
-
-        <View className="flex-1" />
-
-        {/* Voice / Stop / Transcribing */}
-        {isGenerating || isAutoDiscussing ? (
-          <Pressable
-            onPress={() => isAutoDiscussing ? onStopAutoDiscuss?.() : useChatStore.getState().stopGeneration()}
-            className="h-8 w-8 items-center justify-center rounded-full bg-red-500 active:opacity-70"
-          >
-            <Ionicons name="stop" size={12} color="#fff" />
-          </Pressable>
-        ) : isTranscribing ? (
-          <View className="h-8 w-8 items-center justify-center">
-            <ActivityIndicator size="small" color={colors.accent} />
           </View>
-        ) : (
-          <Pressable
-            onPress={handleMicPress}
-            className={`h-8 w-8 items-center justify-center rounded-full active:opacity-70 ${
-              isRecording ? "bg-red-500" : ""
-            }`}
-          >
-            <Ionicons
-              name={isRecording ? "stop" : "mic-outline"}
-              size={isRecording ? 12 : 20}
-              color={isRecording ? "#fff" : colors.textSecondary}
-            />
-          </Pressable>
-        )}
-      </View>
+        </View>
+      ) : (
+        <>
+          {/* Row 1: Input area */}
+          <View className="px-4 pt-2.5 pb-1.5">
+            {isRecording ? (
+              <View className="flex-row items-center justify-center rounded-2xl border border-error/20 bg-error/8 px-4 py-2.5 min-h-[44px]">
+                <View className="mr-2 h-2 w-2 rounded-full bg-error" />
+                <Text className="text-base font-semibold text-error">
+                  {`${Math.floor(recordingDuration / 60).toString().padStart(2, "0")}:${(recordingDuration % 60).toString().padStart(2, "0")}`}
+                </Text>
+                <Text className="ml-2 text-xs text-error/60">/01:00</Text>
+              </View>
+            ) : (
+              <View className="flex-row items-end rounded-2xl border border-border-light/50 bg-bg-input px-3">
+                <TextInput
+                  ref={inputRef}
+                  className="max-h-24 min-h-[44px] flex-1 text-[16px] text-text-main py-2.5"
+                  placeholder={isGroup ? t("chat.messageGroup") : t("chat.message")}
+                  placeholderTextColor={colors.textHint}
+                  value={text}
+                  onChangeText={handleTextChange}
+                  multiline
+                  editable={!isGenerating}
+                />
+                {(text.trim() || attachedImages.length > 0) && !isGenerating && (
+                  <Pressable
+                    onPress={handleSend}
+                    className="mb-1.5 ml-1.5 h-9 w-9 items-center justify-center rounded-full bg-primary active:opacity-70"
+                  >
+                    <Ionicons name="arrow-up" size={18} color="#fff" />
+                  </Pressable>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Row 2: Action bar */}
+          <View className="flex-row items-center px-3 pb-1 gap-0.5">
+            {/* Image attach */}
+            {supportsVision && (
+              <Pressable
+                onPress={handleAttach}
+                className="h-10 w-10 items-center justify-center rounded-full active:bg-bg-hover"
+                disabled={isGenerating}
+              >
+                <Ionicons name="image-outline" size={22} color={isGenerating ? colors.textHint : colors.textSecondary} />
+              </Pressable>
+            )}
+
+            {/* Model switch (single chat only) */}
+            {!isGroup && modelName && onSwitchModel && (
+              <Pressable
+                onPress={onSwitchModel}
+                className="flex-row items-center gap-1.5 rounded-full px-3 py-2 ml-0.5 active:bg-bg-hover"
+                disabled={isGenerating}
+              >
+                <Ionicons name="swap-horizontal-outline" size={16} color={isGenerating ? colors.textHint : colors.textSecondary} />
+                <Text className="text-[13px] font-medium" style={{ color: isGenerating ? colors.textHint : colors.textSecondary }} numberOfLines={1}>
+                  {modelName}
+                </Text>
+              </Pressable>
+            )}
+
+            {/* Auto-discuss trigger (group only) */}
+            {isGroup && (
+              <Pressable
+                onPress={() => setShowRoundPicker((v) => !v)}
+                className="flex-row items-center gap-1.5 rounded-full px-3 py-2 ml-0.5 active:bg-bg-hover"
+                disabled={isGenerating}
+              >
+                <Ionicons name="chatbubbles-outline" size={20} color={isGenerating ? colors.textHint : colors.textSecondary} />
+                <Text className="text-[13px] font-medium" style={{ color: isGenerating ? colors.textHint : colors.textSecondary }}>
+                  {t("chat.autoDiscuss")}
+                </Text>
+              </Pressable>
+            )}
+
+            <View className="flex-1" />
+
+            {/* Voice / Stop / Transcribing */}
+            {isGenerating ? (
+              <Pressable
+                onPress={() => useChatStore.getState().stopGeneration()}
+                className="h-10 w-10 items-center justify-center rounded-full bg-error active:opacity-70"
+              >
+                <Ionicons name="stop" size={14} color="#fff" />
+              </Pressable>
+            ) : isTranscribing ? (
+              <View className="h-10 w-10 items-center justify-center">
+                <ActivityIndicator size="small" color={colors.accent} />
+              </View>
+            ) : (
+              <Pressable
+                onPress={handleMicPress}
+                className={`h-10 w-10 items-center justify-center rounded-full active:opacity-70 ${
+                  isRecording ? "bg-error" : "active:bg-bg-hover"
+                }`}
+              >
+                <Ionicons
+                  name={isRecording ? "stop" : "mic-outline"}
+                  size={isRecording ? 14 : 22}
+                  color={isRecording ? "#fff" : colors.textSecondary}
+                />
+              </Pressable>
+            )}
+          </View>
+        </>
+      )}
     </View>
   );
 });

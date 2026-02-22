@@ -79,6 +79,7 @@
     "translate": "翻译",
     "summarize": "总结",
     "addMember": "添加成员",
+    "switchModel": "切换模型",
     "removeMember": "移除",
     "removeMemberConfirm": "确定将此模型移出群聊？",
     "noAvailableModels": "没有可添加的模型",
@@ -145,7 +146,6 @@
     "sttFetchRequiresFields": "请先填写 Base URL 和 API Key。",
     "sttShowAll": "显示全部",
     "sttShowAudio": "仅音频模型",
-    "quickPrompts": "快捷提示",
     "voiceAutoTranscribe": "语音自动转写",
     "dataManagement": "数据管理",
     "exportBackup": "导出备份",
@@ -294,20 +294,6 @@
   },
   "htmlPreview": {
     "writing": "编写中..."
-  },
-  "quickPrompt": {
-    "continue": "继续",
-    "continuePrompt": "请继续。",
-    "explain": "解释",
-    "explainPrompt": "请更详细地解释一下。",
-    "translate": "翻译",
-    "translatePrompt": "请将你上次的回复翻译成另一种语言（中文则译英文，英文则译中文）。",
-    "summarize": "总结",
-    "summarizePrompt": "请简明扼要地总结你上次的回复。",
-    "detail": "更详细",
-    "detailPrompt": "请进一步展开，提供更多细节和示例。",
-    "proscons": "利弊分析",
-    "prosconsPrompt": "这种方案的优缺点是什么？"
   },
   "presets": {
     "socrates": {

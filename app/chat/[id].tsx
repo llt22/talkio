@@ -56,6 +56,7 @@ export default function ChatDetailScreen() {
   const setCurrentConversation = useChatStore((s) => s.setCurrentConversation);
   const sendMessage = useChatStore((s) => s.sendMessage);
   const updateParticipantIdentity = useChatStore((s) => s.updateParticipantIdentity);
+  const updateParticipantModel = useChatStore((s) => s.updateParticipantModel);
   const addParticipant = useChatStore((s) => s.addParticipant);
   const removeParticipant = useChatStore((s) => s.removeParticipant);
   const getModelById = useProviderStore((s) => s.getModelById);
@@ -80,6 +81,7 @@ export default function ChatDetailScreen() {
   const [showParticipants, setShowParticipants] = useState(false);
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [modelPickerMode, setModelPickerMode] = useState<"add" | "switch">("add");
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const showScrollToBottomRef = useRef(false);
 
@@ -213,6 +215,20 @@ export default function ChatDetailScreen() {
   const handleAddParticipant = useCallback((modelId: string) => {
     if (id) addParticipant(id, modelId);
   }, [id, addParticipant]);
+
+  const handleSwitchModel = useCallback(() => {
+    setModelPickerMode("switch");
+    setShowModelPicker(true);
+  }, []);
+
+  const handleModelPickerSelect = useCallback((modelId: string) => {
+    if (!id) return;
+    if (modelPickerMode === "switch" && currentParticipant) {
+      updateParticipantModel(id, currentParticipant.id, modelId);
+    } else {
+      addParticipant(id, modelId);
+    }
+  }, [id, modelPickerMode, currentParticipant, updateParticipantModel, addParticipant]);
 
   const handleParticipantPress = useCallback((participantId: string) => {
     if (!id) return;
@@ -362,7 +378,7 @@ export default function ChatDetailScreen() {
       headerRight: () => (
         <View className="flex-row items-center gap-1">
           <Pressable
-            onPress={() => setShowModelPicker(true)}
+            onPress={() => { setModelPickerMode("add"); setShowModelPicker(true); }}
             className="p-2 active:opacity-60"
             hitSlop={4}
           >
@@ -465,7 +481,7 @@ export default function ChatDetailScreen() {
             );
           })}
           <Pressable
-            onPress={() => setShowModelPicker(true)}
+            onPress={() => { setModelPickerMode("add"); setShowModelPicker(true); }}
             className="flex-row items-center justify-center gap-2 rounded-xl border border-dashed border-border-light py-2.5 mt-1 mb-1 active:opacity-60"
           >
             <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
@@ -474,12 +490,13 @@ export default function ChatDetailScreen() {
         </View>
       )}
 
-      {/* Model picker for adding group members */}
+      {/* Model picker for adding members or switching model */}
       <ModelPickerModal
         visible={showModelPicker}
         excludeModelIds={[]}
-        onSelect={handleAddParticipant}
+        onSelect={handleModelPickerSelect}
         onClose={() => setShowModelPicker(false)}
+        title={modelPickerMode === "switch" ? t("chat.switchModel") : t("chat.addMember")}
       />
 
       <LegendList
@@ -514,6 +531,8 @@ export default function ChatDetailScreen() {
         onStopAutoDiscuss={stopAutoDiscuss}
         autoDiscussRemaining={autoDiscussRemaining}
         autoDiscussTotalRounds={autoDiscussTotalRounds}
+        modelName={!isGroup ? model?.displayName : undefined}
+        onSwitchModel={!isGroup ? handleSwitchModel : undefined}
       />
     </KeyboardAvoidingView>
 
