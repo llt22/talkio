@@ -77,6 +77,7 @@ export default function ChatDetailScreen() {
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const showScrollToBottomRef = useRef(false);
 
   // For single chat, use the first participant
   const currentParticipant = conv?.participants[0];
@@ -158,8 +159,21 @@ export default function ChatDetailScreen() {
   const handleScroll = useCallback((e: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-    setShowScrollToBottom(distanceFromBottom > 100);
+    const isAway = distanceFromBottom > 100;
+    showScrollToBottomRef.current = isAway;
+    setShowScrollToBottom(isAway);
   }, []);
+
+  // Streaming auto-scroll: smoothly follow output, stop if user scrolls up
+  useEffect(() => {
+    if (!isGenerating) return;
+    const timer = setInterval(() => {
+      if (!showScrollToBottomRef.current) {
+        listRef.current?.scrollToEnd({ animated: true });
+      }
+    }, 350);
+    return () => clearInterval(timer);
+  }, [isGenerating]);
 
   const handleSend = useCallback(
     (text: string, mentionedModelIds?: string[], images?: string[]) => {
@@ -271,7 +285,7 @@ export default function ChatDetailScreen() {
     contentContainerStyle: { paddingTop: 12, paddingBottom: 8 },
     recycleItems: false,
     alignItemsAtEnd: false,
-    maintainScrollAtEnd: { onLayout: true, onItemLayout: false, onDataChange: true },
+    maintainScrollAtEnd: { onLayout: true, onItemLayout: true, onDataChange: true },
     maintainScrollAtEndThreshold: 0.05,
     estimatedItemSize: 120,
     drawDistance: 200,
