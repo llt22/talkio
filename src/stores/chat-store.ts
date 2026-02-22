@@ -19,7 +19,28 @@ import {
 } from "../storage/database";
 import { generateId } from "../utils/id";
 import { useProviderStore } from "./provider-store";
-import { resolveTargetModels, generateResponse } from "../services/chat-service";
+import { resolveTargetModels, generateResponse, generateResponseV2 } from "../services/chat-service";
+import { logger } from "../services/logger";
+
+const log = logger.withContext("ChatStore");
+
+/**
+ * Use AI SDK v2 for response generation.
+ *
+ * v2 handles its own errors internally — if streamText fails, it writes
+ * the error message to the assistant message it already created.
+ * We do NOT fall back to legacy here to avoid duplicate messages.
+ *
+ * To revert to legacy, simply replace generateResponseV2 with generateResponse.
+ */
+async function generateWithFallback(
+  convId: string,
+  modelId: string,
+  conv: Conversation,
+  signal?: AbortSignal,
+): Promise<void> {
+  await generateResponseV2(convId, modelId, conv, signal);
+}
 
 // DB-driven architecture: messages and conversations are read via useLiveQuery hooks.
 // This store only holds ephemeral UI state and action methods that write to DB.
@@ -190,7 +211,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       for (const modelId of targetModelIds) {
         if (abortController.signal.aborted) break;
-        await generateResponse(convId, modelId, conv, abortController.signal);
+        await generateWithFallback(convId, modelId, conv, abortController.signal);
       }
     } finally {
       set({ _abortController: null, isGenerating: false });
@@ -225,7 +246,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ _abortController: abortController });
 
     try {
-      await generateResponse(convId, msg.senderModelId, conv, abortController.signal);
+      await generateWithFallback(convId, msg.senderModelId, conv, abortController.signal);
     } finally {
       set({ _abortController: null, isGenerating: false });
     }
