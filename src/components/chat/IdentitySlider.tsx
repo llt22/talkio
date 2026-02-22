@@ -7,12 +7,14 @@ interface IdentitySliderProps {
   visible: boolean;
   activeIdentityId: string | null;
   onSelect: (identityId: string | null) => void;
+  label?: string;
 }
 
 export const IdentitySlider = React.memo(function IdentitySlider({
   visible,
   activeIdentityId,
   onSelect,
+  label,
 }: IdentitySliderProps) {
   const identities = useIdentityStore((s) => s.identities);
 
@@ -20,6 +22,12 @@ export const IdentitySlider = React.memo(function IdentitySlider({
 
   return (
     <View className="w-full pb-4 pt-2">
+      {label && (
+        <View className="flex-row items-center gap-1.5 px-4 pb-2">
+          <Ionicons name="person-circle-outline" size={14} color="#007AFF" />
+          <Text className="text-[12px] font-semibold text-primary" numberOfLines={1}>{label}</Text>
+        </View>
+      )}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

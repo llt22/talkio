@@ -480,6 +480,15 @@ export default function ChatDetailScreen() {
             : currentParticipant?.identityId ?? null
         }
         onSelect={handleIdentitySelect}
+        label={
+          isGroup && editingParticipantId
+            ? (() => {
+                const ep = conv?.participants.find((p) => p.id === editingParticipantId);
+                const em = ep ? getModelById(ep.modelId) : null;
+                return t("chat.setRoleFor", { name: em?.displayName ?? ep?.modelId ?? "" });
+              })()
+            : undefined
+        }
       />
 
       <LegendList

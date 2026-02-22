@@ -72,6 +72,7 @@
     "called": "Called: {{name}}",
     "modelCount": "{{count}} models",
     "noIdentity": "No role",
+    "setRoleFor": "Set role for {{name}}",
     "micPermissionDenied": "Microphone access is required for voice input.",
     "noSttProvider": "No OpenAI-compatible provider configured for speech-to-text. Please add a provider that supports the Whisper API.",
     "rewrite": "Rewrite",
