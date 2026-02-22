@@ -162,6 +162,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       senderModelId: null,
       senderName: "You",
       identityId: null,
+      participantId: null,
       content: text,
       images: images ?? [],
       generatedImages: [],

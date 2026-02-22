@@ -177,6 +177,7 @@ export interface Message {
   senderModelId: string | null;
   senderName: string | null;
   identityId: string | null;
+  participantId: string | null;
   content: string;
   images: string[];
   generatedImages: string[];

@@ -69,9 +69,21 @@ export async function generateResponseV2(
     ? identityStore.getIdentityById(participant.identityId)
     : undefined;
 
+  // Compute display name: identity name > model name (with suffix if duplicated)
+  let senderName = model.displayName;
+  if (identity?.name) {
+    senderName = identity.name;
+  } else if (conv.type === "group") {
+    const sameModelCount = conv.participants.filter((p) => p.modelId === modelId).length;
+    if (sameModelCount > 1 && participant) {
+      const idx = conv.participants.filter((p) => p.modelId === modelId).findIndex((p) => p.id === participant.id);
+      senderName = `${model.displayName} #${idx + 1}`;
+    }
+  }
+
   // Read messages from DB (single source of truth)
   const dbMessages = await dbGetRecentMessages(conversationId, chatStore.activeBranchId, 100);
-  const apiMessages = await buildApiMessages(dbMessages, modelId, identity, identity?.id, conv);
+  const apiMessages = await buildApiMessages(dbMessages, identity, participant?.id ?? null, conv);
 
   // Create assistant message FIRST so loading animation appears immediately
   const assistantMsg: Message = {
@@ -79,8 +91,9 @@ export async function generateResponseV2(
     conversationId,
     role: "assistant",
     senderModelId: modelId,
-    senderName: model.displayName,
+    senderName,
     identityId: identity?.id ?? null,
+    participantId: participant?.id ?? null,
     content: "",
     images: [],
     generatedImages: [],

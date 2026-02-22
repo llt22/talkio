@@ -38,6 +38,7 @@ export const messages = sqliteTable(
     status: text("status").notNull().default("success"),
     errorMessage: text("errorMessage"),
     tokenUsage: text("tokenUsage"),
+    participantId: text("participantId"),
     createdAt: text("createdAt").notNull(),
   },
   (table) => [

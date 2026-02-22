@@ -39,6 +39,10 @@ const MIGRATIONS: Migration[] = [
     version: 6,
     sql: `ALTER TABLE messages ADD COLUMN tokenUsage TEXT`,
   },
+  {
+    version: 7,
+    sql: `ALTER TABLE messages ADD COLUMN participantId TEXT`,
+  },
 ];
 
 function getAppliedVersions(): Set<number> {
@@ -176,6 +180,7 @@ export function rowToMessage(row: typeof messages.$inferSelect): Message {
     senderModelId: row.senderModelId ?? null,
     senderName: row.senderName ?? null,
     identityId: row.identityId ?? null,
+    participantId: row.participantId ?? null,
     content: row.content || "",
     images: safeJsonParse<string[]>(row.images, []),
     generatedImages: safeJsonParse<string[]>(row.generatedImages, []),
@@ -249,6 +254,7 @@ export async function insertMessage(msg: Message): Promise<void> {
     senderModelId: msg.senderModelId,
     senderName: msg.senderName,
     identityId: msg.identityId,
+    participantId: msg.participantId,
     content: msg.content,
     images: JSON.stringify(msg.images ?? []),
     generatedImages: JSON.stringify(msg.generatedImages ?? []),
@@ -279,6 +285,7 @@ export async function updateMessage(id: string, updates: Partial<Message>): Prom
   if (updates.status !== undefined) values.status = updates.status;
   if (updates.errorMessage !== undefined) values.errorMessage = updates.errorMessage;
   if (updates.tokenUsage !== undefined) values.tokenUsage = updates.tokenUsage ? JSON.stringify(updates.tokenUsage) : null;
+  if (updates.participantId !== undefined) values.participantId = updates.participantId;
 
   if (Object.keys(values).length > 0) {
     await db.update(messages).set(values).where(eq(messages.id, id));

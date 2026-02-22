@@ -6,6 +6,8 @@ import type {
   Identity,
 } from "../../types";
 import { fileToDataUri } from "../../utils/image-storage";
+import { useProviderStore } from "../../stores/provider-store";
+import { useIdentityStore } from "../../stores/identity-store";
 import { logger } from "../logger";
 
 const log = logger.withContext("MessageBuilder");
@@ -25,68 +27,42 @@ export function resolveTargetParticipants(
   return conv.participants;
 }
 
+/**
+ * Build API messages for a specific participant.
+ *
+ * Self/other distinction uses `participantId` — one simple comparison.
+ * In group chats, a system prompt is injected describing the participants.
+ */
 export async function buildApiMessages(
   messages: Message[],
-  targetModelId: string,
   identity: Identity | undefined,
-  targetIdentityId?: string | null,
-  conv?: { participants: { modelId: string }[] },
+  targetParticipantId: string | null,
+  conv?: Conversation,
 ): Promise<ChatApiMessage[]> {
   const apiMessages: ChatApiMessage[] = [];
+  const isGroup = conv?.type === "group";
 
-  if (identity) {
+  // Group chat: inject context so the AI knows who's in the conversation
+  if (isGroup && conv) {
+    const roster = buildGroupRoster(conv, targetParticipantId);
+    const groupPrompt = identity?.systemPrompt
+      ? `${identity.systemPrompt}\n\n${roster}`
+      : roster;
+    apiMessages.push({ role: "system", content: groupPrompt });
+  } else if (identity) {
     apiMessages.push({ role: "system", content: identity.systemPrompt });
   }
-
-  // Check if the same model appears multiple times in the conversation
-  const hasDuplicateModels = conv
-    ? conv.participants.filter((p) => p.modelId === targetModelId).length > 1
-    : false;
 
   for (const msg of messages) {
     if (msg.role === "system") continue;
 
-    const hasImages = msg.images && msg.images.length > 0;
-
-    let content: ChatApiMessage["content"];
-    if (hasImages) {
-      // Convert file:// URIs to data URIs for the API
-      const imageParts = await Promise.all(
-        msg.images.map(async (uri) => ({
-          type: "image_url" as const,
-          image_url: { url: await fileToDataUri(uri) },
-        })),
-      );
-      content = [
-        ...(msg.content ? [{ type: "text" as const, text: msg.content }] : []),
-        ...imageParts,
-      ];
-    } else {
-      content = msg.content;
-    }
-
+    const content = await resolveContent(msg);
     const apiMsg: ChatApiMessage = { role: msg.role, content };
 
+    // Assistant messages: self stays "assistant", others become "user" with prefix
     if (msg.role === "assistant" && msg.senderName) {
-      // Determine if this message is from "self" (same participant) or "other".
-      let isSelf: boolean;
-      if (msg.senderModelId !== targetModelId) {
-        // Different model — definitely not self
-        isSelf = false;
-      } else if (hasDuplicateModels) {
-        // Same model appears multiple times — use identityId to distinguish.
-        // Both null identities with same model = ambiguous, treat as other
-        // to ensure each participant gets its own turn.
-        const msgIdentity = msg.identityId ?? null;
-        const targetIdentity = targetIdentityId ?? null;
-        isSelf = msgIdentity !== null && msgIdentity === targetIdentity;
-      } else {
-        // Single instance of this model — it's self
-        isSelf = true;
-      }
-
+      const isSelf = msg.participantId != null && msg.participantId === targetParticipantId;
       if (!isSelf) {
-        // Convert other participants' responses to "user" role
         apiMsg.role = "user";
         const prefix = `[${msg.senderName} said]: `;
         if (typeof apiMsg.content === "string") {
@@ -101,3 +77,47 @@ export async function buildApiMessages(
   return apiMessages;
 }
 
+/**
+ * Build a group chat roster string for the system prompt.
+ */
+function buildGroupRoster(conv: Conversation, selfParticipantId: string | null): string {
+  const providerStore = useProviderStore.getState();
+  const identityStore = useIdentityStore.getState();
+
+  const lines = conv.participants.map((p) => {
+    const model = providerStore.getModelById(p.modelId);
+    const modelName = model?.displayName ?? p.modelId;
+    const identity = p.identityId ? identityStore.getIdentityById(p.identityId) : null;
+    const label = identity?.name ?? modelName;
+    const isSelf = p.id === selfParticipantId;
+    return `- ${label}${isSelf ? "  ← you" : ""}`;
+  });
+
+  return [
+    "You are in a group chat with multiple AI participants.",
+    "Participants:",
+    ...lines,
+    "",
+    "Other participants' messages appear as: [Name said]: content",
+    "Respond naturally as yourself. Do not repeat or summarize what others said unless asked.",
+  ].join("\n");
+}
+
+/**
+ * Resolve message content, converting image URIs to data URIs.
+ */
+async function resolveContent(msg: Message): Promise<ChatApiMessage["content"]> {
+  const hasImages = msg.images && msg.images.length > 0;
+  if (!hasImages) return msg.content;
+
+  const imageParts = await Promise.all(
+    msg.images.map(async (uri) => ({
+      type: "image_url" as const,
+      image_url: { url: await fileToDataUri(uri) },
+    })),
+  );
+  return [
+    ...(msg.content ? [{ type: "text" as const, text: msg.content }] : []),
+    ...imageParts,
+  ];
+}
