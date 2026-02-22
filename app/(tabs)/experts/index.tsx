@@ -215,5 +215,10 @@ function groupByProvider(
     }
     map.get(name)!.data.push(m);
   }
-  return Array.from(map.values());
+  // Sort models alphabetically within each group
+  for (const section of map.values()) {
+    section.data.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }
+  // Sort sections alphabetically by provider name
+  return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title));
 }
