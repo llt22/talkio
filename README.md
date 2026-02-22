@@ -24,6 +24,15 @@ Talkio 是一款本地优先的移动端 AI 聊天应用。它不只是又一个
   <em>对话列表 · 多 AI 群聊 · 身份角色 · 模型浏览 · 设置</em>
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/html-preview-streaming.jpg" width="180" alt="HTML 编写中" />
+  <img src="docs/screenshots/html-preview-rendered.jpg" width="180" alt="HTML 预览" />
+</p>
+
+<p align="center">
+  <em>HTML 实时编写卡片 · HTML 渲染预览</em>
+</p>
+
 ---
 
 ## 核心特色

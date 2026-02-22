@@ -22,6 +22,15 @@ Talkio is a local-first mobile AI chat app. It's not just another ChatGPT client
   <em>Chat List · Multi-AI Group Chat · Personas · Model Browser · Settings</em>
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/html-preview-streaming.jpg" width="180" alt="HTML Streaming Card" />
+  <img src="docs/screenshots/html-preview-rendered.jpg" width="180" alt="HTML Preview" />
+</p>
+
+<p align="center">
+  <em>HTML Live Streaming Card · HTML Rendered Preview</em>
+</p>
+
 ---
 
 ## Core Features
