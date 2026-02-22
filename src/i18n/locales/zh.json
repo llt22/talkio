@@ -67,7 +67,7 @@
     "photoPermissionDenied": "需要相册访问权限才能附加图片。",
     "imageSelected": "已选择图片",
     "selectModel": "选择模型",
-    "messageGroup": "发送群消息...",
+    "messageGroup": "输入消息，用 @ 提及模型...",
     "message": "发送消息...",
     "called": "调用：{{name}}",
     "modelCount": "{{count}} 个模型",

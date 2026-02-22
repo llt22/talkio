@@ -67,7 +67,7 @@
     "photoPermissionDenied": "Photo library access is required to attach images.",
     "imageSelected": "Image Selected",
     "selectModel": "Select Model",
-    "messageGroup": "Message Group...",
+    "messageGroup": "Type message, use @ to mention...",
     "message": "Message...",
     "called": "Called: {{name}}",
     "modelCount": "{{count}} models",

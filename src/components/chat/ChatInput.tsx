@@ -215,9 +215,6 @@ export const ChatInput = React.memo(function ChatInput({
     }
   };
 
-  const toggleMentionPicker = () => {
-    setShowMentionPicker((v) => !v);
-  };
 
   const insertMention = (modelId: string) => {
     const model = getModelById(modelId);
@@ -358,11 +355,6 @@ export const ChatInput = React.memo(function ChatInput({
         {supportsVision && (
           <Pressable onPress={handleAttach} className="text-primary p-2 active:opacity-60">
             <Ionicons name="image-outline" size={22} color={colors.accent} />
-          </Pressable>
-        )}
-        {isGroup && (
-          <Pressable onPress={toggleMentionPicker} className="p-2 active:opacity-60">
-            <Ionicons name="at" size={22} color={showMentionPicker ? colors.accent : colors.textHint} />
           </Pressable>
         )}
         {isGroup && !isAutoDiscussing && (
