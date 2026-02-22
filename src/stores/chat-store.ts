@@ -19,7 +19,7 @@ import {
 } from "../storage/database";
 import { generateId } from "../utils/id";
 import { useProviderStore } from "./provider-store";
-import { resolveTargetModels, generateResponseV2 } from "../services/chat-service";
+import { resolveTargetParticipants, generateResponseV2 } from "../services/chat-service";
 import { logger } from "../services/logger";
 
 const log = logger.withContext("ChatStore");
@@ -42,11 +42,11 @@ interface ChatState {
   setCurrentConversation: (id: string | null) => void;
   updateParticipantIdentity: (
     conversationId: string,
-    modelId: string,
+    participantId: string,
     identityId: string | null,
   ) => Promise<void>;
   addParticipant: (conversationId: string, modelId: string) => Promise<void>;
-  removeParticipant: (conversationId: string, modelId: string) => Promise<void>;
+  removeParticipant: (conversationId: string, participantId: string) => Promise<void>;
   sendMessage: (text: string, mentionedModelIds?: string[], images?: string[]) => Promise<void>;
   stopGeneration: () => void;
   regenerateMessage: (messageId: string) => Promise<void>;
@@ -103,11 +103,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  updateParticipantIdentity: async (conversationId, modelId, identityId) => {
+  updateParticipantIdentity: async (conversationId, participantId, identityId) => {
     const conv = await dbGetConversation(conversationId);
     if (!conv) return;
     const participants = conv.participants.map((p) =>
-      p.modelId === modelId ? { ...p, identityId } : p,
+      p.id === participantId ? { ...p, identityId } : p,
     );
     await dbUpdateConversation(conversationId, { participants });
     // useLiveQuery auto-updates
@@ -116,8 +116,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   addParticipant: async (conversationId, modelId) => {
     const conv = await dbGetConversation(conversationId);
     if (!conv) return;
-    if (conv.participants.some((p) => p.modelId === modelId)) return;
-    const participants = [...conv.participants, { modelId, identityId: null }];
+    // Allow same model multiple times (different identities)
+    const participants = [...conv.participants, { id: generateId(), modelId, identityId: null }];
 
     // Auto-upgrade single → group when adding a second participant
     const providerStore = useProviderStore.getState();
@@ -137,11 +137,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     await dbUpdateConversation(conversationId, { participants, ...typeUpdate, ...titleUpdate });
   },
 
-  removeParticipant: async (conversationId, modelId) => {
+  removeParticipant: async (conversationId, participantId) => {
     const conv = await dbGetConversation(conversationId);
     if (!conv) return;
     if (conv.participants.length <= 1) return;
-    const participants = conv.participants.filter((p) => p.modelId !== modelId);
+    const participants = conv.participants.filter((p) => p.id !== participantId);
     const titleUpdate = /^Model Group \(\d+\)$/.test(conv.title)
       ? { title: `Model Group (${participants.length})` }
       : {};
@@ -188,13 +188,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isGenerating: true });
 
     try {
-      const targetModelIds = resolveTargetModels(conv, mentionedModelIds);
+      const targetParticipants = resolveTargetParticipants(conv, mentionedModelIds);
       const abortController = new AbortController();
       set({ _abortController: abortController });
 
-      for (const modelId of targetModelIds) {
+      for (const participant of targetParticipants) {
         if (abortController.signal.aborted) break;
-        await generateResponseV2(convId, modelId, conv, abortController.signal);
+        await generateResponseV2(convId, participant.modelId, conv, abortController.signal, participant.id);
       }
     } finally {
       set({ _abortController: null, isGenerating: false });

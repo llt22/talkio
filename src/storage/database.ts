@@ -1,8 +1,9 @@
 import { eq, desc, asc, and, or, isNull, like, lt } from "drizzle-orm";
 import { db, expoDb } from "../../db";
 import { conversations, messages, messageBlocks } from "../../db/schema";
-import type { Message, Conversation, MessageBlock } from "../types";
+import type { Message, Conversation, ConversationParticipant, MessageBlock } from "../types";
 import { MessageStatus, MessageBlockType, MessageBlockStatus } from "../types";
+import { generateId } from "../utils/id";
 
 // ─── Migration System ───
 
@@ -156,7 +157,9 @@ export function rowToConversation(row: typeof conversations.$inferSelect): Conve
     id: row.id,
     type: row.type as Conversation["type"],
     title: row.title,
-    participants: JSON.parse(row.participants || "[]"),
+    participants: (JSON.parse(row.participants || "[]") as ConversationParticipant[]).map(
+      (p) => (p.id ? p : { ...p, id: generateId() }),
+    ),
     lastMessage: row.lastMessage ?? null,
     lastMessageAt: row.lastMessageAt ?? null,
     pinned: row.pinned === 1,

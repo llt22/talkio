@@ -1,5 +1,6 @@
 import type {
   Conversation,
+  ConversationParticipant,
   Message,
   ChatApiMessage,
   Identity,
@@ -9,18 +10,19 @@ import { logger } from "../logger";
 
 const log = logger.withContext("MessageBuilder");
 
-export function resolveTargetModels(
+export function resolveTargetParticipants(
   conv: Conversation,
   mentionedModelIds?: string[],
-): string[] {
+): ConversationParticipant[] {
   if (conv.type === "single") {
     if (!conv.participants[0]) return [];
-    return [conv.participants[0].modelId];
+    return [conv.participants[0]];
   }
   if (mentionedModelIds && mentionedModelIds.length > 0) {
-    return mentionedModelIds;
+    const mentionedSet = new Set(mentionedModelIds);
+    return conv.participants.filter((p) => mentionedSet.has(p.modelId));
   }
-  return conv.participants.map((p) => p.modelId);
+  return conv.participants;
 }
 
 export async function buildApiMessages(

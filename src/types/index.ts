@@ -102,6 +102,7 @@ export interface DiscoveredTool {
 }
 
 export interface ConversationParticipant {
+  id: string;
   modelId: string;
   identityId: string | null;
 }

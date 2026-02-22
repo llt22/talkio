@@ -62,7 +62,7 @@ export default function ChatDetailScreen() {
     participants &&
     prevParticipantsRef.current &&
     participants.length === prevParticipantsRef.current.length &&
-    participants.every((p, i) => p.modelId === prevParticipantsRef.current![i].modelId && p.identityId === prevParticipantsRef.current![i].identityId)
+    participants.every((p, i) => p.id === prevParticipantsRef.current![i].id && p.modelId === prevParticipantsRef.current![i].modelId && p.identityId === prevParticipantsRef.current![i].identityId)
   ) {
     // shallow-equal: keep previous reference to avoid downstream re-renders
   } else {
@@ -71,7 +71,7 @@ export default function ChatDetailScreen() {
   const stableParticipants = prevParticipantsRef.current ?? [];
   const [showIdentitySlider, setShowIdentitySlider] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
-  const [editingParticipantModelId, setEditingParticipantModelId] = useState<string | null>(null);
+  const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
@@ -177,14 +177,14 @@ export default function ChatDetailScreen() {
 
   const handleIdentitySelect = useCallback(
     (identityId: string | null) => {
-      const targetModelId = editingParticipantModelId ?? currentParticipant?.modelId;
-      if (id && targetModelId) {
-        updateParticipantIdentity(id, targetModelId, identityId);
+      const targetParticipantId = editingParticipantId ?? currentParticipant?.id;
+      if (id && targetParticipantId) {
+        updateParticipantIdentity(id, targetParticipantId, identityId);
       }
       setShowIdentitySlider(false);
-      setEditingParticipantModelId(null);
+      setEditingParticipantId(null);
     },
-    [id, editingParticipantModelId, currentParticipant, updateParticipantIdentity],
+    [id, editingParticipantId, currentParticipant, updateParticipantIdentity],
   );
 
   const handleHeaderPress = useCallback(() => {
@@ -196,8 +196,8 @@ export default function ChatDetailScreen() {
     }
   }, [isGroup]);
 
-  const handleEditParticipantIdentity = useCallback((modelId: string) => {
-    setEditingParticipantModelId(modelId);
+  const handleEditParticipantIdentity = useCallback((participantId: string) => {
+    setEditingParticipantId(participantId);
     setShowIdentitySlider(true);
   }, []);
 
@@ -205,14 +205,14 @@ export default function ChatDetailScreen() {
     if (id) addParticipant(id, modelId);
   }, [id, addParticipant]);
 
-  const handleRemoveParticipant = useCallback((modelId: string, displayName: string) => {
+  const handleRemoveParticipant = useCallback((participantId: string, displayName: string) => {
     if (!id) return;
     Alert.alert(displayName, t("chat.removeMemberConfirm"), [
       { text: t("common.cancel"), style: "cancel" },
       {
         text: t("chat.removeMember"),
         style: "destructive",
-        onPress: () => removeParticipant(id, modelId),
+        onPress: () => removeParticipant(id, participantId),
       },
     ]);
   }, [id, removeParticipant, t]);
@@ -402,7 +402,7 @@ export default function ChatDetailScreen() {
             const pModel = getModelById(p.modelId);
             const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
             return (
-              <View key={p.modelId} className="flex-row items-center justify-between py-2">
+              <View key={p.id} className="flex-row items-center justify-between py-2">
                 <View className="flex-row items-center flex-1">
                   <View className="h-8 w-8 items-center justify-center rounded-full bg-primary/10 mr-3">
                     <Text className="text-xs font-bold text-primary">
@@ -417,7 +417,7 @@ export default function ChatDetailScreen() {
                 </View>
                 <View className="flex-row items-center gap-2">
                   <Pressable
-                    onPress={() => handleEditParticipantIdentity(p.modelId)}
+                    onPress={() => handleEditParticipantIdentity(p.id)}
                     className="flex-row items-center rounded-full bg-slate-100 px-2.5 py-1.5 active:opacity-60"
                   >
                     <Ionicons name="person-outline" size={12} color="#64748b" style={{ marginRight: 3 }} />
@@ -427,7 +427,7 @@ export default function ChatDetailScreen() {
                   </Pressable>
                   {conv.participants.length > 1 && (
                     <Pressable
-                      onPress={() => handleRemoveParticipant(p.modelId, pModel?.displayName ?? p.modelId)}
+                      onPress={() => handleRemoveParticipant(p.id, pModel?.displayName ?? p.modelId)}
                       hitSlop={6}
                       className="items-center justify-center rounded-full bg-red-50 p-1.5 active:opacity-60"
                     >
@@ -451,7 +451,7 @@ export default function ChatDetailScreen() {
       {/* Model picker for adding group members */}
       <ModelPickerModal
         visible={showModelPicker}
-        excludeModelIds={conv?.participants.map((p) => p.modelId) ?? []}
+        excludeModelIds={[]}
         onSelect={handleAddParticipant}
         onClose={() => setShowModelPicker(false)}
       />
@@ -460,8 +460,8 @@ export default function ChatDetailScreen() {
       <IdentitySlider
         visible={showIdentitySlider}
         activeIdentityId={
-          editingParticipantModelId
-            ? conv?.participants.find((p) => p.modelId === editingParticipantModelId)?.identityId ?? null
+          editingParticipantId
+            ? conv?.participants.find((p) => p.id === editingParticipantId)?.identityId ?? null
             : currentParticipant?.identityId ?? null
         }
         onSelect={handleIdentitySelect}

@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useProviderStore } from "../../../src/stores/provider-store";
 import { useChatStore } from "../../../src/stores/chat-store";
 import { ModelAvatar } from "../../../src/components/common/ModelAvatar";
+import { generateId } from "../../../src/utils/id";
 import type { Model } from "../../../src/types";
 
 export default function ModelsScreen() {
@@ -53,7 +54,7 @@ export default function ModelsScreen() {
         return;
       }
       const conv = await createConversation("single", [
-        { modelId: model.id, identityId: null },
+        { id: generateId(), modelId: model.id, identityId: null },
       ]);
       router.push(`/chat/${conv.id}`);
     },
@@ -65,8 +66,9 @@ export default function ModelsScreen() {
       Alert.alert(t("models.selectModels"), t("models.selectModelsHint"));
       return;
     }
-    const participants = selectedForGroup.map((id) => ({
-      modelId: id,
+    const participants = selectedForGroup.map((modelId) => ({
+      id: generateId(),
+      modelId,
       identityId: null,
     }));
     const conv = await createConversation("group", participants);

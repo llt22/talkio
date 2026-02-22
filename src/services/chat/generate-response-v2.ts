@@ -43,6 +43,7 @@ export async function generateResponseV2(
   modelId: string,
   conv: Conversation,
   signal?: AbortSignal,
+  participantId?: string,
 ): Promise<void> {
   const providerStore = useProviderStore.getState();
   const identityStore = useIdentityStore.getState();
@@ -60,7 +61,10 @@ export async function generateResponseV2(
     return;
   }
 
-  const participant = conv.participants.find((p) => p.modelId === modelId);
+  // Find participant by id first (supports same model multiple times), fallback to modelId
+  const participant = participantId
+    ? conv.participants.find((p) => p.id === participantId)
+    : conv.participants.find((p) => p.modelId === modelId);
   const identity: Identity | undefined = participant?.identityId
     ? identityStore.getIdentityById(participant.identityId)
     : undefined;
