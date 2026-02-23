@@ -143,7 +143,7 @@ export default function DiscoverScreen() {
   return (
     <View className="flex-1 bg-bg-secondary">
       <View className="bg-bg-secondary px-5 pb-4 pt-2">
-        <View className="flex-row rounded-xl bg-bg-input/60 p-1">
+        <View className="flex-row rounded-xl border border-border-light bg-bg-hover p-1">
           {(["identities", "tools"] as Tab[]).map((tab) => (
             <Pressable
               key={tab}
