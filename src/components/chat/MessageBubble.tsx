@@ -184,7 +184,7 @@ export const MessageBubble = React.memo(function MessageBubble({
         <Pressable
           onLongPress={handleLongPress}
           delayLongPress={400}
-          className="max-w-[90%] rounded-2xl border border-border-light bg-bubble-ai px-4 py-3"
+          className="max-w-[90%] rounded-2xl bg-bubble-ai px-4 py-3"
           style={{ borderTopLeftRadius: 0 }}
         >
           {isStreaming && !rawContent && !message.generatedImages?.length ? (
@@ -245,7 +245,7 @@ export const MessageBubble = React.memo(function MessageBubble({
                       return next;
                     });
                   }}
-                  className="rounded-xl border border-border-light bg-bg-card overflow-hidden active:opacity-70"
+                  className="rounded-xl bg-bg-card overflow-hidden active:opacity-70"
                 >
                   <View className="flex-row items-center gap-2 px-3 py-2">
                     <View className={`h-5 w-5 items-center justify-center rounded-md ${result ? "bg-emerald-100" : "bg-amber-100"}`}>
@@ -267,7 +267,7 @@ export const MessageBubble = React.memo(function MessageBubble({
                     )}
                   </View>
                   {isExpanded && result && (
-                    <View className="border-t border-border-light bg-bg-hover px-3 py-2">
+                    <View className="border-t border-border-subtle bg-bg-hover px-3 py-2">
                       <Text className="text-[11px] leading-relaxed text-text-muted" numberOfLines={20}>
                         {result.content.slice(0, 1000)}
                       </Text>
