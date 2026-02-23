@@ -278,7 +278,7 @@ export default function ProviderEditScreen() {
               <Pressable
                 key={key}
                 onPress={() => applyPreset(key)}
-                className="w-[47%] items-center rounded-2xl border border-border-light bg-bg-card px-3 py-4 active:opacity-80"
+                className="w-[47%] items-center rounded-2xl bg-bg-card px-3 py-4 active:opacity-80"
               >
                 <Ionicons name={(PRESET_ICONS[key] ?? "ellipse-outline") as any} size={24} color={colors.accent} />
                 <Text className="mt-1.5 text-[14px] font-semibold text-text-main">{preset.name}</Text>
@@ -312,7 +312,7 @@ export default function ProviderEditScreen() {
 
           {/* Full form for Custom or Editing */}
           {(isCustom || isEditing) && (
-            <View className="overflow-hidden rounded-xl border border-border-light bg-bg-card mb-4">
+            <View className="overflow-hidden rounded-xl bg-bg-card mb-4">
               <View className="flex-row items-center border-b border-border-subtle px-4 py-3.5">
                 <Text className="w-24 text-[15px] text-text-main">{t("providerEdit.name")}</Text>
                 <TextInput
@@ -361,7 +361,7 @@ export default function ProviderEditScreen() {
           )}
 
           {/* API Key */}
-          <View className="overflow-hidden rounded-xl border border-border-light bg-bg-card">
+          <View className="overflow-hidden rounded-xl bg-bg-card">
             <View className="flex-row items-center px-4 py-3.5">
               <Ionicons name="key-outline" size={18} color={colors.searchIcon} style={{ marginRight: 12 }} />
               <TextInput
@@ -389,7 +389,7 @@ export default function ProviderEditScreen() {
           </Pressable>
 
           {showAdvanced && (
-            <View className="overflow-hidden rounded-xl border border-border-light bg-bg-card mb-4">
+            <View className="overflow-hidden rounded-xl bg-bg-card mb-4">
               {providerType === "azure-openai" && (
                 <View className="flex-row items-center border-b border-border-subtle px-4 py-3.5">
                   <Text className="w-24 text-[15px] text-text-main">API Ver.</Text>
@@ -425,7 +425,7 @@ export default function ProviderEditScreen() {
                 {customHeaders.map((h, idx) => (
                   <View key={idx} className="mb-2 flex-row items-center gap-2">
                     <TextInput
-                      className="flex-1 rounded-lg border border-border-light bg-bg-hover px-3 py-2 text-[14px] text-text-main"
+                      className="flex-1 rounded-lg bg-bg-hover px-3 py-2 text-[14px] text-text-main"
                       value={h.name}
                       onChangeText={(v) => updateCustomHeader(idx, "name", v)}
                       placeholder="Header"
@@ -433,7 +433,7 @@ export default function ProviderEditScreen() {
                       autoCapitalize="none"
                     />
                     <TextInput
-                      className="flex-1 rounded-lg border border-border-light bg-bg-hover px-3 py-2 text-[14px] text-text-main"
+                      className="flex-1 rounded-lg bg-bg-hover px-3 py-2 text-[14px] text-text-main"
                       value={h.value}
                       onChangeText={(v) => updateCustomHeader(idx, "value", v)}
                       placeholder="Value"
@@ -519,7 +519,7 @@ export default function ProviderEditScreen() {
           </View>
 
           {/* Model Search */}
-          <View className="mt-3 flex-row items-center rounded-xl border border-border-light bg-bg-card px-3 py-2">
+          <View className="mt-3 flex-row items-center rounded-xl bg-bg-card px-3 py-2">
             <Ionicons name="search" size={16} color={colors.searchIcon} style={{ marginRight: 8 }} />
             <TextInput
               className="flex-1 text-[14px] text-text-main"
@@ -539,7 +539,7 @@ export default function ProviderEditScreen() {
           {/* Manual Add Model */}
           <View className="mt-2 flex-row items-center gap-2">
             <TextInput
-              className="flex-1 rounded-xl border border-border-light bg-bg-card px-3 py-2.5 text-[14px] text-text-main"
+              className="flex-1 rounded-xl bg-bg-card px-3 py-2.5 text-[14px] text-text-main"
               value={newModelId}
               onChangeText={setNewModelId}
               placeholder={t("providerEdit.addModelPlaceholder")}
@@ -560,7 +560,7 @@ export default function ProviderEditScreen() {
           {/* Model List */}
           <View className="mt-3 gap-2">
             {filteredModels.map((m) => (
-              <View key={m.id} className="rounded-xl border border-border-light bg-bg-card px-4 py-3">
+              <View key={m.id} className="rounded-xl bg-bg-card px-4 py-3">
                 <View className="flex-row items-center justify-between">
                   <View className="flex-1 mr-3">
                     <Text className={`text-[15px] font-semibold ${m.enabled ? "text-text-main" : "text-text-hint"}`} numberOfLines={1}>
@@ -621,7 +621,7 @@ export default function ProviderEditScreen() {
           </Text>
           <View className="mt-3 gap-1.5">
             {testPulledModels.map((m) => (
-              <View key={m.id} className="flex-row items-center rounded-xl border border-border-light bg-bg-card px-4 py-3">
+              <View key={m.id} className="flex-row items-center rounded-xl bg-bg-card px-4 py-3">
                 <Ionicons name="cube-outline" size={16} color={colors.accent} style={{ marginRight: 10 }} />
                 <Text className="flex-1 text-[14px] text-text-main" numberOfLines={1}>{m.id}</Text>
               </View>

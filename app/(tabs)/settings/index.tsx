@@ -25,7 +25,7 @@ export default function SettingsScreen() {
           {t("settings.configuration")}
         </Text>
         <View
-          className="overflow-hidden rounded-xl border border-border-light bg-bg-card"
+          className="overflow-hidden rounded-xl bg-bg-card"
         >
           <SettingsRow
             icon="git-network-outline"
@@ -109,7 +109,7 @@ export default function SettingsScreen() {
           {t("settings.interactions")}
         </Text>
         <View
-          className="overflow-hidden rounded-xl border border-border-light bg-bg-card"
+          className="overflow-hidden rounded-xl bg-bg-card"
         >
           <View className="flex-row items-center justify-between p-4 border-b border-border-subtle">
             <View className="flex-row items-center">
@@ -141,7 +141,7 @@ export default function SettingsScreen() {
         <Text className="mb-2 ml-2 text-xs font-semibold uppercase tracking-wider text-section-header">
           {t("settings.dataManagement")}
         </Text>
-        <View className="overflow-hidden rounded-xl border border-border-light bg-bg-card">
+        <View className="overflow-hidden rounded-xl bg-bg-card">
           <Pressable
             onPress={async () => {
               try {

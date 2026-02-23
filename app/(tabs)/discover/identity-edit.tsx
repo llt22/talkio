@@ -145,7 +145,7 @@ export default function IdentityEditScreen() {
           </View>
 
           <TextInput
-            className="mt-3 rounded-lg border border-border-light bg-bg-secondary px-3 py-2.5 text-sm text-text-main"
+            className="mt-3 rounded-lg bg-bg-secondary px-3 py-2.5 text-sm text-text-main"
             value={aiDesc}
             onChangeText={setAiDesc}
             placeholder={t("identityEdit.aiDescPlaceholder")}
@@ -212,7 +212,7 @@ export default function IdentityEditScreen() {
       <View className="px-4 pt-4">
         <Text className="mb-1 text-sm font-medium text-text-muted">{t("identityEdit.name")}</Text>
         <TextInput
-          className="rounded-xl border border-border-light bg-bg-secondary px-4 py-3 text-base text-text-main"
+          className="rounded-xl bg-bg-secondary px-4 py-3 text-base text-text-main"
           value={name}
           onChangeText={setName}
           placeholder={t("identityEdit.namePlaceholder")}
@@ -242,7 +242,7 @@ export default function IdentityEditScreen() {
       <View className="px-4 pt-4">
         <Text className="mb-1 text-sm font-medium text-text-muted">{t("identityEdit.systemPrompt")}</Text>
         <TextInput
-          className="min-h-[120px] rounded-xl border border-border-light bg-bg-secondary px-4 py-3 text-sm leading-5 text-text-main"
+          className="min-h-[120px] rounded-xl bg-bg-secondary px-4 py-3 text-sm leading-5 text-text-main"
           value={systemPrompt}
           onChangeText={setSystemPrompt}
           placeholder={t("identityEdit.systemPromptPlaceholder")}
@@ -266,7 +266,7 @@ export default function IdentityEditScreen() {
             <Pressable
               key={tool.id}
               onPress={() => toggleTool(tool.id)}
-              className="mb-2 flex-row items-center rounded-lg border border-border-light bg-bg-secondary px-3 py-2.5"
+              className="mb-2 flex-row items-center rounded-lg bg-bg-secondary px-3 py-2.5"
             >
               <Ionicons
                 name={selectedToolIds.includes(tool.id) ? "checkbox" : "square-outline"}
@@ -284,7 +284,7 @@ export default function IdentityEditScreen() {
             <Pressable
               key={server.id}
               onPress={() => toggleServer(server.id)}
-              className="mb-2 flex-row items-center rounded-lg border border-border-light bg-bg-secondary px-3 py-2.5"
+              className="mb-2 flex-row items-center rounded-lg bg-bg-secondary px-3 py-2.5"
             >
               <Ionicons
                 name={selectedServerIds.includes(server.id) ? "checkbox" : "square-outline"}

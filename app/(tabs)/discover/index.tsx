@@ -294,7 +294,7 @@ export default function DiscoverScreen() {
           <View className="flex-1 px-4 pt-4">
             <Text className="mb-2 text-[13px] text-text-hint">{t("personas.importHint")}</Text>
             <TextInput
-              className="flex-1 rounded-xl border border-border-light bg-bg-hover p-4 text-[14px] text-text-main font-mono"
+              className="flex-1 rounded-xl bg-bg-hover p-4 text-[14px] text-text-main font-mono"
               value={importJson}
               onChangeText={setImportJson}
               placeholder={'{\n  "mcpServers": {\n    "weather": {\n      "url": "https://..."\n    }\n  }\n}'}

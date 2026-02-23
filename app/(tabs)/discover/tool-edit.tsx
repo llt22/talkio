@@ -59,7 +59,7 @@ export default function ToolEditScreen() {
       <View className="px-4 pt-4">
         <Text className="mb-1 text-sm font-medium text-text-muted">{t("toolEdit.name")}</Text>
         <TextInput
-          className="rounded-xl border border-border-light bg-bg-secondary px-4 py-3 text-base text-text-main"
+          className="rounded-xl bg-bg-secondary px-4 py-3 text-base text-text-main"
           value={name}
           onChangeText={setName}
           placeholder={t("toolEdit.namePlaceholder")}
@@ -70,7 +70,7 @@ export default function ToolEditScreen() {
       <View className="px-4 pt-4">
         <Text className="mb-1 text-sm font-medium text-text-muted">{t("toolEdit.endpointUrl")}</Text>
         <TextInput
-          className="rounded-xl border border-border-light bg-bg-secondary px-4 py-3 text-sm text-text-main"
+          className="rounded-xl bg-bg-secondary px-4 py-3 text-sm text-text-main"
           value={url}
           onChangeText={setUrl}
           placeholder="https://mcp.example.com/mcp"
@@ -94,7 +94,7 @@ export default function ToolEditScreen() {
         {headers.map((h, i) => (
           <View key={i} className="mb-2 flex-row items-center gap-2">
             <TextInput
-              className="flex-1 rounded-lg border border-border-light bg-bg-secondary px-3 py-2 text-sm text-text-main"
+              className="flex-1 rounded-lg bg-bg-secondary px-3 py-2 text-sm text-text-main"
               value={h.name}
               onChangeText={(v) => {
                 const next = [...headers];
@@ -106,7 +106,7 @@ export default function ToolEditScreen() {
               autoCapitalize="none"
             />
             <TextInput
-              className="flex-[2] rounded-lg border border-border-light bg-bg-secondary px-3 py-2 text-sm text-text-main"
+              className="flex-[2] rounded-lg bg-bg-secondary px-3 py-2 text-sm text-text-main"
               value={h.value}
               onChangeText={(v) => {
                 const next = [...headers];
@@ -176,7 +176,7 @@ export default function ToolEditScreen() {
         </Pressable>
       </View>
 
-      <View className="mx-4 mt-4 flex-row items-center justify-between rounded-xl border border-border-light bg-bg-secondary px-4 py-3">
+      <View className="mx-4 mt-4 flex-row items-center justify-between rounded-xl bg-bg-secondary px-4 py-3">
         <Text className="text-sm text-text-main">{t("toolEdit.enabled")}</Text>
         <Switch value={enabled} onValueChange={setEnabled} trackColor={{ false: colors.switchTrack, true: colors.accent }} thumbColor="#fff" ios_backgroundColor={colors.switchTrack} />
       </View>

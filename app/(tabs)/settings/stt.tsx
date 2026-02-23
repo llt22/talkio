@@ -102,7 +102,7 @@ export default function SttSettingsScreen() {
         </View>
 
         {/* Base URL */}
-        <View className="overflow-hidden rounded-xl border border-border-light bg-bg-card">
+        <View className="overflow-hidden rounded-xl bg-bg-card">
           <View className="flex-row items-center px-4 py-3.5">
             <Ionicons name="link-outline" size={18} color={colors.searchIcon} style={{ marginRight: 12 }} />
             <TextInput
@@ -118,7 +118,7 @@ export default function SttSettingsScreen() {
         </View>
 
         {/* API Key */}
-        <View className="overflow-hidden rounded-xl border border-border-light bg-bg-card">
+        <View className="overflow-hidden rounded-xl bg-bg-card">
           <View className="flex-row items-center px-4 py-3.5">
             <Ionicons name="key-outline" size={18} color={colors.searchIcon} style={{ marginRight: 12 }} />
             <TextInput
@@ -142,7 +142,7 @@ export default function SttSettingsScreen() {
           disabled={testing || pulling}
           className={`mt-1 flex-row items-center justify-center rounded-xl py-3.5 active:opacity-70 ${
             testing || pulling
-              ? "bg-bg-input"
+              ? "bg-primary/70"
               : connected === true
                 ? "bg-accent-green"
                 : connected === false
@@ -191,7 +191,7 @@ export default function SttSettingsScreen() {
 
           {/* Search */}
           {fetchedModels.length > 0 && (
-            <View className="mb-3 flex-row items-center rounded-xl border border-border-light bg-bg-card px-3 py-2">
+            <View className="mb-3 flex-row items-center rounded-xl bg-bg-card px-3 py-2">
               <Ionicons name="search" size={16} color={colors.searchIcon} style={{ marginRight: 8 }} />
               <TextInput
                 className="flex-1 text-[14px] text-text-main"
@@ -217,7 +217,7 @@ export default function SttSettingsScreen() {
                   setModel(id);
                   updateSettings({ sttBaseUrl: baseUrl.trim(), sttApiKey: apiKey.trim(), sttModel: id });
                 }}
-                className="rounded-xl border border-border-light bg-bg-card px-4 py-3 flex-row items-center justify-between active:bg-bg-hover"
+                className="rounded-xl bg-bg-card px-4 py-3 flex-row items-center justify-between active:bg-bg-hover"
               >
                 <Text className="flex-1 text-[15px] text-text-main" numberOfLines={1}>{id}</Text>
                 {model === id && <Ionicons name="checkmark-circle" size={20} color={colors.accent} />}
