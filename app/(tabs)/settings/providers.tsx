@@ -29,40 +29,41 @@ export default function ProvidersScreen() {
           p.status === "connected" ? "text-success" : p.status === "error" ? "text-error" : "text-text-hint";
 
         return (
-          <Swipeable
-            key={p.id}
-            renderRightActions={(_progress, dragX) => {
-              const scale = dragX.interpolate({
-                inputRange: [-80, 0],
-                outputRange: [1, 0.5],
-                extrapolate: "clamp",
-              });
-              return (
-                <Pressable
-                  onPress={() => handleDelete(p.id, p.name)}
-                  style={{
-                    width: 80,
-                    backgroundColor: colors.danger,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: 12,
-                  }}
-                >
-                  <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
-                    <Ionicons name="trash-outline" size={22} color="#fff" />
-                    <Text className="mt-0.5 text-[10px] font-medium text-white">{t("common.delete")}</Text>
-                  </Animated.View>
-                </Pressable>
-              );
-            }}
-            overshootRight={false}
-            friction={2}
-          >
-            <Pressable
-              onPress={() => router.push({ pathname: "/(tabs)/settings/provider-edit", params: { id: p.id } })}
-              android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-              className={`mx-4 mt-3 rounded-xl bg-bg-card p-4 active:opacity-80 ${p.enabled === false ? "opacity-50" : ""}`}
+          <View key={p.id} className="mx-4 mt-3">
+            <Swipeable
+              renderRightActions={(_progress, dragX) => {
+                const scale = dragX.interpolate({
+                  inputRange: [-80, 0],
+                  outputRange: [1, 0.5],
+                  extrapolate: "clamp",
+                });
+                return (
+                  <Pressable
+                    onPress={() => handleDelete(p.id, p.name)}
+                    style={{
+                      width: 80,
+                      backgroundColor: colors.danger,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: 12,
+                      marginLeft: 8,
+                    }}
+                  >
+                    <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
+                      <Ionicons name="trash-outline" size={22} color="#fff" />
+                      <Text className="mt-0.5 text-[10px] font-medium text-white">{t("common.delete")}</Text>
+                    </Animated.View>
+                  </Pressable>
+                );
+              }}
+              overshootRight={false}
+              friction={2}
             >
+              <Pressable
+                onPress={() => router.push({ pathname: "/(tabs)/settings/provider-edit", params: { id: p.id } })}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                className={`rounded-xl bg-bg-card p-4 active:opacity-80 ${p.enabled === false ? "opacity-50" : ""}`}
+              >
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center flex-1">
                   <View className={`h-10 w-10 items-center justify-center rounded-lg ${p.enabled === false ? "bg-bg-input" : "bg-primary-light"}`}>
@@ -91,7 +92,8 @@ export default function ProvidersScreen() {
                 </View>
               </View>
             </Pressable>
-          </Swipeable>
+            </Swipeable>
+          </View>
         );
       })}
 
