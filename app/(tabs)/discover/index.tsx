@@ -143,7 +143,7 @@ export default function DiscoverScreen() {
   return (
     <View className="flex-1 bg-bg-secondary">
       <View className="bg-bg-secondary px-5 pb-4 pt-2">
-        <View className="flex-row rounded-xl border border-border-light bg-bg-hover p-1">
+        <View className="flex-row rounded-xl bg-black/8 p-1">
           {(["identities", "tools"] as Tab[]).map((tab) => (
             <Pressable
               key={tab}
@@ -190,7 +190,7 @@ export default function DiscoverScreen() {
                 <Text className="mb-2 px-1 text-[13px] font-medium uppercase tracking-tight text-text-hint">
                   {t("personas.builtInTools")}
                 </Text>
-                <View className="overflow-hidden rounded-xl border border-border-light bg-bg-card">
+                <View className="overflow-hidden rounded-xl bg-bg-card">
                   {builtInTools.map((tool, idx) => (
                     <View
                       key={tool.id}
@@ -359,7 +359,7 @@ function IdentityCard({
     >
       <Pressable
         onPress={onEdit}
-        className="rounded-xl border border-border-light bg-bg-card p-4 active:bg-bg-hover"
+        className="rounded-xl bg-bg-card p-4 active:bg-bg-hover"
       >
         <View className="flex-row items-start gap-4">
           <View className={`h-12 w-12 items-center justify-center rounded-xl ${colorSet.bg}`}>
@@ -373,12 +373,12 @@ function IdentityCard({
               <Ionicons name="chevron-forward" size={20} color={colors.searchIcon} />
             </View>
             <View className="mb-3 flex-row gap-2">
-              <View className="rounded border border-border-light bg-bg-input px-2 py-0.5">
+              <View className="rounded bg-bg-input px-2 py-0.5">
                 <Text className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
                   {t("personas.temp", { value: identity.params.temperature })}
                 </Text>
               </View>
-              <View className="rounded border border-border-light bg-bg-input px-2 py-0.5">
+              <View className="rounded bg-bg-input px-2 py-0.5">
                 <Text className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
                   {t("personas.tools", { count: identity.mcpToolIds.length + (identity.mcpServerIds?.length ?? 0) })}
                 </Text>
@@ -439,7 +439,7 @@ function ServerCard({
     >
       <Pressable
         onPress={onEdit}
-        className="rounded-xl border border-border-light bg-bg-card p-4 active:bg-bg-hover"
+        className="rounded-xl bg-bg-card p-4 active:bg-bg-hover"
       >
         <View className="flex-row items-center gap-3">
           <View className="h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
