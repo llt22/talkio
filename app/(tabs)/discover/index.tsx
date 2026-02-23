@@ -344,6 +344,7 @@ function IdentityCard({
               alignItems: "center",
               justifyContent: "center",
               borderRadius: 12,
+              marginLeft: 8,
             }}
           >
             <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
@@ -423,6 +424,7 @@ function ServerCard({
               alignItems: "center",
               justifyContent: "center",
               borderRadius: 12,
+              marginLeft: 8,
             }}
           >
             <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
