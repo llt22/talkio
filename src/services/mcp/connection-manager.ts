@@ -5,10 +5,23 @@ import { logger } from "../logger";
 
 const log = logger.withContext("McpConnPool");
 
+export type McpConnectionStatus = "idle" | "connecting" | "connected" | "error";
+export type McpErrorCode = "NETWORK" | "AUTH" | "TIMEOUT" | "SERVER_ERROR" | "UNKNOWN";
+
+function classifyError(err: unknown): McpErrorCode {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg.includes("401") || msg.includes("403") || msg.includes("Unauthorized") || msg.includes("Forbidden")) return "AUTH";
+  if (msg.includes("timeout") || msg.includes("Timeout") || msg.includes("ETIMEDOUT")) return "TIMEOUT";
+  if (msg.includes("500") || msg.includes("502") || msg.includes("503") || msg.includes("504")) return "SERVER_ERROR";
+  if (msg.includes("Network") || msg.includes("network") || msg.includes("fetch") || msg.includes("ECONNREFUSED") || msg.includes("ENOTFOUND")) return "NETWORK";
+  return "UNKNOWN";
+}
+
 interface ManagedConnection {
   client: Client;
   server: McpServer;
   tools: DiscoveredTool[];
+  toolsDiscoveredAt: number;
   connected: boolean;
   connecting: Promise<void> | null;
 }
@@ -24,6 +37,9 @@ function buildRequestInit(customHeaders?: CustomHeader[]): RequestInit | undefin
 
 class McpConnectionManager {
   private connections = new Map<string, ManagedConnection>();
+
+  /** Tools cache TTL in milliseconds (5 minutes) */
+  private readonly TOOLS_TTL = 5 * 60 * 1000;
 
   /**
    * Get or create a persistent connection to an MCP server.
@@ -41,6 +57,7 @@ class McpConnectionManager {
       client: null!,
       server,
       tools: [],
+      toolsDiscoveredAt: 0,
       connected: false,
       connecting: null,
     };
@@ -75,6 +92,7 @@ class McpConnectionManager {
         description: t.description ?? "",
         inputSchema: (t.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>,
       }));
+      conn.toolsDiscoveredAt = Date.now();
       log.info(`Connected to ${conn.server.name}: ${conn.tools.length} tools`);
     } catch (err) {
       log.error(`Failed to connect to ${conn.server.name}: ${err instanceof Error ? err.message : err}`);
@@ -92,10 +110,30 @@ class McpConnectionManager {
   }
 
   /**
-   * Discover tools from a server, using cache if available.
+   * Discover tools from a server, using cache if available and not stale.
+   * Refreshes tools list when cache exceeds TOOLS_TTL.
    */
   async discoverTools(server: McpServer): Promise<DiscoveredTool[]> {
     const conn = await this.ensureConnected(server);
+
+    // Refresh tools if cache is stale
+    if (Date.now() - conn.toolsDiscoveredAt > this.TOOLS_TTL) {
+      try {
+        const { tools } = await conn.client.listTools();
+        conn.tools = (tools ?? []).map((t) => ({
+          serverId: conn.server.id,
+          serverName: conn.server.name,
+          name: t.name,
+          description: t.description ?? "",
+          inputSchema: (t.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>,
+        }));
+        conn.toolsDiscoveredAt = Date.now();
+        log.info(`Refreshed tools for ${server.name}: ${conn.tools.length} tools`);
+      } catch (err) {
+        log.warn(`Failed to refresh tools for ${server.name}, using stale cache: ${err instanceof Error ? err.message : err}`);
+      }
+    }
+
     return conn.tools;
   }
 
@@ -107,7 +145,7 @@ class McpConnectionManager {
     server: McpServer,
     toolName: string,
     args: Record<string, unknown>,
-  ): Promise<{ success: boolean; content: string; error?: string }> {
+  ): Promise<{ success: boolean; content: string; error?: string; errorCode?: McpErrorCode }> {
     let conn: ManagedConnection;
     try {
       conn = await this.ensureConnected(server);
@@ -116,6 +154,7 @@ class McpConnectionManager {
         success: false,
         content: "",
         error: `Connection failed: ${err instanceof Error ? err.message : "Unknown"}`,
+        errorCode: classifyError(err),
       };
     }
 
@@ -131,7 +170,7 @@ class McpConnectionManager {
         .join("\n");
 
       if (result.isError) {
-        return { success: false, content: "", error: textParts || "Tool execution failed" };
+        return { success: false, content: "", error: textParts || "Tool execution failed", errorCode: "SERVER_ERROR" };
       }
       return { success: true, content: textParts || JSON.stringify(result) };
     } catch (err) {
@@ -142,6 +181,7 @@ class McpConnectionManager {
         success: false,
         content: "",
         error: err instanceof Error ? err.message : "Network error",
+        errorCode: classifyError(err),
       };
     }
   }
@@ -179,6 +219,31 @@ class McpConnectionManager {
    */
   isConnected(serverId: string): boolean {
     return this.connections.get(serverId)?.connected ?? false;
+  }
+
+  /**
+   * Get connection status for a specific server.
+   */
+  getConnectionStatus(serverId: string): McpConnectionStatus {
+    const conn = this.connections.get(serverId);
+    if (!conn) return "idle";
+    if (conn.connecting) return "connecting";
+    if (conn.connected) return "connected";
+    return "idle";
+  }
+
+  /**
+   * Get connection statuses for all known servers.
+   * Returns a map of serverId → status.
+   */
+  getAllConnectionStatuses(): Map<string, McpConnectionStatus> {
+    const statuses = new Map<string, McpConnectionStatus>();
+    for (const [id, conn] of this.connections) {
+      if (conn.connecting) statuses.set(id, "connecting");
+      else if (conn.connected) statuses.set(id, "connected");
+      else statuses.set(id, "idle");
+    }
+    return statuses;
   }
 }
 

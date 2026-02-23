@@ -203,8 +203,8 @@ export async function generateResponseV2(
       topP: isOModel ? undefined : identity?.params.topP,
       abortSignal: signal,
       providerOptions: providerOptions as any,
-      // Let AI SDK handle up to 3 steps (tool call rounds) automatically
-      stopWhen: toolDefs.length > 0 ? stepCountIs(3) : stepCountIs(1),
+      // Let AI SDK handle up to 20 steps (tool call rounds) automatically
+      stopWhen: toolDefs.length > 0 ? stepCountIs(20) : stepCountIs(1),
       // Enable raw chunks so we can extract reasoning_content from SSE
       // that AI SDK's @ai-sdk/openai doesn't natively parse
       includeRawChunks: true,

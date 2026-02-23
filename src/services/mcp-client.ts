@@ -1,6 +1,5 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { RNStreamableHTTPClientTransport } from "./mcp/rn-streamable-http-transport";
-import type { McpTool, McpToolSchema, McpServer, DiscoveredTool, CustomHeader } from "../types";
+import type { McpTool, McpToolSchema, DiscoveredTool } from "../types";
+import { mcpConnectionManager } from "./mcp/connection-manager";
 
 export interface McpExecutionResult {
   success: boolean;
@@ -55,34 +54,12 @@ async function executeLocalTool(
   }
 }
 
-// ── MCP SDK Client Helpers ──
-
-function buildRequestInit(customHeaders?: CustomHeader[]): RequestInit | undefined {
-  if (!customHeaders?.length) return undefined;
-  const headers: Record<string, string> = {};
-  for (const h of customHeaders) {
-    if (h.name && h.value) headers[h.name] = h.value;
-  }
-  return { headers };
-}
-
-async function createMcpClient(
-  endpoint: string,
-  customHeaders?: CustomHeader[],
-): Promise<Client> {
-  const transport = new RNStreamableHTTPClientTransport(endpoint, {
-    requestInit: buildRequestInit(customHeaders),
-  });
-  const client = new Client(
-    { name: "talkio-app", version: "1.0.0" },
-    { capabilities: {} },
-  );
-  await client.connect(transport);
-  return client;
-}
+// ── Remote Tool Execution (delegated to connection-manager) ──
 
 /**
- * Execute a remote MCP tool using the official SDK Client.
+ * Execute a remote MCP tool via the persistent connection manager.
+ * Legacy McpTool-based remote execution — creates a temporary McpServer
+ * from the tool's endpoint and delegates to connection-manager.
  */
 async function executeRemoteTool(
   tool: McpTool,
@@ -92,61 +69,20 @@ async function executeRemoteTool(
     return { success: false, content: "", error: "No endpoint configured" };
   }
 
-  let client: Client | null = null;
-  try {
-    client = await createMcpClient(tool.endpoint, tool.customHeaders);
+  // Build a temporary McpServer from the legacy McpTool fields
+  const tempServer = {
+    id: `legacy-${tool.id}`,
+    name: tool.name,
+    url: tool.endpoint,
+    customHeaders: tool.customHeaders,
+    enabled: true,
+  };
 
-    const result = await client.callTool({
-      name: tool.schema?.name ?? tool.name,
-      arguments: args,
-    });
-
-    // Parse SDK response
-    const contentArray = Array.isArray(result.content) ? result.content : [];
-    const textParts = contentArray
-      .map((item: any) => {
-        if (typeof item === "string") return item;
-        if (item.type === "text") return item.text ?? "";
-        return JSON.stringify(item);
-      })
-      .join("\n");
-
-    if (result.isError) {
-      return { success: false, content: "", error: textParts || "Tool execution failed" };
-    }
-
-    return { success: true, content: textParts || JSON.stringify(result) };
-  } catch (err) {
-    return {
-      success: false,
-      content: "",
-      error: err instanceof Error ? err.message : "Network error",
-    };
-  } finally {
-    try { await client?.close(); } catch { /* ignore */ }
-  }
-}
-
-/**
- * Connect to a remote MCP server and list available tools.
- * Uses the official MCP SDK Client with RN-compatible transport.
- */
-export async function listRemoteTools(
-  endpoint: string,
-  extraHeaders?: CustomHeader[],
-): Promise<{ name: string; description: string; inputSchema: Record<string, unknown> }[]> {
-  let client: Client | null = null;
-  try {
-    client = await createMcpClient(endpoint, extraHeaders);
-    const { tools } = await client.listTools();
-    return (tools ?? []).map((t) => ({
-      name: t.name,
-      description: t.description ?? "",
-      inputSchema: (t.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>,
-    }));
-  } finally {
-    try { await client?.close(); } catch { /* ignore */ }
-  }
+  return mcpConnectionManager.callTool(
+    tempServer,
+    tool.schema?.name ?? tool.name,
+    args,
+  );
 }
 
 export function toolToApiDef(tool: McpTool): {
@@ -164,71 +100,6 @@ export function toolToApiDef(tool: McpTool): {
       parameters: schema.parameters,
     },
   };
-}
-
-// ── McpServer-level API ──
-
-/**
- * Discover tools from an MCP server.
- * Returns DiscoveredTool[] with serverId for routing.
- */
-export async function discoverServerTools(server: McpServer): Promise<DiscoveredTool[]> {
-  let client: Client | null = null;
-  try {
-    client = await createMcpClient(server.url, server.customHeaders);
-    const { tools } = await client.listTools();
-    return (tools ?? []).map((t) => ({
-      serverId: server.id,
-      serverName: server.name,
-      name: t.name,
-      description: t.description ?? "",
-      inputSchema: (t.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>,
-    }));
-  } finally {
-    try { await client?.close(); } catch { /* ignore */ }
-  }
-}
-
-/**
- * Execute a tool on a specific MCP server.
- */
-export async function executeServerTool(
-  server: McpServer,
-  toolName: string,
-  args: Record<string, unknown>,
-): Promise<McpExecutionResult> {
-  let client: Client | null = null;
-  try {
-    client = await createMcpClient(server.url, server.customHeaders);
-
-    const result = await client.callTool({
-      name: toolName,
-      arguments: args,
-    });
-
-    const contentArray = Array.isArray(result.content) ? result.content : [];
-    const textParts = contentArray
-      .map((item: any) => {
-        if (typeof item === "string") return item;
-        if (item.type === "text") return item.text ?? "";
-        return JSON.stringify(item);
-      })
-      .join("\n");
-
-    if (result.isError) {
-      return { success: false, content: "", error: textParts || "Tool execution failed" };
-    }
-
-    return { success: true, content: textParts || JSON.stringify(result) };
-  } catch (err) {
-    return {
-      success: false,
-      content: "",
-      error: err instanceof Error ? err.message : "Network error",
-    };
-  } finally {
-    try { await client?.close(); } catch { /* ignore */ }
-  }
 }
 
 /**

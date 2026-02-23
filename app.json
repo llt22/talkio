@@ -19,7 +19,6 @@
       "infoPlist": {
         "NSCalendarsUsageDescription": "Access calendar to manage events with AI",
         "NSRemindersUsageDescription": "Create reminders through AI assistant",
-        "NSLocationWhenInUseUsageDescription": "Share location with AI for context",
         "NSMicrophoneUsageDescription": "Voice input for AI chat"
       }
     },
@@ -36,14 +35,10 @@
         "ACCESS_NETWORK_STATE",
         "READ_CALENDAR",
         "WRITE_CALENDAR",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS",
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
@@ -57,7 +52,6 @@
       "expo-router",
       "expo-sqlite",
       "expo-calendar",
-      "expo-location",
       [
         "expo-audio",
         {

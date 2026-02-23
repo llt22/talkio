@@ -236,44 +236,44 @@ export const MessageBubble = React.memo(function MessageBubble({
               const result = message.toolResults.find((r) => r.toolCallId === tc.id);
               const isExpanded = expandedTools.has(tc.id);
               return (
-                <Pressable
-                  key={tc.id}
-                  onPress={() => {
-                    setExpandedTools((prev) => {
-                      const next = new Set(prev);
-                      next.has(tc.id) ? next.delete(tc.id) : next.add(tc.id);
-                      return next;
-                    });
-                  }}
-                  className="rounded-xl bg-bg-card overflow-hidden active:opacity-70"
-                >
-                  <View className="flex-row items-center gap-2 px-3 py-2">
-                    <View className={`h-5 w-5 items-center justify-center rounded-md ${result ? "bg-emerald-100" : "bg-amber-100"}`}>
+                <View key={tc.id} className="overflow-hidden rounded-xl">
+                  <Pressable
+                    onPress={() => {
+                      if (!result) return;
+                      setExpandedTools((prev) => {
+                        const next = new Set(prev);
+                        next.has(tc.id) ? next.delete(tc.id) : next.add(tc.id);
+                        return next;
+                      });
+                    }}
+                    className="flex-row items-center justify-between rounded-xl bg-bg-input/50 px-3 py-2.5 active:opacity-70"
+                  >
+                    <View className="flex-row items-center gap-2 flex-1">
                       <Ionicons
-                        name={result ? "checkmark" : "hourglass-outline"}
-                        size={12}
-                        color={result ? "#059669" : "#d97706"}
+                        name={result ? "construct-outline" : "hourglass-outline"}
+                        size={16}
+                        color={result ? colors.textSecondary : "#d97706"}
                       />
+                      <Text className="text-[13px] font-medium text-text-muted flex-1" numberOfLines={1}>
+                        {tc.name}
+                      </Text>
                     </View>
-                    <Text className="flex-1 text-xs font-semibold text-text-main" numberOfLines={1}>
-                      {tc.name}
-                    </Text>
                     {result && (
                       <Ionicons
                         name={isExpanded ? "chevron-up" : "chevron-down"}
-                        size={14}
+                        size={16}
                         color={colors.searchIcon}
                       />
                     )}
-                  </View>
+                  </Pressable>
                   {isExpanded && result && (
-                    <View className="border-t border-border-subtle bg-bg-hover px-3 py-2">
+                    <View className="rounded-xl bg-bg-hover p-3 mt-1">
                       <Text className="text-[11px] leading-relaxed text-text-muted" numberOfLines={20}>
                         {result.content.slice(0, 1000)}
                       </Text>
                     </View>
                   )}
-                </Pressable>
+                </View>
               );
             })}
           </View>

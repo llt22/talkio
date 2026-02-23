@@ -272,7 +272,8 @@
     "testConnection": "测试连接",
     "testing": "测试中...",
     "testSuccess": "连接成功！发现 {{count}} 个工具。",
-    "testFailed": "连接失败"
+    "testFailed": "连接失败",
+    "autoDisabled": "服务器已自动禁用，请检查地址或请求头后重试。"
   },
   "privacy": {
     "privacyFirst": "隐私优先",

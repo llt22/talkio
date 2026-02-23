@@ -272,7 +272,8 @@
     "testConnection": "Test Connection",
     "testing": "Testing...",
     "testSuccess": "Connection successful! {{count}} tools discovered.",
-    "testFailed": "Connection failed"
+    "testFailed": "Connection failed",
+    "autoDisabled": "Server has been disabled. Fix the URL or headers and try again."
   },
   "privacy": {
     "privacyFirst": "Privacy First",

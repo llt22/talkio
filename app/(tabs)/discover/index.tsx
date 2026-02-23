@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, Alert, Switch, Modal, Animated } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, Alert, Switch, Modal, Animated, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
@@ -7,6 +7,7 @@ import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { useIdentityStore } from "../../../src/stores/identity-store";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
+import { mcpConnectionManager } from "../../../src/services/mcp/connection-manager";
 import type { Identity, McpServer } from "../../../src/types";
 
 type Tab = "identities" | "tools";
@@ -229,7 +230,7 @@ export default function DiscoverScreen() {
                     <ServerCard
                       key={server.id}
                       server={server}
-                      onToggle={(v) => updateMcpServer(server.id, { enabled: v })}
+                      onToggle={(v, toolCount) => updateMcpServer(server.id, { enabled: v, ...(toolCount !== undefined ? { lastToolCount: toolCount } : {}) })}
                       onEdit={() =>
                         router.push({
                           pathname: "/(tabs)/discover/tool-edit",
@@ -401,12 +402,37 @@ function ServerCard({
   onDelete,
 }: {
   server: McpServer;
-  onToggle: (enabled: boolean) => void;
+  onToggle: (enabled: boolean, toolCount?: number) => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const { t } = useTranslation();
   const colors = useThemeColors();
+  const [verifying, setVerifying] = useState(false);
+
+  const handleToggle = async (value: boolean) => {
+    if (!value) {
+      mcpConnectionManager.disconnect(server.id);
+      onToggle(false);
+      return;
+    }
+    // Verify connection before enabling
+    setVerifying(true);
+    try {
+      const tools = await Promise.race([
+        mcpConnectionManager.discoverTools(server),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Timeout (10s)")), 10000)),
+      ]);
+      onToggle(true, tools.length);
+      Alert.alert("✅", t("toolEdit.testSuccess", { count: tools.length }));
+    } catch (err) {
+      Alert.alert(t("toolEdit.testFailed"), err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      mcpConnectionManager.disconnect(server.id);
+      setVerifying(false);
+    }
+  };
+
   return (
     <Swipeable
       renderRightActions={(_progress, dragX) => {
@@ -449,17 +475,28 @@ function ServerCard({
             <Text className="text-[15px] font-semibold text-text-main" numberOfLines={1}>
               {server.name}
             </Text>
-            <Text className="mt-0.5 text-[11px] text-text-hint" numberOfLines={1}>
-              {server.url}
-            </Text>
+            <View className="mt-0.5 flex-row items-center gap-2">
+              <Text className="text-[11px] text-text-hint flex-1" numberOfLines={1}>
+                {server.url}
+              </Text>
+              {server.enabled && server.lastToolCount != null && (
+                <Text className="text-[10px] text-emerald-500 font-medium">
+                  {server.lastToolCount} tools
+                </Text>
+              )}
+            </View>
           </View>
-          <Switch
-            value={server.enabled}
-            onValueChange={onToggle}
-            trackColor={{ false: colors.switchTrack, true: colors.accent }}
-            thumbColor="#fff"
-            ios_backgroundColor={colors.switchTrack}
-          />
+          {verifying ? (
+            <ActivityIndicator size="small" color={colors.accent} />
+          ) : (
+            <Switch
+              value={server.enabled}
+              onValueChange={handleToggle}
+              trackColor={{ false: colors.switchTrack, true: colors.accent }}
+              thumbColor="#fff"
+              ios_backgroundColor={colors.switchTrack}
+            />
+          )}
         </View>
       </Pressable>
     </Swipeable>

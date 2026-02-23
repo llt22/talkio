@@ -1,13 +1,5 @@
-import { Platform } from "react-native";
-import * as Battery from "expo-battery";
-import * as Network from "expo-network";
 import * as Clipboard from "expo-clipboard";
 import * as Calendar from "expo-calendar";
-import * as Location from "expo-location";
-import * as Linking from "expo-linking";
-import * as Brightness from "expo-brightness";
-import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
 import { registerLocalTool, type McpExecutionResult } from "./mcp-client";
 import type { McpTool } from "../types";
 
@@ -27,22 +19,6 @@ export const BUILT_IN_TOOLS: Omit<McpTool, "id">[] = [
     schema: {
       name: "get_current_time",
       description: "Get current date, time, timezone, and day of week",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    name: "Get Device Info",
-    type: "local",
-    scope: "global",
-    description: "Returns device platform, OS version, model, and battery/network status",
-    endpoint: null,
-    nativeModule: "get_device_info",
-    permissions: [],
-    enabled: false,
-    builtIn: true,
-    schema: {
-      name: "get_device_info",
-      description: "Get device platform, OS version, model, battery level, and network status",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -87,111 +63,6 @@ export const BUILT_IN_TOOLS: Omit<McpTool, "id">[] = [
       },
     },
   },
-  {
-    name: "Get Location",
-    type: "local",
-    scope: "global",
-    description: "Get the device's current GPS location (latitude, longitude, altitude)",
-    endpoint: null,
-    nativeModule: "get_location",
-    permissions: ["location"],
-    enabled: false,
-    builtIn: true,
-    schema: {
-      name: "get_location",
-      description: "Get the device's current GPS location coordinates",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    name: "Open Link",
-    type: "local",
-    scope: "global",
-    description: "Open a URL, navigate to an address in Maps, or make a phone call",
-    endpoint: null,
-    nativeModule: "open_link",
-    permissions: [],
-    enabled: false,
-    builtIn: true,
-    schema: {
-      name: "open_link",
-      description: "Open a URL in browser, navigate to address in Maps (use maps: or geo: scheme), or dial a phone number (use tel: scheme)",
-      parameters: {
-        type: "object",
-        properties: {
-          url: { type: "string", description: "URL to open. Examples: https://..., tel:+1234567890, maps:?q=Starbucks" },
-        },
-        required: ["url"],
-      },
-    },
-  },
-  {
-    name: "Set Brightness",
-    type: "local",
-    scope: "global",
-    description: "Adjust the screen brightness level (0.0 to 1.0)",
-    endpoint: null,
-    nativeModule: "set_brightness",
-    permissions: [],
-    enabled: false,
-    builtIn: true,
-    schema: {
-      name: "set_brightness",
-      description: "Set screen brightness. 0.0 = darkest, 1.0 = brightest, 0.5 = medium",
-      parameters: {
-        type: "object",
-        properties: {
-          level: { type: "number", description: "Brightness level from 0.0 to 1.0" },
-        },
-        required: ["level"],
-      },
-    },
-  },
-  {
-    name: "Share Text",
-    type: "local",
-    scope: "global",
-    description: "Share text content to other apps via the system share sheet",
-    endpoint: null,
-    nativeModule: "share_text",
-    permissions: [],
-    enabled: false,
-    builtIn: true,
-    schema: {
-      name: "share_text",
-      description: "Share text content to other apps (WeChat, Notes, Mail, etc.) via the system share sheet",
-      parameters: {
-        type: "object",
-        properties: {
-          text: { type: "string", description: "Text content to share" },
-        },
-        required: ["text"],
-      },
-    },
-  },
-  {
-    name: "Get Weather",
-    type: "local",
-    scope: "global",
-    description: "Get current weather and forecast for a city using free Open-Meteo API (no API key needed)",
-    endpoint: null,
-    nativeModule: "get_weather",
-    permissions: [],
-    enabled: false,
-    builtIn: true,
-    schema: {
-      name: "get_weather",
-      description: "Get current weather and 3-day forecast for a location. Provide city name or coordinates.",
-      parameters: {
-        type: "object",
-        properties: {
-          latitude: { type: "number", description: "Latitude (e.g. 35.6762 for Tokyo)" },
-          longitude: { type: "number", description: "Longitude (e.g. 139.6503 for Tokyo)" },
-          city: { type: "string", description: "City name for geocoding (alternative to lat/lng, e.g. 'Tokyo')" },
-        },
-      },
-    },
-  },
 ];
 
 // ── Handler implementations ──
@@ -208,31 +79,6 @@ async function handleGetCurrentTime(): Promise<McpExecutionResult> {
       utcOffset: `UTC${now.getTimezoneOffset() > 0 ? "-" : "+"}${Math.abs(now.getTimezoneOffset() / 60)}`,
       dayOfWeek: days[now.getDay()],
       timestamp: now.toISOString(),
-    }),
-  };
-}
-
-async function handleGetDeviceInfo(): Promise<McpExecutionResult> {
-  let batteryLevel: number | null = null;
-  let networkType = "unknown";
-
-  try {
-    batteryLevel = await Battery.getBatteryLevelAsync();
-    batteryLevel = Math.round(batteryLevel * 100);
-  } catch { /* not available */ }
-
-  try {
-    const state = await Network.getNetworkStateAsync();
-    networkType = state.type ?? "unknown";
-  } catch { /* not available */ }
-
-  return {
-    success: true,
-    content: JSON.stringify({
-      platform: Platform.OS,
-      osVersion: Platform.Version,
-      batteryLevel: batteryLevel !== null ? `${batteryLevel}%` : "unknown",
-      networkType,
     }),
   };
 }
@@ -307,196 +153,12 @@ async function handleCreateReminder(args: Record<string, unknown>): Promise<McpE
   }
 }
 
-async function handleGetLocation(): Promise<McpExecutionResult> {
-  try {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      return { success: false, content: "", error: "Location permission denied" };
-    }
-
-    const loc = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
-
-    let address = "unknown";
-    try {
-      const [geo] = await Location.reverseGeocodeAsync({
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-      });
-      if (geo) {
-        address = [geo.street, geo.district, geo.city, geo.region, geo.country]
-          .filter(Boolean)
-          .join(", ");
-      }
-    } catch { /* reverse geocode not available */ }
-
-    return {
-      success: true,
-      content: JSON.stringify({
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-        altitude: loc.coords.altitude,
-        accuracy: loc.coords.accuracy,
-        address,
-      }),
-    };
-  } catch (err) {
-    return {
-      success: false,
-      content: "",
-      error: err instanceof Error ? err.message : "Failed to get location",
-    };
-  }
-}
-
-async function handleOpenLink(args: Record<string, unknown>): Promise<McpExecutionResult> {
-  const url = args.url as string;
-  if (!url) {
-    return { success: false, content: "", error: "url is required" };
-  }
-
-  try {
-    const canOpen = await Linking.canOpenURL(url);
-    if (!canOpen) {
-      return { success: false, content: "", error: `Cannot open URL: ${url}` };
-    }
-    await Linking.openURL(url);
-    return { success: true, content: `Opened: ${url}` };
-  } catch (err) {
-    return {
-      success: false,
-      content: "",
-      error: err instanceof Error ? err.message : "Failed to open URL",
-    };
-  }
-}
-
-async function handleSetBrightness(args: Record<string, unknown>): Promise<McpExecutionResult> {
-  const level = args.level as number;
-  if (level === undefined || level < 0 || level > 1) {
-    return { success: false, content: "", error: "level must be between 0.0 and 1.0" };
-  }
-
-  try {
-    await Brightness.setBrightnessAsync(level);
-    return {
-      success: true,
-      content: JSON.stringify({ brightness: level, percent: `${Math.round(level * 100)}%` }),
-    };
-  } catch (err) {
-    return {
-      success: false,
-      content: "",
-      error: err instanceof Error ? err.message : "Failed to set brightness",
-    };
-  }
-}
-
-async function handleShareText(args: Record<string, unknown>): Promise<McpExecutionResult> {
-  const text = args.text as string;
-  if (!text) {
-    return { success: false, content: "", error: "text is required" };
-  }
-
-  try {
-    // Write text to a temp file for sharing
-    const tmpPath = `${FileSystem.cacheDirectory}share_${Date.now()}.txt`;
-    await FileSystem.writeAsStringAsync(tmpPath, text);
-    await Sharing.shareAsync(tmpPath, { mimeType: "text/plain", dialogTitle: "Share" });
-    return { success: true, content: "Share dialog opened" };
-  } catch (err) {
-    return {
-      success: false,
-      content: "",
-      error: err instanceof Error ? err.message : "Failed to share",
-    };
-  }
-}
-
-async function handleGetWeather(args: Record<string, unknown>): Promise<McpExecutionResult> {
-  try {
-    let lat = args.latitude as number | undefined;
-    let lng = args.longitude as number | undefined;
-
-    // Geocode city name if coordinates not provided
-    if ((lat === undefined || lng === undefined) && args.city) {
-      const geoResp = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(args.city as string)}&count=1&language=en`,
-      );
-      const geoData = await geoResp.json();
-      if (!geoData.results?.length) {
-        return { success: false, content: "", error: `City not found: ${args.city}` };
-      }
-      lat = geoData.results[0].latitude;
-      lng = geoData.results[0].longitude;
-    }
-
-    if (lat === undefined || lng === undefined) {
-      return { success: false, content: "", error: "Provide city name or latitude/longitude" };
-    }
-
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=3&timezone=auto`;
-    const resp = await fetch(url);
-    const data = await resp.json();
-
-    if (data.error) {
-      return { success: false, content: "", error: data.reason ?? data.error };
-    }
-
-    const WMO: Record<number, string> = {
-      0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-      45: "Foggy", 48: "Rime fog", 51: "Light drizzle", 53: "Drizzle",
-      55: "Heavy drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain",
-      71: "Light snow", 73: "Snow", 75: "Heavy snow", 80: "Rain showers",
-      81: "Moderate showers", 82: "Heavy showers", 95: "Thunderstorm",
-    };
-
-    const current = data.current;
-    const daily = data.daily;
-    const forecast = daily.time.map((d: string, i: number) => ({
-      date: d,
-      condition: WMO[daily.weather_code[i]] ?? `Code ${daily.weather_code[i]}`,
-      tempMax: `${daily.temperature_2m_max[i]}°C`,
-      tempMin: `${daily.temperature_2m_min[i]}°C`,
-      precipProbability: `${daily.precipitation_probability_max[i]}%`,
-    }));
-
-    return {
-      success: true,
-      content: JSON.stringify({
-        location: { latitude: lat, longitude: lng, timezone: data.timezone },
-        current: {
-          temperature: `${current.temperature_2m}°C`,
-          feelsLike: `${current.apparent_temperature}°C`,
-          condition: WMO[current.weather_code] ?? `Code ${current.weather_code}`,
-          humidity: `${current.relative_humidity_2m}%`,
-          windSpeed: `${current.wind_speed_10m} km/h`,
-        },
-        forecast,
-      }),
-    };
-  } catch (err) {
-    return {
-      success: false,
-      content: "",
-      error: err instanceof Error ? err.message : "Failed to fetch weather",
-    };
-  }
-}
-
 // ── Registration ──
 
 const HANDLER_MAP: Record<string, (args: Record<string, unknown>) => Promise<McpExecutionResult>> = {
   get_current_time: () => handleGetCurrentTime(),
-  get_device_info: () => handleGetDeviceInfo(),
   read_clipboard: () => handleReadClipboard(),
   create_reminder: handleCreateReminder,
-  get_location: () => handleGetLocation(),
-  open_link: handleOpenLink,
-  set_brightness: handleSetBrightness,
-  share_text: handleShareText,
-  get_weather: handleGetWeather,
 };
 
 export function registerBuiltInTools(toolIds: Map<string, string>): void {

@@ -13,32 +13,43 @@ export async function buildTools(
   identity: Identity | undefined,
 ): Promise<{ toolDefs: ChatApiToolDef[]; remoteToolsCache: RemoteToolsCache }> {
   const emptyResult = { toolDefs: [], remoteToolsCache: new Map() as RemoteToolsCache };
-  // Skip tools entirely if model doesn't support tool calls or no identity bound
+  // Skip tools entirely if model doesn't support tool calls
   if (!model.capabilities.toolCall) return emptyResult;
-  if (!identity) return emptyResult;
 
   const identityStore = useIdentityStore.getState();
   const seen = new Set<string>();
   const result: ChatApiToolDef[] = [];
 
-  // 1. Built-in tools — only those explicitly bound to the identity
-  const boundToolIds = new Set(identity.mcpToolIds);
-  if (boundToolIds.size > 0) {
-    const boundBuiltIn = identityStore.mcpTools.filter((t) => t.enabled && boundToolIds.has(t.id));
-    for (const t of boundBuiltIn) {
-      const def = toolToApiDef(t);
-      if (def && !seen.has(def.function.name)) {
-        seen.add(def.function.name);
-        result.push(def);
-      }
+  // 1. Built-in tools
+  // With identity: use explicitly bound tools
+  // Without identity: fallback to global scope tools
+  let builtInTools: typeof identityStore.mcpTools;
+  if (identity) {
+    const boundToolIds = new Set(identity.mcpToolIds);
+    builtInTools = boundToolIds.size > 0
+      ? identityStore.mcpTools.filter((t) => t.enabled && boundToolIds.has(t.id))
+      : [];
+  } else {
+    builtInTools = identityStore.mcpTools.filter((t) => t.enabled && t.scope === "global");
+  }
+
+  for (const t of builtInTools) {
+    const def = toolToApiDef(t);
+    if (def && !seen.has(def.function.name)) {
+      seen.add(def.function.name);
+      result.push(def);
     }
   }
 
   // 2. Remote MCP servers — use persistent connections, discover in parallel
   const remoteToolsCache: RemoteToolsCache = new Map();
-  const enabledServers = identity.mcpServerIds.length
-    ? identityStore.mcpServers.filter((s) => s.enabled && identity.mcpServerIds.includes(s.id))
-    : [];
+  let enabledServers: McpServer[];
+  if (identity && identity.mcpServerIds.length) {
+    enabledServers = identityStore.mcpServers.filter((s) => s.enabled && identity.mcpServerIds.includes(s.id));
+  } else {
+    // Without identity (or no servers bound): use all globally enabled servers
+    enabledServers = identityStore.mcpServers.filter((s) => s.enabled);
+  }
 
   const DISCOVERY_TIMEOUT = 10000; // 10s per server
   if (enabledServers.length > 0) {
@@ -56,7 +67,9 @@ export async function buildTools(
     for (const result_ of discoveries) {
       if (result_.status === "fulfilled") {
         const { server, tools: serverTools } = result_.value;
+        const disabled = new Set(server.disabledTools ?? []);
         for (const tool of serverTools) {
+          if (disabled.has(tool.name)) continue;
           if (!seen.has(tool.name)) {
             seen.add(tool.name);
             result.push(discoveredToolToApiDef(tool));

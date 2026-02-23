@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useIdentityStore } from "../../../src/stores/identity-store";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
-import { listRemoteTools } from "../../../src/services/mcp-client";
+import { mcpConnectionManager } from "../../../src/services/mcp/connection-manager";
 // MCP Server editor
 
 export default function ToolEditScreen() {
@@ -27,8 +27,9 @@ export default function ToolEditScreen() {
   const [enabled, setEnabled] = useState(existing?.enabled ?? true);
   const [headers, setHeaders] = useState<CustomHeader[]>(existing?.customHeaders ?? []);
   const [testing, setTesting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert(t("common.error"), t("toolEdit.nameRequired"));
       return;
@@ -39,19 +40,60 @@ export default function ToolEditScreen() {
     }
 
     const validHeaders = headers.filter((h) => h.name.trim() && h.value.trim());
-    const data = {
+    const serverData = {
       name: name.trim(),
       url: url.trim(),
       enabled,
       customHeaders: validHeaders.length > 0 ? validHeaders : undefined,
     };
 
+    let serverId: string;
     if (isNew) {
-      addMcpServer(data);
+      const created = addMcpServer(serverData);
+      serverId = created.id;
     } else {
-      updateMcpServer(id!, data);
+      serverId = id!;
+      updateMcpServer(serverId, serverData);
+      mcpConnectionManager.reset(serverId);
     }
-    router.back();
+
+    // Auto-test if enabled — let user know the result before leaving
+    if (!enabled) {
+      router.back();
+      return;
+    }
+
+    setSaving(true);
+    const tempServer = {
+      id: `verify-${Date.now()}`,
+      name: serverData.name,
+      url: serverData.url,
+      customHeaders: serverData.customHeaders,
+      enabled: true,
+    };
+    try {
+      const tools = await Promise.race([
+        mcpConnectionManager.discoverTools(tempServer),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Connection timeout (10s)")), 10000)),
+      ]);
+      // Persist tool count for display in list
+      updateMcpServer(serverId, { lastToolCount: tools.length });
+      Alert.alert(
+        "✅",
+        t("toolEdit.testSuccess", { count: tools.length }) +
+          (tools.length > 0 ? "\n\n" + tools.map((t_) => `• ${t_.name}`).join("\n") : ""),
+        [{ text: "OK", onPress: () => router.back() }],
+      );
+    } catch (err) {
+      Alert.alert(
+        t("toolEdit.testFailed"),
+        err instanceof Error ? err.message : "Unknown error",
+        [{ text: "OK", onPress: () => router.back() }],
+      );
+    } finally {
+      mcpConnectionManager.disconnect(tempServer.id);
+      setSaving(false);
+    }
   };
 
   return (
@@ -140,10 +182,17 @@ export default function ToolEditScreen() {
               return;
             }
             setTesting(true);
+            const validHeaders = headers.filter((h) => h.name.trim() && h.value.trim());
+            const tempServer = {
+              id: `test-${Date.now()}`,
+              name: name.trim() || "Test",
+              url: url.trim(),
+              customHeaders: validHeaders.length > 0 ? validHeaders : undefined,
+              enabled: true,
+            };
             try {
-              const validHeaders = headers.filter((h) => h.name.trim() && h.value.trim());
               const tools = await Promise.race([
-                listRemoteTools(url.trim(), validHeaders.length > 0 ? validHeaders : undefined),
+                mcpConnectionManager.discoverTools(tempServer),
                 new Promise<never>((_, reject) =>
                   setTimeout(() => reject(new Error("Connection timeout (10s)")), 10000),
                 ),
@@ -159,6 +208,8 @@ export default function ToolEditScreen() {
                 err instanceof Error ? err.message : "Unknown error",
               );
             } finally {
+              // Clean up temporary test connection
+              mcpConnectionManager.disconnect(tempServer.id);
               setTesting(false);
             }
           }}
@@ -182,10 +233,17 @@ export default function ToolEditScreen() {
       </View>
 
       <View className="px-4 pb-8 pt-6 gap-3">
-        <Pressable onPress={handleSave} className="items-center rounded-2xl bg-primary py-4 active:opacity-70">
-          <Text className="text-base font-semibold text-white">
-            {isNew ? t("toolEdit.addTool") : t("toolEdit.saveChanges")}
-          </Text>
+        <Pressable onPress={handleSave} disabled={saving || testing} className={`items-center rounded-2xl py-4 active:opacity-70 ${saving ? "bg-primary/60" : "bg-primary"}`}>
+          {saving ? (
+            <View className="flex-row items-center gap-2">
+              <ActivityIndicator size="small" color="#fff" />
+              <Text className="text-base font-semibold text-white">{t("toolEdit.testing")}</Text>
+            </View>
+          ) : (
+            <Text className="text-base font-semibold text-white">
+              {isNew ? t("toolEdit.addTool") : t("toolEdit.saveChanges")}
+            </Text>
+          )}
         </Pressable>
         {!isNew && (
           <Pressable

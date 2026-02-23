@@ -68,6 +68,10 @@ export interface McpServer {
   url: string;
   customHeaders?: CustomHeader[];
   enabled: boolean;
+  /** Tool names disabled on this server — filtered out before sending to AI */
+  disabledTools?: string[];
+  /** Last known tool count from successful connection test */
+  lastToolCount?: number;
 }
 
 // Legacy tool interface — still used for built-in tools
