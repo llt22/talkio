@@ -45,6 +45,7 @@ export default function ProvidersScreen() {
                     backgroundColor: colors.danger,
                     alignItems: "center",
                     justifyContent: "center",
+                    borderRadius: 12,
                   }}
                 >
                   <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>

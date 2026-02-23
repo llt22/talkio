@@ -343,6 +343,7 @@ function IdentityCard({
               backgroundColor: colors.danger,
               alignItems: "center",
               justifyContent: "center",
+              borderRadius: 12,
             }}
           >
             <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
@@ -421,6 +422,7 @@ function ServerCard({
               backgroundColor: colors.danger,
               alignItems: "center",
               justifyContent: "center",
+              borderRadius: 12,
             }}
           >
             <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
