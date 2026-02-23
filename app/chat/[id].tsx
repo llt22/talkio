@@ -510,33 +510,35 @@ export default function ChatDetailScreen() {
         title={modelPickerMode === "switch" ? t("chat.switchModel") : t("chat.addMember")}
       />
 
-      <LegendList
-        ref={listRef}
-        data={messages}
-        renderItem={renderItem}
-        keyExtractor={messageKeyExtractor}
-        {...legendListProps}
-        onScroll={handleScroll}
-      />
+      <View className="flex-1">
+        <LegendList
+          ref={listRef}
+          data={messages}
+          renderItem={renderItem}
+          keyExtractor={messageKeyExtractor}
+          {...legendListProps}
+          onScroll={handleScroll}
+        />
 
-      {showScrollToBottom && (
-        <Animated.View
-          className="absolute bottom-20 right-4 z-10"
-          style={{
-            opacity: scrollBtnOpacity,
-            transform: [{ scale: scrollBtnOpacity.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
-          }}
-        >
-          <Pressable
-            onPress={scrollToBottom}
-            className="flex-row items-center rounded-full bg-primary/90 px-3.5 py-2 active:opacity-70"
-            style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6 }}
-            hitSlop={8}
+        {showScrollToBottom && (
+          <Animated.View
+            className="absolute bottom-3 right-4 z-10"
+            style={{
+              opacity: scrollBtnOpacity,
+              transform: [{ scale: scrollBtnOpacity.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
+            }}
           >
-            <Ionicons name="arrow-down" size={16} color="#fff" />
-          </Pressable>
-        </Animated.View>
-      )}
+            <Pressable
+              onPress={scrollToBottom}
+              className="flex-row items-center rounded-full bg-primary/90 px-3.5 py-2 active:opacity-70"
+              style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6 }}
+              hitSlop={8}
+            >
+              <Ionicons name="arrow-down" size={16} color="#fff" />
+            </Pressable>
+          </Animated.View>
+        )}
+      </View>
 
       <ChatInput
         onSend={handleSend}
