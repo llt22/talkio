@@ -521,7 +521,7 @@ export default function ChatDetailScreen() {
 
       {showScrollToBottom && (
         <Animated.View
-          className="absolute bottom-2 right-4 z-10"
+          className="absolute bottom-20 right-4 z-10"
           style={{
             opacity: scrollBtnOpacity,
             transform: [{ scale: scrollBtnOpacity.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
