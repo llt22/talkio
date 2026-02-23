@@ -84,6 +84,7 @@ export default function ChatDetailScreen() {
   const [modelPickerMode, setModelPickerMode] = useState<"add" | "switch">("add");
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const showScrollToBottomRef = useRef(false);
+  const scrollBtnOpacity = useRef(new Animated.Value(0)).current;
 
   // For single chat, use the first participant
   const currentParticipant = conv?.participants[0];
@@ -167,14 +168,23 @@ export default function ChatDetailScreen() {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
     const isAway = distanceFromBottom > 100;
-    showScrollToBottomRef.current = isAway;
-    setShowScrollToBottom(isAway);
-  }, []);
+    if (isAway !== showScrollToBottomRef.current) {
+      showScrollToBottomRef.current = isAway;
+      setShowScrollToBottom(isAway);
+      Animated.spring(scrollBtnOpacity, {
+        toValue: isAway ? 1 : 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 10,
+      }).start();
+    }
+  }, [scrollBtnOpacity]);
 
   const handleSend = useCallback(
     (text: string, mentionedModelIds?: string[], images?: string[]) => {
       showScrollToBottomRef.current = false;
       setShowScrollToBottom(false);
+      scrollBtnOpacity.setValue(0);
       sendMessage(text, mentionedModelIds, images);
     },
     [sendMessage],
@@ -183,8 +193,9 @@ export default function ChatDetailScreen() {
   const scrollToBottom = useCallback(() => {
     showScrollToBottomRef.current = false;
     setShowScrollToBottom(false);
+    Animated.timing(scrollBtnOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();
     listRef.current?.scrollToOffset({ offset: 9999999, animated: true });
-  }, []);
+  }, [scrollBtnOpacity]);
 
   const handleIdentitySelect = useCallback(
     (identityId: string | null) => {
@@ -509,16 +520,22 @@ export default function ChatDetailScreen() {
       />
 
       {showScrollToBottom && (
-        <View className="absolute right-4 z-10" style={{ top: "50%" }}>
+        <Animated.View
+          className="absolute bottom-2 right-4 z-10"
+          style={{
+            opacity: scrollBtnOpacity,
+            transform: [{ scale: scrollBtnOpacity.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
+          }}
+        >
           <Pressable
             onPress={scrollToBottom}
-            className="h-10 w-10 items-center justify-center rounded-full bg-bg-card active:opacity-60"
-            style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 4 }}
+            className="flex-row items-center rounded-full bg-primary/90 px-3.5 py-2 active:opacity-70"
+            style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6 }}
             hitSlop={8}
           >
-            <Ionicons name="chevron-down" size={20} color={colors.accent} />
+            <Ionicons name="arrow-down" size={16} color="#fff" />
           </Pressable>
-        </View>
+        </Animated.View>
       )}
 
       <ChatInput
