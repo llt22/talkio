@@ -47,6 +47,27 @@ export default function App() {
       useMcpStore.getState().loadFromStorage();
       useBuiltInToolsStore.getState().loadFromStorage();
       setReady(true);
+
+      // Check for pending file import (Android intent)
+      if ((window as any).__TAURI_INTERNALS__) {
+        try {
+          const { invoke } = await import("@tauri-apps/api/core");
+          const data = await invoke<string | null>("check_pending_import");
+          if (data) {
+            const { importBackupFromString } = await import("./services/backup");
+            const result = importBackupFromString(data);
+            if (result.success) {
+              useProviderStore.getState().loadFromStorage();
+              useSettingsStore.getState().loadFromStorage();
+              useIdentityStore.getState().loadFromStorage();
+              useMcpStore.getState().loadFromStorage();
+              alert(result.message);
+            } else {
+              alert(result.message);
+            }
+          }
+        } catch { /* not in Tauri or no pending import */ }
+      }
     }
     init().catch(console.error);
   }, []);

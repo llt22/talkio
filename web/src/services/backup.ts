@@ -54,9 +54,8 @@ export async function downloadBackup(data: BackupData): Promise<boolean> {
   return true;
 }
 
-export async function importBackup(file: File): Promise<{ success: boolean; message: string }> {
+export function importBackupFromString(text: string): { success: boolean; message: string } {
   try {
-    const text = await file.text();
     const data = JSON.parse(text) as BackupData;
 
     if (data.version !== "2.0") {
@@ -73,4 +72,9 @@ export async function importBackup(file: File): Promise<{ success: boolean; mess
   } catch (err) {
     return { success: false, message: err instanceof Error ? err.message : "Failed to parse backup file" };
   }
+}
+
+export async function importBackup(file: File): Promise<{ success: boolean; message: string }> {
+  const text = await file.text();
+  return importBackupFromString(text);
 }
