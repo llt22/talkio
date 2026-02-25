@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IoChevronForward, IoChevronBack, IoAddCircleOutline, IoTrashOutline } from "../../icons";
+import { IoChevronForward, IoChevronBack, IoAddCircleOutline, IoTrashOutline, IoAdd } from "../../icons";
 import i18n from "../../i18n";
 import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
@@ -14,8 +14,8 @@ import { McpPage } from "./McpPage";
 
 function IonIcon({ d, color, bg }: { d: string; color: string; bg: string }) {
   return (
-    <div className="mr-3 h-8 w-8 flex items-center justify-center rounded-lg" style={{ backgroundColor: bg }}>
-      <svg width="16" height="16" viewBox="0 0 512 512" fill="none" stroke={color} strokeWidth="32" strokeLinecap="round" strokeLinejoin="round">
+    <div className="h-10 w-10 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: bg }}>
+      <svg width="18" height="18" viewBox="0 0 512 512" fill="none" stroke={color} strokeWidth="32" strokeLinecap="round" strokeLinejoin="round">
         <path d={d} />
       </svg>
     </div>
@@ -47,16 +47,14 @@ function SettingsRow({
   return (
     <button
       onClick={onPress}
-      className="w-full flex items-center justify-between px-5 py-3.5 active:bg-black/5 transition-colors"
+      className="w-full flex items-center gap-4 px-4 py-3 active:bg-black/5 transition-colors"
       style={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)" }}
     >
-      <div className="flex items-center">
-        <IonIcon d={iconPath} color={iconColor} bg={iconBg} />
-        <span className="text-[15px] font-medium text-foreground">{label}</span>
-      </div>
-      <div className="flex items-center">
+      <IonIcon d={iconPath} color={iconColor} bg={iconBg} />
+      <span className="flex-1 text-[16px] font-medium text-foreground text-left">{label}</span>
+      <div className="flex items-center flex-shrink-0">
         {detail && <span className="mr-2 text-sm text-muted-foreground">{detail}</span>}
-        <IoChevronForward size={16} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
+        <IoChevronForward size={18} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
       </div>
     </button>
   );
@@ -110,7 +108,14 @@ export function SettingsPage() {
           iconBg="rgba(59,130,246,0.1)"
           label={t("settings.providers")}
           detail={t("common.configured", { count: providers.length })}
-          onPress={() => push({ id: "providers-list", title: t("settings.providers"), component: <ProvidersListPage onPush={push} onPop={pop} /> })}
+          onPress={() => push({ id: "providers-list", title: t("settings.providers"), headerRight: (
+            <button
+              onClick={() => push({ id: "provider-add", title: t("settings.addProvider"), component: <ProviderEditPage onClose={pop} /> })}
+              className="p-2 active:opacity-60"
+            >
+              <IoAdd size={22} color="var(--primary)" />
+            </button>
+          ), component: <ProvidersListPage onPush={push} onPop={pop} /> })}
         />
         <SettingsRow
           iconPath="M277.42 247a24.68 24.68 0 00-4.08-5.34L223 191.28a23.76 23.76 0 00-5.34-4.08 24.06 24.06 0 00-33.66 33.66 23.76 23.76 0 004.08 5.34l50.38 50.38a24.68 24.68 0 005.34 4.08 24.06 24.06 0 0033.62-33.66zM289 100a24 24 0 00-33.94 0L230.42 124.6a24 24 0 000 33.94l23 23a24 24 0 0033.94 0L312 156.6a24 24 0 000-33.94zM412 280a24 24 0 00-33.94 0L352.6 305.42a24 24 0 000 33.94l23 23a24 24 0 0033.94 0L435 337a24 24 0 000-33.94z"
@@ -222,16 +227,7 @@ function ProvidersListPage({
 
   return (
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
-      <div className="px-5 pt-4 pb-8">
-        {/* Add Provider */}
-        <button
-          onClick={() => onPush({ id: "provider-add", title: t("settings.addProvider"), component: <ProviderEditPage onClose={onPop} /> })}
-          className="w-full rounded-xl py-3 text-[15px] font-semibold text-white active:opacity-80 mb-4"
-          style={{ backgroundColor: "var(--primary)" }}
-        >
-          {t("settings.addProvider")}
-        </button>
-
+      <div className="pb-8">
         {providers.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-16">
             <IoAddCircleOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
@@ -276,37 +272,35 @@ function ProvidersListPage({
                       component: <ProviderEditPage editId={provider.id} onClose={onPop} />,
                     })
                   }
-                  className={`w-full flex items-center justify-between px-5 py-3.5 text-left active:bg-black/5 transition-colors ${isDisabled ? "opacity-50" : ""}`}
+                  className={`w-full flex items-center gap-4 px-4 py-3 text-left active:bg-black/5 transition-colors ${isDisabled ? "opacity-50" : ""}`}
                   style={{ borderBottom: idx < providers.length - 1 ? "0.5px solid var(--border)" : "none" }}
                 >
-                  <div className="flex items-center flex-1 min-w-0">
-                    <div
-                      className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: isDisabled ? "var(--muted)" : "color-mix(in srgb, var(--primary) 10%, transparent)" }}
-                    >
-                      <span className="text-sm font-bold" style={{ color: isDisabled ? "var(--muted-foreground)" : "var(--primary)" }}>
-                        {provider.name.slice(0, 2)}
-                      </span>
-                    </div>
-                    <div className="ml-3 flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[15px] font-medium text-foreground truncate">{provider.name}</span>
-                        {isDisabled && (
-                          <span
-                            className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                            style={{ backgroundColor: "var(--muted)" }}
-                          >
-                            {t("common.disabled")}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[12px] text-muted-foreground truncate">{provider.baseUrl}</p>
-                      <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                        {t("providers.modelsCount", { total: providerModels.length, active: activeModels.length })}
-                      </p>
-                    </div>
+                  <div
+                    className="h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: isDisabled ? "var(--muted)" : "color-mix(in srgb, var(--primary) 10%, transparent)" }}
+                  >
+                    <span className="text-sm font-bold" style={{ color: isDisabled ? "var(--muted-foreground)" : "var(--primary)" }}>
+                      {provider.name.slice(0, 2)}
+                    </span>
                   </div>
-                  <div className="flex flex-col items-end gap-1 ml-3 flex-shrink-0">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[16px] font-medium text-foreground truncate">{provider.name}</span>
+                      {isDisabled && (
+                        <span
+                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                          style={{ backgroundColor: "var(--muted)" }}
+                        >
+                          {t("common.disabled")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12px] text-muted-foreground truncate">{provider.baseUrl}</p>
+                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                      {t("providers.modelsCount", { total: providerModels.length, active: activeModels.length })}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
                     <span className={`text-xs font-medium capitalize ${isConnected ? "text-green-500" : isError ? "text-red-500" : "text-muted-foreground"}`}>
                       {isConnected ? t("providerEdit.connected") : provider.status}
                     </span>
