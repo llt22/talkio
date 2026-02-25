@@ -7,8 +7,8 @@ interface HtmlPreviewProps {
 }
 
 export const HtmlPreview = memo(function HtmlPreview({ code, language = "html" }: HtmlPreviewProps) {
-  const [activeTab, setActiveTab] = useState<"preview" | "code">("code");
-  const [previewEnabled, setPreviewEnabled] = useState(false);
+  const [activeTab, setActiveTab] = useState<"preview" | "code">("preview");
+  const [previewEnabled, setPreviewEnabled] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
 
   const handleTabSwitch = useCallback((tab: "preview" | "code") => {
