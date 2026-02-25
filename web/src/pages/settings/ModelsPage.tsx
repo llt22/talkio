@@ -6,6 +6,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import { useChatStore } from "../../stores/chat-store";
 import type { Model } from "../../../../src/types";
 import { getAvatarProps } from "../../lib/avatar-utils";
+import { EmptyState } from "../../components/shared/EmptyState";
 
 // ── Models / Experts Page (1:1 RN original) ──
 
@@ -127,11 +128,11 @@ export function ModelsPage({ onNavigateToChat }: ModelsPageProps = {}) {
       {/* Content */}
       <div className="flex-1 overflow-y-auto" style={{ paddingBottom: groupMode ? 80 : 24 }}>
         {sections.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center px-8 pt-20">
-            <IoPeopleOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.4 }} />
-            <p className="mt-4 text-lg font-semibold text-foreground">{t("models.noModels")}</p>
-            <p className="mt-1 text-center text-sm text-muted-foreground">{t("models.configureHint")}</p>
-          </div>
+          <EmptyState
+            icon={<IoPeopleOutline size={48} color="var(--muted-foreground)" />}
+            title={t("models.noModels")}
+            subtitle={t("models.configureHint")}
+          />
         ) : (
           sections.map((section) => (
             <div key={section.title}>

@@ -10,6 +10,7 @@ import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
 import { McpPage, type McpPageHandle } from "./McpPage";
 import { getAvatarProps } from "../../lib/avatar-utils";
+import { EmptyState } from "../../components/shared/EmptyState";
 
 // ── Ionicons SVG helpers ──
 
@@ -261,11 +262,11 @@ function ProvidersListPage({
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
       <div className="pb-8">
         {providers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center pt-16">
-            <IoAddCircleOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
-            <p className="mt-4 text-lg font-semibold text-foreground">{t("models.noModels")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("models.configureHint")}</p>
-          </div>
+          <EmptyState
+            icon={<IoAddCircleOutline size={48} color="var(--muted-foreground)" />}
+            title={t("models.noModels")}
+            subtitle={t("models.configureHint")}
+          />
         ) : (
           <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
             {providers.map((provider: { id: string; name: string; status: string; baseUrl: string; type: string; enabled?: boolean }, idx: number) => {

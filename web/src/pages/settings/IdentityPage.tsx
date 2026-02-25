@@ -6,6 +6,7 @@ import { useIdentityStore } from "../../stores/identity-store";
 import type { Identity } from "../../../../src/types";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 import { getAvatarProps } from "../../lib/avatar-utils";
+import { EmptyState } from "../../components/shared/EmptyState";
 
 type IdentityStoreState = ReturnType<typeof useIdentityStore.getState>;
 
@@ -73,13 +74,11 @@ export function IdentityPage() {
       {/* List */}
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center pt-16 px-5">
-            <IoPersonOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
-            <p className="mt-4 text-lg font-semibold text-foreground">{t("personas.noCustomTools")}</p>
-            <p className="mt-1 text-sm text-muted-foreground text-center">
-              {t("models.configureHint")}
-            </p>
-          </div>
+          <EmptyState
+            icon={<IoPersonOutline size={48} color="var(--muted-foreground)" />}
+            title={t("personas.noCustomTools")}
+            subtitle={t("models.configureHint")}
+          />
         ) : (
           <div className="pb-4">
             {filtered.map((identity: Identity, idx: number) => (

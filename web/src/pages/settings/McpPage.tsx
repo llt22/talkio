@@ -4,6 +4,7 @@ import { IoAddCircleOutline, IoTrashOutline, IoChevronBack } from "../../icons";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 import { getAvatarProps } from "../../lib/avatar-utils";
+import { EmptyState } from "../../components/shared/EmptyState";
 
 // ── MCP Tools Page (1:1 RN native style) ──
 
@@ -32,13 +33,11 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
       <div className="pb-8">
         {servers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center pt-16 px-5">
-            <IoAddCircleOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
-            <p className="mt-4 text-lg font-semibold text-foreground">{t("personas.noCustomTools")}</p>
-            <p className="mt-1 text-sm text-muted-foreground text-center">
-              {t("models.configureHint")}
-            </p>
-          </div>
+          <EmptyState
+            icon={<IoAddCircleOutline size={48} color="var(--muted-foreground)" />}
+            title={t("personas.noCustomTools")}
+            subtitle={t("models.configureHint")}
+          />
         ) : (
           <>
             {/* Server list */}
