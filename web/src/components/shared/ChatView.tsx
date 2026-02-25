@@ -113,6 +113,17 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
   if (!hasMessages && !isGenerating) {
     return (
       <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
+        {activeBranchId && (
+          <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))", borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
+            <div className="flex items-center gap-2">
+              <GitBranch size={14} color="var(--primary)" />
+              <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.branch")}</span>
+            </div>
+            <button onClick={() => switchBranch(null)} className="text-xs font-medium px-2.5 py-1 rounded-md active:opacity-70" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
+              {t("chat.backToMain")}
+            </button>
+          </div>
+        )}
         <div className="flex-1 flex flex-col items-center justify-center px-6">
           <IoChatbubbleOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
           <p className="mt-4 text-lg font-medium text-muted-foreground">{t("chats.startConversation")}</p>
@@ -130,14 +141,14 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
         <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))", borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
           <div className="flex items-center gap-2">
             <GitBranch size={14} color="var(--primary)" />
-            <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>Branch</span>
+            <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.branch")}</span>
           </div>
           <button
             onClick={() => switchBranch(null)}
             className="text-xs font-medium px-2.5 py-1 rounded-md active:opacity-70"
             style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}
           >
-            ← Main
+            {t("chat.backToMain")}
           </button>
         </div>
       )}
@@ -224,6 +235,7 @@ interface MessageRowProps {
 }
 
 const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onBranch, onDelete }: MessageRowProps) {
+  const { t } = useTranslation();
   const isUser = message.role === "user";
   const isStreaming = message.status === MessageStatus.STREAMING;
   const content = (message.content || "").trimEnd();
@@ -240,7 +252,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
         <div className="flex-1 min-w-0 flex flex-col items-end gap-1">
           {/* Label */}
           <div className="mr-1 flex items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">You</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("chat.you")}</span>
             <span className="text-[10px] text-muted-foreground/60">{formatTime(message.createdAt)}</span>
           </div>
 
@@ -258,7 +270,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
             className="max-w-[80%] rounded-2xl px-4 py-3 border border-solid border-muted-foreground/20"
             style={{ backgroundColor: "var(--primary)" }}
           >
-            <p className="text-[15px] leading-relaxed text-white whitespace-pre-wrap">
+            <p className="text-[15px] leading-relaxed text-white whitespace-pre-wrap break-words">
               {content || (message.images?.length ? "📷" : "")}
             </p>
           </div>
@@ -351,7 +363,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
                   {isExpanded && result && (
                     <div className="rounded-xl p-3 mt-1" style={{ backgroundColor: "var(--muted)" }}>
                       <p className="text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap break-all">
-                        {result.content.slice(0, 1000)}
+                        {result.content.slice(0, 1000)}{result.content.length > 1000 ? " …" : ""}
                       </p>
                     </div>
                   )}
