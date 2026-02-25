@@ -150,6 +150,16 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
   const resolvedIdentityId = optimisticIdentityId !== undefined ? optimisticIdentityId : currentParticipant?.identityId ?? null;
   const activeIdentity = resolvedIdentityId ? getIdentityById(resolvedIdentityId) : null;
 
+  const editingParticipant = useMemo(() => {
+    if (!editingParticipantId || !conv) return null;
+    return conv.participants.find((p) => p.id === editingParticipantId) ?? null;
+  }, [conv, editingParticipantId]);
+
+  const identityPanelParticipant = editingParticipantId ? editingParticipant : currentParticipant ?? null;
+  const identityPanelIdentityId = editingParticipantId
+    ? (editingParticipant?.identityId ?? null)
+    : resolvedIdentityId;
+
   // Sync optimistic state when conv updates from DB
   useEffect(() => {
     setOptimisticIdentityId(undefined);
@@ -294,7 +304,7 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
                 </div>
                 <button
                   className="p-1.5 active:opacity-60"
-                  onClick={() => { setEditingParticipantId(p.id); setShowIdentityPanel(true); }}
+                  onClick={() => { setEditingParticipantId(p.id); setShowParticipants(false); setShowIdentityPanel(true); }}
                 >
                   <IoPersonOutline size={16} color="var(--primary)" />
                 </button>
@@ -319,7 +329,7 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
       )}
 
       {/* Identity selection panel (single chat) */}
-      {!isGroup && showIdentityPanel && (
+      {showIdentityPanel && (
         <div className="flex-shrink-0 border-b" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)", maxHeight: 260, overflowY: "auto" }}>
           <button
             className="w-full flex items-center gap-3 px-4 py-3 active:opacity-60"
@@ -332,7 +342,7 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
             <div className="flex-1 text-left">
               <p className="text-[14px] font-medium text-foreground">{t("chat.noIdentity")}</p>
             </div>
-            {!resolvedIdentityId && <span className="text-xs text-primary font-semibold">✓</span>}
+            {!identityPanelIdentityId && <span className="text-xs text-primary font-semibold">✓</span>}
           </button>
           {identities.map((identity: Identity) => (
             <button
@@ -350,7 +360,7 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
                   <p className="text-[12px] text-muted-foreground truncate">{identity.systemPrompt.slice(0, 60)}</p>
                 )}
               </div>
-              {resolvedIdentityId === identity.id && <span className="text-xs text-primary font-semibold">✓</span>}
+              {identityPanelIdentityId === identity.id && <span className="text-xs text-primary font-semibold">✓</span>}
             </button>
           ))}
         </div>
