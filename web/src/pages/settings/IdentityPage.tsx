@@ -5,6 +5,7 @@ import { IoPersonOutline, IoAddCircleOutline, IoTrashOutline, IoChevronForward, 
 import { useIdentityStore } from "../../stores/identity-store";
 import type { Identity } from "../../../../src/types";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
+import { getAvatarProps } from "../../lib/avatar-utils";
 
 type IdentityStoreState = ReturnType<typeof useIdentityStore.getState>;
 
@@ -143,19 +144,26 @@ function IdentityItem({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { color: avatarColor, initials } = getAvatarProps(identity.name);
   return (
     <button
       onClick={onEdit}
-      className="w-full flex items-center gap-3 px-5 py-3.5 text-left active:bg-black/5 transition-colors"
+      className="w-full flex items-center gap-4 px-4 py-3 text-left active:bg-black/5 transition-colors"
       style={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)" }}
     >
+      <div
+        className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+        style={{ backgroundColor: avatarColor }}
+      >
+        {initials}
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[16px] font-semibold text-foreground truncate">{identity.name}</p>
+        <p className="text-[16px] font-medium text-foreground truncate">{identity.name}</p>
         <p className="text-[13px] text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
           {identity.systemPrompt}
         </p>
       </div>
-      <IoChevronForward size={16} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
+      <IoChevronForward size={18} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
     </button>
   );
 }
