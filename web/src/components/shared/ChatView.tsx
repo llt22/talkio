@@ -28,7 +28,8 @@ interface ChatViewProps {
 export function ChatView({ conversationId, isMobile = false, onScrollRef, onScroll, modelName, onSwitchModel, isGroup = false, participants = [] }: ChatViewProps) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
-  const messages = useMessages(conversationId);
+  const activeBranchId = useChatStore((s: ChatState) => s.activeBranchId);
+  const messages = useMessages(conversationId, activeBranchId);
   const setCurrentConversation = useChatStore((s: ChatState) => s.setCurrentConversation);
   const isGenerating = useChatStore((s: ChatState) => s.isGenerating);
   const streamingMessage = useChatStore((s: ChatState) => s.streamingMessage);
