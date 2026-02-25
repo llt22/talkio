@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Check } from "lucide-react";
-import { Input } from "../ui/input";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +8,8 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { useProviderStore } from "../../stores/provider-store";
+import { getAvatarProps } from "../../lib/avatar-utils";
+import type { Model } from "../../../../src/types";
 
 interface ModelPickerProps {
   open: boolean;
@@ -20,7 +21,7 @@ interface ModelPickerProps {
 export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelPickerProps) {
   const { t } = useTranslation();
   const models = useProviderStore((s) => s.models);
-  const providers = useProviderStore((s) => s.providers);
+  const getProviderById = useProviderStore((s) => s.getProviderById);
   const [search, setSearch] = useState("");
 
   const enabledModels = useMemo(
@@ -36,9 +37,19 @@ export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelP
     );
   }, [enabledModels, search]);
 
-  const getProviderName = (providerId: string) => {
-    return providers.find((p) => p.id === providerId)?.name ?? "";
-  };
+  const sections = useMemo(() => {
+    const map = new Map<string, { title: string; data: Model[] }>();
+    for (const m of filtered) {
+      const provider = getProviderById(m.providerId);
+      const name = provider?.name ?? "Unknown";
+      if (!map.has(name)) map.set(name, { title: name, data: [] });
+      map.get(name)!.data.push(m);
+    }
+    for (const section of map.values()) {
+      section.data.sort((a, b) => a.displayName.localeCompare(b.displayName));
+    }
+    return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title));
+  }, [filtered, getProviderById]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -48,53 +59,64 @@ export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelP
         </DialogHeader>
 
         <div className="px-1">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
+          <div className="flex items-center rounded-xl px-3 py-2" style={{ backgroundColor: "var(--secondary)" }}>
+            <Search size={16} className="text-muted-foreground flex-shrink-0" />
+            <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("providerEdit.searchModels")}
-              className="pl-9 h-9 text-sm"
+              className="ml-2 flex-1 text-[15px] text-foreground bg-transparent outline-none placeholder:text-muted-foreground/50"
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto -mx-2 px-2 mt-2">
-          {filtered.length === 0 ? (
+        <div className="flex-1 overflow-y-auto -mx-6 mt-2">
+          {sections.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-6">
               {models.length === 0
                 ? t("models.noModels")
                 : t("chats.noResults")}
             </p>
           ) : (
-            <div className="space-y-0.5">
-              {filtered.map((model) => (
-                <button
-                  key={model.id}
-                  onClick={() => {
-                    onSelect(model.id);
-                    onClose();
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-                    model.id === selectedModelId
-                      ? "bg-primary/10"
-                      : "hover:bg-accent"
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {model.displayName}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {getProviderName(model.providerId)}
-                    </p>
-                  </div>
-                  {model.id === selectedModelId && (
-                    <Check size={16} className="text-primary flex-shrink-0" />
-                  )}
-                </button>
-              ))}
-            </div>
+            sections.map((section) => (
+              <div key={section.title}>
+                <div className="px-5 py-1.5 sticky top-0 z-10" style={{ backgroundColor: "var(--secondary)" }}>
+                  <p className="text-[13px] font-semibold text-muted-foreground">{section.title}</p>
+                </div>
+                {section.data.map((model, idx) => {
+                  const { color: mColor, initials: mInitials } = getAvatarProps(model.displayName);
+                  const isSelected = model.id === selectedModelId;
+                  return (
+                    <button
+                      key={model.id}
+                      onClick={() => {
+                        onSelect(model.id);
+                        onClose();
+                      }}
+                      className="w-full flex items-center gap-4 px-4 py-3 text-left active:opacity-70 transition-colors"
+                      style={{
+                        backgroundColor: isSelected ? "color-mix(in srgb, var(--primary) 8%, var(--background))" : "var(--background)",
+                        borderBottom: idx < section.data.length - 1 ? "0.5px solid var(--border)" : "none",
+                      }}
+                    >
+                      <div
+                        className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                        style={{ backgroundColor: mColor }}
+                      >
+                        {mInitials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[16px] font-medium text-foreground truncate">{model.displayName}</p>
+                        <p className="text-[13px] text-muted-foreground truncate">{model.modelId}</p>
+                      </div>
+                      {isSelected && (
+                        <Check size={18} className="text-primary flex-shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ))
           )}
         </div>
       </DialogContent>
