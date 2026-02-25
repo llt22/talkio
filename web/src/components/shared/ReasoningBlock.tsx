@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import { ChevronDown, ChevronRight, Brain } from "lucide-react";
 
 interface ReasoningBlockProps {
@@ -13,6 +13,11 @@ export const ReasoningBlock = memo(function ReasoningBlock({
   isStreaming = false,
 }: ReasoningBlockProps) {
   const [expanded, setExpanded] = useState(false);
+
+  // Auto-expand during streaming so user can watch thinking in real-time
+  useEffect(() => {
+    if (isStreaming) setExpanded(true);
+  }, [isStreaming]);
 
   if (!content) return null;
 

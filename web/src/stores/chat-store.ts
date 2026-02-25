@@ -401,6 +401,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (!reader) throw new Error("No response body");
         let fullContent = "";
         let fullReasoning = "";
+        let inThinkTag = false;
         let rafPending = false;
         let dirty = false;
         const startTime = Date.now();
@@ -428,8 +429,38 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
 
         await consumeOpenAIChatCompletionsSse(reader, (delta) => {
-          if (delta.content) fullContent += delta.content;
-          if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
+          // Reasoning: support multiple field names used by different providers
+          const rc = delta.reasoning_content ?? delta.reasoning;
+          if (rc) fullReasoning += rc;
+
+          // Content: parse <think> tags (DeepSeek, Hunyuan, etc.)
+          if (delta.content) {
+            let chunk = delta.content as string;
+            while (chunk.length > 0) {
+              if (inThinkTag) {
+                const closeIdx = chunk.indexOf("</think>");
+                if (closeIdx !== -1) {
+                  fullReasoning += chunk.slice(0, closeIdx);
+                  chunk = chunk.slice(closeIdx + 8);
+                  inThinkTag = false;
+                } else {
+                  fullReasoning += chunk;
+                  chunk = "";
+                }
+              } else {
+                const openIdx = chunk.indexOf("<think>");
+                if (openIdx !== -1) {
+                  fullContent += chunk.slice(0, openIdx);
+                  chunk = chunk.slice(openIdx + 7);
+                  inThinkTag = true;
+                } else {
+                  fullContent += chunk;
+                  chunk = "";
+                }
+              }
+            }
+          }
+
           if (delta.tool_calls) {
             for (const tc of delta.tool_calls) {
               const idx = tc.index ?? 0;
