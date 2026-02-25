@@ -230,7 +230,10 @@
     "connectAndFetch": "连接并获取模型",
     "openaiCompatible": "OpenAI 兼容",
     "openaiCompatibleHint": "One-API、New-API、OpenRouter 等",
-    "directApi": "或使用供应商的原生 API"
+    "directApi": "或使用供应商的原生 API",
+    "namePlaceholder": "我的供应商",
+    "connectionSuccess": "连接成功",
+    "saveAndFetch": "保存并获取"
   },
   "providers": {
     "deleteProvider": "删除供应商",

@@ -230,7 +230,10 @@
     "connectAndFetch": "Connect & Fetch Models",
     "openaiCompatible": "OpenAI Compatible",
     "openaiCompatibleHint": "One-API, New-API, OpenRouter, etc.",
-    "directApi": "Or use a provider's direct API"
+    "directApi": "Or use a provider's direct API",
+    "namePlaceholder": "My Provider",
+    "connectionSuccess": "Connection successful",
+    "saveAndFetch": "Save & Fetch"
   },
   "providers": {
     "deleteProvider": "Delete Provider",

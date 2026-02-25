@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, Loader2, Check, X } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -20,6 +21,7 @@ interface ProviderFormProps {
 }
 
 export function ProviderForm({ provider, onClose }: ProviderFormProps) {
+  const { t } = useTranslation();
   const addProvider = useProviderStore((s) => s.addProvider);
   const updateProvider = useProviderStore((s) => s.updateProvider);
 
@@ -119,13 +121,13 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
   return (
     <div className="space-y-4">
       <h3 className="text-base font-semibold text-foreground">
-        {provider ? "Edit Provider" : "Add Provider"}
+        {provider ? t("settings.editProvider") : t("settings.addProvider")}
       </h3>
 
       <div className="space-y-3">
         {/* Type */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("providerEdit.type", { defaultValue: "Type" })}</label>
           <Select value={type} onValueChange={handleTypeChange}>
             <SelectTrigger className="h-10">
               <SelectValue />
@@ -138,18 +140,18 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
 
         {/* Name */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">Name</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("providerEdit.name", { defaultValue: "Name" })}</label>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="My Provider"
+            placeholder={t("providerEdit.namePlaceholder", { defaultValue: "My Provider" })}
             className="h-10"
           />
         </div>
 
         {/* Base URL */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">Base URL</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("settings.baseUrl")}</label>
           <Input
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
@@ -160,7 +162,7 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
 
         {/* API Key */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">API Key</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("settings.apiKey")}</label>
           <div className="relative">
             <Input
               type={showKey ? "text" : "password"}
@@ -186,7 +188,7 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
           testResult === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
         }`}>
           {testResult === "success" ? <Check size={14} /> : <X size={14} />}
-          {testResult === "success" ? "Connection successful" : "Connection failed"}
+          {testResult === "success" ? t("providerEdit.connectionSuccess", { defaultValue: "Connection successful" }) : t("providerEdit.connectionFailed", { defaultValue: "Connection failed" })}
         </div>
       )}
       {fetchResult && (
@@ -202,15 +204,15 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
       <div className="flex items-center gap-2 pt-2">
         <Button variant="outline" onClick={handleTest} disabled={testing || fetchingModels || !baseUrl || !apiKey} className="flex-1">
           {testing ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-          Test
+          {t("providerEdit.testConnection", { defaultValue: "Test" })}
         </Button>
         <Button onClick={handleSaveAndFetch} disabled={fetchingModels || !name.trim() || !baseUrl.trim() || !apiKey.trim()} className="flex-1">
           {fetchingModels ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-          Save & Fetch
+          {t("providerEdit.saveAndFetch", { defaultValue: "Save & Fetch" })}
         </Button>
       </div>
       <Button variant="ghost" onClick={onClose} className="w-full text-muted-foreground" disabled={fetchingModels}>
-        Cancel
+        {t("common.cancel")}
       </Button>
     </div>
   );
