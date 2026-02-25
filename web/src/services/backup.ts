@@ -24,15 +24,34 @@ export function createBackup(): BackupData {
   };
 }
 
-export function downloadBackup(data: BackupData) {
+export async function downloadBackup(data: BackupData): Promise<boolean> {
   const json = JSON.stringify(data, null, 2);
+  const defaultName = `talkio-config-${new Date().toISOString().slice(0, 10)}.json`;
+
+  if ((window as any).__TAURI_INTERNALS__) {
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+      const filePath = await save({
+        defaultPath: defaultName,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+      if (!filePath) return false;
+      await writeTextFile(filePath, json);
+      return true;
+    } catch {
+      // Fallback to browser download
+    }
+  }
+
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `talkio-config-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = defaultName;
   a.click();
   URL.revokeObjectURL(url);
+  return true;
 }
 
 export async function importBackup(file: File): Promise<{ success: boolean; message: string }> {

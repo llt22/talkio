@@ -13,6 +13,8 @@
     "fs:default",
     "notification:default",
     "opener:default",
+    "dialog:default",
+    "fs:allow-write-text-file",
     "http:default",
     {
       "identifier": "http:allow-fetch",
