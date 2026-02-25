@@ -290,7 +290,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         {/* Label */}
         <div className="ml-1 flex items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{senderName}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate max-w-[200px]">{senderName}</span>
           <span className="text-[10px] text-muted-foreground/60">{formatTime(message.createdAt)}</span>
         </div>
 
@@ -303,7 +303,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
               borderTopLeftRadius: 0,
             }}
           >
-            {isStreaming && !content ? (
+            {isStreaming && !content && !message.reasoningContent ? (
               <div className="flex items-center gap-1.5 py-1">
                 <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" />
                 <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.15s" }} />
