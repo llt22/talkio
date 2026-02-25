@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { useTranslation } from "react-i18next";
 import { IoAddCircleOutline, IoTrashOutline, IoChevronBack } from "../../icons";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
@@ -7,7 +7,9 @@ import { getAvatarProps } from "../../lib/avatar-utils";
 
 // ── MCP Tools Page (1:1 RN native style) ──
 
-export function McpPage() {
+export interface McpPageHandle { triggerAdd: () => void; }
+
+export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const servers = useMcpStore((s) => s.servers) as McpServerConfig[];
@@ -19,6 +21,8 @@ export function McpPage() {
   const deleteServer = useMcpStore((s) => s.deleteServer);
   const updateServer = useMcpStore((s) => s.updateServer);
   const [showAdd, setShowAdd] = useState(false);
+
+  useImperativeHandle(ref, () => ({ triggerAdd: () => setShowAdd(true) }), []);
 
   if (showAdd) {
     return <McpServerForm onClose={() => setShowAdd(false)} />;
@@ -103,16 +107,6 @@ export function McpPage() {
                   </div>
                 );
               })}
-              {/* Add Server row */}
-              <button
-                onClick={() => setShowAdd(true)}
-                className="w-full flex items-center gap-4 px-4 py-3 active:bg-black/5 transition-colors"
-              >
-                <div className="h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)" }}>
-                  <IoAddCircleOutline size={20} color="var(--primary)" />
-                </div>
-                <span className="text-[16px] font-medium" style={{ color: "var(--primary)" }}>{t("personas.addTool")}</span>
-              </button>
             </div>
 
             {/* Tools summary */}
@@ -142,7 +136,7 @@ export function McpPage() {
       </div>
     </div>
   );
-}
+});
 
 // ── MCP Server Form (full-screen, 1:1 RN style) ──
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { IoChevronForward, IoChevronBack, IoAddCircleOutline, IoTrashOutline, IoAdd } from "../../icons";
 import i18n from "../../i18n";
@@ -8,7 +8,7 @@ import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 import { createBackup, downloadBackup, importBackup } from "../../services/backup";
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
-import { McpPage } from "./McpPage";
+import { McpPage, type McpPageHandle } from "./McpPage";
 import { getAvatarProps } from "../../lib/avatar-utils";
 
 // ── Ionicons SVG helpers ──
@@ -79,6 +79,7 @@ export function SettingsPage() {
   const settings = useSettingsStore((s: ReturnType<typeof useSettingsStore.getState>) => s.settings);
   const updateSettings = useSettingsStore((s: ReturnType<typeof useSettingsStore.getState>) => s.updateSettings);
   const [subPageStack, setSubPageStack] = useState<SubPage[]>([]);
+  const mcpRef = useRef<McpPageHandle>(null);
 
   const push = (page: SubPage) => setSubPageStack((s) => [...s, page]);
   const pop = () => setSubPageStack((s) => s.slice(0, -1));
@@ -136,7 +137,11 @@ export function SettingsPage() {
           iconBg="rgba(139,92,246,0.1)"
           iconFilled
           label={t("settings.mcpTools")}
-          onPress={() => push({ id: "mcp-tools", title: t("settings.mcpTools"), component: <McpPage /> })}
+          onPress={() => push({ id: "mcp-tools", title: t("settings.mcpTools"), headerRight: (
+            <button onClick={() => mcpRef.current?.triggerAdd()} className="p-2 active:opacity-60">
+              <IoAdd size={22} color="var(--primary)" />
+            </button>
+          ), component: <McpPage ref={mcpRef} /> })}
         />
         <SettingsRow
           iconPath="M192 448h128V240a64 64 0 00-128 0zM384 240v-16a128 128 0 00-256 0v16M256 96V56M403.08 108.92l-28.28 28.28M108.92 108.92l28.28 28.28M48 240h32M432 240h32"
