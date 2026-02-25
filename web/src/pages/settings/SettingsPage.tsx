@@ -209,7 +209,7 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
           iconColor="#14b8a6"
           iconBg="rgba(20,184,166,0.1)"
           label={t("settings.exportBackup")}
-          onPress={() => { const data = createBackup(); downloadBackup(data); }}
+          onPress={() => { const data = createBackup(); downloadBackup(data); alert(t("settings.exportSuccess", { defaultValue: "Config exported successfully" })); }}
         />
         <SettingsRow
           iconPath="M176 48v288M80 192l96-96 96 96M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40"

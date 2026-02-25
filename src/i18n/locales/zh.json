@@ -160,6 +160,7 @@
     "voiceAutoTranscribe": "语音自动转写",
     "dataManagement": "数据管理",
     "exportBackup": "导出配置",
+    "exportSuccess": "配置导出成功",
     "exportFullBackup": "完整备份",
     "configOnly": "仅配置",
     "includesChats": "配置 + 对话",

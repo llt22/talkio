@@ -160,6 +160,7 @@
     "voiceAutoTranscribe": "Voice Auto-transcribe",
     "dataManagement": "Data Management",
     "exportBackup": "Export Config",
+    "exportSuccess": "Config exported successfully",
     "exportFullBackup": "Full Backup",
     "configOnly": "Config",
     "includesChats": "Config + Chats",
