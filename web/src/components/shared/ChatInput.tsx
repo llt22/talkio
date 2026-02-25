@@ -265,7 +265,7 @@ export const ChatInput = memo(function ChatInput({
           </div>
 
           {/* Action bar */}
-          <div className="flex items-center px-3 pb-1 gap-0.5">
+          <div className="flex items-center px-3 gap-0.5" style={{ paddingBottom: "max(4px, env(safe-area-inset-bottom, 4px))" }}>
             <button onClick={handleAttach} className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-60" disabled={isGenerating}>
               <Image size={22} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
             </button>

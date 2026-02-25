@@ -66,7 +66,7 @@ export default function App() {
               paddingBottom: "env(safe-area-inset-bottom, 0px)",
             }}
           >
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 relative">
               {ready ? (
                 isMobile ? <MobileLayout /> : <DesktopLayout />
               ) : (

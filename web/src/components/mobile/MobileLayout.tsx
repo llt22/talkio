@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Routes, Route, useNavigate, useParams } from "react-router-dom";
+import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { IoChatbubbles, IoCube, IoPersonCircle, IoSettings, IoChevronBack, IoPeopleOutline, IoCaretDown, IoCaretUp, IoPersonOutline, IoShareOutline, IoCreateOutline, IoSearchOutline, IoCloseCircle, IoSparkles, IoChatbubbleOutline, IoArrowDown, IoAddCircleOutline, IoTrashOutline, IoPersonAddOutline } from "../../icons";
 import { ChatView } from "../shared/ChatView";
 import { ModelPicker } from "../shared/ModelPicker";
@@ -17,6 +18,7 @@ import type { Conversation, Identity } from "../../../../src/types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { exportConversationAsMarkdown } from "../../services/export";
 import { useConfirm } from "../shared/ConfirmDialogProvider";
+import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 
 // ── Tab Icons ──
 
@@ -54,14 +56,46 @@ function loadInitialMobileTab(): MobileTab {
   return "chats";
 }
 
+// Detail routes that slide in from the right
+const DETAIL_PATHS = ["/chat/", "/identity/"];
+function isDetailPath(path: string) {
+  return DETAIL_PATHS.some((p) => path.startsWith(p));
+}
+
 export function MobileLayout() {
+  const location = useLocation();
+  const isDetail = isDetailPath(location.pathname);
+
   return (
-    <Routes>
-      <Route path="/chat/:id" element={<MobileChatDetailRoute />} />
-      <Route path="/identity/new" element={<IdentityEditPage />} />
-      <Route path="/identity/edit/:id" element={<IdentityEditPage />} />
-      <Route path="*" element={<MobileTabLayout />} />
-    </Routes>
+    <div className="h-full w-full relative overflow-hidden">
+      {/* Tab layout is always mounted underneath */}
+      <div className="absolute inset-0">
+        <Routes>
+          <Route path="*" element={<MobileTabLayout />} />
+        </Routes>
+      </div>
+
+      {/* Detail pages slide over the top */}
+      <AnimatePresence>
+        {isDetail && (
+          <motion.div
+            key={location.pathname}
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "tween", duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            className="absolute inset-0 z-10"
+            style={{ backgroundColor: "var(--background)" }}
+          >
+            <Routes location={location}>
+              <Route path="/chat/:id" element={<MobileChatDetailRoute />} />
+              <Route path="/identity/new" element={<IdentityEditPage />} />
+              <Route path="/identity/edit/:id" element={<IdentityEditPage />} />
+            </Routes>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -109,7 +143,7 @@ function MobileTabLayout() {
       {!hideTabBar && <div
         className="flex-shrink-0 flex items-center justify-around px-2 pt-1.5"
         style={{
-          paddingBottom: 0,
+          paddingBottom: 6,
           borderTop: "0.5px solid var(--border)",
           backgroundColor: "var(--background)",
           backdropFilter: "saturate(180%) blur(20px)",
@@ -137,6 +171,7 @@ function MobileTabLayout() {
 function MobileChatDetail({ conversationId, onBack }: { conversationId: string; onBack: () => void }) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
+  const keyboardHeight = useKeyboardHeight();
   const {
     conv,
     messages,
@@ -237,7 +272,7 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
   }, [conv, messages, isExporting, t]);
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
+    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)", paddingBottom: keyboardHeight > 0 ? keyboardHeight : undefined }}>
       {/* Header */}
       <div className="flex-shrink-0 relative flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)", borderBottom: "0.5px solid var(--border)" }}>
         <button className="flex items-center gap-0.5 px-2 py-1 active:opacity-60 z-10" onClick={onBack}>
