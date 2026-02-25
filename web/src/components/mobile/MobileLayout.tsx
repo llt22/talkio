@@ -282,17 +282,18 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)", paddingBottom: keyboardHeight > 0 ? keyboardHeight : undefined }}>
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)", borderBottom: "0.5px solid var(--border)" }}>
-        <button className="flex items-center gap-0.5 px-2 py-1 active:opacity-60 flex-shrink-0" onClick={onBack}>
+      <div className="flex-shrink-0 relative flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)", borderBottom: "0.5px solid var(--border)" }}>
+        <button className="flex items-center gap-0.5 px-2 py-1 active:opacity-60 z-10" onClick={onBack}>
           <IoChevronBack size={20} color="var(--primary)" />
         </button>
 
-        {/* Tappable center title — flex-1 with overflow hidden */}
+        {/* Tappable center title — absolute centered with symmetric safe padding */}
         <button
-          className="flex-1 min-w-0 flex flex-col items-center active:opacity-70"
+          className="absolute inset-y-0 flex flex-col items-center justify-center active:opacity-70"
+          style={{ left: 120, right: 120 }}
           onClick={handleHeaderTitlePress}
         >
-          <span className="text-sm font-bold tracking-tight text-foreground truncate max-w-full px-2">{title}</span>
+          <span className="text-sm font-bold tracking-tight text-foreground truncate max-w-full">{title}</span>
           <div className="mt-0.5 flex items-center gap-1 max-w-full">
             {isGroup ? <IoPeopleOutline size={12} color="var(--primary)" className="flex-shrink-0" /> : <IoPersonOutline size={12} color="var(--primary)" className="flex-shrink-0" />}
             <span className="text-[10px] font-bold uppercase tracking-widest text-primary truncate">{subtitle}</span>
@@ -304,7 +305,7 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
         </button>
 
         {/* Right buttons */}
-        <div className="flex items-center gap-0.5 flex-shrink-0">
+        <div className="ml-auto flex items-center gap-0.5 z-10">
           <button
             className="p-2 active:opacity-60"
             onClick={() => { setModelPickerMode("add"); setShowModelPicker(true); }}
