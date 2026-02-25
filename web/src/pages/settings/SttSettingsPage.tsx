@@ -1,7 +1,7 @@
 /**
  * SttSettingsPage — STT provider configuration (1:1 RN original).
  */
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { IoLinkOutline, IoKeyOutline, IoEyeOutline, IoEyeOffOutline, IoRefreshOutline, IoSearchOutline, IoCloseCircle, IoCheckmarkCircle } from "../../icons";
 import { useSettingsStore } from "../../stores/settings-store";
@@ -22,9 +22,41 @@ export function SttSettingsPage() {
   const [model, setModel] = useState(settings.sttModel);
   const [modelSearch, setModelSearch] = useState("");
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
-  const [connected, setConnected] = useState<boolean | null>(settings.sttApiKey ? true : null);
+  const [connected, setConnected] = useState<boolean | null>(null);
   const [testing, setTesting] = useState(false);
   const [pulling, setPulling] = useState(false);
+  const didAutoFetch = useRef(false);
+
+  const doFetch = useCallback(async (url: string, key: string) => {
+    const endpoint = url.replace(/\/+$/, "") + "/models";
+    const res = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) throw new Error("Connection failed");
+    const data = await res.json();
+    return ((data.data ?? []) as Array<{ id: string }>).map((m) => m.id).sort();
+  }, []);
+
+  // Auto-fetch models on mount when already configured
+  useEffect(() => {
+    if (didAutoFetch.current) return;
+    if (!settings.sttBaseUrl || !settings.sttApiKey) return;
+    didAutoFetch.current = true;
+
+    (async () => {
+      setPulling(true);
+      try {
+        const ids = await doFetch(settings.sttBaseUrl, settings.sttApiKey);
+        setFetchedModels(ids);
+        setConnected(true);
+      } catch {
+        setConnected(null);
+      } finally {
+        setPulling(false);
+      }
+    })();
+  }, [settings.sttBaseUrl, settings.sttApiKey, doFetch]);
 
   const handleConnect = async () => {
     if (!baseUrl.trim() || !apiKey.trim()) return;
@@ -32,29 +64,41 @@ export function SttSettingsPage() {
     setConnected(null);
 
     try {
-      const url = baseUrl.replace(/\/+$/, "") + "/models";
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${apiKey.trim()}` },
-      });
-      if (!res.ok) throw new Error("Connection failed");
-
+      const ids = await doFetch(baseUrl.trim(), apiKey.trim());
       setConnected(true);
-      setPulling(true);
-      const data = await res.json();
-      const ids = ((data.data ?? []) as Array<{ id: string }>).map((m) => m.id).sort();
       setFetchedModels(ids);
-      if (ids.length > 0 && !ids.includes(model)) setModel(ids[0]);
+
+      const selectedModel = ids.includes(model) ? model : (ids[0] ?? model);
+      setModel(selectedModel);
+
+      // Auto-save on successful connect
+      updateSettings({ sttBaseUrl: baseUrl.trim(), sttApiKey: apiKey.trim(), sttModel: selectedModel });
     } catch {
       setConnected(false);
     } finally {
       setTesting(false);
-      setPulling(false);
     }
   };
 
   const handleSelectModel = (id: string) => {
     setModel(id);
     updateSettings({ sttBaseUrl: baseUrl.trim(), sttApiKey: apiKey.trim(), sttModel: id });
+  };
+
+  const handleBaseUrlChange = (value: string) => {
+    setBaseUrl(value);
+    if (value.trim() !== settings.sttBaseUrl) {
+      setConnected(null);
+      setFetchedModels([]);
+    }
+  };
+
+  const handleApiKeyChange = (value: string) => {
+    setApiKey(value);
+    if (value.trim() !== settings.sttApiKey) {
+      setConnected(null);
+      setFetchedModels([]);
+    }
   };
 
   const displayModels = modelSearch
@@ -69,7 +113,7 @@ export function SttSettingsPage() {
           {STT_PRESETS.map((preset) => (
             <button
               key={preset.label}
-              onClick={() => { setBaseUrl(preset.baseUrl); setConnected(null); setFetchedModels([]); }}
+              onClick={() => { handleBaseUrlChange(preset.baseUrl); }}
               className="flex-1 rounded-xl py-2.5 text-center text-[13px] font-semibold active:opacity-70 transition-colors"
               style={{
                 backgroundColor: baseUrl === preset.baseUrl ? "color-mix(in srgb, var(--primary) 5%, var(--card))" : "var(--card)",
@@ -89,7 +133,7 @@ export function SttSettingsPage() {
             <input
               className="flex-1 bg-transparent text-[16px] text-foreground outline-none"
               value={baseUrl}
-              onChange={(e) => { setBaseUrl(e.target.value); setConnected(null); setFetchedModels([]); }}
+              onChange={(e) => handleBaseUrlChange(e.target.value)}
               placeholder="https://api.groq.com/openai/v1"
             />
           </div>
@@ -103,7 +147,7 @@ export function SttSettingsPage() {
               type={showApiKey ? "text" : "password"}
               className="flex-1 bg-transparent text-[16px] text-foreground outline-none"
               value={apiKey}
-              onChange={(e) => { setApiKey(e.target.value); setConnected(null); setFetchedModels([]); }}
+              onChange={(e) => handleApiKeyChange(e.target.value)}
               placeholder={t("settings.sttApiKeyPlaceholder")}
             />
             <button onClick={() => setShowApiKey(!showApiKey)} className="ml-2 p-1 active:opacity-60">
@@ -111,6 +155,17 @@ export function SttSettingsPage() {
             </button>
           </div>
         </div>
+
+        {/* Current Model Indicator */}
+        {settings.sttModel && settings.sttApiKey && (
+          <div className="flex items-center gap-2 rounded-xl px-4 py-3" style={{ backgroundColor: "color-mix(in srgb, var(--success) 8%, var(--card))", border: "1px solid color-mix(in srgb, var(--success) 25%, transparent)" }}>
+            <IoCheckmarkCircle size={18} color="var(--success)" className="flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] text-muted-foreground">{t("settings.currentModel")}</p>
+              <p className="text-[15px] font-semibold text-foreground truncate">{settings.sttModel}</p>
+            </div>
+          </div>
+        )}
 
         {/* Connect Button */}
         <button
@@ -122,7 +177,7 @@ export function SttSettingsPage() {
           {testing || pulling
             ? (pulling ? t("providerEdit.fetchingModels") : t("providerEdit.connecting"))
             : connected === true
-              ? `✓ ${t("providerEdit.connected")}`
+              ? `\u2713 ${t("providerEdit.connected")}`
               : connected === false
                 ? t("providerEdit.retryConnection")
                 : t("providerEdit.connectAndFetch")

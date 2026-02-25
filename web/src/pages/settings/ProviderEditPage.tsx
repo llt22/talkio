@@ -67,7 +67,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
   const [testPulledModels, setTestPulledModels] = useState<Array<{ id: string; object: string }>>([]);
   const [modelSearch, setModelSearch] = useState("");
   const [newModelId, setNewModelId] = useState("");
-  const [probingModelId, setProbingModelId] = useState<string | null>(null);
+  const [probingModelIds, setProbingModelIds] = useState<Set<string>>(new Set());
   const [disabledTestModels, setDisabledTestModels] = useState<Set<string>>(new Set());
 
   // Load existing provider data
@@ -570,16 +570,16 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
                         ))}
                         <button
                           onClick={async () => {
-                            setProbingModelId(m.id);
+                            setProbingModelIds((prev) => new Set(prev).add(m.id));
                             try { await probeModelCapabilities(m.id); }
                             catch { /* ignore */ }
-                            finally { setProbingModelId(null); }
+                            finally { setProbingModelIds((prev) => { const next = new Set(prev); next.delete(m.id); return next; }); }
                           }}
-                          disabled={probingModelId === m.id}
+                          disabled={probingModelIds.has(m.id)}
                           className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium active:opacity-60 disabled:opacity-40"
                           style={{ backgroundColor: "var(--muted)", color: "var(--primary)" }}
                         >
-                          {probingModelId === m.id
+                          {probingModelIds.has(m.id)
                             ? <span className="animate-spin inline-block w-3 h-3 border border-current border-t-transparent rounded-full" />
                             : <IoPulseOutline size={12} />}
                           {t("providerEdit.probe")}
