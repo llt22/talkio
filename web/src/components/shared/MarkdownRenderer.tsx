@@ -23,6 +23,10 @@ const LinkComponent = ({ href, children, ...props }: any) => (
   </a>
 );
 
+// Remove ReactMarkdown's default <pre> wrapper so our CodeBlock (which renders <div>)
+// doesn't get nested inside <pre> (invalid HTML that can cause layout/overflow issues).
+const PreComponent = ({ children }: any) => <>{children}</>;
+
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   isStreaming = false,
@@ -34,8 +38,12 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
   // Stable code component — identity never changes, reads streaming via ref
   const codeComponent = useCallback(
-    ({ className, children, ...props }: any) => (
-      <CodeBlock className={className} isStreaming={isStreamingRef.current} {...props}>
+    ({ inline, className, children, ...props }: any) => (
+      <CodeBlock
+        className={className}
+        isStreaming={inline ? false : isStreamingRef.current}
+        {...props}
+      >
         {children}
       </CodeBlock>
     ),
@@ -47,7 +55,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
-        components={{ code: codeComponent, a: LinkComponent }}
+        components={{ pre: PreComponent, code: codeComponent, a: LinkComponent }}
       >
         {content}
       </ReactMarkdown>
