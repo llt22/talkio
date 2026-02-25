@@ -1,5 +1,6 @@
 import { memo, useState, useCallback } from "react";
 import { Copy, Check } from "lucide-react";
+import { IoCodeSlashOutline } from "../../icons";
 import { MermaidRenderer } from "./MermaidRenderer";
 import { HtmlPreview } from "./HtmlPreview";
 
@@ -43,12 +44,20 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
   // HTML / SVG — only render after streaming complete
   if (lang === "html" || lang === "svg") {
     if (isStreaming) {
+      const lineCount = codeString.split("\n").length;
       return (
-        <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
-          <div className="flex items-center px-3 py-1.5" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
-            <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--primary)" }}>{lang} · preview after completion</span>
+        <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+          <div className="flex items-center gap-3 px-4 py-4">
+            <IoCodeSlashOutline size={18} color="var(--muted-foreground)" className="animate-spin flex-shrink-0" style={{ animationDuration: "1.5s" }} />
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-medium" style={{ color: "var(--muted-foreground)" }}>
+                {lang.toUpperCase()} ...
+              </span>
+              <p className="mt-0.5 text-[11px]" style={{ color: "color-mix(in srgb, var(--muted-foreground) 60%, transparent)" }}>
+                {lineCount} lines
+              </p>
+            </div>
           </div>
-          <pre className="px-3 py-2 text-[13px] font-mono leading-relaxed overflow-x-auto m-0" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}><code>{codeString}</code></pre>
         </div>
       );
     }
