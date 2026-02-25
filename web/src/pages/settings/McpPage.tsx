@@ -145,44 +145,50 @@ function McpServerForm({ onClose }: { onClose: () => void }) {
   }, [name, url, addServer, onClose]);
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--secondary)" }}>
+    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--background)" }}>
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)" }}>
+      <div className="flex-shrink-0 flex items-center px-1 py-2">
         <button onClick={onClose} className="w-12 flex items-center justify-center active:opacity-60">
           <IoChevronBack size={24} color="var(--primary)" />
         </button>
-        <span className="text-[17px] font-semibold text-foreground flex-1 text-center">{t("personas.addTool")}</span>
-        <button
-          onClick={handleSave}
-          disabled={!name.trim() || !url.trim()}
-          className="px-3 py-1 active:opacity-60 disabled:opacity-30"
-        >
-          <span className="text-[17px] font-medium" style={{ color: "var(--primary)" }}>{t("common.save")}</span>
-        </button>
+        <span className="text-[17px] font-semibold text-foreground flex-1 text-center pr-12">{t("personas.addTool")}</span>
       </div>
 
       {/* Form */}
-      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8">
-        <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
-          <div className="flex items-center px-4 py-3.5" style={{ borderBottom: "0.5px solid var(--border)" }}>
-            <span className="w-24 text-[15px] text-foreground flex-shrink-0">{t("toolEdit.name")}</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("toolEdit.namePlaceholder")}
-              className="flex-1 bg-transparent text-[16px] text-foreground outline-none"
-              autoFocus
-            />
-          </div>
-          <div className="flex items-center px-4 py-3.5">
-            <span className="w-24 text-[15px] text-foreground flex-shrink-0">URL</span>
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="http://localhost:3000/mcp"
-              className="flex-1 bg-transparent text-[16px] text-foreground outline-none"
-            />
-          </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 pt-4">
+          <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.name")}</p>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("toolEdit.namePlaceholder")}
+            className="w-full rounded-xl px-4 py-3 text-base text-foreground outline-none"
+            style={{ backgroundColor: "var(--secondary)" }}
+            autoFocus
+          />
+        </div>
+
+        <div className="px-4 pt-4">
+          <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.endpointUrl")}</p>
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="http://localhost:3000/mcp"
+            className="w-full rounded-xl px-4 py-3 text-sm text-foreground outline-none"
+            style={{ backgroundColor: "var(--secondary)" }}
+          />
+        </div>
+
+        {/* Save */}
+        <div className="px-4 pb-8 pt-6">
+          <button
+            onClick={handleSave}
+            disabled={!name.trim() || !url.trim()}
+            className="w-full rounded-2xl py-4 text-base font-semibold text-white active:opacity-80 disabled:opacity-40"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+            {t("personas.addTool")}
+          </button>
         </div>
       </div>
     </div>

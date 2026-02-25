@@ -198,63 +198,50 @@ function IdentityForm({
   }, [name, systemPrompt, temperature, topP, identity, onSave]);
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--secondary)" }}>
+    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--background)" }}>
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)" }}>
-        <button onClick={onClose} className="w-12 flex items-center justify-center active:opacity-60">
+      <div className="flex-shrink-0 flex items-center px-1 py-2">
+        <button onClick={onClose} className="flex items-center px-2 py-1 active:opacity-60">
           <IoChevronBack size={24} color="var(--primary)" />
         </button>
-        <span className="text-[17px] font-semibold text-foreground flex-1 text-center">
+        <span className="text-[17px] font-semibold text-foreground flex-1 text-center pr-12">
           {isNew ? t("personas.createIdentity") : t("personas.editIdentity")}
         </span>
-        <button
-          onClick={handleSave}
-          disabled={!name.trim() || !systemPrompt.trim()}
-          className="px-3 py-1 active:opacity-60 disabled:opacity-30"
-        >
-          <span className="text-[17px] font-medium" style={{ color: "var(--primary)" }}>{t("common.save")}</span>
-        </button>
       </div>
 
-      {/* Form */}
-      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8">
-        {/* Name — FormRow style */}
-        <div className="overflow-hidden rounded-xl mb-4" style={{ backgroundColor: "var(--card)" }}>
-          <div className="flex items-center px-4 py-3.5">
-            <span className="w-24 text-[15px] text-foreground flex-shrink-0">{t("identityEdit.name")}</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("identityEdit.namePlaceholder")}
-              className="flex-1 bg-transparent text-[16px] text-foreground outline-none"
-            />
-          </div>
+      {/* Form — 1:1 RN style */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 pt-4">
+          <p className="mb-1 text-sm font-medium text-muted-foreground">{t("identityEdit.name")}</p>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("identityEdit.namePlaceholder")}
+            className="w-full rounded-xl px-4 py-3 text-base text-foreground outline-none"
+            style={{ backgroundColor: "var(--secondary)" }}
+          />
         </div>
 
-        {/* System Prompt */}
-        <div className="overflow-hidden rounded-xl mb-4" style={{ backgroundColor: "var(--card)" }}>
-          <div className="px-4 pt-3 pb-1">
-            <p className="text-[13px] text-muted-foreground mb-1.5">{t("identityEdit.systemPrompt")}</p>
-            <textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder={t("identityEdit.systemPromptPlaceholder")}
-              className="w-full text-[15px] leading-relaxed text-foreground bg-transparent outline-none resize-none"
-              style={{ minHeight: 140 }}
-            />
-          </div>
+        <div className="px-4 pt-4">
+          <p className="mb-1 text-sm font-medium text-muted-foreground">{t("identityEdit.systemPrompt")}</p>
+          <textarea
+            value={systemPrompt}
+            onChange={(e) => setSystemPrompt(e.target.value)}
+            placeholder={t("identityEdit.systemPromptPlaceholder")}
+            className="w-full rounded-xl px-4 py-3 text-sm leading-5 text-foreground outline-none resize-none"
+            style={{ backgroundColor: "var(--secondary)", minHeight: 120 }}
+          />
         </div>
 
-        {/* Parameters */}
-        <p className="mb-2 mt-2 px-1 text-[13px] text-muted-foreground/60">{t("identityEdit.parameters")}</p>
-        <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
+        <div className="px-4 pt-4">
+          <p className="mb-2 text-sm font-medium text-muted-foreground">{t("identityEdit.parameters")}</p>
           {/* Temperature */}
-          <div className="px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+          <div className="mt-2">
             <div className="flex justify-between">
-              <span className="text-[15px] text-foreground">{t("identityEdit.temperature")}</span>
-              <span className="text-[15px] font-medium text-foreground">{temperature.toFixed(2)}</span>
+              <span className="text-xs text-muted-foreground">{t("identityEdit.temperature")}</span>
+              <span className="text-xs font-medium text-foreground">{temperature.toFixed(2)}</span>
             </div>
-            <div className="h-8 flex items-center relative mt-1">
+            <div className="h-10 flex items-center relative">
               <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "var(--muted)" }}>
                 <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)", width: `${(temperature / 2) * 100}%` }} />
               </div>
@@ -267,12 +254,12 @@ function IdentityForm({
             </div>
           </div>
           {/* TopP */}
-          <div className="px-4 py-3">
+          <div className="mt-2">
             <div className="flex justify-between">
-              <span className="text-[15px] text-foreground">{t("identityEdit.topP")}</span>
-              <span className="text-[15px] font-medium text-foreground">{topP.toFixed(2)}</span>
+              <span className="text-xs text-muted-foreground">{t("identityEdit.topP")}</span>
+              <span className="text-xs font-medium text-foreground">{topP.toFixed(2)}</span>
             </div>
-            <div className="h-8 flex items-center relative mt-1">
+            <div className="h-10 flex items-center relative">
               <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "var(--muted)" }}>
                 <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)", width: `${topP * 100}%` }} />
               </div>
@@ -284,6 +271,18 @@ function IdentityForm({
               />
             </div>
           </div>
+        </div>
+
+        {/* Save */}
+        <div className="px-4 pb-8 pt-6">
+          <button
+            onClick={handleSave}
+            disabled={!name.trim() || !systemPrompt.trim()}
+            className="w-full rounded-2xl py-4 text-base font-semibold text-white active:opacity-80 disabled:opacity-40"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+            {isNew ? t("identityEdit.createIdentity") : t("identityEdit.saveChanges")}
+          </button>
         </div>
       </div>
     </div>
