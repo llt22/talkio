@@ -28,5 +28,5 @@
       "@web/services/*": ["./src/services/*"]
     }
   },
-  "include": ["src", "../src"]
+  "include": ["src", "../src/types"]
 }
