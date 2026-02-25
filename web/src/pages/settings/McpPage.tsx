@@ -1,4 +1,4 @@
-import { useState, useCallback, useImperativeHandle, forwardRef, useMemo } from "react";
+import { useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { useTranslation } from "react-i18next";
 import { IoAddCircleOutline, IoTrashOutline, IoChevronBack, IoFlashOutline } from "../../icons";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
@@ -12,9 +12,16 @@ import { useBuiltInToolsStore } from "../../stores/built-in-tools-store";
 
 // ── MCP Tools Page (1:1 RN native style) ──
 
+interface SubPage { id: string; title: string; component: React.ReactNode; headerRight?: React.ReactNode; }
+
+export interface McpPageProps {
+  onPush?: (page: SubPage) => void;
+  onPop?: () => void;
+}
+
 export interface McpPageHandle { triggerAdd: () => void; }
 
-export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
+export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage({ onPush, onPop }, ref) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const builtInEnabledByName = useBuiltInToolsStore((s) => s.enabledByName);
@@ -28,8 +35,6 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
   const deleteServer = useMcpStore((s) => s.deleteServer);
   const updateServer = useMcpStore((s) => s.updateServer);
   const addServer = useMcpStore((s) => s.addServer);
-  const [editingServerId, setEditingServerId] = useState<string | null>(null);
-
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJson, setImportJson] = useState("");
   const [isImporting, setIsImporting] = useState(false);
@@ -111,21 +116,18 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
     }
   }, [addServer, importJson, t]);
 
-  useImperativeHandle(ref, () => ({ triggerAdd: () => setEditingServerId("__new__") }), []);
+  const pushServerForm = useCallback((serverId?: string) => {
+    if (!onPush || !onPop) return;
+    const server = serverId ? servers.find((s) => s.id === serverId) : undefined;
+    const title = server ? server.name : t("personas.addTool");
+    onPush({
+      id: serverId ? `mcp-edit-${serverId}` : "mcp-add",
+      title,
+      component: <McpServerForm server={server} onClose={onPop} />,
+    });
+  }, [onPush, onPop, servers, t]);
 
-  const editingServer = useMemo(() => {
-    if (!editingServerId || editingServerId === "__new__") return null;
-    return servers.find((s) => s.id === editingServerId) ?? null;
-  }, [editingServerId, servers]);
-
-  if (editingServerId) {
-    return (
-      <McpServerForm
-        server={editingServerId === "__new__" ? undefined : (editingServer ?? undefined)}
-        onClose={() => setEditingServerId(null)}
-      />
-    );
-  }
+  useImperativeHandle(ref, () => ({ triggerAdd: () => pushServerForm() }), [pushServerForm]);
 
   return (
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
@@ -188,9 +190,9 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
                       key={server.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => setEditingServerId(server.id)}
+                      onClick={() => pushServerForm(server.id)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") setEditingServerId(server.id);
+                        if (e.key === "Enter" || e.key === " ") pushServerForm(server.id);
                       }}
                       className="w-full flex items-center gap-4 px-4 py-3 text-left active:bg-black/5 transition-colors"
                       style={{ borderBottom: "0.5px solid var(--border)" }}
@@ -286,7 +288,7 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
               <span className="text-[14px] font-semibold">{t("personas.importJson")}</span>
             </button>
             <button
-              onClick={() => setEditingServerId("__new__")}
+              onClick={() => pushServerForm()}
               className="flex-1 rounded-xl py-3 text-white active:opacity-70"
               style={{ backgroundColor: "var(--primary)" }}
             >
@@ -437,17 +439,6 @@ function McpServerForm({
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: "var(--background)" }}>
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center px-1 py-2">
-        <button onClick={onClose} className="w-12 flex items-center justify-center active:opacity-60">
-          <IoChevronBack size={24} color="var(--primary)" />
-        </button>
-        <span className="text-[17px] font-semibold text-foreground flex-1 text-center pr-12">
-          {isNew ? t("personas.addTool") : t("toolEdit.saveChanges")}
-        </span>
-      </div>
-
-      {/* Form — 1:1 RN tool-edit.tsx */}
       <div className="flex-1 overflow-y-auto">
         {/* Name */}
         <div className="px-4 pt-4">

@@ -397,6 +397,8 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
           onScroll={handleScroll}
           modelName={!isGroup ? model?.displayName : undefined}
           onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
+          isGroup={isGroup}
+          participants={conv?.participants ?? []}
         />
         {showScrollToBottom && (
           <button

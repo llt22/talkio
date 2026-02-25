@@ -38,6 +38,9 @@ export interface ChatState {
   currentConversationId: string | null;
   isGenerating: boolean;
   _abortController: AbortController | null;
+  activeBranchId: string | null;
+  autoDiscussRemaining: number;
+  autoDiscussTotalRounds: number;
 
   // In-memory streaming state — not persisted, used for rAF updates
   streamingMessage: StreamingState | null;
@@ -45,11 +48,16 @@ export interface ChatState {
   createConversation: (modelId: string, extraModelIds?: string[]) => Promise<Conversation>;
   deleteConversation: (id: string) => Promise<void>;
   setCurrentConversation: (id: string | null) => void;
-  sendMessage: (text: string, images?: string[], options?: { reuseUserMessageId?: string }) => Promise<void>;
+  sendMessage: (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedModelIds?: string[] }) => Promise<void>;
   stopGeneration: () => void;
+  startAutoDiscuss: (rounds: number, topicText?: string) => Promise<void>;
+  stopAutoDiscuss: () => void;
   regenerateMessage: (messageId: string) => Promise<void>;
+  branchFromMessage: (messageId: string, messages: Message[]) => Promise<string>;
+  switchBranch: (branchId: string | null) => void;
   deleteMessageById: (messageId: string) => Promise<void>;
   clearConversationMessages: (conversationId: string) => Promise<void>;
+  searchAllMessages: (query: string) => Promise<Message[]>;
   updateParticipantIdentity: (conversationId: string, participantId: string, identityId: string | null) => Promise<void>;
   updateParticipantModel: (conversationId: string, participantId: string, modelId: string) => Promise<void>;
   addParticipant: (conversationId: string, modelId: string) => Promise<void>;
@@ -60,6 +68,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   currentConversationId: null,
   isGenerating: false,
   _abortController: null,
+  activeBranchId: null,
+  autoDiscussRemaining: 0,
+  autoDiscussTotalRounds: 0,
   streamingMessage: null,
 
   createConversation: async (modelId: string, extraModelIds?: string[]) => {
@@ -103,7 +114,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (text: string, images?: string[], options?: { reuseUserMessageId?: string }) => {
+  sendMessage: async (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedModelIds?: string[] }) => {
     const convId = get().currentConversationId;
     if (!convId) return;
 
@@ -113,6 +124,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     function resolveTargetParticipants(): ConversationParticipant[] {
       if (conv.type === "single") {
         return conv.participants[0] ? [conv.participants[0]] : [];
+      }
+      // @Mention: if specific models mentioned, only those respond
+      if (options?.mentionedModelIds && options.mentionedModelIds.length > 0) {
+        const mentionedSet = new Set(options.mentionedModelIds);
+        return conv.participants.filter((p) => mentionedSet.has(p.modelId));
       }
       return conv.participants;
     }
@@ -605,8 +621,36 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const ctrl = get()._abortController;
     if (ctrl) {
       ctrl.abort();
-      set({ _abortController: null });
+      set({ _abortController: null, autoDiscussRemaining: 0 });
     }
+  },
+
+  startAutoDiscuss: async (rounds: number, topicText?: string) => {
+    const convId = get().currentConversationId;
+    if (!convId || get().isGenerating) return;
+
+    const conv = await getConversation(convId);
+    if (!conv || conv.type !== "group" || conv.participants.length < 2) return;
+
+    set({ autoDiscussRemaining: rounds, autoDiscussTotalRounds: rounds });
+
+    // First round: send topicText (or "继续") as user message
+    const firstMsg = topicText?.trim() || "继续";
+    await get().sendMessage(firstMsg);
+
+    // Subsequent rounds: auto-send "继续"
+    for (let round = 1; round < rounds; round++) {
+      if (get().autoDiscussRemaining <= 0) break;
+      set({ autoDiscussRemaining: rounds - round });
+      await get().sendMessage("继续");
+    }
+
+    set({ autoDiscussRemaining: 0, autoDiscussTotalRounds: 0 });
+  },
+
+  stopAutoDiscuss: () => {
+    set({ autoDiscussRemaining: 0 });
+    get().stopGeneration();
   },
 
   regenerateMessage: async (messageId: string) => {
@@ -698,5 +742,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
       type: participants.length <= 1 ? "single" : "group",
     });
     notifyDbChange("conversations");
+  },
+
+  branchFromMessage: async (messageId: string, messages: Message[]) => {
+    const branchId = generateId();
+    const msgIndex = messages.findIndex((m) => m.id === messageId);
+    if (msgIndex < 0) return branchId;
+    const branchedMessages = messages.slice(0, msgIndex + 1).map((m) => ({
+      ...m,
+      id: generateId(),
+      branchId,
+    }));
+    await insertMessages(branchedMessages);
+    set({ activeBranchId: branchId });
+    const convId = get().currentConversationId;
+    if (convId) notifyDbChange("messages", convId);
+    return branchId;
+  },
+
+  switchBranch: (branchId: string | null) => {
+    set({ activeBranchId: branchId });
+  },
+
+  searchAllMessages: async (query: string) => {
+    const { searchMessages } = await import("../storage/database");
+    return searchMessages(query);
   },
 }));

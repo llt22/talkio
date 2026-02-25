@@ -513,6 +513,8 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
           conversationId={conversationId}
           modelName={!isGroup ? model?.displayName : undefined}
           onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
+          isGroup={isGroup}
+          participants={conv?.participants ?? []}
         />
       </div>
     </div>

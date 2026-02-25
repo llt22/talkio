@@ -4,11 +4,12 @@
 import { useRef, useEffect, useCallback, useMemo, useState, memo } from "react"; // useState used by MessageRow
 import { useTranslation } from "react-i18next";
 import { IoCopyOutline, IoRefreshOutline, IoVolumeMediumOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
+import { GitBranch } from "lucide-react";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
 import { useMessages } from "../../hooks/useDatabase";
-import type { Message } from "../../../../src/types";
+import type { Message, ConversationParticipant } from "../../../../src/types";
 import { MessageStatus } from "../../../../src/types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useConfirm } from "./ConfirmDialogProvider";
@@ -20,9 +21,11 @@ interface ChatViewProps {
   onScroll?: () => void;
   modelName?: string;
   onSwitchModel?: () => void;
+  isGroup?: boolean;
+  participants?: ConversationParticipant[];
 }
 
-export function ChatView({ conversationId, isMobile = false, onScrollRef, onScroll, modelName, onSwitchModel }: ChatViewProps) {
+export function ChatView({ conversationId, isMobile = false, onScrollRef, onScroll, modelName, onSwitchModel, isGroup = false, participants = [] }: ChatViewProps) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const messages = useMessages(conversationId);
@@ -31,7 +34,12 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
   const streamingMessage = useChatStore((s: ChatState) => s.streamingMessage);
   const sendMessage = useChatStore((s: ChatState) => s.sendMessage);
   const stopGeneration = useChatStore((s: ChatState) => s.stopGeneration);
+  const startAutoDiscuss = useChatStore((s: ChatState) => s.startAutoDiscuss);
+  const stopAutoDiscuss = useChatStore((s: ChatState) => s.stopAutoDiscuss);
+  const autoDiscussRemaining = useChatStore((s: ChatState) => s.autoDiscussRemaining);
+  const autoDiscussTotalRounds = useChatStore((s: ChatState) => s.autoDiscussTotalRounds);
   const regenerateMessage = useChatStore((s: ChatState) => s.regenerateMessage);
+  const branchFromMessage = useChatStore((s: ChatState) => s.branchFromMessage);
   const deleteMessageById = useChatStore((s: ChatState) => s.deleteMessageById);
 
   const _internalScrollRef = useRef<HTMLDivElement>(null);
@@ -71,7 +79,9 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
   }, [displayMessages]);
 
   const handleSend = useCallback(
-    (text: string, images?: string[]) => { sendMessage(text, images); },
+    (text: string, images?: string[], mentionedModelIds?: string[]) => {
+      sendMessage(text, images, { mentionedModelIds });
+    },
     [sendMessage],
   );
 
@@ -82,6 +92,10 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
   const handleRegenerate = useCallback((messageId: string) => {
     regenerateMessage(messageId);
   }, [regenerateMessage]);
+
+  const handleBranch = useCallback(async (messageId: string) => {
+    await branchFromMessage(messageId, displayMessages);
+  }, [branchFromMessage, displayMessages]);
 
   const handleDelete = useCallback(async (messageId: string) => {
     const ok = await confirm({
@@ -102,7 +116,7 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
           <p className="mt-4 text-lg font-medium text-muted-foreground">{t("chats.startConversation")}</p>
           <p className="text-sm text-muted-foreground/60 mt-1 text-center">{t("chat.message")}</p>
         </div>
-        <ChatInput onSend={handleSend} isGenerating={isGenerating} onStop={stopGeneration} isMobile={isMobile} modelName={modelName} onSwitchModel={onSwitchModel} />
+        <ChatInput onSend={handleSend} isGenerating={isGenerating} onStop={stopGeneration} isMobile={isMobile} modelName={modelName} onSwitchModel={onSwitchModel} isGroup={isGroup} participants={participants} hasMessages={false} onStartAutoDiscuss={startAutoDiscuss} onStopAutoDiscuss={stopAutoDiscuss} autoDiscussRemaining={autoDiscussRemaining} autoDiscussTotalRounds={autoDiscussTotalRounds} />
       </div>
     );
   }
@@ -121,6 +135,7 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
             message={msg}
             onCopy={handleCopy}
             onRegenerate={msg.role === "assistant" ? handleRegenerate : undefined}
+            onBranch={msg.role === "assistant" ? handleBranch : undefined}
             onDelete={handleDelete}
           />
         ))}
@@ -134,6 +149,13 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
         isMobile={isMobile}
         modelName={modelName}
         onSwitchModel={onSwitchModel}
+        isGroup={isGroup}
+        participants={participants}
+        hasMessages={hasMessages}
+        onStartAutoDiscuss={startAutoDiscuss}
+        onStopAutoDiscuss={stopAutoDiscuss}
+        autoDiscussRemaining={autoDiscussRemaining}
+        autoDiscussTotalRounds={autoDiscussTotalRounds}
       />
     </div>
   );
@@ -178,10 +200,11 @@ interface MessageRowProps {
   message: Message;
   onCopy?: (content: string) => void;
   onRegenerate?: (messageId: string) => void;
+  onBranch?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
 }
 
-const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onDelete }: MessageRowProps) {
+const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onBranch, onDelete }: MessageRowProps) {
   const isUser = message.role === "user";
   const isStreaming = message.status === MessageStatus.STREAMING;
   const content = (message.content || "").trimEnd();
@@ -286,6 +309,11 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onD
               if (navigator.share) { navigator.share({ text: content }).catch(() => {}); }
               else { navigator.clipboard.writeText(content); }
             }} />}
+            {onBranch && (
+              <button onClick={() => onBranch(message.id)} className="rounded-md p-1.5 active:opacity-60" title="Branch from here">
+                <GitBranch size={15} color="var(--muted-foreground)" />
+              </button>
+            )}
             {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
             {message.tokenUsage && (
               <div className="ml-2 flex items-center gap-1 rounded px-1.5 py-0.5" style={{ backgroundColor: "var(--muted)" }}>

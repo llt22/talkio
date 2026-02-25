@@ -303,9 +303,11 @@ function IdentityForm({
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: "var(--secondary)" }}>
-      <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)" }}>
-        <button onClick={onClose} className="w-12 flex items-center justify-center active:opacity-60">
-          <IoChevronBack size={24} color="var(--primary)" />
+      {/* iOS Navigation Bar */}
+      <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)", borderBottom: "0.5px solid var(--border)" }}>
+        <button onClick={onClose} className="min-w-[60px] flex items-center px-2 active:opacity-60">
+          <IoChevronBack size={22} color="var(--primary)" />
+          <span className="text-[17px]" style={{ color: "var(--primary)" }}>{t("common.cancel")}</span>
         </button>
         <span className="text-[17px] font-semibold text-foreground flex-1 text-center">
           {isNew ? t("personas.createIdentity") : t("personas.editIdentity")}
@@ -313,188 +315,180 @@ function IdentityForm({
         <button
           onClick={handleSave}
           disabled={!name.trim() || !systemPrompt.trim()}
-          className="px-3 py-1 active:opacity-60 disabled:opacity-30"
+          className="min-w-[60px] flex justify-end px-3 py-1 active:opacity-60 disabled:opacity-30"
         >
-          <span className="text-[17px] font-medium" style={{ color: "var(--primary)" }}>{t("common.save")}</span>
+          <span className="text-[17px] font-semibold" style={{ color: "var(--primary)" }}>{t("common.save")}</span>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8">
-        {isNew && enabledModels.length > 0 && (
-          <div className="mb-4 overflow-hidden rounded-xl border" style={{ borderColor: "rgba(147, 51, 234, 0.2)", backgroundColor: "rgba(147, 51, 234, 0.06)" }}>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-lg mx-auto px-4 pt-6 pb-8">
+
+          {/* ── Section: AI Generate (new only) ── */}
+          {isNew && enabledModels.length > 0 && (
+            <>
+              <p className="px-4 pb-1.5 text-[13px] font-normal text-muted-foreground uppercase tracking-wide">{t("identityEdit.aiGenerate")}</p>
+              <div className="overflow-hidden rounded-[10px] mb-6" style={{ backgroundColor: "var(--card)" }}>
+                <div className="px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+                  <textarea
+                    value={aiDesc}
+                    onChange={(e) => setAiDesc(e.target.value)}
+                    placeholder={t("identityEdit.aiDescPlaceholder")}
+                    className="w-full text-[15px] leading-relaxed text-foreground bg-transparent outline-none resize-none"
+                    style={{ minHeight: 64 }}
+                  />
+                </div>
+                <div className="flex items-center px-4 py-2.5 gap-3">
+                  <button
+                    onClick={() => setShowModelPicker(true)}
+                    className="flex-1 flex items-center justify-between active:opacity-80"
+                  >
+                    <span className="text-[15px] text-muted-foreground truncate">
+                      {selectedAiModel?.displayName ?? t("identityEdit.aiSelectModel")}
+                    </span>
+                    <span className="text-[13px] text-muted-foreground ml-1">▾</span>
+                  </button>
+                  <button
+                    onClick={handleAiGenerate}
+                    disabled={aiLoading || !aiDesc.trim()}
+                    className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-white active:opacity-90 disabled:opacity-40"
+                    style={{ backgroundColor: "#7c3aed" }}
+                  >
+                    <IoSparkles size={14} color="#fff" />
+                    <span className="text-[13px] font-semibold">{t("identityEdit.generate")}</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── Section: Basic Info ── */}
+          <p className="px-4 pb-1.5 text-[13px] font-normal text-muted-foreground uppercase tracking-wide">{t("identityEdit.name")}</p>
+          <div className="overflow-hidden rounded-[10px] mb-6" style={{ backgroundColor: "var(--card)" }}>
+            <div className="flex items-center px-4 py-0">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("identityEdit.namePlaceholder")}
+                className="flex-1 bg-transparent text-[17px] text-foreground outline-none py-[11px]"
+              />
+            </div>
+          </div>
+
+          {/* ── Section: System Prompt ── */}
+          <p className="px-4 pb-1.5 text-[13px] font-normal text-muted-foreground uppercase tracking-wide">{t("identityEdit.systemPrompt")}</p>
+          <div className="overflow-hidden rounded-[10px] mb-6" style={{ backgroundColor: "var(--card)" }}>
             <div className="px-4 py-3">
-              <div className="flex items-center gap-2">
-                <IoSparkles size={18} color="#9333ea" />
-                <p className="text-[13px] font-semibold" style={{ color: "#6b21a8" }}>{t("identityEdit.aiGenerate")}</p>
-              </div>
-
               <textarea
-                value={aiDesc}
-                onChange={(e) => setAiDesc(e.target.value)}
-                placeholder={t("identityEdit.aiDescPlaceholder")}
-                className="mt-3 w-full rounded-lg px-3 py-2.5 text-[13px] leading-relaxed text-foreground outline-none resize-none"
-                style={{ backgroundColor: "var(--card)", minHeight: 72 }}
-              />
-
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  onClick={() => setShowModelPicker(true)}
-                  className="flex-1 flex items-center justify-between rounded-lg border px-3 py-2.5 active:opacity-80"
-                  style={{ borderColor: "rgba(147, 51, 234, 0.2)", backgroundColor: "var(--card)" }}
-                >
-                  <span className="text-[12px] text-muted-foreground truncate">
-                    {selectedAiModel?.displayName ?? t("identityEdit.aiSelectModel")}
-                  </span>
-                  <span className="text-[12px] text-muted-foreground">▾</span>
-                </button>
-
-                <button
-                  onClick={handleAiGenerate}
-                  disabled={aiLoading || !aiDesc.trim()}
-                  className="flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-white active:opacity-90 disabled:opacity-50"
-                  style={{ backgroundColor: aiLoading || !aiDesc.trim() ? "rgba(147, 51, 234, 0.5)" : "#7c3aed" }}
-                >
-                  <IoSparkles size={14} color="#fff" />
-                  <span className="text-[13px] font-semibold">{t("identityEdit.generate")}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="overflow-hidden rounded-xl mb-4" style={{ backgroundColor: "var(--card)" }}>
-          <div className="flex items-center px-4 py-3.5">
-            <span className="w-24 text-[15px] text-foreground flex-shrink-0">{t("identityEdit.name")}</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("identityEdit.namePlaceholder")}
-              className="flex-1 bg-transparent text-[16px] text-foreground outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-xl mb-4" style={{ backgroundColor: "var(--card)" }}>
-          <div className="px-4 pt-3 pb-1">
-            <p className="text-[13px] text-muted-foreground mb-1.5">{t("identityEdit.systemPrompt")}</p>
-            <textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder={t("identityEdit.systemPromptPlaceholder")}
-              className="w-full text-[15px] leading-relaxed text-foreground bg-transparent outline-none resize-none"
-              style={{ minHeight: 140 }}
-            />
-          </div>
-        </div>
-
-        <p className="mb-2 mt-2 px-1 text-[13px] text-muted-foreground/60">{t("identityEdit.parameters")}</p>
-        <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
-          <div className="px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
-            <div className="flex justify-between">
-              <span className="text-[15px] text-foreground">{t("identityEdit.temperature")}</span>
-              <span className="text-[15px] font-medium text-foreground">{temperature.toFixed(2)}</span>
-            </div>
-            <div className="h-8 flex items-center relative mt-1">
-              <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "var(--muted)" }}>
-                <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)", width: `${(temperature / 2) * 100}%` }} />
-              </div>
-              <input
-                type="range" min="0" max="2" step="0.1"
-                value={temperature}
-                onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                placeholder={t("identityEdit.systemPromptPlaceholder")}
+                className="w-full text-[15px] leading-relaxed text-foreground bg-transparent outline-none resize-none"
+                style={{ minHeight: 120 }}
               />
             </div>
           </div>
-          <div className="px-4 py-3">
-            <div className="flex justify-between">
-              <span className="text-[15px] text-foreground">{t("identityEdit.topP")}</span>
-              <span className="text-[15px] font-medium text-foreground">{topP.toFixed(2)}</span>
-            </div>
-            <div className="h-8 flex items-center relative mt-1">
-              <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "var(--muted)" }}>
-                <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)", width: `${topP * 100}%` }} />
+
+          {/* ── Section: Parameters ── */}
+          <p className="px-4 pb-1.5 text-[13px] font-normal text-muted-foreground uppercase tracking-wide">{t("identityEdit.parameters")}</p>
+          <div className="overflow-hidden rounded-[10px] mb-6" style={{ backgroundColor: "var(--card)" }}>
+            {/* Temperature */}
+            <div className="px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-[15px] text-foreground">{t("identityEdit.temperature")}</span>
+                <span className="text-[15px] font-mono text-muted-foreground tabular-nums">{temperature.toFixed(1)}</span>
               </div>
-              <input
-                type="range" min="0" max="1" step="0.05"
-                value={topP}
-                onChange={(e) => setTopP(parseFloat(e.target.value))}
-                className="absolute inset-0 w-full opacity-0 cursor-pointer"
-              />
+              <div className="mt-2 relative">
+                <div className="w-full h-[4px] rounded-full" style={{ backgroundColor: "var(--muted)" }}>
+                  <div className="h-[4px] rounded-full transition-all" style={{ backgroundColor: "var(--primary)", width: `${(temperature / 2) * 100}%` }} />
+                </div>
+                <input
+                  type="range" min="0" max="2" step="0.1"
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                  className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                />
+              </div>
+            </div>
+            {/* Top P */}
+            <div className="px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[15px] text-foreground">{t("identityEdit.topP")}</span>
+                <span className="text-[15px] font-mono text-muted-foreground tabular-nums">{topP.toFixed(2)}</span>
+              </div>
+              <div className="mt-2 relative">
+                <div className="w-full h-[4px] rounded-full" style={{ backgroundColor: "var(--muted)" }}>
+                  <div className="h-[4px] rounded-full transition-all" style={{ backgroundColor: "var(--primary)", width: `${topP * 100}%` }} />
+                </div>
+                <input
+                  type="range" min="0" max="1" step="0.05"
+                  value={topP}
+                  onChange={(e) => setTopP(parseFloat(e.target.value))}
+                  className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {(identitySelectableBuiltInTools.length > 0 || mcpServers.length > 0) && (
-          <>
-            <p className="mb-2 mt-6 px-1 text-[13px] text-muted-foreground/60">{t("identityEdit.bindTools")}</p>
+          {/* ── Section: Tool Binding ── */}
+          {(identitySelectableBuiltInTools.length > 0 || mcpServers.length > 0) && (
+            <>
+              <p className="px-4 pb-1.5 text-[13px] font-normal text-muted-foreground uppercase tracking-wide">{t("identityEdit.bindTools")}</p>
 
-            {identitySelectableBuiltInTools.length > 0 && (
-              <div className="overflow-hidden rounded-xl mb-3" style={{ backgroundColor: "var(--card)" }}>
-                {identitySelectableBuiltInTools.map((tool, idx) => {
-                  const checked = selectedToolIds.includes(tool.name);
-                  return (
-                    <button
-                      key={tool.name}
-                      onClick={() => toggleTool(tool.name)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70"
-                      style={{ borderBottom: idx < identitySelectableBuiltInTools.length - 1 ? "0.5px solid var(--border)" : "none" }}
-                    >
-                      <span
-                        className="h-5 w-5 rounded border flex items-center justify-center flex-shrink-0"
-                        style={{
-                          borderColor: checked ? "var(--primary)" : "var(--border)",
-                          backgroundColor: checked ? "var(--primary)" : "transparent",
-                          color: checked ? "white" : "transparent",
-                        }}
+              {identitySelectableBuiltInTools.length > 0 && (
+                <div className="overflow-hidden rounded-[10px] mb-3" style={{ backgroundColor: "var(--card)" }}>
+                  {identitySelectableBuiltInTools.map((tool, idx) => {
+                    const checked = selectedToolIds.includes(tool.name);
+                    return (
+                      <div
+                        key={tool.name}
+                        className="flex items-center px-4 py-3"
+                        style={{ borderBottom: idx < identitySelectableBuiltInTools.length - 1 ? "0.5px solid var(--border)" : "none" }}
                       >
-                        ✓
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] text-foreground truncate">{tool.name}</p>
-                        <p className="text-[12px] text-muted-foreground line-clamp-1">{tool.description}</p>
+                        <div className="flex-1 min-w-0 mr-3">
+                          <p className="text-[15px] text-foreground">{tool.name}</p>
+                          <p className="text-[13px] text-muted-foreground line-clamp-1">{tool.description}</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                          <input type="checkbox" checked={checked} onChange={() => toggleTool(tool.name)} className="sr-only peer" />
+                          <div className="w-[51px] h-[31px] rounded-full peer-checked:bg-primary bg-muted-foreground/30 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-[27px] after:w-[27px] after:transition-all after:shadow-sm peer-checked:after:translate-x-5" />
+                        </label>
                       </div>
-                      <span className="text-[12px] text-muted-foreground">{t("identityEdit.builtIn")}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
 
-            {mcpServers.length > 0 && (
-              <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
-                {mcpServers.map((srv, idx) => {
-                  const checked = selectedServerIds.includes(srv.id);
-                  return (
-                    <button
-                      key={srv.id}
-                      onClick={() => toggleServer(srv.id)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70"
-                      style={{ borderBottom: idx < mcpServers.length - 1 ? "0.5px solid var(--border)" : "none" }}
-                    >
-                      <span
-                        className="h-5 w-5 rounded border flex items-center justify-center flex-shrink-0"
-                        style={{
-                          borderColor: checked ? "var(--primary)" : "var(--border)",
-                          backgroundColor: checked ? "var(--primary)" : "transparent",
-                          color: checked ? "white" : "transparent",
-                        }}
+              {mcpServers.length > 0 && (
+                <div className="overflow-hidden rounded-[10px] mb-6" style={{ backgroundColor: "var(--card)" }}>
+                  {mcpServers.map((srv, idx) => {
+                    const checked = selectedServerIds.includes(srv.id);
+                    return (
+                      <div
+                        key={srv.id}
+                        className="flex items-center px-4 py-3"
+                        style={{ borderBottom: idx < mcpServers.length - 1 ? "0.5px solid var(--border)" : "none" }}
                       >
-                        ✓
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] text-foreground truncate">{srv.name}</p>
-                        <p className="text-[12px] text-muted-foreground truncate">{srv.url}</p>
+                        <div className="flex-1 min-w-0 mr-3">
+                          <p className="text-[15px] text-foreground">{srv.name}</p>
+                          <p className="text-[13px] text-muted-foreground truncate">{srv.url}</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                          <input type="checkbox" checked={checked} onChange={() => toggleServer(srv.id)} className="sr-only peer" />
+                          <div className="w-[51px] h-[31px] rounded-full peer-checked:bg-primary bg-muted-foreground/30 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-[27px] after:w-[27px] after:transition-all after:shadow-sm peer-checked:after:translate-x-5" />
+                        </label>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+        </div>
       </div>
 
+      {/* Model Picker Bottom Sheet */}
       {showModelPicker && (
         <div className="fixed inset-0 z-50">
           <button
@@ -503,13 +497,13 @@ function IdentityForm({
             aria-label="Close"
           />
           <div
-            className="absolute left-0 right-0 bottom-0 rounded-t-2xl max-h-[50%] overflow-hidden"
+            className="absolute left-0 right-0 bottom-0 rounded-t-[14px] max-h-[50%] overflow-hidden"
             style={{ backgroundColor: "var(--background)" }}
           >
             <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
-              <span className="text-[16px] font-semibold text-foreground">{t("identityEdit.selectModel")}</span>
+              <span className="text-[17px] font-semibold text-foreground">{t("identityEdit.selectModel")}</span>
               <button onClick={() => setShowModelPicker(false)} className="active:opacity-60">
-                <IoCloseCircle size={20} color="var(--muted-foreground)" />
+                <IoCloseCircle size={22} color="var(--muted-foreground)" />
               </button>
             </div>
             <div className="overflow-y-auto">
@@ -520,15 +514,15 @@ function IdentityForm({
                     key={m.id}
                     onClick={() => { setAiModelId(m.id); setShowModelPicker(false); }}
                     className="w-full flex items-center px-4 py-3 text-left active:bg-black/5"
-                    style={{ backgroundColor: active ? "rgba(147, 51, 234, 0.08)" : "transparent" }}
+                    style={{ borderBottom: "0.5px solid var(--border)" }}
                   >
                     <span
-                      className={`flex-1 text-[14px] ${active ? "font-semibold" : "font-normal"}`}
-                      style={{ color: active ? "#6b21a8" : "var(--foreground)" }}
+                      className={`flex-1 text-[15px] ${active ? "font-semibold" : "font-normal"}`}
+                      style={{ color: active ? "var(--primary)" : "var(--foreground)" }}
                     >
                       {m.displayName}
                     </span>
-                    {active && <span style={{ color: "#9333ea" }}>✓</span>}
+                    {active && <span className="text-[15px] font-semibold" style={{ color: "var(--primary)" }}>✓</span>}
                   </button>
                 );
               })}

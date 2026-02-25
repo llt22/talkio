@@ -154,7 +154,7 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
             <button onClick={() => mcpRef.current?.triggerAdd()} className="p-2 active:opacity-60">
               <IoAdd size={22} color="var(--primary)" />
             </button>
-          ), component: <McpPage ref={mcpRef} /> })}
+          ), component: <McpPage ref={mcpRef} onPush={push} onPop={pop} /> })}
         />
         <SettingsRow
           iconPath="M192 448h128V240a64 64 0 00-128 0zM384 240v-16a128 128 0 00-256 0v16M256 96V56M403.08 108.92l-28.28 28.28M108.92 108.92l28.28 28.28M48 240h32M432 240h32"
