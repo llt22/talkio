@@ -44,7 +44,7 @@ export function useChatPanelState(conversationId: string): {
   const messages = useMessages(conversationId);
 
   const conv = useMemo(
-    () => conversations.find((c: Conversation) => c.id === conversationId),
+    () => (conversations ?? []).find((c: Conversation) => c.id === conversationId),
     [conversations, conversationId],
   );
 

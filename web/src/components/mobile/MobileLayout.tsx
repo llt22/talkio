@@ -131,19 +131,27 @@ function MobileTabLayout() {
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: tabBg }}>
-      {/* Tab Content */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {activeTab === "chats" && <MobileConversationList onNavigateToExperts={() => setActiveTab("experts")} />}
-        {activeTab === "experts" && <ModelsPage isMobile />}
-        {activeTab === "discover" && <DiscoverPage />}
-        {activeTab === "settings" && <SettingsPage onSubPageChange={setSettingsInSubPage} />}
+      {/* Tab Content — keep all tabs mounted, hide inactive with display:none to preserve state */}
+      <div className="flex-1 min-h-0 overflow-hidden relative">
+        <div className="absolute inset-0" style={{ display: activeTab === "chats" ? undefined : "none" }}>
+          <MobileConversationList onNavigateToExperts={() => setActiveTab("experts")} />
+        </div>
+        <div className="absolute inset-0" style={{ display: activeTab === "experts" ? undefined : "none" }}>
+          <ModelsPage isMobile />
+        </div>
+        <div className="absolute inset-0" style={{ display: activeTab === "discover" ? undefined : "none" }}>
+          <DiscoverPage />
+        </div>
+        <div className="absolute inset-0" style={{ display: activeTab === "settings" ? undefined : "none" }}>
+          <SettingsPage onSubPageChange={setSettingsInSubPage} />
+        </div>
       </div>
 
       {/* Bottom Tab Bar — iOS native style */}
       {!hideTabBar && <div
         className="flex-shrink-0 flex items-center justify-around px-2 pt-1.5"
         style={{
-          paddingBottom: 6,
+          paddingBottom: "max(6px, env(safe-area-inset-bottom, 6px))",
           borderTop: "0.5px solid var(--border)",
           backgroundColor: "var(--background)",
           backdropFilter: "saturate(180%) blur(20px)",
@@ -461,43 +469,26 @@ function MobileConversationList({ onNavigateToExperts }: { onNavigateToExperts: 
   const { confirm } = useConfirm();
   const navigate = useNavigate();
   const conversations = useConversations();
-  const createConversation = useChatStore((s) => s.createConversation);
   const deleteConversation = useChatStore((s) => s.deleteConversation);
   const providers = useProviderStore((s) => s.providers);
   const models = useProviderStore((s) => s.models);
-  const [showModelPicker, setShowModelPicker] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
 
-  const enabledModels = models.filter((m) => m.enabled);
   const hasProviders = providers.some((p) => (p.status as string) === "active" || p.status === "connected");
 
   const filtered = useMemo(() => conversations.filter((c: Conversation) => {
     if (filter === "single" && c.type !== "single") return false;
     if (filter === "group" && c.type !== "group") return false;
-    if (searchQuery && !c.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchTitle = c.title.toLowerCase().includes(q);
+      const matchLastMsg = c.lastMessage?.toLowerCase().includes(q);
+      if (!matchTitle && !matchLastMsg) return false;
+    }
     return true;
   }), [conversations, filter, searchQuery]);
-
-  const handleNew = useCallback(async () => {
-    if (enabledModels.length === 0) {
-      const conv = await createConversation("");
-      navigate(`/chat/${conv.id}`);
-      return;
-    }
-    if (enabledModels.length === 1) {
-      const conv = await createConversation(enabledModels[0].id);
-      navigate(`/chat/${conv.id}`);
-      return;
-    }
-    setShowModelPicker(true);
-  }, [enabledModels, createConversation, navigate]);
-
-  const handleModelSelect = useCallback(async (modelId: string) => {
-    const conv = await createConversation(modelId);
-    navigate(`/chat/${conv.id}`);
-  }, [createConversation, navigate]);
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
@@ -505,20 +496,12 @@ function MobileConversationList({ onNavigateToExperts }: { onNavigateToExperts: 
       <div className="flex-shrink-0 px-4 pt-2 pb-1">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-[20px] font-bold text-foreground tracking-tight">{t("tabs.chats")}</h1>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setShowSearch((v) => !v)}
-              className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
-            >
-              <IoSearchOutline size={22} color="var(--primary)" />
-            </button>
-            <button
-              onClick={handleNew}
-              className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
-            >
-              <IoCreateOutline size={22} color="var(--primary)" />
-            </button>
-          </div>
+          <button
+            onClick={() => setShowSearch((v) => !v)}
+            className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
+          >
+            <IoSearchOutline size={22} color="var(--primary)" />
+          </button>
         </div>
       </div>
 
@@ -564,12 +547,6 @@ function MobileConversationList({ onNavigateToExperts }: { onNavigateToExperts: 
           ))}
         </div>
       </div>
-
-      <ModelPicker
-        open={showModelPicker}
-        onClose={() => setShowModelPicker(false)}
-        onSelect={handleModelSelect}
-      />
 
       {/* List */}
       <div className="flex-1 overflow-y-auto flex flex-col">
