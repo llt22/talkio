@@ -4,6 +4,7 @@ import { useProviderStore } from "../stores/provider-store";
 import { useIdentityStore } from "../stores/identity-store";
 import { useChatStore, type ChatState } from "../stores/chat-store";
 import type { Conversation, ConversationParticipant, Identity, Message, Model } from "../../../src/types";
+type ChatStoreState = ReturnType<typeof useChatStore.getState>;
 
 export type ModelPickerMode = "add" | "switch";
 
@@ -41,7 +42,8 @@ export function useChatPanelState(conversationId: string): {
   handleModelPickerSelect: (modelId: string) => void;
 } {
   const conversations = useConversations();
-  const messages = useMessages(conversationId);
+  const activeBranchId = useChatStore((s: ChatStoreState) => s.activeBranchId);
+  const messages = useMessages(conversationId, activeBranchId);
 
   const conv = useMemo(
     () => (conversations ?? []).find((c: Conversation) => c.id === conversationId),

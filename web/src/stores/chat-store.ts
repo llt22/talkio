@@ -28,6 +28,8 @@ import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
 import { buildProviderHeaders } from "../services/provider-headers";
 import { useBuiltInToolsStore } from "./built-in-tools-store";
 
+const MAX_HISTORY = 200;
+
 interface StreamingState {
   messageId: string;
   content: string;
@@ -219,7 +221,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     let userMsg: Message;
     if (options?.reuseUserMessageId) {
-      const all = await getRecentMessages(convId, null, 200);
+      const all = await getRecentMessages(convId, null, MAX_HISTORY);
       const existing = all.find((m) => m.id === options.reuseUserMessageId);
       if (!existing || existing.role !== "user") return;
       userMsg = existing;
@@ -373,7 +375,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const toolDefs = [...builtInToolDefs, ...getMcpToolDefsForIdentity(identity)];
 
       try {
-        const allMessages = await getRecentMessages(convId, get().activeBranchId, 200);
+        const allMessages = await getRecentMessages(convId, get().activeBranchId, MAX_HISTORY);
         const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
         const apiMessages = buildApiMessagesForParticipant(filtered, participant);
 
@@ -728,7 +730,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const convId = get().currentConversationId;
     if (!convId || get().isGenerating) return;
 
-    const messages = await getRecentMessages(convId, null, 200);
+    const messages = await getRecentMessages(convId, get().activeBranchId, MAX_HISTORY);
     const msg = messages.find((m) => m.id === messageId);
     if (!msg || msg.role !== "assistant") return;
 

@@ -26,10 +26,15 @@ export function getMcpToolDefs() {
   }));
 }
 
-export function getMcpToolDefsForIdentity(_identity?: Identity | null) {
+export function getMcpToolDefsForIdentity(identity?: Identity | null) {
   const store = useMcpStore.getState();
-  // All globally enabled servers are available to every identity.
-  const tools = store.getAllEnabledTools();
+  let tools = store.getAllEnabledTools();
+
+  // If identity has specific mcpServerIds, filter to only those servers
+  if (identity?.mcpServerIds && identity.mcpServerIds.length > 0) {
+    const allowed = new Set(identity.mcpServerIds);
+    tools = tools.filter((t) => allowed.has(t.serverId));
+  }
 
   return tools.map((t) => ({
     type: "function" as const,

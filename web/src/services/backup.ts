@@ -4,7 +4,7 @@
  * Uses File System Access API (desktop) or download trick (mobile).
  */
 import { kvStore } from "../storage/kv-store";
-import { getAllConversations, getMessages, insertConversation, insertMessage, getConversation } from "../storage/database";
+import { getAllConversations, getAllMessagesForConversation, insertConversation, insertMessage, getConversation } from "../storage/database";
 import type { Conversation, Message } from "../../../src/types";
 
 export interface BackupData {
@@ -36,11 +36,8 @@ export async function createFullBackup(): Promise<BackupData> {
   const conversations = await getAllConversations();
   const allMessages: Message[] = [];
   for (const conv of conversations) {
-    const msgs = await getMessages(conv.id, null, 10000);
+    const msgs = await getAllMessagesForConversation(conv.id);
     allMessages.push(...msgs);
-    // Also get branch messages (branchId != null)
-    const branchMsgs = await getBranchMessages(conv.id);
-    allMessages.push(...branchMsgs);
   }
   return {
     ...config,
@@ -48,49 +45,6 @@ export async function createFullBackup(): Promise<BackupData> {
     conversations,
     messages: allMessages,
   };
-}
-
-async function getBranchMessages(conversationId: string): Promise<Message[]> {
-  try {
-    const { default: Database } = await import("@tauri-apps/plugin-sql");
-    const db = await Database.load("sqlite:talkio.db");
-    const rows: any[] = await db.select(
-      `SELECT * FROM messages WHERE conversationId = $1 AND branchId IS NOT NULL ORDER BY createdAt ASC`,
-      [conversationId]
-    );
-    return rows.map((row: any) => ({
-      id: row.id,
-      conversationId: row.conversationId,
-      role: row.role,
-      senderModelId: row.senderModelId ?? null,
-      senderName: row.senderName ?? null,
-      identityId: row.identityId ?? null,
-      participantId: row.participantId ?? null,
-      content: row.content || "",
-      images: safeJsonParse(row.images, []),
-      generatedImages: safeJsonParse(row.generatedImages, []),
-      reasoningContent: row.reasoningContent ?? null,
-      reasoningDuration: row.reasoningDuration ?? null,
-      toolCalls: safeJsonParse(row.toolCalls, []),
-      toolResults: safeJsonParse(row.toolResults, []),
-      branchId: row.branchId ?? null,
-      parentMessageId: row.parentMessageId ?? null,
-      isStreaming: row.isStreaming === 1,
-      status: row.status || "success",
-      errorMessage: row.errorMessage ?? null,
-      tokenUsage: safeJsonParse(row.tokenUsage, null),
-      createdAt: row.createdAt,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-function safeJsonParse<T>(value: unknown, fallback: T): T {
-  if (value === null || value === undefined) return fallback;
-  if (typeof value !== "string") return value as T;
-  if (!value) return fallback;
-  try { return JSON.parse(value) as T; } catch { return fallback; }
 }
 
 export function downloadBackup(data: BackupData) {

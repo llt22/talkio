@@ -438,6 +438,15 @@ export async function deleteMessage(id: string): Promise<void> {
   await db.execute(`DELETE FROM messages WHERE id = $1`, [id]);
 }
 
+export async function getAllMessagesForConversation(conversationId: string): Promise<Message[]> {
+  const db = await getDb();
+  const rows = await db.select(
+    `SELECT * FROM messages WHERE conversationId = $1 ORDER BY createdAt ASC`,
+    [conversationId]
+  );
+  return rows.map(rowToMessage);
+}
+
 export async function clearMessages(conversationId: string): Promise<void> {
   const db = await getDb();
   await db.execute(`DELETE FROM messages WHERE conversationId = $1`, [conversationId]);
