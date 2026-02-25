@@ -25,6 +25,7 @@ import {
   MessageCircle,
   MessagesSquare,
   Mic,
+  MoreHorizontal,
   Pencil,
   Plus,
   PlusCircle,
@@ -97,6 +98,7 @@ export const IoConstructOutline = make(Settings);
 export const IoBulbOutline = make(Lightbulb);
 export const IoPulseOutline = make(Activity);
 
+export const IoEllipsisHorizontal = make(MoreHorizontal);
 export const IoCodeSlashOutline = make(Code);
 export const IoExpandOutline = make(Maximize2);
 

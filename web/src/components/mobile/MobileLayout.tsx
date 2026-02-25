@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { IoChatbubbles, IoCube, IoPersonCircle, IoSettings, IoChevronBack, IoPeopleOutline, IoCaretDown, IoCaretUp, IoPersonOutline, IoShareOutline, IoCreateOutline, IoSearchOutline, IoCloseCircle, IoSparkles, IoChatbubbleOutline, IoArrowDown, IoAddCircleOutline, IoTrashOutline, IoPersonAddOutline } from "../../icons";
+import { IoChatbubbles, IoCube, IoPersonCircle, IoSettings, IoChevronBack, IoPeopleOutline, IoCaretDown, IoCaretUp, IoPersonOutline, IoShareOutline, IoCreateOutline, IoSearchOutline, IoCloseCircle, IoSparkles, IoChatbubbleOutline, IoArrowDown, IoAddCircleOutline, IoTrashOutline, IoPersonAddOutline, IoEllipsisHorizontal } from "../../icons";
 import { ChatView } from "../shared/ChatView";
 import { ModelPicker } from "../shared/ModelPicker";
 import { SettingsPage } from "../../pages/settings/SettingsPage";
@@ -205,6 +205,7 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
   } = useChatPanelState(conversationId);
 
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   // Optimistic identity id — updates immediately on selection, before DB roundtrip
@@ -287,10 +288,10 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
           <IoChevronBack size={20} color="var(--primary)" />
         </button>
 
-        {/* Tappable center title — absolute centered with symmetric safe padding */}
+        {/* Tappable center title — absolute centered, symmetric padding matches button widths */}
         <button
           className="absolute inset-y-0 flex flex-col items-center justify-center active:opacity-70"
-          style={{ left: 120, right: 120 }}
+          style={{ left: 48, right: 48 }}
           onClick={handleHeaderTitlePress}
         >
           <span className="text-sm font-bold tracking-tight text-foreground truncate max-w-full">{title}</span>
@@ -304,35 +305,58 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
           </div>
         </button>
 
-        {/* Right buttons */}
-        <div className="ml-auto flex items-center gap-0.5 z-10">
+        {/* Right: single ··· more button */}
+        <div className="ml-auto z-10 relative">
           <button
             className="p-2 active:opacity-60"
-            onClick={() => { setModelPickerMode("add"); setShowModelPicker(true); }}
+            onClick={() => setShowMoreMenu((v) => !v)}
           >
-            <IoPersonAddOutline size={19} color="var(--primary)" />
+            <IoEllipsisHorizontal size={22} color="var(--primary)" />
           </button>
-          <button
-            className="p-2 active:opacity-60"
-            style={{ opacity: messages.length === 0 ? 0.3 : 1 }}
-            onClick={handleExport}
-            disabled={messages.length === 0 || isExporting}
-          >
-            <IoShareOutline size={20} color="var(--primary)" />
-          </button>
-          <button
-            className="p-2 active:opacity-60"
-            onClick={async () => {
-              const ok = await confirm({
-                title: t("common.areYouSure"),
-                description: t("chat.clearHistoryConfirm"),
-                destructive: true,
-              });
-              if (ok) clearConversationMessages(conversationId);
-            }}
-          >
-            <IoCreateOutline size={20} color="var(--primary)" />
-          </button>
+
+          {/* Dropdown menu */}
+          {showMoreMenu && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setShowMoreMenu(false)} />
+              <div
+                className="absolute right-0 top-full mt-1 z-30 min-w-[180px] rounded-xl py-1 shadow-lg"
+                style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+              >
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 active:opacity-60"
+                  onClick={() => { setShowMoreMenu(false); setModelPickerMode("add"); setShowModelPicker(true); }}
+                >
+                  <IoPersonAddOutline size={18} color="var(--foreground)" />
+                  <span className="text-[14px] text-foreground">{t("chat.addMember")}</span>
+                </button>
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 active:opacity-60"
+                  style={{ opacity: messages.length === 0 ? 0.4 : 1 }}
+                  disabled={messages.length === 0 || isExporting}
+                  onClick={() => { setShowMoreMenu(false); handleExport(); }}
+                >
+                  <IoShareOutline size={18} color="var(--foreground)" />
+                  <span className="text-[14px] text-foreground">{t("chat.export")}</span>
+                </button>
+                <div style={{ height: "0.5px", backgroundColor: "var(--border)", margin: "0 16px" }} />
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 active:opacity-60"
+                  onClick={async () => {
+                    setShowMoreMenu(false);
+                    const ok = await confirm({
+                      title: t("common.areYouSure"),
+                      description: t("chat.clearHistoryConfirm"),
+                      destructive: true,
+                    });
+                    if (ok) clearConversationMessages(conversationId);
+                  }}
+                >
+                  <IoTrashOutline size={18} color="var(--destructive)" />
+                  <span className="text-[14px]" style={{ color: "var(--destructive)" }}>{t("chat.clearHistory")}</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
