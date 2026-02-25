@@ -458,6 +458,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           notifyDbChange("messages", convId);
 
           // Execute tools
+          console.log("[chat] Tool calls detected:", pendingToolCalls.map((tc) => `${tc.name}(${tc.arguments})`));
           const toolResults: { toolCallId: string; content: string }[] = [];
           for (const tc of pendingToolCalls) {
             let args: Record<string, unknown> = {};
@@ -484,6 +485,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           notifyDbChange("messages", convId);
 
           // Build follow-up request with tool results
+          console.log("[chat] Tool results:", toolResults.map((tr) => ({ id: tr.toolCallId, content: tr.content.slice(0, 200) })));
           const toolMessages = [
             ...apiMessages,
             { role: "assistant" as const, content: fullContent || null, tool_calls: pendingToolCalls.map((tc) => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: tc.arguments } })) },
@@ -507,7 +509,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
             signal: abortController.signal,
           });
 
-          if (!toolResponse.ok) throw new Error(`API Error ${toolResponse.status}`);
+          if (!toolResponse.ok) {
+            const errText = await toolResponse.text();
+            console.error("[chat] Follow-up API error:", toolResponse.status, errText);
+            throw new Error(`API Error ${toolResponse.status}: ${errText}`);
+          }
+          console.log("[chat] Follow-up streaming started");
           const toolReader = toolResponse.body?.getReader();
           if (!toolReader) throw new Error("No response body");
 
@@ -534,6 +541,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           });
           toolFlush();
 
+          console.log("[chat] Follow-up complete, content length:", toolContent.length, "(added", toolContent.length - fullContent.length, "chars)");
           await updateMessage(assistantMsgId, {
             content: toolContent,
             isStreaming: false,
