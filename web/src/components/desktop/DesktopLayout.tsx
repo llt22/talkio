@@ -565,7 +565,7 @@ function DesktopEmptyState({ section }: { section: DesktopSection }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-      <img src="/logo.png" alt="Talkio" className="h-20 w-20 mb-4 object-contain" />
+      <img src="/logo.png" alt="Talkio" className="h-32 w-32 mb-4 object-contain" />
       <p className="text-lg font-medium">Talkio</p>
       <p className="text-sm mt-1 text-muted-foreground/60">
         {t("chats.startConversation")}
