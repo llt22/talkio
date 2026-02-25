@@ -8,6 +8,7 @@ import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 import { createBackup, downloadBackup, importBackup } from "../../services/backup";
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
+import { McpPage } from "./McpPage";
 
 // ── Ionicons SVG helpers ──
 
@@ -110,6 +111,13 @@ export function SettingsPage() {
           label={t("settings.providers")}
           detail={t("common.configured", { count: providers.length })}
           onPress={() => push({ id: "providers-list", title: t("settings.providers"), component: <ProvidersListPage onPush={push} onPop={pop} /> })}
+        />
+        <SettingsRow
+          iconPath="M277.42 247a24.68 24.68 0 00-4.08-5.34L223 191.28a23.76 23.76 0 00-5.34-4.08 24.06 24.06 0 00-33.66 33.66 23.76 23.76 0 004.08 5.34l50.38 50.38a24.68 24.68 0 005.34 4.08 24.06 24.06 0 0033.62-33.66zM289 100a24 24 0 00-33.94 0L230.42 124.6a24 24 0 000 33.94l23 23a24 24 0 0033.94 0L312 156.6a24 24 0 000-33.94zM412 280a24 24 0 00-33.94 0L352.6 305.42a24 24 0 000 33.94l23 23a24 24 0 0033.94 0L435 337a24 24 0 000-33.94z"
+          iconColor="#8b5cf6"
+          iconBg="rgba(139,92,246,0.1)"
+          label={t("settings.mcpTools")}
+          onPress={() => push({ id: "mcp-tools", title: t("settings.mcpTools"), component: <McpPage /> })}
         />
         <SettingsRow
           iconPath="M363 176L246 464h-62L300 176zM96 288l30-60 30 60-30 60zm290 0l30-60 30 60-30 60z"

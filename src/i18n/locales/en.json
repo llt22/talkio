@@ -103,6 +103,7 @@
     "createGroup": "Create Group ({{count}})"
   },
   "personas": {
+    "searchIdentities": "Search personas...",
     "title": "Personas",
     "identityCards": "Role Cards",
     "mcpTools": "MCP Tools",
@@ -169,7 +170,8 @@
     "langZh": "中文",
     "themeSystem": "System",
     "themeLight": "Light",
-    "themeDark": "Dark"
+    "themeDark": "Dark",
+    "mcpTools": "MCP Tools"
   },
   "providerEdit": {
     "quickSelect": "Quick Select",

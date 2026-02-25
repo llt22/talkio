@@ -1,14 +1,14 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { IoPersonOutline, IoAddCircleOutline, IoTrashOutline, IoChevronForward, IoChevronBack } from "../../icons";
+import { IoPersonOutline, IoAddCircleOutline, IoTrashOutline, IoChevronForward, IoChevronBack, IoSearchOutline, IoCloseCircle, IoAdd } from "../../icons";
 import { useIdentityStore } from "../../stores/identity-store";
 import type { Identity } from "../../../../src/types";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 
 type IdentityStoreState = ReturnType<typeof useIdentityStore.getState>;
 
-// ── Identity / Persona Page (1:1 RN original card layout) ──
+// ── Identity / Persona Page ──
 
 export function IdentityPage() {
   const { t } = useTranslation();
@@ -16,44 +16,85 @@ export function IdentityPage() {
   const navigate = useNavigate();
   const identities = useIdentityStore((s: IdentityStoreState) => s.identities);
   const deleteIdentity = useIdentityStore((s: IdentityStoreState) => s.deleteIdentity);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filtered = useMemo(() =>
+    searchQuery
+      ? identities.filter((i: Identity) => i.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      : identities,
+  [identities, searchQuery]);
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
-      {identities.length === 0 ? (
-        <div className="flex flex-col items-center justify-center pt-16 px-5">
-          <IoPersonOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
-          <p className="mt-4 text-lg font-semibold text-foreground">{t("personas.noCustomTools")}</p>
-          <p className="mt-1 text-sm text-muted-foreground text-center">
-            {t("models.configureHint")}
-          </p>
+    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
+      {/* Header: title + search + add */}
+      <div className="flex-shrink-0 px-4 pt-2 pb-1">
+        <div className="flex items-center justify-between mb-1">
+          <h1 className="text-[28px] font-bold text-foreground tracking-tight">{t("personas.title")}</h1>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowSearch((v) => !v)}
+              className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
+            >
+              <IoSearchOutline size={22} color="var(--primary)" />
+            </button>
+            <button
+              onClick={() => navigate("/identity/new")}
+              className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
+            >
+              <IoAdd size={24} color="var(--primary)" />
+            </button>
+          </div>
         </div>
-      ) : (
-        <div className="pb-24">
-          {identities.map((identity: Identity, idx: number) => (
-            <IdentityItem
-              key={identity.id}
-              identity={identity}
-              isLast={idx === identities.length - 1}
-              onEdit={() => navigate(`/identity/edit/${identity.id}`)}
-              onDelete={async () => {
-                const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
-                if (ok) deleteIdentity(identity.id);
-              }}
+      </div>
+
+      {/* Search Bar */}
+      {showSearch && (
+        <div className="px-4 pb-2">
+          <div className="flex items-center rounded-xl px-3 py-2" style={{ backgroundColor: "var(--secondary)" }}>
+            <IoSearchOutline size={18} color="var(--muted-foreground)" />
+            <input
+              className="ml-2 flex-1 text-[15px] text-foreground bg-transparent outline-none"
+              placeholder={t("personas.searchIdentities")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus
             />
-          ))}
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="active:opacity-60">
+                <IoCloseCircle size={18} color="var(--muted-foreground)" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Create button (sticky at bottom) */}
-      <div className="sticky bottom-0 left-0 right-0 px-5 pb-4 pt-2" style={{ backgroundColor: "var(--background)" }}>
-        <button
-          onClick={() => navigate("/identity/new")}
-          className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 active:opacity-80 text-base font-semibold text-white"
-          style={{ backgroundColor: "var(--primary)" }}
-        >
-          <IoAddCircleOutline size={18} color="white" />
-          {t("personas.createIdentity")}
-        </button>
+      {/* List */}
+      <div className="flex-1 overflow-y-auto">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center pt-16 px-5">
+            <IoPersonOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
+            <p className="mt-4 text-lg font-semibold text-foreground">{t("personas.noCustomTools")}</p>
+            <p className="mt-1 text-sm text-muted-foreground text-center">
+              {t("models.configureHint")}
+            </p>
+          </div>
+        ) : (
+          <div className="pb-4">
+            {filtered.map((identity: Identity, idx: number) => (
+              <IdentityItem
+                key={identity.id}
+                identity={identity}
+                isLast={idx === filtered.length - 1}
+                onEdit={() => navigate(`/identity/edit/${identity.id}`)}
+                onDelete={async () => {
+                  const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
+                  if (ok) deleteIdentity(identity.id);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

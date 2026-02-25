@@ -18,7 +18,7 @@ import { getAvatarProps } from "../../lib/avatar-utils";
 import { exportConversationAsMarkdown } from "../../services/export";
 import { useConfirm } from "../shared/ConfirmDialogProvider";
 
-// ── Tab Icons using react-icons/io5 ──
+// ── Tab Icons ──
 
 function IonChatbubbles() {
   return <IoChatbubbles size={22} />;
@@ -466,20 +466,12 @@ function MobileConversationList({ onNavigateToExperts }: { onNavigateToExperts: 
       <div className="flex-shrink-0 px-4 pt-2 pb-1">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-[28px] font-bold text-foreground tracking-tight">{t("tabs.chats")}</h1>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setShowSearch((v) => !v)}
-              className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
-            >
-              <IoSearchOutline size={22} color="var(--primary)" />
-            </button>
-            <button
-              onClick={handleNew}
-              className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
-            >
-              <IoCreateOutline size={22} color="var(--primary)" />
-            </button>
-          </div>
+          <button
+            onClick={() => setShowSearch((v) => !v)}
+            className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
+          >
+            <IoSearchOutline size={22} color="var(--primary)" />
+          </button>
         </div>
       </div>
 

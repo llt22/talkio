@@ -103,6 +103,7 @@
     "createGroup": "创建群聊 ({{count}})"
   },
   "personas": {
+    "searchIdentities": "搜索角色...",
     "title": "角色",
     "identityCards": "角色卡片",
     "mcpTools": "MCP 工具",
@@ -169,7 +170,8 @@
     "langZh": "中文",
     "themeSystem": "跟随系统",
     "themeLight": "浅色",
-    "themeDark": "深色"
+    "themeDark": "深色",
+    "mcpTools": "MCP 工具"
   },
   "providerEdit": {
     "quickSelect": "快速选择",
