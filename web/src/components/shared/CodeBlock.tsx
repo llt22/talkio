@@ -25,7 +25,7 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
   if (lang === "mermaid") {
     if (isStreaming) {
       return (
-        <div className="relative mt-1 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
+        <div className="-mx-4 mt-1 overflow-hidden" style={{ border: "0.5px solid var(--border)" }}>
           <div className="flex items-center px-3 py-1.5" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
             <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--primary)" }}>mermaid · rendering after completion</span>
           </div>
@@ -33,14 +33,14 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
         </div>
       );
     }
-    return <MermaidRenderer chart={codeString} />;
+    return <div className="-mx-4"><MermaidRenderer chart={codeString} /></div>;
   }
 
   // HTML / SVG — only render after streaming complete
   if (lang === "html" || lang === "svg") {
     if (isStreaming) {
       return (
-        <div className="relative mt-1 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
+        <div className="-mx-4 mt-1 overflow-hidden" style={{ border: "0.5px solid var(--border)" }}>
           <div className="flex items-center px-3 py-1.5" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
             <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--primary)" }}>{lang} · preview after completion</span>
           </div>
@@ -48,13 +48,13 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
         </div>
       );
     }
-    return <HtmlPreview code={codeString} language={lang} />;
+    return <div className="-mx-4"><HtmlPreview code={codeString} language={lang} /></div>;
   }
 
-  // Regular code block with language
+  // Regular code block with language — full-bleed, matches RN MarkdownCodeBlock
   if (match) {
     return (
-      <div className="relative mt-1 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
+      <div className="-mx-4 mt-1 overflow-hidden" style={{ border: "0.5px solid var(--border)" }}>
         <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
           <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--muted-foreground)" }}>{lang}</span>
           <button

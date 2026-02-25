@@ -43,7 +43,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   );
 
   return (
-    <div className="prose prose-sm max-w-none text-foreground">
+    <div className="prose prose-sm max-w-none text-foreground px-4">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
