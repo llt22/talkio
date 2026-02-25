@@ -44,6 +44,8 @@
     "noConversations": "No conversations yet",
     "goToModels": "Go to Models tab to start chatting",
     "startConversation": "Start a conversation",
+    "newChat": "New Chat",
+    "groupChat": "Group Chat",
     "reasoning": "Reasoning",
     "vision": "Vision",
     "noResults": "No matching conversations"
@@ -60,6 +62,7 @@
     "backToMain": "← Main",
     "branchFromHere": "Branch from here",
     "readAloud": "Read Aloud",
+    "continue": "Continue",
     "conversationNotFound": "Conversation not found",
     "messageOptions": "Message Options",
     "searchInChat": "Search in Chat",

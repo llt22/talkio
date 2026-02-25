@@ -44,6 +44,8 @@
     "noConversations": "暂无对话",
     "goToModels": "前往模型页面开始聊天",
     "startConversation": "开始新对话",
+    "newChat": "新对话",
+    "groupChat": "群聊",
     "reasoning": "推理",
     "vision": "视觉",
     "noResults": "没有匹配的对话"
@@ -60,6 +62,7 @@
     "backToMain": "← 主线",
     "branchFromHere": "从此处分支",
     "readAloud": "朗读",
+    "continue": "继续",
     "conversationNotFound": "对话不存在",
     "messageOptions": "消息选项",
     "searchInChat": "搜索聊天记录",

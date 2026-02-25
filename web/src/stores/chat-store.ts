@@ -27,6 +27,7 @@ import { generateId } from "../lib/id";
 import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
 import { buildProviderHeaders } from "../services/provider-headers";
 import { useBuiltInToolsStore } from "./built-in-tools-store";
+import i18n from "../i18n";
 
 const MAX_HISTORY = 200;
 
@@ -88,7 +89,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const conv: Conversation = {
       id: generateId(),
       type: isGroup ? "group" : "single",
-      title: isGroup ? (model?.displayName ?? "Group Chat") : (model?.displayName ?? "New Chat"),
+      title: isGroup ? (model?.displayName ?? i18n.t("chats.groupChat", { defaultValue: "Group Chat" })) : (model?.displayName ?? i18n.t("chats.newChat", { defaultValue: "New Chat" })),
       participants,
       lastMessage: null,
       lastMessageAt: null,
@@ -707,15 +708,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     set({ autoDiscussRemaining: rounds, autoDiscussTotalRounds: rounds });
 
-    // First round: send topicText (or "继续") as user message
-    const firstMsg = topicText?.trim() || "继续";
+    // First round: send topicText (or continue prompt) as user message
+    const firstMsg = topicText?.trim() || i18n.t("chat.continue", { defaultValue: "Continue" });
     await get().sendMessage(firstMsg);
 
-    // Subsequent rounds: auto-send "继续"
+    // Subsequent rounds: auto-send continue prompt
     for (let round = 1; round < rounds; round++) {
       if (get().autoDiscussRemaining <= 0) break;
       set({ autoDiscussRemaining: rounds - round });
-      await get().sendMessage("继续");
+      await get().sendMessage(i18n.t("chat.continue", { defaultValue: "Continue" }));
     }
 
     set({ autoDiscussRemaining: 0, autoDiscussTotalRounds: 0 });
