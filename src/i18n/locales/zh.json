@@ -171,7 +171,8 @@
     "themeSystem": "跟随系统",
     "themeLight": "浅色",
     "themeDark": "深色",
-    "mcpTools": "MCP 工具"
+    "mcpTools": "MCP 工具",
+    "appearance": "外观"
   },
   "providerEdit": {
     "quickSelect": "快速选择",

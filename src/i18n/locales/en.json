@@ -171,7 +171,8 @@
     "themeSystem": "System",
     "themeLight": "Light",
     "themeDark": "Dark",
-    "mcpTools": "MCP Tools"
+    "mcpTools": "MCP Tools",
+    "appearance": "Appearance"
   },
   "providerEdit": {
     "quickSelect": "Quick Select",

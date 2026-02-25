@@ -12,10 +12,10 @@ import { McpPage } from "./McpPage";
 
 // ── Ionicons SVG helpers ──
 
-function IonIcon({ d, color, bg }: { d: string; color: string; bg: string }) {
+function IonIcon({ d, color, bg, filled }: { d: string; color: string; bg: string; filled?: boolean }) {
   return (
     <div className="h-10 w-10 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: bg }}>
-      <svg width="18" height="18" viewBox="0 0 512 512" fill="none" stroke={color} strokeWidth="32" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="18" height="18" viewBox="0 0 512 512" fill={filled ? color : "none"} stroke={filled ? "none" : color} strokeWidth={filled ? undefined : 32} strokeLinecap="round" strokeLinejoin="round">
         <path d={d} />
       </svg>
     </div>
@@ -31,6 +31,7 @@ function SettingsRow({
   iconPath,
   iconColor,
   iconBg,
+  iconFilled,
   label,
   detail,
   onPress,
@@ -39,6 +40,7 @@ function SettingsRow({
   iconPath: string;
   iconColor: string;
   iconBg: string;
+  iconFilled?: boolean;
   label: string;
   detail?: string;
   onPress: () => void;
@@ -50,13 +52,21 @@ function SettingsRow({
       className="w-full flex items-center gap-4 px-4 py-3 active:bg-black/5 transition-colors"
       style={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)" }}
     >
-      <IonIcon d={iconPath} color={iconColor} bg={iconBg} />
+      <IonIcon d={iconPath} color={iconColor} bg={iconBg} filled={iconFilled} />
       <span className="flex-1 text-[16px] font-medium text-foreground text-left">{label}</span>
       <div className="flex items-center flex-shrink-0">
         {detail && <span className="mr-2 text-sm text-muted-foreground">{detail}</span>}
         <IoChevronForward size={18} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
       </div>
     </button>
+  );
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="px-4 pt-5 pb-1.5">
+      <span className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
+    </div>
   );
 }
 
@@ -101,9 +111,11 @@ export function SettingsPage() {
         <h1 className="text-[20px] font-bold text-foreground tracking-tight">{t("settings.title")}</h1>
       </div>
 
-      <div>
+      {/* ── Group 1: Configuration ── */}
+      <SectionHeader label={t("settings.configuration")} />
+      <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
         <SettingsRow
-          iconPath="M336 96h-56V48a16 16 0 00-32 0v48h-56a72 72 0 00-72 72v8h288v-8a72 72 0 00-72-72zM120 400a72 72 0 0072 72h128a72 72 0 0072-72V192H120z"
+          iconPath="M464 256H48M304 350l96-94-96-94M208 162l-96 94 96 94"
           iconColor="#3b82f6"
           iconBg="rgba(59,130,246,0.1)"
           label={t("settings.providers")}
@@ -121,9 +133,24 @@ export function SettingsPage() {
           iconPath="M277.42 247a24.68 24.68 0 00-4.08-5.34L223 191.28a23.76 23.76 0 00-5.34-4.08 24.06 24.06 0 00-33.66 33.66 23.76 23.76 0 004.08 5.34l50.38 50.38a24.68 24.68 0 005.34 4.08 24.06 24.06 0 0033.62-33.66zM289 100a24 24 0 00-33.94 0L230.42 124.6a24 24 0 000 33.94l23 23a24 24 0 0033.94 0L312 156.6a24 24 0 000-33.94zM412 280a24 24 0 00-33.94 0L352.6 305.42a24 24 0 000 33.94l23 23a24 24 0 0033.94 0L435 337a24 24 0 000-33.94z"
           iconColor="#8b5cf6"
           iconBg="rgba(139,92,246,0.1)"
+          iconFilled
           label={t("settings.mcpTools")}
           onPress={() => push({ id: "mcp-tools", title: t("settings.mcpTools"), component: <McpPage /> })}
         />
+        <SettingsRow
+          iconPath="M192 448h128V240a64 64 0 00-128 0zM384 240v-16a128 128 0 00-256 0v16M256 96V56M403.08 108.92l-28.28 28.28M108.92 108.92l28.28 28.28M48 240h32M432 240h32"
+          iconColor="#f97316"
+          iconBg="rgba(249,115,22,0.1)"
+          label={t("settings.sttProvider")}
+          detail={settings.sttApiKey ? settings.sttModel : t("settings.sttNotConfigured")}
+          onPress={() => push({ id: "stt-settings", title: t("settings.sttProvider"), component: <SttSettingsPage /> })}
+          isLast
+        />
+      </div>
+
+      {/* ── Group 2: Appearance ── */}
+      <SectionHeader label={t("settings.appearance")} />
+      <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
         <SettingsRow
           iconPath="M363 176L246 464h-62L300 176zM96 288l30-60 30 60-30 60zm290 0l30-60 30 60-30 60z"
           iconColor="#6366f1"
@@ -143,6 +170,7 @@ export function SettingsPage() {
           iconPath="M160 136c0-30.62 4.51-61.61 16-88C99.57 81.27 48 159.32 48 248c0 119.29 96.71 216 216 216 88.68 0 166.73-51.57 200-128-26.39 11.49-57.38 16-88 16-119.29 0-216-96.71-216-216z"
           iconColor="#64748b"
           iconBg="rgba(100,116,139,0.1)"
+          iconFilled
           label={t("settings.theme")}
           detail={themeLabel}
           onPress={() => {
@@ -150,15 +178,13 @@ export function SettingsPage() {
             const idx = order.indexOf(settings.theme);
             updateSettings({ theme: order[(idx + 1) % order.length] });
           }}
+          isLast
         />
-        <SettingsRow
-          iconPath="M192 448h128V240a64 64 0 00-128 0zM384 240v-16a128 128 0 00-256 0v16M256 96V56M403.08 108.92l-28.28 28.28M108.92 108.92l28.28 28.28M48 240h32M432 240h32"
-          iconColor="#f97316"
-          iconBg="rgba(249,115,22,0.1)"
-          label={t("settings.sttProvider")}
-          detail={settings.sttApiKey ? settings.sttModel : t("settings.sttNotConfigured")}
-          onPress={() => push({ id: "stt-settings", title: t("settings.sttProvider"), component: <SttSettingsPage /> })}
-        />
+      </div>
+
+      {/* ── Group 3: Data ── */}
+      <SectionHeader label={t("settings.dataManagement")} />
+      <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
         <SettingsRow
           iconPath="M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40M256 48v288M160 192l96 96 96-96"
           iconColor="#14b8a6"
