@@ -1,10 +1,11 @@
-import { useState, useCallback, useImperativeHandle, forwardRef } from "react";
+import { useState, useCallback, useImperativeHandle, forwardRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { IoAddCircleOutline, IoTrashOutline, IoChevronBack, IoAdd, IoCloseCircle } from "../../icons";
+import { IoAddCircleOutline, IoTrashOutline, IoChevronBack } from "../../icons";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
+import type { CustomHeader } from "../../../../src/types";
 import { mcpConnectionManager } from "../../services/mcp/connection-manager";
 
 // ── MCP Tools Page (1:1 RN native style) ──
@@ -22,17 +23,22 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
   >;
   const deleteServer = useMcpStore((s) => s.deleteServer);
   const updateServer = useMcpStore((s) => s.updateServer);
-  const [editingServer, setEditingServer] = useState<McpServerConfig | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
+  const [editingServerId, setEditingServerId] = useState<string | null>(null);
 
-  useImperativeHandle(ref, () => ({ triggerAdd: () => setShowAdd(true) }), []);
+  useImperativeHandle(ref, () => ({ triggerAdd: () => setEditingServerId("__new__") }), []);
 
-  if (showAdd) {
-    return <McpServerForm onClose={() => setShowAdd(false)} />;
-  }
+  const editingServer = useMemo(() => {
+    if (!editingServerId || editingServerId === "__new__") return null;
+    return servers.find((s) => s.id === editingServerId) ?? null;
+  }, [editingServerId, servers]);
 
-  if (editingServer) {
-    return <McpServerForm server={editingServer} onClose={() => setEditingServer(null)} />;
+  if (editingServerId) {
+    return (
+      <McpServerForm
+        server={editingServerId === "__new__" ? undefined : (editingServer ?? undefined)}
+        onClose={() => setEditingServerId(null)}
+      />
+    );
   }
 
   return (
@@ -48,16 +54,21 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
           <>
             {/* Server list */}
             <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
-              {servers.map((server) => {
+              {servers.map((server, idx) => {
                 const status = connectionStatus[server.id] ?? "disconnected";
                 const serverTools = tools.filter((t) => t.serverId === server.id);
                 const isConnected = status === "connected";
                 const isError = status === "error";
                 const { color: avatarColor, initials } = getAvatarProps(server.name);
                 return (
-                  <button
+                  <div
                     key={server.id}
-                    onClick={() => setEditingServer(server)}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setEditingServerId(server.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") setEditingServerId(server.id);
+                    }}
                     className="w-full flex items-center gap-4 px-4 py-3 text-left active:bg-black/5 transition-colors"
                     style={{ borderBottom: "0.5px solid var(--border)" }}
                   >
@@ -82,10 +93,13 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
                         {serverTools.length} {t("personas.mcpTools").toLowerCase()}
                       </p>
                     </div>
-                    {/* Toggle — stop propagation to prevent edit */}
+                    {/* Toggle */}
                     <div
-                      onClick={(e) => { e.stopPropagation(); updateServer(server.id, { enabled: !server.enabled }); }}
-                      className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateServer(server.id, { enabled: !server.enabled });
+                      }}
+                      className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors"
                       style={{ backgroundColor: server.enabled ? "var(--primary)" : "var(--muted)" }}
                     >
                       <span
@@ -98,13 +112,16 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
                       onClick={async (e) => {
                         e.stopPropagation();
                         const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
-                        if (ok) deleteServer(server.id);
+                        if (ok) {
+                          deleteServer(server.id);
+                          mcpConnectionManager.reset(server.id);
+                        }
                       }}
-                      className="p-1.5 active:opacity-60 cursor-pointer"
+                      className="p-1.5 active:opacity-60"
                     >
                       <IoTrashOutline size={16} color="var(--destructive)" />
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -140,7 +157,13 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
 
 // ── MCP Server Form (full-screen, 1:1 RN tool-edit.tsx) ──
 
-function McpServerForm({ server, onClose }: { server?: McpServerConfig; onClose: () => void }) {
+function McpServerForm({
+  server,
+  onClose,
+}: {
+  server?: McpServerConfig;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const addServer = useMcpStore((s) => s.addServer);
@@ -148,105 +171,72 @@ function McpServerForm({ server, onClose }: { server?: McpServerConfig; onClose:
   const deleteServer = useMcpStore((s) => s.deleteServer);
 
   const isNew = !server;
+
   const [name, setName] = useState(server?.name ?? "");
   const [url, setUrl] = useState(server?.url ?? "");
   const [enabled, setEnabled] = useState(server?.enabled ?? true);
-  const [headers, setHeaders] = useState<{ name: string; value: string }[]>(
-    server?.customHeaders?.length ? [...server.customHeaders] : [],
-  );
+  const [headers, setHeaders] = useState<CustomHeader[]>(server?.customHeaders ?? []);
   const [testing, setTesting] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
-    if (!name.trim() || !url.trim()) return;
+    if (!name.trim()) {
+      window.alert(`${t("common.error")}: ${t("toolEdit.nameRequired")}`);
+      return;
+    }
+    if (!url.trim()) {
+      window.alert(`${t("common.error")}: ${t("toolEdit.endpointRequired")}`);
+      return;
+    }
+
     const validHeaders = headers.filter((h) => h.name.trim() && h.value.trim());
-    const serverData = {
+    const payload: Omit<McpServerConfig, "id" | "createdAt"> = {
       name: name.trim(),
       url: url.trim(),
       enabled,
       customHeaders: validHeaders.length > 0 ? validHeaders : undefined,
     };
 
-    setSaving(true);
-    try {
-      if (isNew) {
-        const created = addServer(serverData);
-        // Test connection after creating
-        const tempServer = { id: created.id, name: created.name, url: created.url, enabled: true, customHeaders: serverData.customHeaders };
-        try {
-          const tools = await Promise.race([
-            mcpConnectionManager.discoverTools(tempServer),
-            new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Connection timeout (10s)")), 10000)),
-          ]);
-          useMcpStore.getState().updateServer(created.id, { enabled: true });
-          useMcpStore.getState().setTools(created.id, tools.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema, serverId: created.id })));
-          useMcpStore.getState().setConnectionStatus(created.id, "connected");
-          window.alert(t("toolEdit.testSuccess", { count: tools.length }));
-        } catch {
-          useMcpStore.getState().setConnectionStatus(created.id, "error");
-        }
-      } else {
-        updateServer(server!.id, serverData);
-        // Test connection after updating
-        const tempServer = { id: server!.id, name: name.trim(), url: url.trim(), enabled: true, customHeaders: serverData.customHeaders };
-        mcpConnectionManager.disconnect(server!.id);
-        try {
-          const tools = await Promise.race([
-            mcpConnectionManager.discoverTools(tempServer),
-            new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Connection timeout (10s)")), 10000)),
-          ]);
-          useMcpStore.getState().setTools(server!.id, tools.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema, serverId: server!.id })));
-          useMcpStore.getState().setConnectionStatus(server!.id, "connected");
-          window.alert(t("toolEdit.testSuccess", { count: tools.length }));
-        } catch {
-          useMcpStore.getState().setConnectionStatus(server!.id, "error");
-        }
-      }
-      onClose();
-    } finally {
-      setSaving(false);
+    if (isNew) {
+      const created = addServer(payload);
+      if (enabled) mcpConnectionManager.reset(created.id);
+    } else {
+      updateServer(server.id, payload);
+      mcpConnectionManager.reset(server.id);
     }
-  }, [name, url, enabled, headers, isNew, server, addServer, updateServer, onClose, t]);
+
+    onClose();
+  }, [addServer, enabled, headers, isNew, name, onClose, server?.id, t, updateServer, url]);
 
   const handleTest = useCallback(async () => {
     if (!url.trim()) {
-      window.alert(t("toolEdit.endpointRequired"));
+      window.alert(`${t("common.error")}: ${t("toolEdit.endpointRequired")}`);
       return;
     }
+
     setTesting(true);
     const validHeaders = headers.filter((h) => h.name.trim() && h.value.trim());
-    const tempServer = {
+    const tempServer: Omit<McpServerConfig, "createdAt"> = {
       id: `test-${Date.now()}`,
       name: name.trim() || "Test",
       url: url.trim(),
-      enabled: true,
       customHeaders: validHeaders.length > 0 ? validHeaders : undefined,
+      enabled: true,
     };
+
     try {
       const tools = await Promise.race([
         mcpConnectionManager.discoverTools(tempServer),
-        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Connection timeout (10s)")), 10000)),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Connection timeout (10s)")), 10000)),
       ]);
-      window.alert(
-        t("toolEdit.testSuccess", { count: tools.length }) +
-          (tools.length > 0 ? "\n\n" + tools.map((tool) => `• ${tool.name}`).join("\n") : ""),
-      );
+      window.alert(t("toolEdit.testSuccess", { count: tools.length }));
+      mcpConnectionManager.disconnect(tempServer.id);
     } catch (err) {
       window.alert(`${t("toolEdit.testFailed")}: ${err instanceof Error ? err.message : "Unknown error"}`);
-    } finally {
       mcpConnectionManager.disconnect(tempServer.id);
+    } finally {
       setTesting(false);
     }
-  }, [url, name, headers, t]);
-
-  const handleDelete = useCallback(async () => {
-    if (!server) return;
-    const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
-    if (ok) {
-      deleteServer(server.id);
-      onClose();
-    }
-  }, [server, confirm, deleteServer, onClose, t]);
+  }, [headers, name, t, url]);
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: "var(--background)" }}>
@@ -281,7 +271,7 @@ function McpServerForm({ server, onClose }: { server?: McpServerConfig; onClose:
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://mcp.example.com/mcp"
+            placeholder="http://localhost:3000/mcp"
             className="w-full rounded-xl px-4 py-3 text-sm text-foreground outline-none"
             style={{ backgroundColor: "var(--secondary)" }}
           />
@@ -295,25 +285,23 @@ function McpServerForm({ server, onClose }: { server?: McpServerConfig; onClose:
               onClick={() => setHeaders([...headers, { name: "", value: "" }])}
               className="active:opacity-60"
             >
-              <IoAdd size={22} color="var(--primary)" />
+              <IoAddCircleOutline size={22} color="var(--primary)" />
             </button>
           </div>
           {headers.map((h, i) => (
             <div key={i} className="mb-2 flex items-center gap-2">
               <input
-                className="flex-1 rounded-lg px-3 py-2 text-sm text-foreground outline-none"
-                style={{ backgroundColor: "var(--secondary)" }}
                 value={h.name}
                 onChange={(e) => {
                   const next = [...headers];
                   next[i] = { ...next[i], name: e.target.value };
                   setHeaders(next);
                 }}
-                placeholder="Header name"
+                placeholder="Header"
+                className="flex-1 rounded-lg px-3 py-2 text-sm text-foreground outline-none"
+                style={{ backgroundColor: "var(--secondary)" }}
               />
               <input
-                className="flex-[2] rounded-lg px-3 py-2 text-sm text-foreground outline-none"
-                style={{ backgroundColor: "var(--secondary)" }}
                 value={h.value}
                 onChange={(e) => {
                   const next = [...headers];
@@ -321,13 +309,14 @@ function McpServerForm({ server, onClose }: { server?: McpServerConfig; onClose:
                   setHeaders(next);
                 }}
                 placeholder="Value"
-                type={h.name.toLowerCase().includes("auth") || h.name.toLowerCase().includes("key") ? "password" : "text"}
+                className="flex-[2] rounded-lg px-3 py-2 text-sm text-foreground outline-none"
+                style={{ backgroundColor: "var(--secondary)" }}
               />
               <button
                 onClick={() => setHeaders(headers.filter((_, j) => j !== i))}
                 className="active:opacity-60"
               >
-                <IoCloseCircle size={20} color="var(--destructive)" />
+                <IoTrashOutline size={18} color="var(--destructive)" />
               </button>
             </div>
           ))}
@@ -336,30 +325,11 @@ function McpServerForm({ server, onClose }: { server?: McpServerConfig; onClose:
           )}
         </div>
 
-        {/* Test Connection */}
-        <div className="px-4 pt-4">
-          <button
-            onClick={handleTest}
-            disabled={testing}
-            className="w-full flex items-center justify-center gap-2 rounded-xl py-3 active:opacity-70"
-            style={{
-              border: "1px solid color-mix(in srgb, var(--primary) 30%, transparent)",
-              backgroundColor: "color-mix(in srgb, var(--primary) 5%, transparent)",
-            }}
-          >
-            {testing ? (
-              <span className="text-sm font-medium animate-pulse" style={{ color: "var(--primary)" }}>{t("toolEdit.testing")}</span>
-            ) : (
-              <span className="text-sm font-medium" style={{ color: "var(--primary)" }}>{t("toolEdit.testConnection")}</span>
-            )}
-          </button>
-        </div>
-
         {/* Enabled toggle */}
         <div className="mx-4 mt-4 flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: "var(--secondary)" }}>
-          <span className="text-sm text-foreground">{t("toolEdit.enabled")}</span>
+          <p className="text-sm text-foreground">{t("toolEdit.enabled")}</p>
           <button
-            onClick={() => setEnabled(!enabled)}
+            onClick={() => setEnabled((v) => !v)}
             className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors"
             style={{ backgroundColor: enabled ? "var(--primary)" : "var(--muted)" }}
           >
@@ -370,21 +340,40 @@ function McpServerForm({ server, onClose }: { server?: McpServerConfig; onClose:
           </button>
         </div>
 
+        {/* Test Connection */}
+        <div className="px-4 pt-4">
+          <button
+            onClick={handleTest}
+            disabled={testing}
+            className="w-full rounded-xl border py-3 text-sm font-medium active:opacity-70 disabled:opacity-40"
+            style={{ borderColor: "rgba(124, 58, 237, 0.3)", color: "var(--primary)", backgroundColor: "rgba(124, 58, 237, 0.06)" }}
+          >
+            {testing ? t("toolEdit.testing") : t("toolEdit.testConnection")}
+          </button>
+        </div>
+
         {/* Save + Delete */}
-        <div className="px-4 pb-8 pt-6 space-y-3">
+        <div className="px-4 pb-8 pt-6">
           <button
             onClick={handleSave}
-            disabled={saving || testing || !name.trim() || !url.trim()}
+            disabled={!name.trim() || !url.trim()}
             className="w-full rounded-2xl py-4 text-base font-semibold text-white active:opacity-80 disabled:opacity-40"
             style={{ backgroundColor: "var(--primary)" }}
           >
-            {saving ? t("toolEdit.testing") : isNew ? t("toolEdit.addTool") : t("toolEdit.saveChanges")}
+            {isNew ? t("toolEdit.addTool") : t("toolEdit.saveChanges")}
           </button>
 
-          {!isNew && (
+          {!isNew && server && (
             <button
-              onClick={handleDelete}
-              className="w-full py-2 active:opacity-60"
+              onClick={async () => {
+                const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
+                if (!ok) return;
+                deleteServer(server.id);
+                mcpConnectionManager.reset(server.id);
+                onClose();
+              }}
+              className="mt-3 w-full py-2 text-sm active:opacity-70"
+              style={{ color: "var(--destructive)" }}
             >
               <span className="text-sm" style={{ color: "var(--destructive)" }}>{t("common.delete")}</span>
             </button>
