@@ -97,7 +97,10 @@ export const ChatInput = memo(function ChatInput({
     onSend(trimmed, mentionedIds, hasImages ? attachedImages : undefined);
     setText("");
     setAttachedImages([]);
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.focus();
+    }
   }, [text, attachedImages, isGenerating, onSend, isGroup, modelNames]);
 
   const handleKeyDown = useCallback(
