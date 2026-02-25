@@ -201,6 +201,8 @@
     "type": "类型",
     "enabled": "启用",
     "customHeaders": "自定义请求头",
+    "customHeaderName": "请求头",
+    "customHeaderValue": "值",
     "searchModels": "搜索模型...",
     "addModelPlaceholder": "输入模型 ID（如 gpt-4o）",
     "custom": "自定义",

@@ -1,0 +1,310 @@
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { IoChevronForward, IoChevronBack, IoAddCircleOutline, IoTrashOutline } from "react-icons/io5";
+import i18n from "../../i18n";
+import { useProviderStore } from "../../stores/provider-store";
+import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
+import { createBackup, downloadBackup, importBackup } from "../../services/backup";
+import { ProviderEditPage } from "./ProviderEditPage";
+import { SttSettingsPage } from "./SttSettingsPage";
+
+// ── Ionicons SVG helpers ──
+
+function IonIcon({ d, color, bg }: { d: string; color: string; bg: string }) {
+  return (
+    <div className="mr-3 h-8 w-8 flex items-center justify-center rounded-lg" style={{ backgroundColor: bg }}>
+      <svg width="16" height="16" viewBox="0 0 512 512" fill="none" stroke={color} strokeWidth="32" strokeLinecap="round" strokeLinejoin="round">
+        <path d={d} />
+      </svg>
+    </div>
+  );
+}
+
+// Internal sub-page stack
+interface SubPage { id: string; title: string; component: React.ReactNode; headerRight?: React.ReactNode; }
+
+// ── Settings Row (1:1 RN SettingsRow) ──
+
+function SettingsRow({
+  iconPath,
+  iconColor,
+  iconBg,
+  label,
+  detail,
+  onPress,
+  isLast = false,
+}: {
+  iconPath: string;
+  iconColor: string;
+  iconBg: string;
+  label: string;
+  detail?: string;
+  onPress: () => void;
+  isLast?: boolean;
+}) {
+  return (
+    <button
+      onClick={onPress}
+      className="w-full flex items-center justify-between px-5 py-3.5 active:bg-black/5 transition-colors"
+      style={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)" }}
+    >
+      <div className="flex items-center">
+        <IonIcon d={iconPath} color={iconColor} bg={iconBg} />
+        <span className="text-[15px] font-medium text-foreground">{label}</span>
+      </div>
+      <div className="flex items-center">
+        {detail && <span className="mr-2 text-sm text-muted-foreground">{detail}</span>}
+        <IoChevronForward size={16} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
+      </div>
+    </button>
+  );
+}
+
+// ── Main SettingsPage (1:1 RN original) ──
+
+export function SettingsPage() {
+  const { t } = useTranslation();
+  const providers = useProviderStore((s: ReturnType<typeof useProviderStore.getState>) => s.providers);
+  const settings = useSettingsStore((s: ReturnType<typeof useSettingsStore.getState>) => s.settings);
+  const updateSettings = useSettingsStore((s: ReturnType<typeof useSettingsStore.getState>) => s.updateSettings);
+  const [subPageStack, setSubPageStack] = useState<SubPage[]>([]);
+
+  const push = (page: SubPage) => setSubPageStack((s) => [...s, page]);
+  const pop = () => setSubPageStack((s) => s.slice(0, -1));
+
+  // Sub-page with back header
+  if (subPageStack.length > 0) {
+    const top = subPageStack[subPageStack.length - 1];
+    return (
+      <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
+        <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)" }}>
+          <button onClick={pop} className="w-12 flex items-center justify-center active:opacity-60">
+            <IoChevronBack size={24} color="var(--primary)" />
+          </button>
+          <span className="text-[17px] font-semibold text-foreground flex-1 text-center">{top.title}</span>
+          <div className="w-12 flex items-center justify-center">
+            {top.headerRight ?? null}
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 overflow-hidden">{top.component}</div>
+      </div>
+    );
+  }
+
+  const themeLabel = settings.theme === "dark" ? t("settings.themeDark") : settings.theme === "light" ? t("settings.themeLight") : t("settings.themeSystem");
+  const langLabel = settings.language === "zh" ? t("settings.langZh") : settings.language === "en" ? t("settings.langEn") : t("settings.langSystem");
+
+  return (
+    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+      {/* iOS Large Title */}
+      <div className="px-4 pt-2 pb-2">
+        <h1 className="text-[28px] font-bold text-foreground tracking-tight">{t("settings.title")}</h1>
+      </div>
+
+      <div>
+        <SettingsRow
+          iconPath="M336 96h-56V48a16 16 0 00-32 0v48h-56a72 72 0 00-72 72v8h288v-8a72 72 0 00-72-72zM120 400a72 72 0 0072 72h128a72 72 0 0072-72V192H120z"
+          iconColor="#3b82f6"
+          iconBg="rgba(59,130,246,0.1)"
+          label={t("settings.providers")}
+          detail={t("common.configured", { count: providers.length })}
+          onPress={() => push({ id: "providers-list", title: t("settings.providers"), component: <ProvidersListPage onPush={push} onPop={pop} /> })}
+        />
+        <SettingsRow
+          iconPath="M363 176L246 464h-62L300 176zM96 288l30-60 30 60-30 60zm290 0l30-60 30 60-30 60z"
+          iconColor="#6366f1"
+          iconBg="rgba(99,102,241,0.1)"
+          label={t("settings.language")}
+          detail={langLabel}
+          onPress={() => {
+            const order: AppSettings["language"][] = ["system", "en", "zh"];
+            const idx = order.indexOf(settings.language);
+            const next = order[(idx + 1) % order.length];
+            updateSettings({ language: next });
+            const lng = next === "system" ? (navigator.language?.split("-")[0] ?? "en") : next;
+            i18n.changeLanguage(["en", "zh"].includes(lng) ? lng : "en");
+          }}
+        />
+        <SettingsRow
+          iconPath="M160 136c0-30.62 4.51-61.61 16-88C99.57 81.27 48 159.32 48 248c0 119.29 96.71 216 216 216 88.68 0 166.73-51.57 200-128-26.39 11.49-57.38 16-88 16-119.29 0-216-96.71-216-216z"
+          iconColor="#64748b"
+          iconBg="rgba(100,116,139,0.1)"
+          label={t("settings.theme")}
+          detail={themeLabel}
+          onPress={() => {
+            const order: AppSettings["theme"][] = ["system", "light", "dark"];
+            const idx = order.indexOf(settings.theme);
+            updateSettings({ theme: order[(idx + 1) % order.length] });
+          }}
+        />
+        <SettingsRow
+          iconPath="M192 448h128V240a64 64 0 00-128 0zM384 240v-16a128 128 0 00-256 0v16M256 96V56M403.08 108.92l-28.28 28.28M108.92 108.92l28.28 28.28M48 240h32M432 240h32"
+          iconColor="#f97316"
+          iconBg="rgba(249,115,22,0.1)"
+          label={t("settings.sttProvider")}
+          detail={settings.sttApiKey ? settings.sttModel : t("settings.sttNotConfigured")}
+          onPress={() => push({ id: "stt-settings", title: t("settings.sttProvider"), component: <SttSettingsPage /> })}
+        />
+        <SettingsRow
+          iconPath="M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40M256 48v288M160 192l96 96 96-96"
+          iconColor="#14b8a6"
+          iconBg="rgba(20,184,166,0.1)"
+          label={t("settings.exportBackup")}
+          onPress={() => { const data = createBackup(); downloadBackup(data); }}
+        />
+        <SettingsRow
+          iconPath="M176 48v288M80 192l96-96 96 96M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40"
+          iconColor="#f59e0b"
+          iconBg="rgba(245,158,11,0.1)"
+          label={t("settings.importBackup")}
+          onPress={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".json";
+            input.onchange = async (e) => {
+              const file = (e.target as HTMLInputElement).files?.[0];
+              if (!file) return;
+              const result = await importBackup(file);
+              if (result.success) {
+                useProviderStore.getState().loadFromStorage();
+                useSettingsStore.getState().loadFromStorage();
+                alert(result.message);
+                window.location.reload();
+              } else {
+                alert(`Import failed: ${result.message}`);
+              }
+            };
+            input.click();
+          }}
+          isLast
+        />
+      </div>
+
+      {/* ── Privacy & Version (1:1 RN) ── */}
+      <div className="px-8 mt-4">
+        <div className="rounded-xl p-4 mb-6" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 5%, transparent)", border: "1px solid color-mix(in srgb, var(--primary) 10%, transparent)" }}>
+          <p className="text-center text-xs leading-relaxed text-muted-foreground">
+            🛡️ {t("settings.securityTip")}
+          </p>
+        </div>
+        <div className="text-center pb-6">
+          <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Talkio</p>
+          <p className="mt-1 text-xs text-muted-foreground">v2.0.0</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Providers List Sub-page (1:1 RN original) ──
+
+function ProvidersListPage({
+  onPush,
+  onPop,
+}: {
+  onPush: (page: SubPage) => void;
+  onPop: () => void;
+}) {
+  const { t } = useTranslation();
+  const providers = useProviderStore((s) => s.providers);
+  const models = useProviderStore((s) => s.models);
+  const deleteProvider = useProviderStore((s) => s.deleteProvider);
+
+  return (
+    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+      <div className="px-5 pt-4 pb-8">
+        {/* Add Provider */}
+        <button
+          onClick={() => onPush({ id: "provider-add", title: t("settings.addProvider"), component: <ProviderEditPage onClose={onPop} /> })}
+          className="w-full rounded-xl py-3 text-[15px] font-semibold text-white active:opacity-80 mb-4"
+          style={{ backgroundColor: "var(--primary)" }}
+        >
+          {t("settings.addProvider")}
+        </button>
+
+        {providers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center pt-16">
+            <IoAddCircleOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
+            <p className="mt-4 text-lg font-semibold text-foreground">{t("models.noModels")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("models.configureHint")}</p>
+          </div>
+        ) : (
+          <div>
+            {providers.map((provider: { id: string; name: string; status: string; baseUrl: string; type: string; enabled?: boolean }, idx: number) => {
+              const providerModels = models.filter((m: { providerId: string; enabled: boolean }) => m.providerId === provider.id);
+              const activeModels = providerModels.filter((m: { enabled: boolean }) => m.enabled);
+              const isConnected = provider.status === "active" || provider.status === "connected";
+              const isError = provider.status === "error";
+              const isDisabled = provider.enabled === false;
+              return (
+                <button
+                  key={provider.id}
+                  onClick={() =>
+                    onPush({
+                      id: `provider-edit-${provider.id}`,
+                      title: provider.name,
+                      headerRight: (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(t("providers.deleteConfirm", { name: provider.name }))) {
+                              deleteProvider(provider.id);
+                              onPop();
+                            }
+                          }}
+                          className="p-2 active:opacity-60"
+                          title={t("common.delete")}
+                        >
+                          <IoTrashOutline size={18} color="var(--destructive)" />
+                        </button>
+                      ),
+                      component: <ProviderEditPage editId={provider.id} onClose={onPop} />,
+                    })
+                  }
+                  className={`w-full flex items-center justify-between px-5 py-3.5 text-left active:bg-black/5 transition-colors ${isDisabled ? "opacity-50" : ""}`}
+                  style={{ borderBottom: idx < providers.length - 1 ? "0.5px solid var(--border)" : "none" }}
+                >
+                  <div className="flex items-center flex-1 min-w-0">
+                    <div
+                      className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: isDisabled ? "var(--muted)" : "color-mix(in srgb, var(--primary) 10%, transparent)" }}
+                    >
+                      <span className="text-sm font-bold" style={{ color: isDisabled ? "var(--muted-foreground)" : "var(--primary)" }}>
+                        {provider.name.slice(0, 2)}
+                      </span>
+                    </div>
+                    <div className="ml-3 flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[15px] font-medium text-foreground truncate">{provider.name}</span>
+                        {isDisabled && (
+                          <span
+                            className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                            style={{ backgroundColor: "var(--muted)" }}
+                          >
+                            {t("common.disabled")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[12px] text-muted-foreground truncate">{provider.baseUrl}</p>
+                      <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                        {t("providers.modelsCount", { total: providerModels.length, active: activeModels.length })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 ml-3 flex-shrink-0">
+                    <span className={`text-xs font-medium capitalize ${isConnected ? "text-green-500" : isError ? "text-red-500" : "text-muted-foreground"}`}>
+                      {isConnected ? t("providerEdit.connected") : provider.status}
+                    </span>
+                    <span className="rounded px-2 py-0.5 text-[11px] font-medium text-muted-foreground" style={{ backgroundColor: "var(--muted)" }}>
+                      {provider.type}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -201,6 +201,8 @@
     "type": "Type",
     "enabled": "Enabled",
     "customHeaders": "Custom Headers",
+    "customHeaderName": "Header",
+    "customHeaderValue": "Value",
     "searchModels": "Search models...",
     "addModelPlaceholder": "Enter model ID (e.g. gpt-4o)",
     "custom": "Custom",
