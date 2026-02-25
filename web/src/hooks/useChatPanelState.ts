@@ -3,7 +3,7 @@ import { useConversations, useMessages } from "./useDatabase";
 import { useProviderStore } from "../stores/provider-store";
 import { useIdentityStore } from "../stores/identity-store";
 import { useChatStore, type ChatState } from "../stores/chat-store";
-import type { Conversation, ConversationParticipant, Identity, Message, Model } from "../../../src/types";
+import type { Conversation, ConversationParticipant, Identity, Message, Model } from "../types";
 type ChatStoreState = ReturnType<typeof useChatStore.getState>;
 
 export type ModelPickerMode = "add" | "switch";

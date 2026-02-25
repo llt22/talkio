@@ -8,7 +8,7 @@ import {
   getRecentMessages,
   getBlocksByMessageId,
 } from "../storage/database";
-import type { Conversation, Message, MessageBlock } from "../../../src/types";
+import type { Conversation, Message, MessageBlock } from "../types";
 
 const DEFAULT_MESSAGE_LIMIT = 200;
 

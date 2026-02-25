@@ -3,7 +3,7 @@
  * Uses localStorage for persistence (replaces react-native-mmkv).
  */
 import { create } from "zustand";
-import type { Provider, Model, ModelCapabilities } from "../../../src/types";
+import type { Provider, Model, ModelCapabilities } from "../types";
 import { kvStore } from "../storage/kv-store";
 import { generateId } from "../lib/id";
 import { buildProviderHeaders } from "../services/provider-headers";

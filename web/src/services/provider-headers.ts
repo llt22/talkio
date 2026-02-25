@@ -1,4 +1,4 @@
-import type { CustomHeader, Provider } from "../../../src/types";
+import type { CustomHeader, Provider } from "../types";
 
 export function buildProviderHeaders(
   provider: Provider,

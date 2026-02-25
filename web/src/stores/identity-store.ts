@@ -3,7 +3,7 @@
  * Uses localStorage for persistence.
  */
 import { create } from "zustand";
-import type { Identity } from "../../../src/types";
+import type { Identity } from "../types";
 import { kvStore } from "../storage/kv-store";
 import i18n from "../i18n";
 import { generateId } from "../lib/id";

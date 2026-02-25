@@ -5,7 +5,7 @@
 import { create } from "zustand";
 import { kvStore } from "../storage/kv-store";
 import { generateId } from "../lib/id";
-import type { CustomHeader } from "../../../src/types";
+import type { CustomHeader } from "../types";
 
 const MCP_SERVERS_KEY = "mcp_servers";
 

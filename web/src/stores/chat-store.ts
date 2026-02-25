@@ -4,8 +4,8 @@
  * rAF-throttled UI updates for smooth streaming.
  */
 import { create } from "zustand";
-import type { Message, Conversation, ConversationParticipant, Provider } from "../../../src/types";
-import { MessageStatus } from "../../../src/types";
+import type { Message, Conversation, ConversationParticipant, Provider } from "../types";
+import { MessageStatus } from "../types";
 import { useIdentityStore } from "./identity-store";
 import {
   insertConversation,

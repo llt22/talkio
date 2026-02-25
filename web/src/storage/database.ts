@@ -3,8 +3,8 @@
  * Uses @tauri-apps/plugin-sql for SQLite access.
  * API matches the RN version's database.ts exports.
  */
-import type { Message, Conversation, MessageBlock } from "../../../src/types";
-import { MessageStatus, MessageBlockType, MessageBlockStatus } from "../../../src/types";
+import type { Message, Conversation, MessageBlock } from "../types";
+import { MessageStatus, MessageBlockType, MessageBlockStatus } from "../types";
 
 // Dynamic import to avoid SSR issues and allow fallback
 let _db: any = null;

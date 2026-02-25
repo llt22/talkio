@@ -1,4 +1,4 @@
-import type { Conversation, Message } from "../../../src/types";
+import type { Conversation, Message } from "../types";
 
 export function buildConversationMarkdown(args: {
   title: string;
