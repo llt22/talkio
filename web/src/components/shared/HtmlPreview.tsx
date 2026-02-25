@@ -24,9 +24,9 @@ export const HtmlPreview = memo(function HtmlPreview({ code, language = "html" }
 
   return (
     <>
-      <div className="mt-1 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+      <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
         {/* Tab bar — 1:1 RN */}
-        <div className="flex" style={{ borderBottom: "0.5px solid var(--border)" }}>
+        <div className="flex w-full max-w-full min-w-0" style={{ borderBottom: "0.5px solid var(--border)" }}>
           <button
             onClick={() => handleTabSwitch("preview")}
             className="flex flex-1 items-center justify-center gap-1.5 py-2.5 active:opacity-70"
@@ -79,7 +79,7 @@ export const HtmlPreview = memo(function HtmlPreview({ code, language = "html" }
 
         {/* Code pane */}
         {activeTab === "code" && (
-          <div className="overflow-x-auto max-h-60" style={{ scrollbarWidth: "thin" }}>
+          <div className="w-full max-w-full min-w-0 overflow-x-auto max-h-60" style={{ scrollbarWidth: "thin" }}>
             <pre className="px-3 py-2 text-[13px] font-mono leading-relaxed m-0" style={{ color: "var(--foreground)" }}>
               <code>{code}</code>
             </pre>

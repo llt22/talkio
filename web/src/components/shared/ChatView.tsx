@@ -252,14 +252,14 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onD
 
         {/* Main bubble */}
         <div
-          className="max-w-[90%] min-w-0 overflow-hidden rounded-2xl py-3"
+          className="max-w-[90%] min-w-0 overflow-hidden rounded-2xl px-4 py-3"
           style={{
             backgroundColor: "var(--muted)",
             borderTopLeftRadius: 0,
           }}
         >
           {isStreaming && !content ? (
-            <div className="flex items-center gap-1.5 py-1 px-4">
+            <div className="flex items-center gap-1.5 py-1">
               <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" />
               <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.15s" }} />
               <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.3s" }} />
