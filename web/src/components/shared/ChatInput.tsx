@@ -49,6 +49,7 @@ export const ChatInput = memo(function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const [showRoundPicker, setShowRoundPicker] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -102,9 +103,31 @@ export const ChatInput = memo(function ChatInput({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (isMobile) return;
+      if (showMentionPicker && isGroup && participantModels.length > 0) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setMentionIndex((i) => (i + 1) % participantModels.length);
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setMentionIndex((i) => (i - 1 + participantModels.length) % participantModels.length);
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          insertMention(participantModels[mentionIndex].id);
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setShowMentionPicker(false);
+          return;
+        }
+      }
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
     },
-    [isMobile, handleSend],
+    [isMobile, handleSend, showMentionPicker, isGroup, participantModels, mentionIndex, insertMention],
   );
 
   const handleInput = useCallback(() => {
@@ -280,13 +303,13 @@ export const ChatInput = memo(function ChatInput({
           <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
             {t("chat.selectModel")}
           </p>
-          {participantModels.map((model) => {
+          {participantModels.map((model, idx) => {
             const { color: avatarColor, initials } = getAvatarProps(model.displayName);
             return (
               <button
                 key={model.id}
                 onClick={() => insertMention(model.id)}
-                className="flex items-center gap-3 py-2.5 w-full text-left active:opacity-60"
+                className={`flex items-center gap-3 py-2.5 w-full text-left active:opacity-60 rounded-lg px-2 -mx-2 ${idx === mentionIndex ? "bg-primary/10" : ""}`}
               >
                 <div
                   className="h-8 w-8 rounded-lg flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
@@ -379,6 +402,7 @@ export const ChatInput = memo(function ChatInput({
                     handleInput();
                     if (isGroup && val.endsWith("@") && !showMentionPicker) {
                       setShowMentionPicker(true);
+                      setMentionIndex(0);
                       setShowRoundPicker(false);
                     }
                   }}
