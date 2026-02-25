@@ -201,26 +201,26 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onD
             <span className="text-[10px] text-muted-foreground/60">{formatTime(message.createdAt)}</span>
           </div>
 
-          {/* User images (1:1 RN) */}
+          {/* User images */}
           {message.images && message.images.length > 0 && (
             <div className="flex flex-wrap gap-1.5 max-w-[80%]">
               {message.images.map((uri: string, idx: number) => (
-                <img key={idx} src={uri} className="h-32 w-32 rounded-xl object-cover" />
+                <img key={idx} src={uri} className="h-32 w-32 rounded-lg object-cover" />
               ))}
             </div>
           )}
 
           {/* Bubble */}
           <div
-            className="max-w-[80%] rounded-2xl px-4 py-3"
-            style={{ backgroundColor: "var(--primary)", borderTopRightRadius: 0 }}
+            className="max-w-[80%] rounded-2xl px-4 py-3 border border-solid border-muted-foreground/20"
+            style={{ backgroundColor: "var(--primary)" }}
           >
             <p className="text-[15px] leading-relaxed text-white whitespace-pre-wrap">
               {content || (message.images?.length ? "📷" : "")}
             </p>
           </div>
 
-          {/* User action bar (1:1 RN) */}
+          {/* User action bar */}
           <div className="mr-1 flex items-center gap-0.5">
             {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
             {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
@@ -236,7 +236,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onD
 
   return (
     <div className="mb-6 flex items-start gap-3 px-4">
-      {/* AI Avatar — RN: ModelAvatar name={message.senderName} size="sm" */}
+      {/* AI Avatar — RN: ModelAvatar name={message.senderName} */}
       <div
         className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
         style={{ backgroundColor: avatarColor }}
