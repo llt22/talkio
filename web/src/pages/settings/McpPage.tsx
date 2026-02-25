@@ -164,23 +164,23 @@ function McpServerForm({ onClose }: { onClose: () => void }) {
       {/* Form */}
       <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8">
         <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
-          <div className="flex items-center px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
-            <span className="text-[15px] font-medium text-muted-foreground w-20 flex-shrink-0">{t("toolEdit.name")}</span>
+          <div className="flex items-center px-4 py-3.5" style={{ borderBottom: "0.5px solid var(--border)" }}>
+            <span className="w-24 text-[15px] text-foreground flex-shrink-0">{t("toolEdit.name")}</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("toolEdit.namePlaceholder")}
-              className="flex-1 text-[16px] text-foreground bg-transparent outline-none"
+              className="flex-1 bg-transparent text-[16px] text-foreground outline-none"
               autoFocus
             />
           </div>
-          <div className="flex items-center px-4 py-3">
-            <span className="text-[15px] font-medium text-muted-foreground w-20 flex-shrink-0">{t("toolEdit.endpointUrl")}</span>
+          <div className="flex items-center px-4 py-3.5">
+            <span className="w-24 text-[15px] text-foreground flex-shrink-0">URL</span>
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="http://localhost:3000/mcp"
-              className="flex-1 text-[16px] text-foreground bg-transparent outline-none"
+              className="flex-1 bg-transparent text-[16px] text-foreground outline-none"
             />
           </div>
         </div>
