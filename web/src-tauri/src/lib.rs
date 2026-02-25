@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use tauri::Manager;
 
 #[tauri::command]
 fn check_pending_import(app: tauri::AppHandle) -> Option<String> {
@@ -11,7 +12,7 @@ fn check_pending_import(app: tauri::AppHandle) -> Option<String> {
     data_dir.join("pending_import.json"),
     PathBuf::from("/data/data/com.lilongtao.talkio/files/pending_import.json"),
   ];
-  for path in candidates {
+  for path in candidates.iter() {
     if path.exists() {
       if let Ok(content) = fs::read_to_string(&path) {
         let _ = fs::remove_file(&path);
