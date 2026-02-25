@@ -147,49 +147,43 @@ function McpServerForm({ onClose }: { onClose: () => void }) {
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: "var(--secondary)" }}>
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center gap-1 px-1 py-2">
-        <button onClick={onClose} className="flex items-center gap-0.5 px-2 py-1 active:opacity-60">
-          <IoChevronBack size={20} color="var(--primary)" />
-          <span className="text-[17px] text-primary">{t("layout.backChats")}</span>
+      <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)" }}>
+        <button onClick={onClose} className="w-12 flex items-center justify-center active:opacity-60">
+          <IoChevronBack size={24} color="var(--primary)" />
         </button>
-        <span className="text-[17px] font-semibold text-foreground flex-1 text-center pr-12">{t("personas.addTool")}</span>
+        <span className="text-[17px] font-semibold text-foreground flex-1 text-center">{t("personas.addTool")}</span>
+        <button
+          onClick={handleSave}
+          disabled={!name.trim() || !url.trim()}
+          className="px-3 py-1 active:opacity-60 disabled:opacity-30"
+        >
+          <span className="text-[17px] font-medium" style={{ color: "var(--primary)" }}>{t("common.save")}</span>
+        </button>
       </div>
 
       {/* Form */}
-      <div className="flex-1 overflow-y-auto px-5 py-4">
-        <div className="space-y-5">
-          <div className="rounded-xl p-4" style={{ backgroundColor: "var(--card)" }}>
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("toolEdit.name")}</label>
+      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8">
+        <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
+          <div className="flex items-center px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+            <span className="text-[15px] font-medium text-muted-foreground w-20 flex-shrink-0">{t("toolEdit.name")}</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("toolEdit.namePlaceholder")}
-              className="w-full text-[16px] text-foreground bg-transparent outline-none py-1"
+              className="flex-1 text-[16px] text-foreground bg-transparent outline-none"
               autoFocus
             />
           </div>
-          <div className="rounded-xl p-4" style={{ backgroundColor: "var(--card)" }}>
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("toolEdit.endpointUrl")}</label>
+          <div className="flex items-center px-4 py-3">
+            <span className="text-[15px] font-medium text-muted-foreground w-20 flex-shrink-0">{t("toolEdit.endpointUrl")}</span>
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="http://localhost:3000/mcp"
-              className="w-full text-[16px] text-foreground bg-transparent outline-none py-1"
+              className="flex-1 text-[16px] text-foreground bg-transparent outline-none"
             />
           </div>
         </div>
-      </div>
-
-      {/* Save */}
-      <div className="flex-shrink-0 px-5 pb-6 pt-2">
-        <button
-          onClick={handleSave}
-          disabled={!name.trim() || !url.trim()}
-          className="w-full rounded-xl py-3.5 text-base font-semibold text-white active:opacity-80 disabled:opacity-40"
-          style={{ backgroundColor: "var(--primary)" }}
-        >
-          {t("common.save")}
-        </button>
       </div>
     </div>
   );

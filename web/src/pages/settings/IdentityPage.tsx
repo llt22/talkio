@@ -198,94 +198,90 @@ function IdentityForm({
   }, [name, systemPrompt, temperature, topP, identity, onSave]);
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--background)" }}>
-      {/* Header (replaces RN Stack navigator header) */}
+    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--secondary)" }}>
+      {/* Header */}
       <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)" }}>
-        <button onClick={onClose} className="flex items-center px-2 py-1 active:opacity-60">
+        <button onClick={onClose} className="w-12 flex items-center justify-center active:opacity-60">
           <IoChevronBack size={24} color="var(--primary)" />
         </button>
-        <span className="text-[17px] font-semibold text-foreground flex-1 text-center pr-12">
+        <span className="text-[17px] font-semibold text-foreground flex-1 text-center">
           {isNew ? t("personas.createIdentity") : t("personas.editIdentity")}
         </span>
+        <button
+          onClick={handleSave}
+          disabled={!name.trim() || !systemPrompt.trim()}
+          className="px-3 py-1 active:opacity-60 disabled:opacity-30"
+        >
+          <span className="text-[17px] font-medium" style={{ color: "var(--primary)" }}>{t("common.save")}</span>
+        </button>
       </div>
 
-      {/* ScrollView flex-1 bg-bg-light */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Name — px-4 pt-4 */}
-        <div className="px-4 pt-4">
-          <p className="mb-1 text-sm font-medium text-muted-foreground">{t("identityEdit.name")}</p>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("identityEdit.namePlaceholder")}
-            className="w-full rounded-xl px-4 py-3 text-base text-foreground outline-none"
-            style={{ backgroundColor: "var(--secondary)" }}
-          />
-        </div>
-
-        {/* System Prompt — px-4 pt-4 */}
-        <div className="px-4 pt-4">
-          <p className="mb-1 text-sm font-medium text-muted-foreground">{t("identityEdit.systemPrompt")}</p>
-          <textarea
-            value={systemPrompt}
-            onChange={(e) => setSystemPrompt(e.target.value)}
-            placeholder={t("identityEdit.systemPromptPlaceholder")}
-            className="w-full rounded-xl px-4 py-3 text-sm leading-5 text-foreground outline-none resize-none"
-            style={{ backgroundColor: "var(--secondary)", minHeight: 120 }}
-          />
-        </div>
-
-        {/* Parameters — px-4 pt-4 */}
-        <div className="px-4 pt-4">
-          <p className="mb-2 text-sm font-medium text-muted-foreground">{t("identityEdit.parameters")}</p>
-          {/* Temperature ParamSlider */}
-          <div className="mt-2">
-            <div className="flex justify-between">
-              <span className="text-xs text-muted-foreground">{t("identityEdit.temperature")}</span>
-              <span className="text-xs font-medium text-foreground">{temperature.toFixed(2)}</span>
-            </div>
-            <div className="h-10 flex items-center relative">
-              <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "var(--muted)" }}>
-                <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)", width: `${(temperature / 2) * 100}%` }} />
-              </div>
-              <input
-                type="range" min="0" max="2" step="0.1"
-                value={temperature}
-                onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                className="absolute inset-0 w-full opacity-0 cursor-pointer"
-              />
-            </div>
+      {/* Form */}
+      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8">
+        {/* Name + System Prompt card */}
+        <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
+          <div className="px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+            <p className="text-[13px] font-medium text-muted-foreground mb-1">{t("identityEdit.name")}</p>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t("identityEdit.namePlaceholder")}
+              className="w-full text-[16px] text-foreground bg-transparent outline-none"
+            />
           </div>
-          {/* TopP ParamSlider */}
-          <div className="mt-2">
-            <div className="flex justify-between">
-              <span className="text-xs text-muted-foreground">{t("identityEdit.topP")}</span>
-              <span className="text-xs font-medium text-foreground">{topP.toFixed(2)}</span>
-            </div>
-            <div className="h-10 flex items-center relative">
-              <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "var(--muted)" }}>
-                <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)", width: `${topP * 100}%` }} />
-              </div>
-              <input
-                type="range" min="0" max="1" step="0.05"
-                value={topP}
-                onChange={(e) => setTopP(parseFloat(e.target.value))}
-                className="absolute inset-0 w-full opacity-0 cursor-pointer"
-              />
-            </div>
+          <div className="px-4 py-3">
+            <p className="text-[13px] font-medium text-muted-foreground mb-1">{t("identityEdit.systemPrompt")}</p>
+            <textarea
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              placeholder={t("identityEdit.systemPromptPlaceholder")}
+              className="w-full text-[14px] leading-5 text-foreground bg-transparent outline-none resize-none"
+              style={{ minHeight: 120 }}
+            />
           </div>
         </div>
 
-        {/* Save button — px-4 pb-8 pt-6 */}
-        <div className="px-4 pb-8 pt-6">
-          <button
-            onClick={handleSave}
-            disabled={!name.trim() || !systemPrompt.trim()}
-            className="w-full rounded-2xl py-4 text-base font-semibold text-white active:opacity-80 disabled:opacity-40"
-            style={{ backgroundColor: "var(--primary)" }}
-          >
-            {isNew ? t("identityEdit.createIdentity") : t("identityEdit.saveChanges")}
-          </button>
+        {/* Parameters card */}
+        <div className="mt-4 overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
+          <div className="px-4 py-3">
+            <p className="text-[13px] font-medium text-muted-foreground mb-2">{t("identityEdit.parameters")}</p>
+            {/* Temperature */}
+            <div className="mt-1">
+              <div className="flex justify-between">
+                <span className="text-[13px] text-muted-foreground">{t("identityEdit.temperature")}</span>
+                <span className="text-[13px] font-medium text-foreground">{temperature.toFixed(2)}</span>
+              </div>
+              <div className="h-10 flex items-center relative">
+                <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "var(--muted)" }}>
+                  <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)", width: `${(temperature / 2) * 100}%` }} />
+                </div>
+                <input
+                  type="range" min="0" max="2" step="0.1"
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                  className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                />
+              </div>
+            </div>
+            {/* TopP */}
+            <div className="mt-1">
+              <div className="flex justify-between">
+                <span className="text-[13px] text-muted-foreground">{t("identityEdit.topP")}</span>
+                <span className="text-[13px] font-medium text-foreground">{topP.toFixed(2)}</span>
+              </div>
+              <div className="h-10 flex items-center relative">
+                <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "var(--muted)" }}>
+                  <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)", width: `${topP * 100}%` }} />
+                </div>
+                <input
+                  type="range" min="0" max="1" step="0.05"
+                  value={topP}
+                  onChange={(e) => setTopP(parseFloat(e.target.value))}
+                  className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
