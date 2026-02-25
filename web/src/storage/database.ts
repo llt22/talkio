@@ -88,16 +88,14 @@ function createInMemoryDb() {
         const tbl = tblMatch?.[1];
         if (!tbl || !tables[tbl]) return { rowsAffected: 0 };
         const setMatch = sql.match(/SET\s+(.+?)\s+WHERE/is);
-        const setClauses = setMatch?.[1].split(",") ?? [];
+        const setStr = setMatch?.[1] ?? "";
         const { conditions } = parseWhere(sql, params);
-        let paramIdx = setClauses.length;
-        // map set clauses to param indices
+        // Parse each "col = $N" directly using regex to avoid comma-in-JSON bugs
         const setOps: [string, number][] = [];
-        let pi = 0;
-        for (const clause of setClauses) {
-          const m = clause.match(/(\w+)\s*=\s*\$\d+/i);
-          if (m) setOps.push([m[1], pi]);
-          pi++;
+        const setRe = /(\w+)\s*=\s*\$(\d+)/gi;
+        let sm: RegExpExecArray | null;
+        while ((sm = setRe.exec(setStr)) !== null) {
+          setOps.push([sm[1], Number(sm[2]) - 1]); // $N is 1-indexed
         }
         let count = 0;
         tables[tbl].forEach((row, key) => {
@@ -161,7 +159,9 @@ function createInMemoryDb() {
 
 // ─── JSON Helpers ───
 function safeJsonParse<T>(value: unknown, fallback: T): T {
-  if (typeof value !== "string" || !value) return fallback;
+  if (value === null || value === undefined) return fallback;
+  if (typeof value !== "string") return value as T; // already parsed object
+  if (!value) return fallback;
   if (value === "[]") return [] as unknown as T;
   try { return JSON.parse(value) as T; } catch { return fallback; }
 }
@@ -319,13 +319,13 @@ export async function deleteConversation(id: string): Promise<void> {
 
 export async function getAllConversations(): Promise<Conversation[]> {
   const db = await getDb();
-  const rows = await db.select<any[]>(`SELECT * FROM conversations ORDER BY pinned DESC, updatedAt DESC`);
+  const rows = await db.select(`SELECT * FROM conversations ORDER BY pinned DESC, updatedAt DESC`);
   return rows.map(rowToConversation);
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {
   const db = await getDb();
-  const rows = await db.select<any[]>(`SELECT * FROM conversations WHERE id = $1 LIMIT 1`, [id]);
+  const rows = await db.select(`SELECT * FROM conversations WHERE id = $1 LIMIT 1`, [id]);
   return rows.length > 0 ? rowToConversation(rows[0]) : null;
 }
 
@@ -376,12 +376,12 @@ export async function getMessages(conversationId: string, branchId?: string | nu
   const db = await getDb();
   let rows: any[];
   if (branchId) {
-    rows = await db.select<any[]>(
+    rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId = $2 ORDER BY createdAt ASC LIMIT $3 OFFSET $4`,
       [conversationId, branchId, limit, offset]
     );
   } else {
-    rows = await db.select<any[]>(
+    rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId IS NULL ORDER BY createdAt ASC LIMIT $2 OFFSET $3`,
       [conversationId, limit, offset]
     );
@@ -393,12 +393,12 @@ export async function getRecentMessages(conversationId: string, branchId?: strin
   const db = await getDb();
   let rows: any[];
   if (branchId) {
-    rows = await db.select<any[]>(
+    rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId = $2 ORDER BY createdAt DESC LIMIT $3`,
       [conversationId, branchId, limit]
     );
   } else {
-    rows = await db.select<any[]>(
+    rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId IS NULL ORDER BY createdAt DESC LIMIT $2`,
       [conversationId, limit]
     );
@@ -410,12 +410,12 @@ export async function getMessagesBefore(conversationId: string, branchId: string
   const db = await getDb();
   let rows: any[];
   if (branchId) {
-    rows = await db.select<any[]>(
+    rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId = $2 AND createdAt < $3 ORDER BY createdAt DESC LIMIT $4`,
       [conversationId, branchId, before, limit]
     );
   } else {
-    rows = await db.select<any[]>(
+    rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId IS NULL AND createdAt < $2 ORDER BY createdAt DESC LIMIT $3`,
       [conversationId, before, limit]
     );
@@ -425,7 +425,7 @@ export async function getMessagesBefore(conversationId: string, branchId: string
 
 export async function searchMessages(query: string): Promise<Message[]> {
   const db = await getDb();
-  const rows = await db.select<any[]>(
+  const rows = await db.select(
     `SELECT * FROM messages WHERE content LIKE $1 ORDER BY createdAt DESC LIMIT 50`,
     [`%${query}%`]
   );
@@ -481,7 +481,7 @@ export async function updateBlock(id: string, updates: Partial<MessageBlock>): P
 
 export async function getBlocksByMessageId(messageId: string): Promise<MessageBlock[]> {
   const db = await getDb();
-  const rows = await db.select<any[]>(
+  const rows = await db.select(
     `SELECT * FROM message_blocks WHERE messageId = $1 ORDER BY sortOrder ASC`, [messageId]
   );
   return rows.map(rowToBlock);

@@ -1,9 +1,9 @@
 /**
  * ChatView — shared chat message list + input (1:1 RN original).
  */
-import { useRef, useEffect, useCallback, useMemo, useState } from "react";
+import { useRef, useEffect, useCallback, useMemo, useState, memo } from "react"; // useState used by MessageRow
 import { useTranslation } from "react-i18next";
-import { IoCopyOutline, IoRefreshOutline, IoVolumeMediumOutline, IoShareOutline, IoTrashOutline, IoPerson, IoBulbOutline, IoCaretDown, IoCaretUp, IoAnalyticsOutline, IoChatbubbleOutline } from "react-icons/io5";
+import { IoCopyOutline, IoRefreshOutline, IoVolumeMediumOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "react-icons/io5";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
@@ -58,7 +58,8 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
     const el = scrollRef.current;
     if (!el) return;
     isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
-  }, []);
+    onScroll?.();
+  }, [onScroll]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -105,7 +106,7 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
       {/* Messages */}
       <div
         ref={scrollRef}
-        onScroll={() => { handleScroll(); onScroll?.(); }}
+        onScroll={handleScroll}
         className="flex-1 min-h-0 overflow-y-auto pt-3 pb-2"
       >
         {displayMessages.map((msg) => (
@@ -174,12 +175,10 @@ interface MessageRowProps {
   onDelete?: (messageId: string) => void;
 }
 
-function MessageRow({ message, onCopy, onRegenerate, onDelete }: MessageRowProps) {
+const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onDelete }: MessageRowProps) {
   const isUser = message.role === "user";
   const isStreaming = message.status === MessageStatus.STREAMING;
-  const [showReasoning, setShowReasoning] = useState(false);
   const content = (message.content || "").trimEnd();
-  const reasoning = message.reasoningContent;
 
   if (isUser) {
     return (
@@ -251,33 +250,6 @@ function MessageRow({ message, onCopy, onRegenerate, onDelete }: MessageRowProps
           <span className="text-[10px] text-muted-foreground/60">{formatTime(message.createdAt)}</span>
         </div>
 
-        {/* Reasoning toggle (1:1 RN) */}
-        {reasoning && (
-          <button
-            onClick={() => setShowReasoning(!showReasoning)}
-            className="max-w-[90%] flex items-center justify-between rounded-xl px-3 py-2.5 active:opacity-70"
-            style={{ backgroundColor: "color-mix(in srgb, var(--muted) 50%, transparent)" }}
-          >
-            <div className="flex items-center gap-2">
-              <IoBulbOutline size={16} color="var(--muted-foreground)" />
-              <span className="text-[13px] font-medium text-muted-foreground">Thought Process</span>
-              {message.reasoningDuration && (
-                <span className="rounded px-1.5 py-0.5 text-[11px] font-mono" style={{ backgroundColor: "color-mix(in srgb, var(--card) 80%, transparent)", color: "var(--primary)" }}>
-                  {message.reasoningDuration}s
-                </span>
-              )}
-            </div>
-            {showReasoning ? <IoCaretUp size={16} color="var(--muted-foreground)" style={{ opacity: 0.5 }} /> : <IoCaretDown size={16} color="var(--muted-foreground)" style={{ opacity: 0.5 }} />}
-          </button>
-        )}
-
-        {/* Reasoning content */}
-        {showReasoning && reasoning && (
-          <div className="max-w-[90%] rounded-xl p-3" style={{ backgroundColor: "var(--muted)" }}>
-            <p className="text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap">{reasoning}</p>
-          </div>
-        )}
-
         {/* Main bubble */}
         <div
           className="max-w-[90%] rounded-2xl px-4 py-3"
@@ -327,4 +299,4 @@ function MessageRow({ message, onCopy, onRegenerate, onDelete }: MessageRowProps
       </div>
     </div>
   );
-}
+});

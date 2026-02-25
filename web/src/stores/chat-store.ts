@@ -146,7 +146,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     updateConversation(convId, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(() => {});
     notifyDbChange();
 
-    // Create assistant placeholder
+    // Create assistant placeholder — timestamp strictly after user message
     const assistantMsgId = generateId();
     const assistantMsg: Message = {
       id: assistantMsgId,
@@ -169,7 +169,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       status: MessageStatus.STREAMING,
       errorMessage: null,
       tokenUsage: null,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(Date.parse(userMsg.createdAt) + 1).toISOString(),
     };
 
     await insertMessage(assistantMsg);

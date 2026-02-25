@@ -141,13 +141,19 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
   const [isExporting, setIsExporting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  // Optimistic identity id — updates immediately on selection, before DB roundtrip
+  const [optimisticIdentityId, setOptimisticIdentityId] = useState<string | null | undefined>(undefined);
 
   const isGroup = conv?.type === "group";
   const currentParticipant = conv?.participants[0];
   const model = currentParticipant ? getModelById(currentParticipant.modelId) : null;
-  const activeIdentity = currentParticipant?.identityId
-    ? getIdentityById(currentParticipant.identityId)
-    : null;
+  const resolvedIdentityId = optimisticIdentityId !== undefined ? optimisticIdentityId : currentParticipant?.identityId ?? null;
+  const activeIdentity = resolvedIdentityId ? getIdentityById(resolvedIdentityId) : null;
+
+  // Sync optimistic state when conv updates from DB
+  useEffect(() => {
+    setOptimisticIdentityId(undefined);
+  }, [currentParticipant?.identityId]);
 
   const title = isGroup
     ? conv?.title ?? t("chat.group")
@@ -175,7 +181,11 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
 
   const handleIdentitySelect = useCallback((identityId: string | null) => {
     const targetId = editingParticipantId ?? currentParticipant?.id;
-    if (targetId) updateParticipantIdentity(conversationId, targetId, identityId);
+    if (targetId) {
+      // Optimistic update for instant subtitle refresh
+      if (!editingParticipantId) setOptimisticIdentityId(identityId);
+      updateParticipantIdentity(conversationId, targetId, identityId);
+    }
     setShowIdentityPanel(false);
     setEditingParticipantId(null);
   }, [conversationId, editingParticipantId, currentParticipant, updateParticipantIdentity]);
@@ -322,7 +332,7 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
             <div className="flex-1 text-left">
               <p className="text-[14px] font-medium text-foreground">{t("chat.noIdentity")}</p>
             </div>
-            {!currentParticipant?.identityId && <span className="text-xs text-primary font-semibold">✓</span>}
+            {!resolvedIdentityId && <span className="text-xs text-primary font-semibold">✓</span>}
           </button>
           {identities.map((identity: Identity) => (
             <button
@@ -340,7 +350,7 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
                   <p className="text-[12px] text-muted-foreground truncate">{identity.systemPrompt.slice(0, 60)}</p>
                 )}
               </div>
-              {currentParticipant?.identityId === identity.id && <span className="text-xs text-primary font-semibold">✓</span>}
+              {resolvedIdentityId === identity.id && <span className="text-xs text-primary font-semibold">✓</span>}
             </button>
           ))}
         </div>
