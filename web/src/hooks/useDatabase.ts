@@ -10,6 +10,8 @@ import {
 } from "../storage/database";
 import type { Conversation, Message, MessageBlock } from "../../../src/types";
 
+const DEFAULT_MESSAGE_LIMIT = 200;
+
 // Global event emitter for DB changes
 export type DbChangeChannel = "all" | "conversations" | "messages" | "blocks";
 type DbChangeEvent = { channel: DbChangeChannel; id?: string };
@@ -50,7 +52,7 @@ export function useMessages(conversationId: string | null, branchId?: string | n
   const load = useCallback(async () => {
     if (!conversationId) { setMsgs([]); return; }
     try {
-      const data = await getRecentMessages(conversationId, branchId, 200);
+      const data = await getRecentMessages(conversationId, branchId, DEFAULT_MESSAGE_LIMIT);
       setMsgs(data);
     } catch {
       // DB not ready
