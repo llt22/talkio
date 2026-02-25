@@ -448,15 +448,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const duration = (Date.now() - startTime) / 1000;
 
         if (pendingToolCalls.length > 0) {
+          // Save toolCalls to the same assistant message (1:1 RN — single message holds everything)
           await updateMessage(assistantMsgId, {
             content: fullContent,
             reasoningContent: fullReasoning || null,
             reasoningDuration: fullReasoning ? duration : null,
-            isStreaming: false,
-            status: MessageStatus.SUCCESS,
             toolCalls: pendingToolCalls,
           });
+          notifyDbChange("messages", convId);
 
+          // Execute tools
           const toolResults: { toolCallId: string; content: string }[] = [];
           for (const tc of pendingToolCalls) {
             let args: Record<string, unknown> = {};
@@ -478,40 +479,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
             toolResults.push({ toolCallId: tc.id, content: `Tool not found: ${tc.name}` });
           }
 
+          // Save toolResults to the same message
+          await updateMessage(assistantMsgId, { toolResults });
+          notifyDbChange("messages", convId);
+
+          // Build follow-up request with tool results
           const toolMessages = [
             ...apiMessages,
             { role: "assistant" as const, content: fullContent || null, tool_calls: pendingToolCalls.map((tc) => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: tc.arguments } })) },
             ...toolResults.map((tr) => ({ role: "tool" as const, tool_call_id: tr.toolCallId, content: tr.content })),
           ];
 
-          const toolResponseMsgId = generateId();
-          const toolResponseMsg: Message = {
-            id: toolResponseMsgId,
-            conversationId: convId,
-            role: "assistant",
-            senderModelId: model.id,
-            senderName,
-            identityId: participant.identityId,
-            participantId: participant.id,
-            content: "",
-            images: [],
-            generatedImages: [],
-            reasoningContent: null,
-            reasoningDuration: null,
-            toolCalls: [],
-            toolResults,
-            branchId: null,
-            parentMessageId: null,
-            isStreaming: true,
-            status: MessageStatus.STREAMING,
-            errorMessage: null,
-            tokenUsage: null,
-            createdAt: new Date().toISOString(),
-          };
-          await insertMessage(toolResponseMsg);
-          notifyDbChange("messages", convId);
-
-          set({ streamingMessage: { messageId: toolResponseMsgId, content: "", reasoning: "" } });
+          // Stream the follow-up response into the SAME message (1:1 RN pattern)
+          set({ streamingMessage: { messageId: assistantMsgId, content: fullContent, reasoning: fullReasoning } });
 
           const toolResponse = await fetch(`${baseUrl}/chat/completions`, {
             method: "POST",
@@ -531,7 +511,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const toolReader = toolResponse.body?.getReader();
           if (!toolReader) throw new Error("No response body");
 
-          let toolContent = "";
+          let toolContent = fullContent;
           let toolRafPending = false;
           let toolDirty = false;
 
@@ -539,7 +519,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             toolRafPending = false;
             if (!toolDirty) return;
             toolDirty = false;
-            set({ streamingMessage: { messageId: toolResponseMsgId, content: toolContent, reasoning: "" } });
+            set({ streamingMessage: { messageId: assistantMsgId, content: toolContent, reasoning: fullReasoning } });
           }
           function toolSchedule() {
             toolDirty = true;
@@ -554,7 +534,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           });
           toolFlush();
 
-          await updateMessage(toolResponseMsgId, {
+          await updateMessage(assistantMsgId, {
             content: toolContent,
             isStreaming: false,
             status: MessageStatus.SUCCESS,

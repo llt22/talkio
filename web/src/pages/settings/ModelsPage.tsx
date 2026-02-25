@@ -127,7 +127,7 @@ export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPagePro
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: groupMode ? 80 : 24 }}>
+      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: groupMode && selectedForGroup.length >= 2 ? 80 : 24 }}>
         {sections.length === 0 ? (
           <EmptyState
             icon={<IoPeopleOutline size={28} color="var(--muted-foreground)" />}
@@ -182,25 +182,15 @@ export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPagePro
       </div>
 
       {/* Group Mode Bottom Bar */}
-      {groupMode && (
+      {groupMode && selectedForGroup.length >= 2 && (
         <div className="absolute left-5 right-5" style={{ bottom: isMobile ? "4rem" : "1rem" }}>
-          {selectedForGroup.length >= 2 ? (
-            <button
-              onClick={handleCreateGroup}
-              className="w-full rounded-xl py-3.5 text-base font-semibold text-white active:opacity-70"
-              style={{ backgroundColor: "var(--primary)" }}
-            >
-              {t("models.createGroup", { count: selectedForGroup.length })}
-            </button>
-          ) : (
-            <button
-              onClick={() => { setGroupMode(false); setSelectedForGroup([]); }}
-              className="w-full rounded-xl py-3.5 text-base font-medium text-muted-foreground active:opacity-70"
-              style={{ backgroundColor: "var(--secondary)" }}
-            >
-              {t("common.cancel")}
-            </button>
-          )}
+          <button
+            onClick={handleCreateGroup}
+            className="w-full rounded-xl py-3.5 text-base font-semibold text-white active:opacity-70"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+            {t("models.createGroup", { count: selectedForGroup.length })}
+          </button>
         </div>
       )}
     </div>

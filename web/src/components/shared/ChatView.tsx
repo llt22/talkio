@@ -4,7 +4,7 @@
 import { useRef, useEffect, useCallback, useMemo, useState, memo } from "react"; // useState used by MessageRow
 import { useTranslation } from "react-i18next";
 import { IoCopyOutline, IoRefreshOutline, IoVolumeMediumOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
-import { GitBranch } from "lucide-react";
+import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown } from "lucide-react";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
@@ -208,6 +208,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
   const isUser = message.role === "user";
   const isStreaming = message.status === MessageStatus.STREAMING;
   const content = (message.content || "").trimEnd();
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
 
   if (isUser) {
     return (
@@ -274,24 +275,72 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
           <span className="text-[10px] text-muted-foreground/60">{formatTime(message.createdAt)}</span>
         </div>
 
-        {/* Main bubble */}
-        <div
-          className="max-w-[90%] min-w-0 overflow-hidden rounded-2xl px-4 py-3"
-          style={{
-            backgroundColor: "var(--muted)",
-            borderTopLeftRadius: 0,
-          }}
-        >
-          {isStreaming && !content ? (
-            <div className="flex items-center gap-1.5 py-1">
-              <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" />
-              <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.15s" }} />
-              <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.3s" }} />
-            </div>
-          ) : (
-            <MessageContent message={message} isStreaming={isStreaming} />
-          )}
-        </div>
+        {/* Main bubble — hide when only toolCalls with no content */}
+        {(content || isStreaming || !(message.toolCalls && message.toolCalls.length > 0)) && (
+          <div
+            className="max-w-[90%] min-w-0 overflow-hidden rounded-2xl px-4 py-3"
+            style={{
+              backgroundColor: "var(--muted)",
+              borderTopLeftRadius: 0,
+            }}
+          >
+            {isStreaming && !content ? (
+              <div className="flex items-center gap-1.5 py-1">
+                <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" />
+                <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.15s" }} />
+                <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.3s" }} />
+              </div>
+            ) : (
+              <MessageContent message={message} isStreaming={isStreaming} />
+            )}
+          </div>
+        )}
+
+        {/* Tool Calls (1:1 RN — below bubble) */}
+        {message.toolCalls && message.toolCalls.length > 0 && (
+          <div className="max-w-[90%] flex flex-col gap-1.5">
+            {message.toolCalls.map((tc) => {
+              const result = message.toolResults?.find((r) => r.toolCallId === tc.id);
+              const isExpanded = expandedTools.has(tc.id);
+              return (
+                <div key={tc.id} className="overflow-hidden rounded-xl">
+                  <button
+                    onClick={() => {
+                      if (!result) return;
+                      setExpandedTools((prev) => {
+                        const next = new Set(prev);
+                        next.has(tc.id) ? next.delete(tc.id) : next.add(tc.id);
+                        return next;
+                      });
+                    }}
+                    className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 active:opacity-70"
+                    style={{ backgroundColor: "color-mix(in srgb, var(--muted) 80%, transparent)" }}
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {result
+                        ? <Wrench size={16} color="var(--muted-foreground)" />
+                        : <Hourglass size={16} color="#d97706" />
+                      }
+                      <span className="text-[13px] font-medium text-muted-foreground truncate">{tc.name}</span>
+                    </div>
+                    {result && (
+                      isExpanded
+                        ? <ChevronUp size={16} color="var(--muted-foreground)" />
+                        : <ChevronDown size={16} color="var(--muted-foreground)" />
+                    )}
+                  </button>
+                  {isExpanded && result && (
+                    <div className="rounded-xl p-3 mt-1" style={{ backgroundColor: "var(--muted)" }}>
+                      <p className="text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap break-all">
+                        {result.content.slice(0, 1000)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Assistant action bar (1:1 RN — hidden during streaming) */}
         {!isStreaming && content && (
