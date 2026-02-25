@@ -1,9 +1,10 @@
-import { memo, useState, useRef, useCallback, useMemo } from "react";
+import { memo, useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { X, ArrowUp, Image, ArrowLeftRight, Square, Mic, MessagesSquare, AtSign } from "lucide-react";
+import { X, ArrowUp, Image, ArrowLeftRight, Square, Mic, MessagesSquare, AtSign, Loader2 } from "lucide-react";
 import type { ConversationParticipant, Model } from "../../../../src/types";
 import { extractMentionedModelIds } from "../../lib/mention-parser";
 import { useProviderStore } from "../../stores/provider-store";
+import { useSettingsStore } from "../../stores/settings-store";
 import { getAvatarProps } from "../../lib/avatar-utils";
 
 // ── ChatInput — 1:1 port of RN src/components/chat/ChatInput.tsx ──
@@ -49,6 +50,12 @@ export const ChatInput = memo(function ChatInput({
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [showRoundPicker, setShowRoundPicker] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const handleMicPressRef = useRef<(() => void) | null>(null);
   const isAutoDiscussing = autoDiscussRemaining > 0;
 
   const modelNames = useMemo(() => {
@@ -102,6 +109,111 @@ export const ChatInput = memo(function ChatInput({
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 96) + "px";
   }, []);
+
+  // Recording timer + 60s auto-stop
+  useEffect(() => {
+    if (!isRecording) {
+      setRecordingDuration(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setRecordingDuration((d) => {
+        if (d >= 59) {
+          handleMicPressRef.current?.();
+          return 0;
+        }
+        return d + 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  const handleMicPress = useCallback(async () => {
+    if (isTranscribing) return;
+
+    if (isRecording) {
+      // Stop recording
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== "inactive") {
+        recorder.stop();
+      }
+      setIsRecording(false);
+    } else {
+      // Start recording
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : MediaRecorder.isTypeSupported("audio/webm")
+            ? "audio/webm"
+            : "audio/mp4";
+        const recorder = new MediaRecorder(stream, { mimeType });
+        audioChunksRef.current = [];
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+
+        recorder.onstop = async () => {
+          // Stop all tracks to release mic
+          stream.getTracks().forEach((t) => t.stop());
+
+          const chunks = audioChunksRef.current;
+          if (chunks.length === 0) return;
+
+          const audioBlob = new Blob(chunks, { type: mimeType });
+          audioChunksRef.current = [];
+
+          // Transcribe
+          setIsTranscribing(true);
+          try {
+            const { sttBaseUrl, sttApiKey, sttModel } = useSettingsStore.getState().settings;
+            if (!sttApiKey) {
+              alert(t("chat.noSttProvider"));
+              return;
+            }
+
+            const ext = mimeType.includes("webm") ? "webm" : "mp4";
+            const formData = new FormData();
+            formData.append("file", audioBlob, `recording.${ext}`);
+            formData.append("model", sttModel || "whisper-large-v3-turbo");
+
+            const baseUrl = sttBaseUrl.replace(/\/+$/, "");
+            const res = await fetch(`${baseUrl}/audio/transcriptions`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${sttApiKey}` },
+              body: formData,
+              signal: AbortSignal.timeout(30000),
+            });
+
+            if (!res.ok) {
+              const errText = await res.text();
+              throw new Error(`Transcription failed: ${res.status} - ${errText}`);
+            }
+
+            const data = await res.json();
+            const transcribedText = data.text ?? "";
+            if (transcribedText) {
+              setText((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
+              textareaRef.current?.focus();
+            }
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Transcription failed");
+          } finally {
+            setIsTranscribing(false);
+          }
+        };
+
+        mediaRecorderRef.current = recorder;
+        recorder.start();
+        setIsRecording(true);
+      } catch {
+        alert(t("chat.micPermissionDenied"));
+      }
+    }
+  }, [isRecording, isTranscribing, t]);
+
+  handleMicPressRef.current = handleMicPress;
 
   const handleAttach = useCallback(() => {
     const input = document.createElement("input");
@@ -238,30 +350,43 @@ export const ChatInput = memo(function ChatInput({
 
           {/* Input area */}
           <div className="px-4 pt-2.5 pb-1.5">
-            <div
-              className="flex items-center rounded-2xl px-3"
-              style={{ backgroundColor: "var(--muted)", border: "0.5px solid color-mix(in srgb, var(--border) 50%, transparent)" }}
-            >
-              <textarea
-                ref={textareaRef}
-                value={text}
-                onChange={(e) => { setText(e.target.value); handleInput(); }}
-                onKeyDown={handleKeyDown}
-                placeholder={resolvedPlaceholder}
-                disabled={isGenerating}
-                rows={1}
-                className="flex-1 min-h-[44px] max-h-24 resize-none bg-transparent text-[16px] text-foreground py-2.5 outline-none placeholder:text-muted-foreground/50"
-              />
-              {(text.trim() || attachedImages.length > 0) && !isGenerating && (
-                <button
-                  onClick={handleSend}
-                  className="my-1.5 ml-1.5 h-9 w-9 flex items-center justify-center rounded-full flex-shrink-0 active:opacity-70"
-                  style={{ backgroundColor: "var(--primary)" }}
-                >
-                  <ArrowUp size={18} color="white" />
-                </button>
-              )}
-            </div>
+            {isRecording ? (
+              <div
+                className="flex items-center justify-center rounded-2xl px-4 py-2.5 min-h-[44px]"
+                style={{ backgroundColor: "color-mix(in srgb, var(--destructive) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--destructive) 20%, transparent)" }}
+              >
+                <div className="mr-2 h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: "var(--destructive)" }} />
+                <span className="text-base font-semibold" style={{ color: "var(--destructive)" }}>
+                  {`${Math.floor(recordingDuration / 60).toString().padStart(2, "0")}:${(recordingDuration % 60).toString().padStart(2, "0")}`}
+                </span>
+                <span className="ml-2 text-xs" style={{ color: "color-mix(in srgb, var(--destructive) 60%, transparent)" }}>/01:00</span>
+              </div>
+            ) : (
+              <div
+                className="flex items-center rounded-2xl px-3"
+                style={{ backgroundColor: "var(--muted)", border: "0.5px solid color-mix(in srgb, var(--border) 50%, transparent)" }}
+              >
+                <textarea
+                  ref={textareaRef}
+                  value={text}
+                  onChange={(e) => { setText(e.target.value); handleInput(); }}
+                  onKeyDown={handleKeyDown}
+                  placeholder={resolvedPlaceholder}
+                  disabled={isGenerating}
+                  rows={1}
+                  className="flex-1 min-h-[44px] max-h-24 resize-none bg-transparent text-[16px] text-foreground py-2.5 outline-none placeholder:text-muted-foreground/50"
+                />
+                {(text.trim() || attachedImages.length > 0) && !isGenerating && (
+                  <button
+                    onClick={handleSend}
+                    className="my-1.5 ml-1.5 h-9 w-9 flex items-center justify-center rounded-full flex-shrink-0 active:opacity-70"
+                    style={{ backgroundColor: "var(--primary)" }}
+                  >
+                    <ArrowUp size={18} color="white" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Action bar */}
@@ -281,9 +406,9 @@ export const ChatInput = memo(function ChatInput({
             )}
 
             {modelName && onSwitchModel && (
-              <button onClick={onSwitchModel} className="flex items-center gap-1.5 rounded-full px-3 py-2 ml-0.5 active:opacity-60" disabled={isGenerating}>
-                <ArrowLeftRight size={16} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
-                <span className="text-[13px] font-medium truncate max-w-[150px]" style={{ color: isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)" }}>{modelName}</span>
+              <button onClick={onSwitchModel} className="flex items-center gap-1.5 rounded-full px-3 py-2 ml-0.5 active:opacity-60 min-w-0" disabled={isGenerating}>
+                <ArrowLeftRight size={16} className="flex-shrink-0" color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
+                <span className="text-[13px] font-medium truncate" style={{ color: isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)" }}>{modelName}</span>
               </button>
             )}
 
@@ -306,9 +431,20 @@ export const ChatInput = memo(function ChatInput({
               <button onClick={onStop} className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-70" style={{ backgroundColor: "var(--destructive)" }}>
                 <Square size={14} color="white" />
               </button>
+            ) : isTranscribing ? (
+              <div className="h-10 w-10 flex items-center justify-center">
+                <Loader2 size={20} color="var(--primary)" className="animate-spin" />
+              </div>
             ) : (
-              <button className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-60">
-                <Mic size={22} color="var(--secondary-foreground)" />
+              <button
+                onClick={handleMicPress}
+                className={`h-10 w-10 flex items-center justify-center rounded-full active:opacity-70 ${isRecording ? "" : ""}`}
+                style={isRecording ? { backgroundColor: "var(--destructive)" } : undefined}
+              >
+                {isRecording
+                  ? <Square size={14} color="white" />
+                  : <Mic size={22} color="var(--secondary-foreground)" />
+                }
               </button>
             )}
           </div>

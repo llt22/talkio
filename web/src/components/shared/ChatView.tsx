@@ -234,6 +234,98 @@ interface MessageRowProps {
   onDelete?: (messageId: string) => void;
 }
 
+// ── Assistant action bar: primary buttons + ··· overflow menu ──
+
+function AssistantActionBar({ content, message, onCopy, onRegenerate, onBranch, onDelete, t }: {
+  content: string;
+  message: Message;
+  onCopy?: (c: string) => void;
+  onRegenerate?: (id: string) => void;
+  onBranch?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  t: (key: string) => string;
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <div className="ml-1 flex items-center gap-0.5">
+      {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
+      {onRegenerate && <ActionBtn icon="refresh-outline" onClick={() => onRegenerate(message.id)} />}
+      {message.tokenUsage && (
+        <div className="ml-1 flex items-center gap-1 rounded px-1.5 py-0.5" style={{ backgroundColor: "var(--muted)" }}>
+          <IoAnalyticsOutline size={11} color="var(--muted-foreground)" />
+          <span className="text-[10px] font-mono text-muted-foreground">
+            {formatTokens(message.tokenUsage.inputTokens)}→{formatTokens(message.tokenUsage.outputTokens)}
+          </span>
+        </div>
+      )}
+
+      {/* ··· overflow menu */}
+      <div className="relative">
+        <button onClick={() => setShowMenu((v) => !v)} className="rounded-md p-1.5 active:opacity-60">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted-foreground)" strokeWidth="2" strokeLinecap="round">
+            <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+          </svg>
+        </button>
+        {showMenu && (
+          <>
+            <div className="fixed inset-0 z-20" onClick={() => setShowMenu(false)} />
+            <div
+              className="absolute left-0 bottom-full mb-1 z-30 min-w-[150px] rounded-xl py-1 shadow-lg"
+              style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+            >
+              <button
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 active:opacity-60"
+                onClick={() => {
+                  setShowMenu(false);
+                  if ('speechSynthesis' in window) {
+                    window.speechSynthesis.speaking ? window.speechSynthesis.cancel() : window.speechSynthesis.speak(new SpeechSynthesisUtterance(content));
+                  }
+                }}
+              >
+                <IoVolumeMediumOutline size={15} color="var(--foreground)" />
+                <span className="text-[13px] text-foreground">{window.speechSynthesis?.speaking ? t("common.cancel") : t("chat.readAloud")}</span>
+              </button>
+              {onBranch && (
+                <button
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 active:opacity-60"
+                  onClick={() => { setShowMenu(false); onBranch(message.id); }}
+                >
+                  <GitBranch size={15} color="var(--foreground)" />
+                  <span className="text-[13px] text-foreground">{t("chat.branchFromHere")}</span>
+                </button>
+              )}
+              <button
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 active:opacity-60"
+                onClick={() => {
+                  setShowMenu(false);
+                  if (navigator.share) navigator.share({ text: content }).catch(() => {});
+                  else navigator.clipboard.writeText(content);
+                }}
+              >
+                <IoShareOutline size={15} color="var(--foreground)" />
+                <span className="text-[13px] text-foreground">{t("chat.export")}</span>
+              </button>
+              {onDelete && (
+                <>
+                  <div style={{ height: "0.5px", backgroundColor: "var(--border)", margin: "2px 12px" }} />
+                  <button
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 active:opacity-60"
+                    onClick={() => { setShowMenu(false); onDelete(message.id); }}
+                  >
+                    <IoTrashOutline size={15} color="var(--destructive)" />
+                    <span className="text-[13px]" style={{ color: "var(--destructive)" }}>{t("common.delete")}</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onBranch, onDelete }: MessageRowProps) {
   const { t } = useTranslation();
   const isUser = message.role === "user";
@@ -373,37 +465,17 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
           </div>
         )}
 
-        {/* Assistant action bar (1:1 RN — hidden during streaming) */}
+        {/* Assistant action bar — primary: copy + regenerate, secondary: ··· menu */}
         {!isStreaming && content && (
-          <div className="ml-1 flex items-center gap-0.5">
-            {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
-            {onRegenerate && <ActionBtn icon="refresh-outline" onClick={() => onRegenerate(message.id)} />}
-            {content && <ActionBtn icon="volume-medium-outline" onClick={() => {
-              if ('speechSynthesis' in window) {
-                const speaking = window.speechSynthesis.speaking;
-                if (speaking) { window.speechSynthesis.cancel(); }
-                else { window.speechSynthesis.speak(new SpeechSynthesisUtterance(content)); }
-              }
-            }} />}
-            {content && <ActionBtn icon="share-outline" onClick={() => {
-              if (navigator.share) { navigator.share({ text: content }).catch(() => {}); }
-              else { navigator.clipboard.writeText(content); }
-            }} />}
-            {onBranch && (
-              <button onClick={() => onBranch(message.id)} className="rounded-md p-1.5 active:opacity-60" title="Branch from here">
-                <GitBranch size={15} color="var(--muted-foreground)" />
-              </button>
-            )}
-            {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
-            {message.tokenUsage && (
-              <div className="ml-2 flex items-center gap-1 rounded px-1.5 py-0.5" style={{ backgroundColor: "var(--muted)" }}>
-                <IoAnalyticsOutline size={11} color="var(--muted-foreground)" />
-                <span className="text-[10px] font-mono text-muted-foreground">
-                  {formatTokens(message.tokenUsage.inputTokens)}→{formatTokens(message.tokenUsage.outputTokens)}
-                </span>
-              </div>
-            )}
-          </div>
+          <AssistantActionBar
+            content={content}
+            message={message}
+            onCopy={onCopy}
+            onRegenerate={onRegenerate}
+            onBranch={onBranch}
+            onDelete={onDelete}
+            t={t}
+          />
         )}
       </div>
     </div>
