@@ -74,7 +74,7 @@ function SectionHeader({ label }: { label: string }) {
 
 // ── Main SettingsPage (1:1 RN original) ──
 
-export function SettingsPage() {
+export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage: boolean) => void } = {}) {
   const { t } = useTranslation();
   const providers = useProviderStore((s: ReturnType<typeof useProviderStore.getState>) => s.providers);
   const settings = useSettingsStore((s: ReturnType<typeof useSettingsStore.getState>) => s.settings);
@@ -82,8 +82,20 @@ export function SettingsPage() {
   const [subPageStack, setSubPageStack] = useState<SubPage[]>([]);
   const mcpRef = useRef<McpPageHandle>(null);
 
-  const push = (page: SubPage) => setSubPageStack((s) => [...s, page]);
-  const pop = () => setSubPageStack((s) => s.slice(0, -1));
+  const push = (page: SubPage) => {
+    setSubPageStack((s) => {
+      const next = [...s, page];
+      if (next.length === 1) onSubPageChange?.(true);
+      return next;
+    });
+  };
+  const pop = () => {
+    setSubPageStack((s) => {
+      const next = s.slice(0, -1);
+      if (next.length === 0) onSubPageChange?.(false);
+      return next;
+    });
+  };
 
   // Sub-page with back header
   if (subPageStack.length > 0) {
@@ -263,7 +275,7 @@ function ProvidersListPage({
       <div className="pb-8">
         {providers.length === 0 ? (
           <EmptyState
-            icon={<IoAddCircleOutline size={48} color="var(--muted-foreground)" />}
+            icon={<IoAddCircleOutline size={28} color="var(--muted-foreground)" />}
             title={t("models.noModels")}
             subtitle={t("models.configureHint")}
           />

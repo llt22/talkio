@@ -129,7 +129,7 @@ export function ModelsPage({ onNavigateToChat }: ModelsPageProps = {}) {
       <div className="flex-1 overflow-y-auto" style={{ paddingBottom: groupMode ? 80 : 24 }}>
         {sections.length === 0 ? (
           <EmptyState
-            icon={<IoPeopleOutline size={48} color="var(--muted-foreground)" />}
+            icon={<IoPeopleOutline size={28} color="var(--muted-foreground)" />}
             title={t("models.noModels")}
             subtitle={t("models.configureHint")}
           />

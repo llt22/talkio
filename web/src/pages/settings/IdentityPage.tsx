@@ -75,7 +75,7 @@ export function IdentityPage() {
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <EmptyState
-            icon={<IoPersonOutline size={48} color="var(--muted-foreground)" />}
+            icon={<IoPersonOutline size={28} color="var(--muted-foreground)" />}
             title={t("personas.noCustomTools")}
             subtitle={t("models.configureHint")}
           />

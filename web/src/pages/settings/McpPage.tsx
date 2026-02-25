@@ -34,7 +34,7 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
       <div className="pb-8">
         {servers.length === 0 ? (
           <EmptyState
-            icon={<IoAddCircleOutline size={48} color="var(--muted-foreground)" />}
+            icon={<IoAddCircleOutline size={28} color="var(--muted-foreground)" />}
             title={t("personas.noCustomTools")}
             subtitle={t("models.configureHint")}
           />

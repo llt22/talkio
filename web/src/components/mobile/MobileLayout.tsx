@@ -92,6 +92,8 @@ function MobileTabLayout() {
     setActiveTabState(tab);
   }, []);
   const tabBg = "var(--background)";
+  const [settingsInSubPage, setSettingsInSubPage] = useState(false);
+  const hideTabBar = settingsInSubPage && activeTab === "settings";
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: tabBg }}>
@@ -100,11 +102,11 @@ function MobileTabLayout() {
         {activeTab === "chats" && <MobileConversationList onNavigateToExperts={() => setActiveTab("experts")} />}
         {activeTab === "experts" && <ModelsPage />}
         {activeTab === "discover" && <DiscoverPage />}
-        {activeTab === "settings" && <SettingsPage />}
+        {activeTab === "settings" && <SettingsPage onSubPageChange={setSettingsInSubPage} />}
       </div>
 
       {/* Bottom Tab Bar — iOS native style */}
-      <div
+      {!hideTabBar && <div
         className="flex-shrink-0 flex items-center justify-around px-2 pt-1.5"
         style={{
           paddingBottom: 0,
@@ -125,7 +127,7 @@ function MobileTabLayout() {
             <span className="text-[10px] font-medium leading-tight">{t(labelKey)}</span>
           </button>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
