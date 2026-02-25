@@ -84,12 +84,22 @@ export function ModelsPage({ onNavigateToChat }: ModelsPageProps = {}) {
       <div className="flex-shrink-0 px-4 pt-2 pb-1">
         <div className="flex items-center justify-between mb-1">
           <h1 className="text-[28px] font-bold text-foreground tracking-tight">{t("models.title")}</h1>
-          <button
-            onClick={() => setShowSearch((v) => !v)}
-            className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
-          >
-            <IoSearchOutline size={22} color="var(--primary)" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowSearch((v) => !v)}
+              className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
+            >
+              <IoSearchOutline size={22} color="var(--primary)" />
+            </button>
+            {sections.length > 0 && (
+              <button
+                onClick={() => { setGroupMode((v) => !v); setSelectedForGroup([]); }}
+                className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
+              >
+                <IoChatbubbles size={20} color={groupMode ? "var(--destructive)" : "var(--primary)"} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -168,19 +178,6 @@ export function ModelsPage({ onNavigateToChat }: ModelsPageProps = {}) {
           ))
         )}
       </div>
-
-      {/* Group Chat FAB */}
-      {!groupMode && sections.length > 0 && (
-        <div className="absolute bottom-24 right-5">
-          <button
-            onClick={() => { setGroupMode(true); setSelectedForGroup([]); }}
-            className="h-12 w-12 flex items-center justify-center rounded-full active:opacity-70 shadow-lg"
-            style={{ backgroundColor: "var(--primary)" }}
-          >
-            <IoChatbubbles size={22} color="white" />
-          </button>
-        </div>
-      )}
 
       {/* Group Mode Bottom Bar */}
       {groupMode && (
