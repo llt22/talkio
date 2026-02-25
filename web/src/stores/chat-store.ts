@@ -4,7 +4,7 @@
  * rAF-throttled UI updates for smooth streaming.
  */
 import { create } from "zustand";
-import type { Message, Conversation, ConversationParticipant } from "../../../src/types";
+import type { Message, Conversation, ConversationParticipant, Provider } from "../../../src/types";
 import { MessageStatus } from "../../../src/types";
 import { useIdentityStore } from "./identity-store";
 import {
@@ -109,13 +109,96 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const conv = await getConversation(convId);
     if (!conv) return;
 
-    const providerStore = useProviderStore.getState();
-    const participant = conv.participants[0];
-    if (!participant) return;
+    function resolveTargetParticipants(): ConversationParticipant[] {
+      if (conv.type === "single") {
+        return conv.participants[0] ? [conv.participants[0]] : [];
+      }
+      return conv.participants;
+    }
 
-    const model = providerStore.getModelById(participant.modelId);
-    const provider = model ? providerStore.getProviderById(model.providerId) : null;
-    if (!model || !provider) return;
+    function buildGroupRoster(selfParticipantId: string | null): string {
+      const providerStore = useProviderStore.getState();
+      const identityStore = useIdentityStore.getState();
+      const lines = conv.participants.map((p) => {
+        const model = providerStore.getModelById(p.modelId);
+        const modelName = model?.displayName ?? p.modelId;
+        const identity = p.identityId ? identityStore.getIdentityById(p.identityId) : null;
+        const label = identity?.name ?? modelName;
+        const isSelf = p.id === selfParticipantId;
+        return `- ${label}${isSelf ? "  ← you" : ""}`;
+      });
+      return [
+        "You are in a group chat with multiple AI participants and one human user.",
+        "Participants:",
+        ...lines,
+        "",
+        "The human user's messages appear as: [User said]: content",
+        "Other AI participants' messages appear as: [Name said]: content",
+        "Your own previous messages appear as role=assistant (no prefix).",
+        "Always distinguish between the human user and other AI participants.",
+        "Think independently — form your own opinions and do not simply agree with or echo others.",
+        "If you disagree, say so directly and explain why. Constructive debate is encouraged.",
+        "Do not repeat, summarize, or rephrase what others said unless asked.",
+      ].join("\n");
+    }
+
+    function buildApiMessagesForParticipant(
+      allMessages: Message[],
+      participant: ConversationParticipant,
+    ): any[] {
+      const identity = participant.identityId
+        ? useIdentityStore.getState().getIdentityById(participant.identityId)
+        : null;
+
+      const isGroup = conv.type === "group";
+      const apiMessages: any[] = [];
+
+      if (isGroup) {
+        const roster = buildGroupRoster(participant.id);
+        const groupPrompt = identity?.systemPrompt ? `${identity.systemPrompt}\n\n${roster}` : roster;
+        apiMessages.push({ role: "system", content: groupPrompt });
+      } else if (identity?.systemPrompt) {
+        apiMessages.push({ role: "system", content: identity.systemPrompt });
+      }
+
+      for (const m of allMessages) {
+        if (m.role !== "user" && m.role !== "assistant") continue;
+
+        let role: "user" | "assistant" = m.role as any;
+        let content: any = m.content;
+
+        if (m.role === "user") {
+          if (m.images && m.images.length > 0) {
+            const parts: any[] = [];
+            if (m.content) parts.push({ type: "text", text: m.content });
+            for (const uri of m.images) {
+              parts.push({ type: "image_url", image_url: { url: uri } });
+            }
+            content = parts;
+          }
+        }
+
+        if (isGroup) {
+          if (role === "user" && typeof content === "string") {
+            content = `[User said]: ${content}`;
+          }
+          if (role === "assistant" && m.senderName) {
+            const isSelf = m.participantId != null && m.participantId === participant.id;
+            if (!isSelf) {
+              role = "user";
+              const prefix = `[${m.senderName} said]: `;
+              if (typeof content === "string") content = prefix + content;
+            }
+          }
+        }
+
+        apiMessages.push({ role, content });
+      }
+
+      return apiMessages;
+    }
+
+    const providerStore = useProviderStore.getState();
 
     // Create and persist user message
     const userMsg: Message = {
@@ -146,60 +229,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     updateConversation(convId, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(() => {});
     notifyDbChange();
 
-    // Create assistant placeholder — timestamp strictly after user message
-    const assistantMsgId = generateId();
-    const assistantMsg: Message = {
-      id: assistantMsgId,
-      conversationId: convId,
-      role: "assistant",
-      senderModelId: model.id,
-      senderName: model.displayName,
-      identityId: participant.identityId,
-      participantId: participant.id,
-      content: "",
-      images: [],
-      generatedImages: [],
-      reasoningContent: null,
-      reasoningDuration: null,
-      toolCalls: [],
-      toolResults: [],
-      branchId: null,
-      parentMessageId: null,
-      isStreaming: true,
-      status: MessageStatus.STREAMING,
-      errorMessage: null,
-      tokenUsage: null,
-      createdAt: new Date(Date.parse(userMsg.createdAt) + 1).toISOString(),
-    };
-
-    await insertMessage(assistantMsg);
-    notifyDbChange();
-
     const abortController = new AbortController();
-    set({
-      isGenerating: true,
-      _abortController: abortController,
-      streamingMessage: { messageId: assistantMsgId, content: "", reasoning: "" },
-    });
+    set({ isGenerating: true, _abortController: abortController });
 
-    try {
-      // Build API messages
-      const allMessages = await getRecentMessages(convId, null, 100);
-      const historyMessages = allMessages
-        .filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id)
-        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+    const targets = resolveTargetParticipants();
+    let lastAssistantContent = "";
+    let firstModelDisplayName: string | null = null;
 
-      // Prepend identity system prompt if set
-      const identityId = participant.identityId;
-      const identity = identityId ? useIdentityStore.getState().getIdentityById(identityId) : null;
-      const apiMessages: { role: string; content: string }[] = identity?.systemPrompt
-        ? [{ role: "system", content: identity.systemPrompt }, ...historyMessages]
-        : historyMessages;
-
-      // Normalize base URL (authoritative; do NOT auto-append /v1)
-      const baseUrl = provider.baseUrl.replace(/\/+$/, "");
-
-      // SSE streaming request
+    const headersForProvider = (provider: Provider) => {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${provider.apiKey}`,
@@ -209,203 +246,111 @@ export const useChatStore = create<ChatState>((set, get) => ({
           if (h.name && h.value) headers[h.name] = h.value;
         }
       }
+      return headers;
+    };
 
-      // Include built-in tools
+    async function generateForParticipant(participant: ConversationParticipant, index: number) {
+      const model = providerStore.getModelById(participant.modelId);
+      const provider = model ? providerStore.getProviderById(model.providerId) : null;
+      if (!model || !provider) return;
+      if (!firstModelDisplayName) firstModelDisplayName = model.displayName;
+
+      const assistantMsgId = generateId();
+      const assistantMsg: Message = {
+        id: assistantMsgId,
+        conversationId: convId,
+        role: "assistant",
+        senderModelId: model.id,
+        senderName: model.displayName,
+        identityId: participant.identityId,
+        participantId: participant.id,
+        content: "",
+        images: [],
+        generatedImages: [],
+        reasoningContent: null,
+        reasoningDuration: null,
+        toolCalls: [],
+        toolResults: [],
+        branchId: null,
+        parentMessageId: null,
+        isStreaming: true,
+        status: MessageStatus.STREAMING,
+        errorMessage: null,
+        tokenUsage: null,
+        createdAt: new Date(Date.parse(userMsg.createdAt) + 1 + index).toISOString(),
+      };
+
+      await insertMessage(assistantMsg);
+      notifyDbChange();
+      set({ streamingMessage: { messageId: assistantMsgId, content: "", reasoning: "" } });
+
+      const baseUrl = provider.baseUrl.replace(/\/+$/, "");
+      const headers = headersForProvider(provider);
       const toolDefs = getBuiltInToolDefs();
 
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          model: model.modelId,
-          messages: apiMessages,
-          stream: true,
-          ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
-        }),
-        signal: abortController.signal,
-      });
+      try {
+        const allMessages = await getRecentMessages(convId, null, 200);
+        const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
+        const apiMessages = buildApiMessagesForParticipant(filtered, participant);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API Error ${response.status}: ${errorText}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response body");
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let fullContent = "";
-      let fullReasoning = "";
-      let rafPending = false;
-      let dirty = false;
-      const startTime = Date.now();
-      const pendingToolCalls: { id: string; name: string; arguments: string }[] = [];
-
-      function flushToUI() {
-        rafPending = false;
-        if (!dirty) return;
-        dirty = false;
-        set({
-          streamingMessage: {
-            messageId: assistantMsgId,
-            content: fullContent,
-            reasoning: fullReasoning,
-          },
-        });
-      }
-
-      function scheduleFlush() {
-        dirty = true;
-        if (!rafPending) {
-          rafPending = true;
-          requestAnimationFrame(flushToUI);
-        }
-      }
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith("data: ")) continue;
-          const data = trimmed.slice(6);
-          if (data === "[DONE]") continue;
-
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta;
-            if (!delta) continue;
-            if (delta.content) fullContent += delta.content;
-            if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
-            // Accumulate tool calls
-            if (delta.tool_calls) {
-              for (const tc of delta.tool_calls) {
-                const idx = tc.index ?? 0;
-                while (pendingToolCalls.length <= idx) {
-                  pendingToolCalls.push({ id: "", name: "", arguments: "" });
-                }
-                if (tc.id) pendingToolCalls[idx].id = tc.id;
-                if (tc.function?.name) pendingToolCalls[idx].name += tc.function.name;
-                if (tc.function?.arguments) pendingToolCalls[idx].arguments += tc.function.arguments;
-              }
-            }
-            scheduleFlush();
-          } catch {
-            // Skip malformed JSON
-          }
-        }
-      }
-
-      // Final flush
-      flushToUI();
-
-      const duration = (Date.now() - startTime) / 1000;
-
-      // Handle tool calls if present
-      if (pendingToolCalls.length > 0) {
-        // Persist assistant message with tool calls
-        await updateMessage(assistantMsgId, {
-          content: fullContent,
-          reasoningContent: fullReasoning || null,
-          reasoningDuration: fullReasoning ? duration : null,
-          isStreaming: false,
-          status: MessageStatus.SUCCESS,
-          toolCalls: pendingToolCalls,
-        });
-
-        // Execute tools and collect results
-        const toolResults: { toolCallId: string; content: string }[] = [];
-        for (const tc of pendingToolCalls) {
-          let args: Record<string, unknown> = {};
-          try { args = JSON.parse(tc.arguments); } catch {}
-          const result = await executeBuiltInTool(tc.name, args);
-          toolResults.push({
-            toolCallId: tc.id,
-            content: result ? (result.success ? result.content : `Error: ${result.error}`) : `Tool not found: ${tc.name}`,
-          });
-        }
-
-        // Build tool result messages for the API
-        const toolMessages = [
-          ...apiMessages,
-          { role: "assistant" as const, content: fullContent || null, tool_calls: pendingToolCalls.map((tc) => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: tc.arguments } })) },
-          ...toolResults.map((tr) => ({ role: "tool" as const, tool_call_id: tr.toolCallId, content: tr.content })),
-        ];
-
-        // Create new assistant message for tool response
-        const toolResponseMsgId = generateId();
-        const toolResponseMsg: Message = {
-          id: toolResponseMsgId,
-          conversationId: convId,
-          role: "assistant",
-          senderModelId: model.id,
-          senderName: model.displayName,
-          identityId: participant.identityId,
-          participantId: participant.id,
-          content: "",
-          images: [],
-          generatedImages: [],
-          reasoningContent: null,
-          reasoningDuration: null,
-          toolCalls: [],
-          toolResults,
-          branchId: null,
-          parentMessageId: null,
-          isStreaming: true,
-          status: MessageStatus.STREAMING,
-          errorMessage: null,
-          tokenUsage: null,
-          createdAt: new Date().toISOString(),
-        };
-        await insertMessage(toolResponseMsg);
-        notifyDbChange();
-
-        set({ streamingMessage: { messageId: toolResponseMsgId, content: "", reasoning: "" } });
-
-        // Second SSE call with tool results
-        const toolResponse = await fetch(`${baseUrl}/chat/completions`, {
+        const response = await fetch(`${baseUrl}/chat/completions`, {
           method: "POST",
           headers,
           body: JSON.stringify({
             model: model.modelId,
-            messages: toolMessages,
+            messages: apiMessages,
             stream: true,
+            ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
           }),
           signal: abortController.signal,
         });
 
-        if (!toolResponse.ok) throw new Error(`API Error ${toolResponse.status}`);
-        const toolReader = toolResponse.body?.getReader();
-        if (!toolReader) throw new Error("No response body");
-
-        let toolBuffer = "";
-        let toolContent = "";
-        let toolRafPending = false;
-        let toolDirty = false;
-
-        function toolFlush() {
-          toolRafPending = false;
-          if (!toolDirty) return;
-          toolDirty = false;
-          set({ streamingMessage: { messageId: toolResponseMsgId, content: toolContent, reasoning: "" } });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`API Error ${response.status}: ${errorText}`);
         }
-        function toolSchedule() {
-          toolDirty = true;
-          if (!toolRafPending) { toolRafPending = true; requestAnimationFrame(toolFlush); }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No response body");
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullContent = "";
+        let fullReasoning = "";
+        let rafPending = false;
+        let dirty = false;
+        const startTime = Date.now();
+        const pendingToolCalls: { id: string; name: string; arguments: string }[] = [];
+
+        function flushToUI() {
+          rafPending = false;
+          if (!dirty) return;
+          dirty = false;
+          set({
+            streamingMessage: {
+              messageId: assistantMsgId,
+              content: fullContent,
+              reasoning: fullReasoning,
+            },
+          });
+        }
+
+        function scheduleFlush() {
+          dirty = true;
+          if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(flushToUI);
+          }
         }
 
         while (true) {
-          const { done, value } = await toolReader.read();
+          const { done, value } = await reader.read();
           if (done) break;
-          toolBuffer += new TextDecoder().decode(value, { stream: true });
-          const lines = toolBuffer.split("\n");
-          toolBuffer = lines.pop() || "";
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
           for (const line of lines) {
             const trimmed = line.trim();
             if (!trimmed || !trimmed.startsWith("data: ")) continue;
@@ -414,58 +359,191 @@ export const useChatStore = create<ChatState>((set, get) => ({
             try {
               const parsed = JSON.parse(data);
               const delta = parsed.choices?.[0]?.delta;
-              if (delta?.content) { toolContent += delta.content; toolSchedule(); }
+              if (!delta) continue;
+              if (delta.content) fullContent += delta.content;
+              if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
+              if (delta.tool_calls) {
+                for (const tc of delta.tool_calls) {
+                  const idx = tc.index ?? 0;
+                  while (pendingToolCalls.length <= idx) {
+                    pendingToolCalls.push({ id: "", name: "", arguments: "" });
+                  }
+                  if (tc.id) pendingToolCalls[idx].id = tc.id;
+                  if (tc.function?.name) pendingToolCalls[idx].name += tc.function.name;
+                  if (tc.function?.arguments) pendingToolCalls[idx].arguments += tc.function.arguments;
+                }
+              }
+              scheduleFlush();
             } catch {}
           }
         }
-        toolFlush();
 
-        await updateMessage(toolResponseMsgId, {
-          content: toolContent,
-          isStreaming: false,
-          status: MessageStatus.SUCCESS,
-        });
-      } else {
-        // No tool calls — persist final content to DB
-        await updateMessage(assistantMsgId, {
-          content: fullContent,
-          reasoningContent: fullReasoning || null,
-          reasoningDuration: fullReasoning ? duration : null,
-          isStreaming: false,
-          status: MessageStatus.SUCCESS,
-        });
-      }
+        flushToUI();
+        const duration = (Date.now() - startTime) / 1000;
 
-      // Auto-title
-      const currentConv = await getConversation(convId);
-      if (currentConv && currentConv.title === (model?.displayName ?? "New Chat")) {
-        const title = text.slice(0, 50) || "Chat";
-        await updateConversation(convId, { title, lastMessage: fullContent.slice(0, 100), lastMessageAt: new Date().toISOString() });
-      } else {
-        await updateConversation(convId, { lastMessage: fullContent.slice(0, 100), lastMessageAt: new Date().toISOString() });
-      }
-
-      notifyDbChange();
-    } catch (err: any) {
-      if (err.name === "AbortError") {
-        // User stopped — persist what we have
-        const sm = get().streamingMessage;
-        if (sm) {
+        if (pendingToolCalls.length > 0) {
           await updateMessage(assistantMsgId, {
-            content: sm.content,
-            reasoningContent: sm.reasoning || null,
+            content: fullContent,
+            reasoningContent: fullReasoning || null,
+            reasoningDuration: fullReasoning ? duration : null,
+            isStreaming: false,
+            status: MessageStatus.SUCCESS,
+            toolCalls: pendingToolCalls,
+          });
+
+          const toolResults: { toolCallId: string; content: string }[] = [];
+          for (const tc of pendingToolCalls) {
+            let args: Record<string, unknown> = {};
+            try { args = JSON.parse(tc.arguments); } catch {}
+            const result = await executeBuiltInTool(tc.name, args);
+            toolResults.push({
+              toolCallId: tc.id,
+              content: result ? (result.success ? result.content : `Error: ${result.error}`) : `Tool not found: ${tc.name}`,
+            });
+          }
+
+          const toolMessages = [
+            ...apiMessages,
+            { role: "assistant" as const, content: fullContent || null, tool_calls: pendingToolCalls.map((tc) => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: tc.arguments } })) },
+            ...toolResults.map((tr) => ({ role: "tool" as const, tool_call_id: tr.toolCallId, content: tr.content })),
+          ];
+
+          const toolResponseMsgId = generateId();
+          const toolResponseMsg: Message = {
+            id: toolResponseMsgId,
+            conversationId: convId,
+            role: "assistant",
+            senderModelId: model.id,
+            senderName: model.displayName,
+            identityId: participant.identityId,
+            participantId: participant.id,
+            content: "",
+            images: [],
+            generatedImages: [],
+            reasoningContent: null,
+            reasoningDuration: null,
+            toolCalls: [],
+            toolResults,
+            branchId: null,
+            parentMessageId: null,
+            isStreaming: true,
+            status: MessageStatus.STREAMING,
+            errorMessage: null,
+            tokenUsage: null,
+            createdAt: new Date().toISOString(),
+          };
+          await insertMessage(toolResponseMsg);
+          notifyDbChange();
+
+          set({ streamingMessage: { messageId: toolResponseMsgId, content: "", reasoning: "" } });
+
+          const toolResponse = await fetch(`${baseUrl}/chat/completions`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              model: model.modelId,
+              messages: toolMessages,
+              stream: true,
+            }),
+            signal: abortController.signal,
+          });
+
+          if (!toolResponse.ok) throw new Error(`API Error ${toolResponse.status}`);
+          const toolReader = toolResponse.body?.getReader();
+          if (!toolReader) throw new Error("No response body");
+
+          let toolBuffer = "";
+          let toolContent = "";
+          let toolRafPending = false;
+          let toolDirty = false;
+
+          function toolFlush() {
+            toolRafPending = false;
+            if (!toolDirty) return;
+            toolDirty = false;
+            set({ streamingMessage: { messageId: toolResponseMsgId, content: toolContent, reasoning: "" } });
+          }
+          function toolSchedule() {
+            toolDirty = true;
+            if (!toolRafPending) { toolRafPending = true; requestAnimationFrame(toolFlush); }
+          }
+
+          while (true) {
+            const { done, value } = await toolReader.read();
+            if (done) break;
+            toolBuffer += new TextDecoder().decode(value, { stream: true });
+            const lines = toolBuffer.split("\n");
+            toolBuffer = lines.pop() || "";
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith("data: ")) continue;
+              const data = trimmed.slice(6);
+              if (data === "[DONE]") continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (delta?.content) { toolContent += delta.content; toolSchedule(); }
+              } catch {}
+            }
+          }
+          toolFlush();
+
+          await updateMessage(toolResponseMsgId, {
+            content: toolContent,
             isStreaming: false,
             status: MessageStatus.SUCCESS,
           });
+
+          lastAssistantContent = toolContent;
+        } else {
+          await updateMessage(assistantMsgId, {
+            content: fullContent,
+            reasoningContent: fullReasoning || null,
+            reasoningDuration: fullReasoning ? duration : null,
+            isStreaming: false,
+            status: MessageStatus.SUCCESS,
+          });
+          lastAssistantContent = fullContent;
         }
-      } else {
-        await updateMessage(assistantMsgId, {
-          isStreaming: false,
-          status: MessageStatus.ERROR,
-          errorMessage: err.message || "Unknown error",
-        });
+
+        const currentConv = await getConversation(convId);
+        if (currentConv && firstModelDisplayName && currentConv.title === (firstModelDisplayName ?? "New Chat")) {
+          const title = text.slice(0, 50) || "Chat";
+          await updateConversation(convId, { title, lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
+        } else {
+          await updateConversation(convId, { lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
+        }
+
+        notifyDbChange();
+      } catch (err: any) {
+        if (err.name === "AbortError") {
+          const sm = get().streamingMessage;
+          if (sm && sm.messageId === assistantMsgId) {
+            await updateMessage(assistantMsgId, {
+              content: sm.content,
+              reasoningContent: sm.reasoning || null,
+              isStreaming: false,
+              status: MessageStatus.SUCCESS,
+            });
+          }
+        } else {
+          await updateMessage(assistantMsgId, {
+            isStreaming: false,
+            status: MessageStatus.ERROR,
+            errorMessage: err.message || "Unknown error",
+          });
+        }
+        notifyDbChange();
+      } finally {
+        set({ streamingMessage: null });
       }
-      notifyDbChange();
+    }
+
+    try {
+      for (let i = 0; i < targets.length; i++) {
+        if (abortController.signal.aborted) break;
+        await generateForParticipant(targets[i], i);
+      }
     } finally {
       set({ isGenerating: false, _abortController: null, streamingMessage: null });
     }

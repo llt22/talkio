@@ -188,7 +188,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onD
           <IoPerson size={20} color="white" />
         </div>
 
-        <div className="flex-1 flex flex-col items-end gap-1">
+        <div className="flex-1 min-w-0 flex flex-col items-end gap-1">
           {/* Label */}
           <div className="mr-1 flex items-center gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">You</span>
@@ -243,7 +243,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onD
         {avatarInitials}
       </div>
 
-      <div className="flex-1 flex flex-col gap-1">
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
         {/* Label */}
         <div className="ml-1 flex items-center gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{senderName}</span>

@@ -91,6 +91,7 @@ html, body, #root {
   padding: 0.75rem 1rem;
   overflow-x: auto;
   font-size: 0.8125rem;
+  max-width: 100%;
 }
 
 .prose code {
@@ -117,6 +118,9 @@ html, body, #root {
 .prose table {
   border-collapse: collapse;
   font-size: 0.8125rem;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 .prose th, .prose td {
