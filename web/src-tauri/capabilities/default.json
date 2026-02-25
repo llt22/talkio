@@ -1,10 +1,8 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Talkio default permissions",
-  "windows": [
-    "main"
-  ],
+  "windows": ["main"],
+  "webviews": ["main"],
   "permissions": [
     "core:default",
     "sql:default",
@@ -14,6 +12,11 @@
     "sql:allow-close",
     "fs:default",
     "notification:default",
-    "opener:default"
+    "opener:default",
+    "http:default",
+    {
+      "identifier": "http:allow-fetch",
+      "allow": [{ "url": "http://**" }, { "url": "https://**" }]
+    }
   ]
 }

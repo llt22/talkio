@@ -45,7 +45,8 @@
     "goToModels": "Go to Models tab to start chatting",
     "startConversation": "Start a conversation",
     "reasoning": "Reasoning",
-    "vision": "Vision"
+    "vision": "Vision",
+    "noResults": "No matching conversations"
   },
   "chat": {
     "you": "You",

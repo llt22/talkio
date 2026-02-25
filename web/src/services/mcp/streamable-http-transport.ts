@@ -2,6 +2,36 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { isInitializedNotification, JSONRPCMessageSchema } from "@modelcontextprotocol/sdk/types.js";
 
+// Use Tauri's native HTTP fetch (bypasses browser CORS) when available.
+// Lazy-loaded promise ensures the import is resolved before first use.
+let tauriFetchPromise: Promise<typeof globalThis.fetch | null> | null = null;
+
+function getTauriFetch(): Promise<typeof globalThis.fetch | null> {
+  if (tauriFetchPromise) return tauriFetchPromise;
+  // Tauri v2 uses __TAURI_INTERNALS__, v1 used __TAURI__
+  const isTauri = typeof window !== "undefined" && ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
+  if (isTauri) {
+    tauriFetchPromise = import("@tauri-apps/plugin-http")
+      .then((mod) => {
+        console.log("[MCP Transport] Tauri HTTP plugin loaded successfully");
+        return mod.fetch as typeof globalThis.fetch;
+      })
+      .catch((err) => {
+        console.warn("[MCP Transport] Failed to load Tauri HTTP plugin:", err);
+        return null;
+      });
+  } else {
+    tauriFetchPromise = Promise.resolve(null);
+  }
+  return tauriFetchPromise!;
+}
+
+async function mcpFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
+  const fetchFn = await getTauriFetch();
+  if (fetchFn) return fetchFn(input, init);
+  return globalThis.fetch(input, init);
+}
+
 class EventSourceParser {
   private buffer = "";
 
@@ -140,7 +170,7 @@ export class StreamableHTTPClientTransport implements Transport {
       headers["content-type"] = "application/json";
       headers["accept"] = "application/json, text/event-stream";
 
-      const response = await fetch(this.url, {
+      const response = await mcpFetch(this.url, {
         ...this.requestInit,
         method: "POST",
         headers,
@@ -196,7 +226,7 @@ export class StreamableHTTPClientTransport implements Transport {
       const headers = this.commonHeaders();
       headers["Accept"] = "text/event-stream";
 
-      const response = await fetch(this.url, {
+      const response = await mcpFetch(this.url, {
         method: "GET",
         headers,
         signal: this.abortController?.signal,

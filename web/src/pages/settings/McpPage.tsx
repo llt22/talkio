@@ -8,6 +8,7 @@ import { EmptyState } from "../../components/shared/EmptyState";
 import { BUILT_IN_TOOLS } from "../../services/built-in-tools";
 import type { CustomHeader } from "../../../../src/types";
 import { mcpConnectionManager } from "../../services/mcp/connection-manager";
+import { refreshMcpConnections } from "../../services/mcp";
 import { useBuiltInToolsStore } from "../../stores/built-in-tools-store";
 
 // ── MCP Tools Page (1:1 RN native style) ──
@@ -214,20 +215,44 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[16px] font-medium text-foreground">{server.name}</p>
-                        <p className="text-[13px] text-muted-foreground truncate">
-                          {serverTools.length} {t("personas.mcpTools").toLowerCase()}
+                        <p className={`text-[13px] truncate ${isError ? "text-destructive" : "text-muted-foreground"}`}>
+                          {status === "connecting"
+                            ? t("toolEdit.testing")
+                            : isError
+                              ? t("toolEdit.testFailed")
+                              : `${serverTools.length} ${t("personas.mcpTools").toLowerCase()}`}
                         </p>
                       </div>
                       <div
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          updateServer(server.id, { enabled: !server.enabled });
+                          if (status === "connecting") return;
+                          const newEnabled = !server.enabled;
+                          updateServer(server.id, { enabled: newEnabled });
+                          if (newEnabled) {
+                            // Attempt connection; auto-disable on failure
+                            useMcpStore.getState().setConnectionStatus(server.id, "connecting");
+                            try {
+                              await refreshMcpConnections();
+                              const finalStatus = useMcpStore.getState().connectionStatus[server.id];
+                              if (finalStatus === "error") {
+                                updateServer(server.id, { enabled: false });
+                              }
+                            } catch {
+                              updateServer(server.id, { enabled: false });
+                              useMcpStore.getState().setConnectionStatus(server.id, "error");
+                            }
+                          } else {
+                            mcpConnectionManager.reset(server.id);
+                            useMcpStore.getState().setTools(server.id, []);
+                            useMcpStore.getState().setConnectionStatus(server.id, "disconnected");
+                          }
                         }}
-                        className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors"
+                        className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors ${status === "connecting" ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
                         style={{ backgroundColor: server.enabled ? "var(--primary)" : "var(--muted)" }}
                       >
                         <span
-                          className="inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform"
+                          className={`inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform ${status === "connecting" ? "animate-pulse" : ""}`}
                           style={{ transform: server.enabled ? "translateX(20px) translateY(2px)" : "translateX(2px) translateY(2px)" }}
                         />
                       </div>

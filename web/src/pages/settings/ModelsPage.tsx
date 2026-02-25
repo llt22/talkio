@@ -29,9 +29,10 @@ function groupByProvider(
 
 interface ModelsPageProps {
   onNavigateToChat?: (convId: string) => void;
+  isMobile?: boolean;
 }
 
-export function ModelsPage({ onNavigateToChat }: ModelsPageProps = {}) {
+export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPageProps = {}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const models = useProviderStore((s) => s.models);
@@ -182,7 +183,7 @@ export function ModelsPage({ onNavigateToChat }: ModelsPageProps = {}) {
 
       {/* Group Mode Bottom Bar */}
       {groupMode && (
-        <div className="absolute bottom-4 left-5 right-5">
+        <div className="absolute left-5 right-5" style={{ bottom: isMobile ? "4rem" : "1rem" }}>
           {selectedForGroup.length >= 2 ? (
             <button
               onClick={handleCreateGroup}

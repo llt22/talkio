@@ -3,6 +3,7 @@ import { View, Text, Pressable, TextInput, Alert, SectionList } from "react-nati
 import { useTranslation } from "react-i18next";
 import { useRouter, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useProviderStore } from "../../../src/stores/provider-store";
 import { useChatStore } from "../../../src/stores/chat-store";
 import { useThemeColors } from "../../../src/hooks/useThemeColors";
@@ -23,6 +24,7 @@ export default function ModelsScreen() {
   const [selectedForGroup, setSelectedForGroup] = useState<string[]>([]);
   const [groupMode, setGroupMode] = useState(false);
   const colors = useThemeColors();
+  const tabBarHeight = useBottomTabBarHeight();
 
   useEffect(() => {
     navigation.setOptions({
@@ -39,7 +41,7 @@ export default function ModelsScreen() {
   const filtered = useMemo(() => enabledModels.filter((m) =>
     searchQuery
       ? m.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.modelId.toLowerCase().includes(searchQuery.toLowerCase())
+      m.modelId.toLowerCase().includes(searchQuery.toLowerCase())
       : true,
   ), [enabledModels, searchQuery]);
 
@@ -119,7 +121,7 @@ export default function ModelsScreen() {
           sections={sections}
           keyExtractor={(item) => item.id}
           stickySectionHeadersEnabled
-          contentContainerStyle={{ paddingBottom: groupMode ? 80 : 24 }}
+          contentContainerStyle={{ paddingBottom: groupMode ? tabBarHeight + 80 : tabBarHeight + 24 }}
           renderSectionHeader={({ section: { title } }) => (
             <View className="bg-bg-secondary px-5 py-1.5">
               <Text className="text-[13px] font-semibold text-section-header">
@@ -163,7 +165,7 @@ export default function ModelsScreen() {
       )}
 
       {!groupMode && (
-        <View className="absolute bottom-24 right-5">
+        <View style={{ position: "absolute", bottom: tabBarHeight + 24, right: 20 }}>
           <Pressable
             onPress={() => {
               setGroupMode(true);
@@ -177,7 +179,7 @@ export default function ModelsScreen() {
       )}
 
       {groupMode && (
-        <View className="absolute bottom-4 left-5 right-5">
+        <View style={{ position: "absolute", bottom: tabBarHeight + 24, left: 20, right: 20 }}>
           {selectedForGroup.length >= 2 ? (
             <Pressable
               onPress={handleCreateGroup}

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { MessageSquare, Bot, Compass, Settings, Plus, MoreHorizontal, Trash2, Eraser, UserPlus, Share2, ChevronDown, ChevronUp, User, Users, Pencil } from "lucide-react";
+import { MessageSquare, Bot, Compass, Settings, Plus, MoreHorizontal, Trash2, Eraser, UserPlus, Share2, ChevronDown, ChevronUp, User, Users, Pencil, Search, ArrowDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { ChatView } from "../shared/ChatView";
 import { ModelPicker } from "../shared/ModelPicker";
 import { SettingsPage } from "../../pages/settings/SettingsPage";
@@ -177,6 +178,7 @@ export function DesktopLayout() {
 }
 
 function DesktopConversationList() {
+  const { t } = useTranslation();
   const conversations = useConversations();
   const currentConversationId = useChatStore((s) => s.currentConversationId);
   const createConversation = useChatStore((s) => s.createConversation);
@@ -185,8 +187,17 @@ function DesktopConversationList() {
   const clearConversationMessages = useChatStore((s) => s.clearConversationMessages);
   const models = useProviderStore((s) => s.models);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const enabledModels = models.filter((m) => m.enabled);
+
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    const q = searchQuery.toLowerCase();
+    return conversations.filter((c) =>
+      c.title.toLowerCase().includes(q) || (c.lastMessage ?? "").toLowerCase().includes(q)
+    );
+  }, [conversations, searchQuery]);
 
   const handleNew = useCallback(async () => {
     if (enabledModels.length === 0) {
@@ -228,14 +239,27 @@ function DesktopConversationList() {
         onSelect={handleModelSelect}
       />
 
+      {/* Search */}
+      <div className="px-3 pb-2">
+        <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ backgroundColor: "var(--muted)" }}>
+          <Search size={14} className="text-muted-foreground flex-shrink-0" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("chats.searchChats")}
+            className="flex-1 text-[13px] bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
+          />
+        </div>
+      </div>
+
       {/* List */}
       <div className="flex-1 overflow-y-auto py-1">
-        {conversations.length === 0 ? (
+        {filteredConversations.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <p className="text-xs text-muted-foreground">No conversations yet</p>
+            <p className="text-xs text-muted-foreground">{searchQuery ? t("chats.noResults") : t("chats.noConversations")}</p>
           </div>
         ) : (
-          conversations.map((conv) => (
+          filteredConversations.map((conv) => (
             <DesktopConversationItem
               key={conv.id}
               conversation={conv}
@@ -336,6 +360,8 @@ function DesktopConversationItem({
 
 function DesktopChatPanel({ conversationId }: { conversationId: string }) {
   const { confirm } = useConfirm();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   const {
     conv,
     messages,
@@ -508,14 +534,29 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
       <ModelPicker open={showModelPicker} onClose={() => setShowModelPicker(false)} onSelect={handleModelPickerSelect} />
 
       {/* Chat */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 relative">
         <ChatView
           conversationId={conversationId}
           modelName={!isGroup ? model?.displayName : undefined}
           onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
           isGroup={isGroup}
           participants={conv?.participants ?? []}
+          onScrollRef={scrollRef}
+          onScroll={() => {
+            const el = scrollRef.current;
+            if (!el) return;
+            setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
+          }}
         />
+        {showScrollBottom && (
+          <button
+            onClick={() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); }}
+            className="absolute bottom-20 right-4 h-9 w-9 flex items-center justify-center rounded-full shadow-md z-10 active:opacity-70"
+            style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}
+          >
+            <ArrowDown size={16} className="text-muted-foreground" />
+          </button>
+        )}
       </div>
     </div>
   );

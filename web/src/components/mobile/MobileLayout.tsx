@@ -100,7 +100,7 @@ function MobileTabLayout() {
       {/* Tab Content */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {activeTab === "chats" && <MobileConversationList onNavigateToExperts={() => setActiveTab("experts")} />}
-        {activeTab === "experts" && <ModelsPage />}
+        {activeTab === "experts" && <ModelsPage isMobile />}
         {activeTab === "discover" && <DiscoverPage />}
         {activeTab === "settings" && <SettingsPage onSubPageChange={setSettingsInSubPage} />}
       </div>

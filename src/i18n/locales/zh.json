@@ -45,7 +45,8 @@
     "goToModels": "前往模型页面开始聊天",
     "startConversation": "开始新对话",
     "reasoning": "推理",
-    "vision": "视觉"
+    "vision": "视觉",
+    "noResults": "没有匹配的对话"
   },
   "chat": {
     "you": "你",

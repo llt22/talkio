@@ -21,10 +21,9 @@
         "fullscreen": false
       }
     ],
-    "security": {
-      "csp": null
-    }
+    "security": {}
   },
+  "plugins": {},
   "bundle": {
     "active": true,
     "targets": "all",
