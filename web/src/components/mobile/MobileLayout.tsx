@@ -282,29 +282,29 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)", paddingBottom: keyboardHeight > 0 ? keyboardHeight : undefined }}>
       {/* Header */}
-      <div className="flex-shrink-0 relative flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)", borderBottom: "0.5px solid var(--border)" }}>
-        <button className="flex items-center gap-0.5 px-2 py-1 active:opacity-60 z-10" onClick={onBack}>
+      <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)", borderBottom: "0.5px solid var(--border)" }}>
+        <button className="flex items-center gap-0.5 px-2 py-1 active:opacity-60 flex-shrink-0" onClick={onBack}>
           <IoChevronBack size={20} color="var(--primary)" />
         </button>
 
-        {/* Tappable center title */}
+        {/* Tappable center title — flex-1 with overflow hidden */}
         <button
-          className="absolute inset-x-0 flex flex-col items-center active:opacity-70"
+          className="flex-1 min-w-0 flex flex-col items-center active:opacity-70"
           onClick={handleHeaderTitlePress}
         >
-          <span className="text-sm font-bold tracking-tight text-foreground truncate max-w-[200px]">{title}</span>
-          <div className="mt-0.5 flex items-center gap-1">
-            {isGroup ? <IoPeopleOutline size={12} color="var(--primary)" /> : <IoPersonOutline size={12} color="var(--primary)" />}
-            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">{subtitle}</span>
+          <span className="text-sm font-bold tracking-tight text-foreground truncate max-w-full px-2">{title}</span>
+          <div className="mt-0.5 flex items-center gap-1 max-w-full">
+            {isGroup ? <IoPeopleOutline size={12} color="var(--primary)" className="flex-shrink-0" /> : <IoPersonOutline size={12} color="var(--primary)" className="flex-shrink-0" />}
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary truncate">{subtitle}</span>
             {isGroup
-              ? (showParticipants ? <IoCaretUp size={12} color="var(--primary)" /> : <IoCaretDown size={12} color="var(--primary)" />)
-              : (showIdentityPanel ? <IoCaretUp size={12} color="var(--primary)" /> : <IoCaretDown size={12} color="var(--primary)" />)
+              ? (showParticipants ? <IoCaretUp size={12} color="var(--primary)" className="flex-shrink-0" /> : <IoCaretDown size={12} color="var(--primary)" className="flex-shrink-0" />)
+              : (showIdentityPanel ? <IoCaretUp size={12} color="var(--primary)" className="flex-shrink-0" /> : <IoCaretDown size={12} color="var(--primary)" className="flex-shrink-0" />)
             }
           </div>
         </button>
 
         {/* Right buttons */}
-        <div className="ml-auto flex items-center gap-1 z-10">
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           <button
             className="p-2 active:opacity-60"
             onClick={() => { setModelPickerMode("add"); setShowModelPicker(true); }}
