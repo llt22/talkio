@@ -9,7 +9,8 @@ import { DiscoverPage } from "../../pages/DiscoverPage";
 import { ModelsPage } from "../../pages/settings/ModelsPage";
 import { IdentityEditPage } from "../../pages/settings/IdentityPage";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
-import { useConversations, useMessages } from "../../hooks/useDatabase";
+import { useConversations } from "../../hooks/useDatabase";
+import { useChatPanelState } from "../../hooks/useChatPanelState";
 import { useProviderStore } from "../../stores/provider-store";
 import { useIdentityStore } from "../../stores/identity-store";
 import type { Conversation, Identity } from "../../../../src/types";
@@ -132,32 +133,36 @@ function MobileTabLayout() {
 
 function MobileChatDetail({ conversationId, onBack }: { conversationId: string; onBack: () => void }) {
   const { t } = useTranslation();
-  const conversations = useConversations();
-  const messages = useMessages(conversationId);
-  const conv = useMemo(() => conversations.find((c: Conversation) => c.id === conversationId), [conversations, conversationId]);
-  const getModelById = useProviderStore((s) => s.getModelById);
-  const getIdentityById = useIdentityStore((s) => s.getIdentityById);
-  const identities = useIdentityStore((s) => s.identities);
-  const clearConversationMessages = useChatStore((s: ChatState) => s.clearConversationMessages);
-  const updateParticipantIdentity = useChatStore((s: ChatState) => s.updateParticipantIdentity);
-  const updateParticipantModel = useChatStore((s: ChatState) => s.updateParticipantModel);
-  const addParticipant = useChatStore((s: ChatState) => s.addParticipant);
-  const removeParticipant = useChatStore((s: ChatState) => s.removeParticipant);
+  const {
+    conv,
+    messages,
+    identities,
+    getModelById,
+    getIdentityById,
+    clearConversationMessages,
+    updateParticipantIdentity,
+    removeParticipant,
+    isGroup,
+    currentParticipant,
+    model,
+    showIdentityPanel,
+    setShowIdentityPanel,
+    showParticipants,
+    setShowParticipants,
+    showModelPicker,
+    setShowModelPicker,
+    setModelPickerMode,
+    isExporting,
+    setIsExporting,
+    handleModelPickerSelect,
+  } = useChatPanelState(conversationId);
 
-  const [showIdentityPanel, setShowIdentityPanel] = useState(false);
-  const [showParticipants, setShowParticipants] = useState(false);
-  const [showModelPicker, setShowModelPicker] = useState(false);
-  const [modelPickerMode, setModelPickerMode] = useState<"add" | "switch">("switch");
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   // Optimistic identity id — updates immediately on selection, before DB roundtrip
   const [optimisticIdentityId, setOptimisticIdentityId] = useState<string | null | undefined>(undefined);
 
-  const isGroup = conv?.type === "group";
-  const currentParticipant = conv?.participants[0];
-  const model = currentParticipant ? getModelById(currentParticipant.modelId) : null;
   const resolvedIdentityId = optimisticIdentityId !== undefined ? optimisticIdentityId : currentParticipant?.identityId ?? null;
   const activeIdentity = resolvedIdentityId ? getIdentityById(resolvedIdentityId) : null;
 
@@ -166,7 +171,6 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
     return conv.participants.find((p) => p.id === editingParticipantId) ?? null;
   }, [conv, editingParticipantId]);
 
-  const identityPanelParticipant = editingParticipantId ? editingParticipant : currentParticipant ?? null;
   const identityPanelIdentityId = editingParticipantId
     ? (editingParticipant?.identityId ?? null)
     : resolvedIdentityId;
@@ -210,15 +214,6 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
     setShowIdentityPanel(false);
     setEditingParticipantId(null);
   }, [conversationId, editingParticipantId, currentParticipant, updateParticipantIdentity]);
-
-  const handleModelPickerSelect = useCallback((modelId: string) => {
-    setShowModelPicker(false);
-    if (modelPickerMode === "switch" && currentParticipant) {
-      updateParticipantModel(conversationId, currentParticipant.id, modelId);
-    } else {
-      addParticipant(conversationId, modelId);
-    }
-  }, [conversationId, modelPickerMode, currentParticipant, updateParticipantModel, addParticipant]);
 
   const handleExport = useCallback(async () => {
     if (!conv || isExporting || messages.length === 0) return;
@@ -294,10 +289,11 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
             const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
             const displayName = pModel?.displayName ?? p.modelId;
             const displayNameWithRole = pIdentity?.name ? `${displayName}（${pIdentity.name}）` : displayName;
+            const { initials } = getAvatarProps(displayName);
             return (
               <div key={p.id} className="flex items-center gap-3 py-2.5">
                 <div className="h-8 w-8 flex items-center justify-center rounded-full" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }}>
-                  <span className="text-xs font-bold text-primary">{displayName.slice(0, 2).toUpperCase()}</span>
+                  <span className="text-xs font-bold text-primary">{initials}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-medium text-foreground truncate">{displayNameWithRole}</p>

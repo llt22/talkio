@@ -6,9 +6,9 @@ import { SettingsPage } from "../../pages/settings/SettingsPage";
 import { DiscoverPage } from "../../pages/DiscoverPage";
 import { ModelsPage } from "../../pages/settings/ModelsPage";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
-import { useConversations, useMessages } from "../../hooks/useDatabase";
+import { useConversations } from "../../hooks/useDatabase";
 import { useProviderStore } from "../../stores/provider-store";
-import { useIdentityStore } from "../../stores/identity-store";
+import { useChatPanelState } from "../../hooks/useChatPanelState";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -334,41 +334,34 @@ function DesktopConversationItem({
 }
 
 function DesktopChatPanel({ conversationId }: { conversationId: string }) {
-  const conversations = useConversations();
-  const messages = useMessages(conversationId);
-  const conv = useMemo(() => conversations.find((c: Conversation) => c.id === conversationId), [conversations, conversationId]);
-  const getModelById = useProviderStore((s) => s.getModelById);
-  const getIdentityById = useIdentityStore((s) => s.getIdentityById);
-  const identities = useIdentityStore((s) => s.identities);
-  const clearConversationMessages = useChatStore((s: ChatState) => s.clearConversationMessages);
-  const updateParticipantIdentity = useChatStore((s: ChatState) => s.updateParticipantIdentity);
-  const updateParticipantModel = useChatStore((s: ChatState) => s.updateParticipantModel);
-  const addParticipant = useChatStore((s: ChatState) => s.addParticipant);
-  const removeParticipant = useChatStore((s: ChatState) => s.removeParticipant);
-
-  const [showIdentityPanel, setShowIdentityPanel] = useState(false);
-  const [showParticipants, setShowParticipants] = useState(false);
-  const [showModelPicker, setShowModelPicker] = useState(false);
-  const [modelPickerMode, setModelPickerMode] = useState<"add" | "switch">("switch");
-  const [isExporting, setIsExporting] = useState(false);
-
-  const isGroup = conv?.type === "group";
-  const currentParticipant = conv?.participants[0];
-  const model = currentParticipant ? getModelById(currentParticipant.modelId) : null;
-  const activeIdentity = currentParticipant?.identityId ? getIdentityById(currentParticipant.identityId) : null;
+  const {
+    conv,
+    messages,
+    identities,
+    getModelById,
+    getIdentityById,
+    clearConversationMessages,
+    updateParticipantIdentity,
+    removeParticipant,
+    isGroup,
+    currentParticipant,
+    model,
+    activeIdentity,
+    showIdentityPanel,
+    setShowIdentityPanel,
+    showParticipants,
+    setShowParticipants,
+    showModelPicker,
+    setShowModelPicker,
+    setModelPickerMode,
+    isExporting,
+    setIsExporting,
+    handleModelPickerSelect,
+  } = useChatPanelState(conversationId);
   const title = isGroup ? conv?.title ?? "Group" : model?.displayName ?? "Chat";
   const subtitle = isGroup
     ? `${conv?.participants.length ?? 0} models`
     : activeIdentity?.name ?? "Select Role";
-
-  const handleModelPickerSelect = useCallback((modelId: string) => {
-    setShowModelPicker(false);
-    if (modelPickerMode === "switch" && currentParticipant) {
-      updateParticipantModel(conversationId, currentParticipant.id, modelId);
-    } else {
-      addParticipant(conversationId, modelId);
-    }
-  }, [conversationId, modelPickerMode, currentParticipant, updateParticipantModel, addParticipant]);
 
   const handleExport = useCallback(async () => {
     if (!conv || isExporting || messages.length === 0) return;
