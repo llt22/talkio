@@ -315,7 +315,11 @@
     "dataManagementDesc": "You can export or delete all your data at any time from the Settings page. We do not collect analytics or telemetry data."
   },
   "htmlPreview": {
-    "writing": "..."
+    "writing": "...",
+    "preview": "Preview",
+    "tapToRender": "Tap to render preview",
+    "lazyLoaded": "Lazy-loaded for performance",
+    "fullscreen": "HTML Preview"
   },
   "presets": {
     "socrates": {

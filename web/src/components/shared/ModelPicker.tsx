@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, Check } from "lucide-react";
 import { Input } from "../ui/input";
 import {
@@ -17,6 +18,7 @@ interface ModelPickerProps {
 }
 
 export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelPickerProps) {
+  const { t } = useTranslation();
   const models = useProviderStore((s) => s.models);
   const providers = useProviderStore((s) => s.providers);
   const [search, setSearch] = useState("");
@@ -42,7 +44,7 @@ export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelP
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm max-h-[70vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-base">Select Model</DialogTitle>
+          <DialogTitle className="text-base">{t("chat.selectModel")}</DialogTitle>
         </DialogHeader>
 
         <div className="px-1">
@@ -51,7 +53,7 @@ export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelP
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search models..."
+              placeholder={t("providerEdit.searchModels")}
               className="pl-9 h-9 text-sm"
             />
           </div>
@@ -61,8 +63,8 @@ export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelP
           {filtered.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-6">
               {models.length === 0
-                ? "No models available. Add a provider in Settings first."
-                : "No models match your search"}
+                ? t("models.noModels")
+                : t("chats.noResults")}
             </p>
           ) : (
             <div className="space-y-0.5">

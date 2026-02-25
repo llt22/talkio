@@ -315,7 +315,11 @@
     "dataManagementDesc": "您可以随时从设置页面导出或删除所有数据。我们不收集任何分析或遥测数据。"
   },
   "htmlPreview": {
-    "writing": "编写中..."
+    "writing": "编写中...",
+    "preview": "预览",
+    "tapToRender": "点击渲染预览",
+    "lazyLoaded": "按需加载以提升性能",
+    "fullscreen": "HTML 预览"
   },
   "presets": {
     "socrates": {
