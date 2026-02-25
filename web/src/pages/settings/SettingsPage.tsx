@@ -262,7 +262,7 @@ function ProvidersListPage({
             <p className="mt-1 text-sm text-muted-foreground">{t("models.configureHint")}</p>
           </div>
         ) : (
-          <div>
+          <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
             {providers.map((provider: { id: string; name: string; status: string; baseUrl: string; type: string; enabled?: boolean }, idx: number) => {
               const providerModels = models.filter((m: { providerId: string; enabled: boolean }) => m.providerId === provider.id);
               const activeModels = providerModels.filter((m: { enabled: boolean }) => m.enabled);
@@ -319,7 +319,9 @@ function ProvidersListPage({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[16px] font-medium text-foreground truncate">{provider.name}</p>
-                    <p className="text-[13px] text-muted-foreground truncate">{provider.baseUrl}</p>
+                    <p className="text-[13px] text-muted-foreground truncate">
+                      {t("providers.modelsCount", { total: providerModels.length, active: activeModels.length })}
+                    </p>
                   </div>
                   <IoChevronForward size={18} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
                 </button>
