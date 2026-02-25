@@ -606,9 +606,7 @@ function OnboardingOrEmpty({ hasProviders, onNew }: { hasProviders: boolean; onN
   if (!hasProviders) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-8">
-        <div className="mb-6 h-20 w-20 flex items-center justify-center rounded-full" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)" }}>
-          <IoSparkles size={40} color="var(--primary)" />
-        </div>
+        <img src="/logo.png" alt="Talkio" className="mb-6 h-20 w-20 object-contain" />
         <p className="text-center text-xl font-bold text-foreground">{t("settings.appName")}</p>
         <p className="mt-3 text-center text-sm leading-5 text-muted-foreground">
           {t("models.configureHint")}
@@ -626,7 +624,7 @@ function OnboardingOrEmpty({ hasProviders, onNew }: { hasProviders: boolean; onN
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-8">
-      <IoChatbubbleOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
+      <img src="/logo.png" alt="Talkio" className="h-16 w-16 object-contain opacity-60" />
       <p className="mt-4 text-center text-lg font-semibold text-foreground">{t("chats.noConversations")}</p>
       <p className="mt-2 text-center text-sm text-muted-foreground">
         {t("chats.goToModels")}
