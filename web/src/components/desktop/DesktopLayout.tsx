@@ -242,7 +242,7 @@ function DesktopConversationList() {
 
       {/* Search */}
       <div className="px-3 pb-2">
-        <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ backgroundColor: "var(--muted)" }}>
+        <div className="flex items-center gap-2 rounded-xl px-2.5 py-1.5" style={{ backgroundColor: "var(--secondary)" }}>
           <Search size={14} className="text-muted-foreground flex-shrink-0" />
           <input
             value={searchQuery}

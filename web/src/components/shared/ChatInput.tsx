@@ -438,7 +438,7 @@ export const ChatInput = memo(function ChatInput({
             ) : (
               <button
                 onClick={handleMicPress}
-                className={`h-10 w-10 flex items-center justify-center rounded-full active:opacity-70 ${isRecording ? "" : ""}`}
+                className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-70"
                 style={isRecording ? { backgroundColor: "var(--destructive)" } : undefined}
               >
                 {isRecording
