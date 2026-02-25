@@ -81,7 +81,7 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
   }, [displayMessages]);
 
   const handleSend = useCallback(
-    (text: string, images?: string[], mentionedModelIds?: string[]) => {
+    (text: string, mentionedModelIds?: string[], images?: string[]) => {
       sendMessage(text, images, { mentionedModelIds });
     },
     [sendMessage],
