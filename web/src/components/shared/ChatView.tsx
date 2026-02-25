@@ -41,6 +41,7 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
   const autoDiscussTotalRounds = useChatStore((s: ChatState) => s.autoDiscussTotalRounds);
   const regenerateMessage = useChatStore((s: ChatState) => s.regenerateMessage);
   const branchFromMessage = useChatStore((s: ChatState) => s.branchFromMessage);
+  const switchBranch = useChatStore((s: ChatState) => s.switchBranch);
   const deleteMessageById = useChatStore((s: ChatState) => s.deleteMessageById);
 
   const _internalScrollRef = useRef<HTMLDivElement>(null);
@@ -121,8 +122,6 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
       </div>
     );
   }
-
-  const switchBranch = useChatStore((s: ChatState) => s.switchBranch);
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
