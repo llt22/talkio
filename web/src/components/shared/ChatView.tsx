@@ -3,7 +3,7 @@
  */
 import { useRef, useEffect, useCallback, useMemo, useState, memo } from "react"; // useState used by MessageRow
 import { useTranslation } from "react-i18next";
-import { IoCopyOutline, IoRefreshOutline, IoVolumeMediumOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "react-icons/io5";
+import { IoCopyOutline, IoRefreshOutline, IoVolumeMediumOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
@@ -11,6 +11,7 @@ import { useMessages } from "../../hooks/useDatabase";
 import type { Message } from "../../../../src/types";
 import { MessageStatus } from "../../../../src/types";
 import { getAvatarProps } from "../../lib/avatar-utils";
+import { useConfirm } from "./ConfirmDialogProvider";
 
 interface ChatViewProps {
   conversationId: string;
@@ -23,6 +24,7 @@ interface ChatViewProps {
 
 export function ChatView({ conversationId, isMobile = false, onScrollRef, onScroll, modelName, onSwitchModel }: ChatViewProps) {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
   const messages = useMessages(conversationId);
   const setCurrentConversation = useChatStore((s: ChatState) => s.setCurrentConversation);
   const isGenerating = useChatStore((s: ChatState) => s.isGenerating);
@@ -81,11 +83,14 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
     regenerateMessage(messageId);
   }, [regenerateMessage]);
 
-  const handleDelete = useCallback((messageId: string) => {
-    if (confirm(t("chat.deleteMessageConfirm"))) {
-      deleteMessageById(messageId);
-    }
-  }, [deleteMessageById]);
+  const handleDelete = useCallback(async (messageId: string) => {
+    const ok = await confirm({
+      title: t("common.areYouSure"),
+      description: t("chat.deleteMessageConfirm"),
+      destructive: true,
+    });
+    if (ok) deleteMessageById(messageId);
+  }, [confirm, deleteMessageById, t]);
 
   const hasMessages = displayMessages.length > 0;
 
@@ -218,7 +223,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onD
           {/* User action bar (1:1 RN) */}
           <div className="mr-1 flex items-center gap-0.5">
             {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
-            {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="#ef4444" />}
+            {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
           </div>
         </div>
       </div>
@@ -281,7 +286,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onD
               if (navigator.share) { navigator.share({ text: content }).catch(() => {}); }
               else { navigator.clipboard.writeText(content); }
             }} />}
-            {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="#ef4444" />}
+            {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
             {message.tokenUsage && (
               <div className="ml-2 flex items-center gap-1 rounded px-1.5 py-0.5" style={{ backgroundColor: "var(--muted)" }}>
                 <IoAnalyticsOutline size={11} color="var(--muted-foreground)" />

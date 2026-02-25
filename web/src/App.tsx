@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
+import { ConfirmDialogProvider } from "./components/shared/ConfirmDialogProvider";
 import { MobileLayout } from "./components/mobile/MobileLayout";
 import { DesktopLayout } from "./components/desktop/DesktopLayout";
 import { initDatabase } from "./storage/database";
@@ -54,26 +55,28 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <TooltipProvider>
-        <div
-          className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground antialiased"
-          style={{
-            paddingTop: "env(safe-area-inset-top, 0px)",
-            paddingBottom: "env(safe-area-inset-bottom, 0px)",
-          }}
-        >
-          <div className="flex-1 min-h-0">
-            {ready ? (
-              isMobile ? <MobileLayout /> : <DesktopLayout />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-sm text-muted-foreground">Loading...</div>
-              </div>
-            )}
+      <ConfirmDialogProvider>
+        <TooltipProvider>
+          <div
+            className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground antialiased"
+            style={{
+              paddingTop: "env(safe-area-inset-top, 0px)",
+              paddingBottom: "env(safe-area-inset-bottom, 0px)",
+            }}
+          >
+            <div className="flex-1 min-h-0">
+              {ready ? (
+                isMobile ? <MobileLayout /> : <DesktopLayout />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-sm text-muted-foreground">Loading...</div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        <Toaster position={isMobile ? "top-center" : "bottom-right"} richColors />
-      </TooltipProvider>
+          <Toaster position={isMobile ? "top-center" : "bottom-right"} richColors />
+        </TooltipProvider>
+      </ConfirmDialogProvider>
     </BrowserRouter>
   );
 }

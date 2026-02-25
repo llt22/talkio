@@ -1,6 +1,6 @@
 import { memo, useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { IoClose, IoArrowUp, IoImageOutline, IoSwapHorizontalOutline, IoStop, IoMicOutline } from "react-icons/io5";
+import { X, ArrowUp, Image, ArrowLeftRight, Square, Mic } from "lucide-react";
 
 // ── ChatInput — direct 1:1 port of RN src/components/chat/ChatInput.tsx ──
 
@@ -100,7 +100,7 @@ export const ChatInput = memo(function ChatInput({
                 style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
               >
                 {/* RN: Ionicons name="close" size={12} color="#fff" */}
-                <IoClose size={12} color="white" />
+                <X size={12} color="white" />
               </button>
             </div>
           ))}
@@ -133,7 +133,7 @@ export const ChatInput = memo(function ChatInput({
               style={{ backgroundColor: "var(--primary)" }}
             >
               {/* RN: Ionicons name="arrow-up" size={18} color="#fff" */}
-              <IoArrowUp size={18} color="white" />
+              <ArrowUp size={18} color="white" />
             </button>
           )}
         </div>
@@ -147,7 +147,7 @@ export const ChatInput = memo(function ChatInput({
           className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-60"
           disabled={isGenerating}
         >
-          <IoImageOutline size={22} color={isGenerating ? "#8E8E93" : "#6b7280"} />
+          <Image size={22} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
         </button>
 
         {/* Model switch (single chat only) — RN: Ionicons name="swap-horizontal-outline" + modelName */}
@@ -158,8 +158,8 @@ export const ChatInput = memo(function ChatInput({
             disabled={isGenerating}
           >
             {/* RN: Ionicons name="swap-horizontal-outline" size={16} */}
-            <IoSwapHorizontalOutline size={16} color={isGenerating ? "#8E8E93" : "#6b7280"} />
-            <span className="text-[13px] font-medium truncate max-w-[150px]" style={{ color: isGenerating ? "#8E8E93" : "#6b7280" }}>{modelName}</span>
+            <ArrowLeftRight size={16} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
+            <span className="text-[13px] font-medium truncate max-w-[150px]" style={{ color: isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)" }}>{modelName}</span>
           </button>
         )}
 
@@ -170,15 +170,15 @@ export const ChatInput = memo(function ChatInput({
           <button
             onClick={onStop}
             className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-70"
-            style={{ backgroundColor: "#ef4444" }}
+            style={{ backgroundColor: "var(--destructive)" }}
           >
             {/* RN: Ionicons name="stop" size={14} color="#fff" */}
-            <IoStop size={14} color="white" />
+            <Square size={14} color="white" />
           </button>
         ) : (
           <button className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-60">
             {/* RN: Ionicons name="mic-outline" size={22} color={colors.textSecondary} */}
-            <IoMicOutline size={22} color="#6b7280" />
+            <Mic size={22} color="var(--secondary-foreground)" />
           </button>
         )}
       </div>

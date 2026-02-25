@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Routes, Route, useNavigate, useParams } from "react-router-dom";
-import { IoChatbubbles, IoCube, IoPersonCircle, IoSettings, IoChevronBack, IoPeopleOutline, IoCaretDown, IoCaretUp, IoPersonOutline, IoShareOutline, IoCreateOutline, IoSearchOutline, IoCloseCircle, IoSparkles, IoChatbubbleOutline, IoArrowDown, IoAddCircleOutline, IoTrashOutline, IoPersonAddOutline } from "react-icons/io5";
+import { IoChatbubbles, IoCube, IoPersonCircle, IoSettings, IoChevronBack, IoPeopleOutline, IoCaretDown, IoCaretUp, IoPersonOutline, IoShareOutline, IoCreateOutline, IoSearchOutline, IoCloseCircle, IoSparkles, IoChatbubbleOutline, IoArrowDown, IoAddCircleOutline, IoTrashOutline, IoPersonAddOutline } from "../../icons";
 import { ChatView } from "../shared/ChatView";
 import { ModelPicker } from "../shared/ModelPicker";
 import { SettingsPage } from "../../pages/settings/SettingsPage";
@@ -16,6 +16,7 @@ import { useIdentityStore } from "../../stores/identity-store";
 import type { Conversation, Identity } from "../../../../src/types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { exportConversationAsMarkdown } from "../../services/export";
+import { useConfirm } from "../shared/ConfirmDialogProvider";
 
 // ── Tab Icons using react-icons/io5 ──
 
@@ -133,6 +134,7 @@ function MobileTabLayout() {
 
 function MobileChatDetail({ conversationId, onBack }: { conversationId: string; onBack: () => void }) {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
   const {
     conv,
     messages,
@@ -274,7 +276,14 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
           </button>
           <button
             className="p-2 active:opacity-60"
-            onClick={() => { if (confirm(t("chat.clearHistoryConfirm"))) clearConversationMessages(conversationId); }}
+            onClick={async () => {
+              const ok = await confirm({
+                title: t("common.areYouSure"),
+                description: t("chat.clearHistoryConfirm"),
+                destructive: true,
+              });
+              if (ok) clearConversationMessages(conversationId);
+            }}
           >
             <IoCreateOutline size={20} color="var(--primary)" />
           </button>
@@ -307,7 +316,14 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
                 </button>
                 <button
                   className="p-1.5 active:opacity-60"
-                  onClick={() => { if (confirm(t("chat.removeMember") + ": " + displayName)) removeParticipant(conversationId, p.id); }}
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: t("common.areYouSure"),
+                      description: `${t("chat.removeMember")}: ${displayName}`,
+                      destructive: true,
+                    });
+                    if (ok) removeParticipant(conversationId, p.id);
+                  }}
                 >
                   <IoTrashOutline size={16} color="var(--destructive)" />
                 </button>
@@ -403,6 +419,7 @@ type FilterType = "all" | "single" | "group";
 
 function MobileConversationList({ onNavigateToExperts }: { onNavigateToExperts: () => void }) {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
   const navigate = useNavigate();
   const conversations = useConversations();
   const createConversation = useChatStore((s) => s.createConversation);
@@ -525,8 +542,12 @@ function MobileConversationList({ onNavigateToExperts }: { onNavigateToExperts: 
               key={conv.id}
               conversation={conv}
               onSelect={() => navigate(`/chat/${conv.id}`)}
-              onDelete={() => {
-                if (confirm(t("common.areYouSure"))) deleteConversation(conv.id);
+              onDelete={async () => {
+                const ok = await confirm({
+                  title: t("common.areYouSure"),
+                  destructive: true,
+                });
+                if (ok) deleteConversation(conv.id);
               }}
             />
           ))
@@ -627,7 +648,7 @@ function ConversationItem({
             className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2"
             style={{
               borderColor: "var(--background)",
-              backgroundColor: isConnected ? "#34C759" : "var(--border)",
+              backgroundColor: isConnected ? "var(--success)" : "var(--border)",
             }}
           />
         )}

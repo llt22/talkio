@@ -1,5 +1,5 @@
 import { memo, useState, useCallback } from "react";
-import { IoEyeOutline, IoCodeSlashOutline, IoCopyOutline, IoExpandOutline, IoCloseOutline } from "react-icons/io5";
+import { IoEyeOutline, IoCodeSlashOutline, IoCopyOutline, IoExpandOutline, IoCloseOutline } from "../../icons";
 
 interface HtmlPreviewProps {
   code: string;
@@ -89,17 +89,18 @@ export const HtmlPreview = memo(function HtmlPreview({ code, language = "html" }
 
       {/* Fullscreen modal */}
       {fullscreen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-white">
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "var(--background)" }}>
           <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
-            <span className="text-base font-semibold text-gray-900">HTML Preview</span>
+            <span className="text-base font-semibold" style={{ color: "var(--foreground)" }}>HTML Preview</span>
             <button onClick={() => setFullscreen(false)} className="p-1 active:opacity-60">
-              <IoCloseOutline size={22} color="#6b7280" />
+              <IoCloseOutline size={22} color="var(--muted-foreground)" />
             </button>
           </div>
           <iframe
             srcDoc={wrappedHtml}
             sandbox="allow-scripts allow-same-origin"
-            className="flex-1 w-full border-0 bg-white"
+            className="flex-1 w-full border-0"
+            style={{ backgroundColor: "var(--background)" }}
             title="HTML Preview Fullscreen"
           />
         </div>

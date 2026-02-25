@@ -11,10 +11,13 @@ import {
 import type { Conversation, Message, MessageBlock } from "../../../src/types";
 
 // Global event emitter for DB changes
-type Listener = () => void;
+export type DbChangeChannel = "all" | "conversations" | "messages" | "blocks";
+type DbChangeEvent = { channel: DbChangeChannel; id?: string };
+type Listener = (event: DbChangeEvent) => void;
 const listeners = new Set<Listener>();
-export function notifyDbChange() {
-  listeners.forEach((fn) => fn());
+export function notifyDbChange(channel: DbChangeChannel = "all", id?: string) {
+  const event: DbChangeEvent = { channel, id };
+  listeners.forEach((fn) => fn(event));
 }
 
 export function useConversations(): Conversation[] {
@@ -31,8 +34,11 @@ export function useConversations(): Conversation[] {
 
   useEffect(() => {
     load();
-    listeners.add(load);
-    return () => { listeners.delete(load); };
+    const listener: Listener = (e) => {
+      if (e.channel === "all" || e.channel === "conversations") load();
+    };
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
   }, [load]);
 
   return convs;
@@ -53,8 +59,12 @@ export function useMessages(conversationId: string | null, branchId?: string | n
 
   useEffect(() => {
     load();
-    listeners.add(load);
-    return () => { listeners.delete(load); };
+    const listener: Listener = (e) => {
+      if (e.channel === "all") return load();
+      if (e.channel === "messages" && conversationId && e.id === conversationId) return load();
+    };
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
   }, [load]);
 
   return msgs;
@@ -75,8 +85,12 @@ export function useMessageBlocks(messageId: string | null): MessageBlock[] {
 
   useEffect(() => {
     load();
-    listeners.add(load);
-    return () => { listeners.delete(load); };
+    const listener: Listener = (e) => {
+      if (e.channel === "all") return load();
+      if (e.channel === "blocks" && messageId && e.id === messageId) return load();
+    };
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
   }, [load]);
 
   return blocks;

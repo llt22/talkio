@@ -3,7 +3,7 @@
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IoLinkOutline, IoKeyOutline, IoEyeOutline, IoEyeOffOutline, IoRefreshOutline, IoSearchOutline, IoCloseCircle, IoCheckmarkCircle } from "react-icons/io5";
+import { IoLinkOutline, IoKeyOutline, IoEyeOutline, IoEyeOffOutline, IoRefreshOutline, IoSearchOutline, IoCloseCircle, IoCheckmarkCircle } from "../../icons";
 import { useSettingsStore } from "../../stores/settings-store";
 
 const STT_PRESETS = [
@@ -117,7 +117,7 @@ export function SttSettingsPage() {
           className="w-full rounded-xl py-3.5 text-[15px] font-semibold text-white active:opacity-80 disabled:opacity-50 mt-1"
           disabled={testing || pulling || !baseUrl.trim() || !apiKey.trim()}
           onClick={handleConnect}
-          style={{ backgroundColor: connected === true ? "#34C759" : connected === false ? "var(--destructive)" : "var(--primary)" }}
+          style={{ backgroundColor: connected === true ? "var(--success)" : connected === false ? "var(--destructive)" : "var(--primary)" }}
         >
           {testing || pulling
             ? (pulling ? t("providerEdit.fetchingModels") : t("providerEdit.connecting"))

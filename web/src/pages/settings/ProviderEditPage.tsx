@@ -3,10 +3,11 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { IoLinkOutline, IoChevronForward, IoKeyOutline, IoEyeOutline, IoEyeOffOutline, IoCaretDown, IoCaretUp, IoAdd, IoCloseCircle, IoRefreshOutline, IoSearchOutline, IoLockClosed, IoCheckmarkCircle, IoConstructOutline, IoBulbOutline, IoPulseOutline } from "react-icons/io5";
+import { IoLinkOutline, IoChevronForward, IoKeyOutline, IoEyeOutline, IoEyeOffOutline, IoCaretDown, IoCaretUp, IoAdd, IoCloseCircle, IoRefreshOutline, IoSearchOutline, IoLockClosed, IoCheckmarkCircle, IoConstructOutline, IoBulbOutline, IoPulseOutline } from "../../icons";
 import { useProviderStore } from "../../stores/provider-store";
 import type { Provider, ProviderType, CustomHeader, Model } from "../../../../src/types";
 import { generateId } from "../../lib/id";
+import { buildProviderHeadersFromRaw } from "../../services/provider-headers";
 
 type ProviderStoreState = ReturnType<typeof useProviderStore.getState>;
 
@@ -140,10 +141,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
         // New provider: test connection WITHOUT saving (1:1 RN)
         const url = baseUrl.trim().replace(/\/+$/, "");
 
-        const headers: Record<string, string> = { Authorization: `Bearer ${apiKey.trim()}` };
-        for (const h of customHeaders) {
-          if (h.name && h.value) headers[h.name] = h.value;
-        }
+        const headers = buildProviderHeadersFromRaw({ apiKey: apiKey.trim(), customHeaders });
 
         const res = await fetch(`${url}/models`, {
           headers,
@@ -432,7 +430,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
                 className="flex-1 flex items-center justify-center rounded-xl py-3.5 text-[15px] font-semibold text-white active:opacity-80 disabled:opacity-50"
                 disabled={testing || pulling || !name.trim() || !baseUrl.trim()}
                 onClick={handleConnect}
-                style={{ backgroundColor: connected === true ? "#34C759" : connected === false ? "var(--destructive)" : "var(--primary)" }}
+                style={{ backgroundColor: connected === true ? "var(--success)" : connected === false ? "var(--destructive)" : "var(--primary)" }}
               >
                 {testing || pulling ? (
                   <span>{pulling ? t("providerEdit.fetchingModels") : t("providerEdit.connecting")}</span>

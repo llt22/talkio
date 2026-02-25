@@ -25,6 +25,7 @@ import { getBuiltInToolDefs, executeBuiltInTool } from "../services/built-in-too
 import { executeMcpToolByName, getMcpToolDefs, refreshMcpConnections } from "../services/mcp";
 import { generateId } from "../lib/id";
 import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
+import { buildProviderHeaders } from "../services/provider-headers";
 
 interface StreamingState {
   messageId: string;
@@ -83,7 +84,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
     await insertConversation(conv);
     set({ currentConversationId: conv.id });
-    notifyDbChange();
+    notifyDbChange("conversations");
     return conv;
   },
 
@@ -92,7 +93,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (get().currentConversationId === id) {
       set({ currentConversationId: null });
     }
-    notifyDbChange();
+    notifyDbChange("conversations");
   },
 
   setCurrentConversation: (id: string | null) => {
@@ -233,7 +234,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       await insertMessage(userMsg);
       updateConversation(convId, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(() => {});
-      notifyDbChange();
+      notifyDbChange("messages", convId);
+      notifyDbChange("conversations");
     }
 
     const abortController = new AbortController();
@@ -242,19 +244,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const targets = resolveTargetParticipants();
     let lastAssistantContent = "";
     let firstModelDisplayName: string | null = null;
-
-    const headersForProvider = (provider: Provider) => {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${provider.apiKey}`,
-      };
-      if (provider.customHeaders) {
-        for (const h of provider.customHeaders) {
-          if (h.name && h.value) headers[h.name] = h.value;
-        }
-      }
-      return headers;
-    };
 
     async function generateForParticipant(participant: ConversationParticipant, index: number) {
       const model = providerStore.getModelById(participant.modelId);
@@ -302,7 +291,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           createdAt: new Date(Date.parse(userMsg.createdAt) + 1 + index).toISOString(),
         };
         await insertMessage(assistantMsg);
-        notifyDbChange();
+        notifyDbChange("messages", convId);
         return;
       }
 
@@ -341,11 +330,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
 
       await insertMessage(assistantMsg);
-      notifyDbChange();
+      notifyDbChange("messages", convId);
       set({ streamingMessage: { messageId: assistantMsgId, content: "", reasoning: "" } });
 
       const baseUrl = provider.baseUrl.replace(/\/+$/, "");
-      const headers = headersForProvider(provider);
+      const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
       await refreshMcpConnections().catch(() => {});
       const toolDefs = [...getBuiltInToolDefs(), ...getMcpToolDefs()];
 
@@ -479,7 +468,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             createdAt: new Date().toISOString(),
           };
           await insertMessage(toolResponseMsg);
-          notifyDbChange();
+          notifyDbChange("messages", convId);
 
           set({ streamingMessage: { messageId: toolResponseMsgId, content: "", reasoning: "" } });
 
@@ -547,7 +536,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
           await updateConversation(convId, { lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
         }
 
-        notifyDbChange();
+        notifyDbChange("messages", convId);
+        notifyDbChange("conversations");
       } catch (err: any) {
         if (err.name === "AbortError") {
           const sm = get().streamingMessage;
@@ -558,6 +548,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               isStreaming: false,
               status: MessageStatus.SUCCESS,
             });
+            notifyDbChange("messages", convId);
           }
         } else {
           await updateMessage(assistantMsgId, {
@@ -565,8 +556,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             status: MessageStatus.ERROR,
             errorMessage: err.message || "Unknown error",
           });
+          notifyDbChange("messages", convId);
         }
-        notifyDbChange();
       } finally {
         set({ streamingMessage: null });
       }
@@ -605,7 +596,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Delete the old assistant message
     await dbDeleteMessage(messageId);
-    notifyDbChange();
+    notifyDbChange("messages", convId);
 
     // Re-generate assistant response without creating a duplicate user message
     await get().sendMessage(prevUserMsg.content, prevUserMsg.images, { reuseUserMessageId: prevUserMsg.id });
@@ -613,13 +604,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   deleteMessageById: async (messageId: string) => {
     await dbDeleteMessage(messageId);
-    notifyDbChange();
+    const convId = get().currentConversationId;
+    if (convId) notifyDbChange("messages", convId);
+    else notifyDbChange("all");
   },
 
   clearConversationMessages: async (conversationId: string) => {
     await dbClearMessages(conversationId);
     await updateConversation(conversationId, { lastMessage: null, lastMessageAt: null });
-    notifyDbChange();
+    notifyDbChange("messages", conversationId);
+    notifyDbChange("conversations");
   },
 
   updateParticipantIdentity: async (conversationId: string, participantId: string, identityId: string | null) => {
@@ -629,7 +623,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       p.id === participantId ? { ...p, identityId } : p
     );
     await updateConversation(conversationId, { participants });
-    notifyDbChange();
+    notifyDbChange("conversations");
   },
 
   updateParticipantModel: async (conversationId: string, participantId: string, modelId: string) => {
@@ -644,7 +638,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       participants,
       title: model?.displayName ?? conv.title,
     });
-    notifyDbChange();
+    notifyDbChange("conversations");
   },
 
   addParticipant: async (conversationId: string, modelId: string) => {
@@ -664,7 +658,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       type: isFirstGroup ? "group" : conv.type,
       title: isFirstGroup ? (model?.displayName ?? conv.title) : conv.title,
     });
-    notifyDbChange();
+    notifyDbChange("conversations");
   },
 
   removeParticipant: async (conversationId: string, participantId: string) => {
@@ -675,6 +669,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       participants,
       type: participants.length <= 1 ? "single" : "group",
     });
-    notifyDbChange();
+    notifyDbChange("conversations");
   },
 }));

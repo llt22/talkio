@@ -1,12 +1,14 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { IoAddCircleOutline, IoTrashOutline, IoChevronBack } from "react-icons/io5";
+import { IoAddCircleOutline, IoTrashOutline, IoChevronBack } from "../../icons";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
+import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 
 // ── MCP Tools Page (1:1 RN native style) ──
 
 export function McpPage() {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
   const servers = useMcpStore((s) => s.servers) as McpServerConfig[];
   const tools = useMcpStore((s) => s.tools) as McpTool[];
   const connectionStatus = useMcpStore((s) => s.connectionStatus) as Record<
@@ -69,10 +71,13 @@ export function McpPage() {
                     </button>
                     {/* Delete */}
                     <button
-                      onClick={() => { if (confirm(t("common.areYouSure"))) deleteServer(server.id); }}
+                      onClick={async () => {
+                        const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
+                        if (ok) deleteServer(server.id);
+                      }}
                       className="p-1.5 active:opacity-60"
                     >
-                      <IoTrashOutline size={16} color="#ef4444" />
+                      <IoTrashOutline size={16} color="var(--destructive)" />
                     </button>
                   </div>
                 );

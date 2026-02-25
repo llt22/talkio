@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IoChevronForward, IoChevronBack, IoAddCircleOutline, IoTrashOutline } from "react-icons/io5";
+import { IoChevronForward, IoChevronBack, IoAddCircleOutline, IoTrashOutline } from "../../icons";
 import i18n from "../../i18n";
 import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
+import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 import { createBackup, downloadBackup, importBackup } from "../../services/backup";
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
@@ -206,6 +207,7 @@ function ProvidersListPage({
   onPop: () => void;
 }) {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
   const providers = useProviderStore((s) => s.providers);
   const models = useProviderStore((s) => s.models);
   const deleteProvider = useProviderStore((s) => s.deleteProvider);
@@ -245,9 +247,14 @@ function ProvidersListPage({
                       title: provider.name,
                       headerRight: (
                         <button
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            if (confirm(t("providers.deleteConfirm", { name: provider.name }))) {
+                            const ok = await confirm({
+                              title: t("common.areYouSure"),
+                              description: t("providers.deleteConfirm", { name: provider.name }),
+                              destructive: true,
+                            });
+                            if (ok) {
                               deleteProvider(provider.id);
                               onPop();
                             }

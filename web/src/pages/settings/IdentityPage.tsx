@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { IoPersonOutline, IoAddCircleOutline, IoTrashOutline, IoChevronForward, IoChevronBack } from "react-icons/io5";
+import { IoPersonOutline, IoAddCircleOutline, IoTrashOutline, IoChevronForward, IoChevronBack } from "../../icons";
 import { useIdentityStore } from "../../stores/identity-store";
 import type { Identity } from "../../../../src/types";
+import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 
 type IdentityStoreState = ReturnType<typeof useIdentityStore.getState>;
 
@@ -11,6 +12,7 @@ type IdentityStoreState = ReturnType<typeof useIdentityStore.getState>;
 
 export function IdentityPage() {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
   const navigate = useNavigate();
   const identities = useIdentityStore((s: IdentityStoreState) => s.identities);
   const deleteIdentity = useIdentityStore((s: IdentityStoreState) => s.deleteIdentity);
@@ -33,8 +35,9 @@ export function IdentityPage() {
               identity={identity}
               isLast={idx === identities.length - 1}
               onEdit={() => navigate(`/identity/edit/${identity.id}`)}
-              onDelete={() => {
-                if (confirm(t("common.areYouSure"))) deleteIdentity(identity.id);
+              onDelete={async () => {
+                const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
+                if (ok) deleteIdentity(identity.id);
               }}
             />
           ))}

@@ -1,0 +1,96 @@
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+
+type ConfirmOptions = {
+  title: string;
+  description?: string;
+  confirmText?: string;
+  cancelText?: string;
+  destructive?: boolean;
+};
+
+type ConfirmApi = {
+  confirm: (options: ConfirmOptions) => Promise<boolean>;
+};
+
+const ConfirmDialogContext = createContext<ConfirmApi | null>(null);
+
+export function useConfirm(): ConfirmApi {
+  const ctx = useContext(ConfirmDialogContext);
+  if (!ctx) throw new Error("useConfirm must be used within ConfirmDialogProvider");
+  return ctx;
+}
+
+export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
+  const resolverRef = useRef<((value: boolean) => void) | null>(null);
+
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState<string>("");
+  const [description, setDescription] = useState<string | undefined>(undefined);
+  const [confirmText, setConfirmText] = useState<string>("Confirm");
+  const [cancelText, setCancelText] = useState<string>("Cancel");
+  const [destructive, setDestructive] = useState<boolean>(false);
+
+  const close = useCallback((result: boolean) => {
+    setOpen(false);
+    const resolve = resolverRef.current;
+    resolverRef.current = null;
+    resolve?.(result);
+  }, []);
+
+  const confirm = useCallback(async (options: ConfirmOptions) => {
+    if (resolverRef.current) {
+      const prev = resolverRef.current;
+      resolverRef.current = null;
+      prev(false);
+    }
+
+    setTitle(options.title);
+    setDescription(options.description);
+    setConfirmText(options.confirmText ?? "Confirm");
+    setCancelText(options.cancelText ?? "Cancel");
+    setDestructive(!!options.destructive);
+    setOpen(true);
+
+    return new Promise<boolean>((resolve) => {
+      resolverRef.current = resolve;
+    });
+  }, []);
+
+  const api = useMemo<ConfirmApi>(() => ({ confirm }), [confirm]);
+
+  return (
+    <ConfirmDialogContext.Provider value={api}>
+      {children}
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          if (!v) close(false);
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            {description ? <DialogDescription>{description}</DialogDescription> : null}
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => close(false)}>
+              {cancelText}
+            </Button>
+            <Button variant={destructive ? "destructive" : "default"} onClick={() => close(true)}>
+              {confirmText}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </ConfirmDialogContext.Provider>
+  );
+}

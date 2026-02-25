@@ -27,6 +27,7 @@
   --accent: #F2F2F7;
   --accent-foreground: #3C3C43;
   --destructive: #FF3B30;
+  --success: #34C759;
   --border: #e5e7eb;
   --input: #e5e7eb;
   --ring: #007AFF;
@@ -43,6 +44,9 @@
   --sidebar-accent-foreground: #3C3C43;
   --sidebar-border: #e2e8f0;
   --sidebar-ring: #007AFF;
+
+  --scrollbar-thumb: #d1d5db;
+  --scrollbar-thumb-hover: #9ca3af;
 }
 
 html, body, #root {
@@ -76,11 +80,11 @@ html, body, #root {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #d1d5db;
+    background: var(--scrollbar-thumb);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af;
+    background: var(--scrollbar-thumb-hover);
   }
 }
 
@@ -190,6 +194,7 @@ html, body, #root {
   --accent: #2C2C2E;
   --accent-foreground: #F5F5F7;
   --destructive: #FF453A;
+  --success: #30D158;
   --border: #38383A;
   --input: #2C2C2E;
   --ring: #0A84FF;
@@ -206,6 +211,9 @@ html, body, #root {
   --sidebar-accent-foreground: #F5F5F7;
   --sidebar-border: #38383A;
   --sidebar-ring: #0A84FF;
+
+  --scrollbar-thumb: #4b5563;
+  --scrollbar-thumb-hover: #6b7280;
 }
 
 /* Dark mode prose overrides */
@@ -222,10 +230,10 @@ html, body, #root {
   border-color: #38383A;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;
+  background: var(--scrollbar-thumb);
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: var(--scrollbar-thumb-hover);
 }
 
 @layer base {

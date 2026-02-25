@@ -30,6 +30,7 @@ import {
 import type { Conversation, Identity } from "../../../../src/types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { exportConversationAsMarkdown } from "../../services/export";
+import { useConfirm } from "../shared/ConfirmDialogProvider";
 
 type DesktopSection = "chats" | "experts" | "discover" | "settings";
 
@@ -334,6 +335,7 @@ function DesktopConversationItem({
 }
 
 function DesktopChatPanel({ conversationId }: { conversationId: string }) {
+  const { confirm } = useConfirm();
   const {
     conv,
     messages,
@@ -418,7 +420,19 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { if (confirm("Delete all messages in this conversation?")) clearConversationMessages(conversationId); }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Are you sure?",
+                    description: "Delete all messages in this conversation?",
+                    destructive: true,
+                  });
+                  if (ok) clearConversationMessages(conversationId);
+                }}
+              >
                 <Pencil size={15} />
               </Button>
             </TooltipTrigger>

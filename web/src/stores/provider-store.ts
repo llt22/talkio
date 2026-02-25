@@ -6,6 +6,7 @@ import { create } from "zustand";
 import type { Provider, Model, ModelCapabilities } from "../../../src/types";
 import { kvStore } from "../storage/kv-store";
 import { generateId } from "../lib/id";
+import { buildProviderHeaders } from "../services/provider-headers";
 
 const PROVIDERS_KEY = "providers";
 const MODELS_KEY = "models";
@@ -198,14 +199,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
 
     const baseUrl = provider.baseUrl.replace(/\/+$/, "");
 
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${provider.apiKey}`,
-    };
-    if (provider.customHeaders) {
-      for (const h of provider.customHeaders) {
-        if (h.name && h.value) headers[h.name] = h.value;
-      }
-    }
+    const headers = buildProviderHeaders(provider);
 
     const res = await fetch(`${baseUrl}/models`, {
       headers,
@@ -259,7 +253,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
 
     try {
       const res = await fetch(`${baseUrl}/models`, {
-        headers: { Authorization: `Bearer ${provider.apiKey}` },
+        headers: buildProviderHeaders(provider),
         signal: AbortSignal.timeout(10000),
       });
       const ok = res.ok;
@@ -278,15 +272,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
     if (!provider) throw new Error("Provider not found");
 
     const baseUrl = provider.baseUrl.replace(/\/+$/, "");
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${provider.apiKey}`,
-    };
-    if (provider.customHeaders) {
-      for (const h of provider.customHeaders) {
-        if (h.name && h.value) headers[h.name] = h.value;
-      }
-    }
+    const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
 
     const caps = { vision: false, toolCall: false, reasoning: false, streaming: true };
 
