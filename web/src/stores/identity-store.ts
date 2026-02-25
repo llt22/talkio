@@ -6,6 +6,7 @@ import { create } from "zustand";
 import type { Identity } from "../../../src/types";
 import { kvStore } from "../storage/kv-store";
 import i18n from "../i18n";
+import { generateId } from "../lib/id";
 
 const IDENTITIES_KEY = "identities";
 const PRESET_VERSION_KEY = "preset_identities_version";
@@ -21,10 +22,6 @@ const PRESET_IDENTITIES = [
   { nameKey: "presets.roast.name", icon: "finance", promptKey: "presets.roast.prompt" },
   { nameKey: "presets.humor.name", icon: "marketing", promptKey: "presets.humor.prompt" },
 ];
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
 
 interface IdentityState {
   identities: Identity[];

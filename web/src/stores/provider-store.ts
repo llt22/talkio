@@ -5,10 +5,7 @@
 import { create } from "zustand";
 import type { Provider, Model, ModelCapabilities } from "../../../src/types";
 import { kvStore } from "../storage/kv-store";
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
+import { generateId } from "../lib/id";
 
 const PROVIDERS_KEY = "providers";
 const MODELS_KEY = "models";
@@ -49,29 +46,31 @@ function persistModels(models: Model[]) {
   kvStore.setObject(MODELS_KEY, models);
 }
 
+function normalizeModel(m: any): Model {
+  const legacyCaps = m.capabilities ?? {};
+  const caps: ModelCapabilities = {
+    vision: !!legacyCaps.vision,
+    toolCall: !!(legacyCaps.toolCall ?? legacyCaps.toolUse),
+    reasoning: !!legacyCaps.reasoning,
+    streaming: legacyCaps.streaming !== false,
+  };
+  return {
+    id: String(m.id),
+    providerId: String(m.providerId),
+    modelId: String(m.modelId),
+    displayName: String(m.displayName ?? m.modelId),
+    avatar: m.avatar ?? null,
+    capabilities: caps,
+    capabilitiesVerified: !!m.capabilitiesVerified,
+    maxContextLength: typeof m.maxContextLength === "number" ? m.maxContextLength : 128000,
+    enabled: m.enabled !== false,
+  } as Model;
+}
+
 function loadInitial() {
   const providers = kvStore.getObject<Provider[]>(PROVIDERS_KEY) ?? [];
   const rawModels = kvStore.getObject<any[]>(MODELS_KEY) ?? [];
-  const models: Model[] = rawModels.map((m) => {
-    const legacyCaps = m.capabilities ?? {};
-    const caps: ModelCapabilities = {
-      vision: !!legacyCaps.vision,
-      toolCall: !!(legacyCaps.toolCall ?? legacyCaps.toolUse),
-      reasoning: !!legacyCaps.reasoning,
-      streaming: legacyCaps.streaming !== false,
-    };
-    return {
-      id: String(m.id),
-      providerId: String(m.providerId),
-      modelId: String(m.modelId),
-      displayName: String(m.displayName ?? m.modelId),
-      avatar: m.avatar ?? null,
-      capabilities: caps,
-      capabilitiesVerified: !!m.capabilitiesVerified,
-      maxContextLength: typeof m.maxContextLength === "number" ? m.maxContextLength : 128000,
-      enabled: m.enabled !== false,
-    } as Model;
-  });
+  const models: Model[] = rawModels.map(normalizeModel);
   return { providers, models };
 }
 
@@ -189,26 +188,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
   loadFromStorage: () => {
     const providers = kvStore.getObject<Provider[]>(PROVIDERS_KEY) ?? [];
     const rawModels = kvStore.getObject<any[]>(MODELS_KEY) ?? [];
-    const models: Model[] = rawModels.map((m) => {
-      const legacyCaps = m.capabilities ?? {};
-      const caps: ModelCapabilities = {
-        vision: !!legacyCaps.vision,
-        toolCall: !!(legacyCaps.toolCall ?? legacyCaps.toolUse),
-        reasoning: !!legacyCaps.reasoning,
-        streaming: legacyCaps.streaming !== false,
-      };
-      return {
-        id: String(m.id),
-        providerId: String(m.providerId),
-        modelId: String(m.modelId),
-        displayName: String(m.displayName ?? m.modelId),
-        avatar: m.avatar ?? null,
-        capabilities: caps,
-        capabilitiesVerified: !!m.capabilitiesVerified,
-        maxContextLength: typeof m.maxContextLength === "number" ? m.maxContextLength : 128000,
-        enabled: m.enabled !== false,
-      };
-    });
+    const models: Model[] = rawModels.map(normalizeModel);
     set({ providers, models });
   },
 
@@ -322,7 +302,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
           messages: [{ role: "user", content: [{ type: "text", text: "hi" }, { type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" } }] }],
         }),
       });
-      caps.vision = visionRes.ok || visionRes.status === 400;
+      caps.vision = visionRes.ok;
     } catch { /* ignore */ }
 
     // Probe tool call
@@ -338,7 +318,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
           tools: [{ type: "function", function: { name: "test", description: "test", parameters: { type: "object", properties: {} } } }],
         }),
       });
-      caps.toolCall = toolRes.ok || toolRes.status === 400;
+      caps.toolCall = toolRes.ok;
     } catch { /* ignore */ }
 
     get().updateModelCapabilities(modelId, caps);

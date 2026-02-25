@@ -4,12 +4,9 @@
  */
 import { create } from "zustand";
 import { kvStore } from "../storage/kv-store";
+import { generateId } from "../lib/id";
 
 const MCP_SERVERS_KEY = "mcp_servers";
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
 
 export interface McpServerConfig {
   id: string;

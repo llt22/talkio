@@ -7,6 +7,7 @@ import { kvStore } from "../storage/kv-store";
 
 export interface BackupData {
   version: "2.0";
+  scope: "config";
   exportedAt: string;
   providers: any[];
   models: any[];
@@ -17,6 +18,7 @@ export interface BackupData {
 export function createBackup(): BackupData {
   return {
     version: "2.0",
+    scope: "config",
     exportedAt: new Date().toISOString(),
     providers: kvStore.getObject("providers") ?? [],
     models: kvStore.getObject("models") ?? [],

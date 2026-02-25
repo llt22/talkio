@@ -22,10 +22,9 @@ import {
 import { notifyDbChange } from "../hooks/useDatabase";
 import { useProviderStore } from "./provider-store";
 import { getBuiltInToolDefs, executeBuiltInTool } from "../services/built-in-tools";
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
+import { executeMcpToolByName, getMcpToolDefs, refreshMcpConnections } from "../services/mcp";
+import { generateId } from "../lib/id";
+import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
 
 interface StreamingState {
   messageId: string;
@@ -44,7 +43,7 @@ export interface ChatState {
   createConversation: (modelId: string, extraModelIds?: string[]) => Promise<Conversation>;
   deleteConversation: (id: string) => Promise<void>;
   setCurrentConversation: (id: string | null) => void;
-  sendMessage: (text: string, images?: string[]) => Promise<void>;
+  sendMessage: (text: string, images?: string[], options?: { reuseUserMessageId?: string }) => Promise<void>;
   stopGeneration: () => void;
   regenerateMessage: (messageId: string) => Promise<void>;
   deleteMessageById: (messageId: string) => Promise<void>;
@@ -102,7 +101,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (text: string, images?: string[]) => {
+  sendMessage: async (text: string, images?: string[], options?: { reuseUserMessageId?: string }) => {
     const convId = get().currentConversationId;
     if (!convId) return;
 
@@ -200,34 +199,42 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     const providerStore = useProviderStore.getState();
 
-    // Create and persist user message
-    const userMsg: Message = {
-      id: generateId(),
-      conversationId: convId,
-      role: "user",
-      senderModelId: null,
-      senderName: "You",
-      identityId: null,
-      participantId: null,
-      content: text,
-      images: images ?? [],
-      generatedImages: [],
-      reasoningContent: null,
-      reasoningDuration: null,
-      toolCalls: [],
-      toolResults: [],
-      branchId: null,
-      parentMessageId: null,
-      isStreaming: false,
-      status: MessageStatus.SUCCESS,
-      errorMessage: null,
-      tokenUsage: null,
-      createdAt: new Date().toISOString(),
-    };
+    let userMsg: Message;
+    if (options?.reuseUserMessageId) {
+      const all = await getRecentMessages(convId, null, 200);
+      const existing = all.find((m) => m.id === options.reuseUserMessageId);
+      if (!existing || existing.role !== "user") return;
+      userMsg = existing;
+    } else {
+      // Create and persist user message
+      userMsg = {
+        id: generateId(),
+        conversationId: convId,
+        role: "user",
+        senderModelId: null,
+        senderName: "You",
+        identityId: null,
+        participantId: null,
+        content: text,
+        images: images ?? [],
+        generatedImages: [],
+        reasoningContent: null,
+        reasoningDuration: null,
+        toolCalls: [],
+        toolResults: [],
+        branchId: null,
+        parentMessageId: null,
+        isStreaming: false,
+        status: MessageStatus.SUCCESS,
+        errorMessage: null,
+        tokenUsage: null,
+        createdAt: new Date().toISOString(),
+      };
 
-    await insertMessage(userMsg);
-    updateConversation(convId, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(() => {});
-    notifyDbChange();
+      await insertMessage(userMsg);
+      updateConversation(convId, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(() => {});
+      notifyDbChange();
+    }
 
     const abortController = new AbortController();
     set({ isGenerating: true, _abortController: abortController });
@@ -254,6 +261,50 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const provider = model ? providerStore.getProviderById(model.providerId) : null;
       if (!model || !provider) return;
       if (!firstModelDisplayName) firstModelDisplayName = model.displayName;
+
+      if (provider.type !== "openai") {
+        const assistantMsgId = generateId();
+        const assistantMsg: Message = {
+          id: assistantMsgId,
+          conversationId: convId,
+          role: "assistant",
+          senderModelId: model.id,
+          senderName: model.displayName,
+          identityId: participant.identityId,
+          participantId: participant.id,
+          content: "",
+          images: [],
+          generatedImages: [],
+          reasoningContent: null,
+          reasoningDuration: null,
+          toolCalls: [],
+          toolResults: [],
+          branchId: null,
+          parentMessageId: null,
+          isStreaming: false,
+          status: MessageStatus.ERROR,
+          errorMessage: [
+            `This provider type is not supported yet: ${provider.type}.`,
+            "",
+            "Talkio currently supports OpenAI-compatible APIs only:",
+            "- GET /models",
+            "- POST /chat/completions (SSE streaming)",
+            "",
+            "How to fix:",
+            "- Use an OpenAI-compatible gateway such as OpenRouter or LiteLLM.",
+            "  Example baseUrl:",
+            "  - https://openrouter.ai/api/v1",
+            "  - http://<your-litellm-host>:4000/v1",
+            "",
+            "See: docs/provider-unified-protocol.md",
+          ].join("\n"),
+          tokenUsage: null,
+          createdAt: new Date(Date.parse(userMsg.createdAt) + 1 + index).toISOString(),
+        };
+        await insertMessage(assistantMsg);
+        notifyDbChange();
+        return;
+      }
 
       const identity = participant.identityId
         ? useIdentityStore.getState().getIdentityById(participant.identityId)
@@ -295,7 +346,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       const baseUrl = provider.baseUrl.replace(/\/+$/, "");
       const headers = headersForProvider(provider);
-      const toolDefs = getBuiltInToolDefs();
+      await refreshMcpConnections().catch(() => {});
+      const toolDefs = [...getBuiltInToolDefs(), ...getMcpToolDefs()];
 
       try {
         const allMessages = await getRecentMessages(convId, null, 200);
@@ -321,9 +373,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         const reader = response.body?.getReader();
         if (!reader) throw new Error("No response body");
-
-        const decoder = new TextDecoder();
-        let buffer = "";
         let fullContent = "";
         let fullReasoning = "";
         let rafPending = false;
@@ -352,40 +401,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }
         }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith("data: ")) continue;
-            const data = trimmed.slice(6);
-            if (data === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta;
-              if (!delta) continue;
-              if (delta.content) fullContent += delta.content;
-              if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
-              if (delta.tool_calls) {
-                for (const tc of delta.tool_calls) {
-                  const idx = tc.index ?? 0;
-                  while (pendingToolCalls.length <= idx) {
-                    pendingToolCalls.push({ id: "", name: "", arguments: "" });
-                  }
-                  if (tc.id) pendingToolCalls[idx].id = tc.id;
-                  if (tc.function?.name) pendingToolCalls[idx].name += tc.function.name;
-                  if (tc.function?.arguments) pendingToolCalls[idx].arguments += tc.function.arguments;
-                }
+        await consumeOpenAIChatCompletionsSse(reader, (delta) => {
+          if (delta.content) fullContent += delta.content;
+          if (delta.reasoning_content) fullReasoning += delta.reasoning_content;
+          if (delta.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0;
+              while (pendingToolCalls.length <= idx) {
+                pendingToolCalls.push({ id: "", name: "", arguments: "" });
               }
-              scheduleFlush();
-            } catch {}
+              if (tc.id) pendingToolCalls[idx].id = tc.id;
+              if (tc.function?.name) pendingToolCalls[idx].name += tc.function.name;
+              if (tc.function?.arguments) pendingToolCalls[idx].arguments += tc.function.arguments;
+            }
           }
-        }
+          scheduleFlush();
+        });
 
         flushToUI();
         const duration = (Date.now() - startTime) / 1000;
@@ -404,11 +435,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
           for (const tc of pendingToolCalls) {
             let args: Record<string, unknown> = {};
             try { args = JSON.parse(tc.arguments); } catch {}
-            const result = await executeBuiltInTool(tc.name, args);
-            toolResults.push({
-              toolCallId: tc.id,
-              content: result ? (result.success ? result.content : `Error: ${result.error}`) : `Tool not found: ${tc.name}`,
-            });
+            const builtIn = await executeBuiltInTool(tc.name, args);
+            if (builtIn) {
+              toolResults.push({ toolCallId: tc.id, content: builtIn.success ? builtIn.content : `Error: ${builtIn.error}` });
+              continue;
+            }
+            const remote = await executeMcpToolByName(tc.name, args);
+            if (remote) {
+              toolResults.push({ toolCallId: tc.id, content: remote.success ? remote.content : `Error: ${remote.error}` });
+              continue;
+            }
+            toolResults.push({ toolCallId: tc.id, content: `Tool not found: ${tc.name}` });
           }
 
           const toolMessages = [
@@ -461,7 +498,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const toolReader = toolResponse.body?.getReader();
           if (!toolReader) throw new Error("No response body");
 
-          let toolBuffer = "";
           let toolContent = "";
           let toolRafPending = false;
           let toolDirty = false;
@@ -477,24 +513,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
             if (!toolRafPending) { toolRafPending = true; requestAnimationFrame(toolFlush); }
           }
 
-          while (true) {
-            const { done, value } = await toolReader.read();
-            if (done) break;
-            toolBuffer += new TextDecoder().decode(value, { stream: true });
-            const lines = toolBuffer.split("\n");
-            toolBuffer = lines.pop() || "";
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed || !trimmed.startsWith("data: ")) continue;
-              const data = trimmed.slice(6);
-              if (data === "[DONE]") continue;
-              try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta;
-                if (delta?.content) { toolContent += delta.content; toolSchedule(); }
-              } catch {}
+          await consumeOpenAIChatCompletionsSse(toolReader, (delta) => {
+            if (delta?.content) {
+              toolContent += delta.content;
+              toolSchedule();
             }
-          }
+          });
           toolFlush();
 
           await updateMessage(toolResponseMsgId, {
@@ -583,8 +607,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     await dbDeleteMessage(messageId);
     notifyDbChange();
 
-    // Re-send
-    await get().sendMessage(prevUserMsg.content);
+    // Re-generate assistant response without creating a duplicate user message
+    await get().sendMessage(prevUserMsg.content, prevUserMsg.images, { reuseUserMessageId: prevUserMsg.id });
   },
 
   deleteMessageById: async (messageId: string) => {

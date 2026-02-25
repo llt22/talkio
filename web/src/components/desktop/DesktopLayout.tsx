@@ -28,6 +28,8 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import type { Conversation, Identity } from "../../../../src/types";
+import { getAvatarProps } from "../../lib/avatar-utils";
+import { exportConversationAsMarkdown } from "../../services/export";
 
 type DesktopSection = "chats" | "experts" | "discover" | "settings";
 
@@ -372,23 +374,13 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
     if (!conv || isExporting || messages.length === 0) return;
     setIsExporting(true);
     try {
-      const titleStr = conv.title || "Chat";
-      let md = `# ${titleStr}\n\n> ${new Date(conv.createdAt).toLocaleDateString()}\n\n---\n\n`;
-      for (const msg of messages) {
-        const name = msg.role === "user" ? "You" : (msg.senderName ?? "AI");
-        const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        md += `### ${name}  \`${time}\`\n\n`;
-        if (msg.reasoningContent) md += `<details>\n<summary>Thought process</summary>\n\n${msg.reasoningContent}\n\n</details>\n\n`;
-        if (msg.content) md += `${msg.content}\n\n`;
-        md += `---\n\n`;
-      }
-      const blob = new Blob([md], { type: "text/markdown" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${titleStr.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, "_").slice(0, 50)}.md`;
-      a.click();
-      URL.revokeObjectURL(url);
+      exportConversationAsMarkdown({
+        conversation: conv,
+        messages,
+        titleFallback: "Chat",
+        youLabel: "You",
+        thoughtProcessLabel: "Thought process",
+      });
     } finally {
       setIsExporting(false);
     }
@@ -449,10 +441,11 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
             const pModel = getModelById(p.modelId);
             const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
             const displayName = pModel?.displayName ?? p.modelId;
+            const { initials } = getAvatarProps(displayName);
             return (
               <div key={p.id} className="flex items-center gap-3 py-2">
                 <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[11px] font-bold text-primary">{displayName.slice(0, 2).toUpperCase()}</span>
+                  <span className="text-[11px] font-bold text-primary">{initials}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-foreground truncate">{displayName}</p>

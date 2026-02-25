@@ -5,6 +5,7 @@ import { IoSearchOutline, IoCloseCircle, IoPeopleOutline, IoChevronForward, IoCh
 import { useProviderStore } from "../../stores/provider-store";
 import { useChatStore } from "../../stores/chat-store";
 import type { Model } from "../../../../src/types";
+import { getAvatarProps } from "../../lib/avatar-utils";
 
 // ── Models / Experts Page (1:1 RN original) ──
 
@@ -23,10 +24,6 @@ function groupByProvider(
     section.data.sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
   return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title));
-}
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 interface ModelsPageProps {
@@ -135,12 +132,7 @@ export function ModelsPage({ onNavigateToChat }: ModelsPageProps = {}) {
               {/* Items */}
               {section.data.map((model, idx) => {
                 const isSelected = selectedForGroup.includes(model.id);
-                const AVATAR_COLORS = ["#3b82f6","#10b981","#8b5cf6","#f59e0b","#f43f5e","#06b6d4","#6366f1","#14b8a6"];
-                let mHash = 0;
-                for (let ci = 0; ci < model.displayName.length; ci++) mHash = model.displayName.charCodeAt(ci) + ((mHash << 5) - mHash);
-                const mColor = AVATAR_COLORS[Math.abs(mHash) % AVATAR_COLORS.length];
-                const mParts = model.displayName.split(/[-_\s.]+/);
-                const mInitials = mParts.length >= 2 ? (mParts[0][0] + mParts[1][0]).toUpperCase() : model.displayName.slice(0, 2).toUpperCase();
+                const { color: mColor, initials: mInitials } = getAvatarProps(model.displayName);
                 return (
                   <button
                     key={model.id}

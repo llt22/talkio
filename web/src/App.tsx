@@ -9,6 +9,7 @@ import { useProviderStore } from "./stores/provider-store";
 import { useIdentityStore } from "./stores/identity-store";
 import { useMcpStore } from "./stores/mcp-store";
 import { useSettingsStore } from "./stores/settings-store";
+import { refreshMcpConnections } from "./services/mcp";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => {
@@ -32,6 +33,7 @@ function useIsMobile() {
 export default function App() {
   const isMobile = useIsMobile();
   const [ready, setReady] = useState(false);
+  const mcpServers = useMcpStore((s) => s.servers);
 
   // Initialize database and load all stores
   useEffect(() => {
@@ -45,6 +47,10 @@ export default function App() {
     }
     init().catch(console.error);
   }, []);
+
+  useEffect(() => {
+    refreshMcpConnections().catch(() => {});
+  }, [mcpServers]);
 
   return (
     <BrowserRouter>

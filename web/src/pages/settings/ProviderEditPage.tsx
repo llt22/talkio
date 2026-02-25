@@ -6,15 +6,13 @@ import { useTranslation } from "react-i18next";
 import { IoLinkOutline, IoChevronForward, IoKeyOutline, IoEyeOutline, IoEyeOffOutline, IoCaretDown, IoCaretUp, IoAdd, IoCloseCircle, IoRefreshOutline, IoSearchOutline, IoLockClosed, IoCheckmarkCircle, IoConstructOutline, IoBulbOutline, IoPulseOutline } from "react-icons/io5";
 import { useProviderStore } from "../../stores/provider-store";
 import type { Provider, ProviderType, CustomHeader, Model } from "../../../../src/types";
+import { generateId } from "../../lib/id";
 
 type ProviderStoreState = ReturnType<typeof useProviderStore.getState>;
 
 const PROVIDER_PRESETS: Record<string, { name: string; baseUrl: string; type: ProviderType }> = {
   deepseek: { name: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", type: "openai" },
   openai: { name: "OpenAI", baseUrl: "https://api.openai.com/v1", type: "openai" },
-  anthropic: { name: "Anthropic", baseUrl: "https://api.anthropic.com/v1", type: "anthropic" },
-  google: { name: "Google", baseUrl: "https://generativelanguage.googleapis.com/v1beta", type: "gemini" },
-  azure: { name: "Azure OpenAI", baseUrl: "https://{resource}.openai.azure.com/openai/deployments/{deployment}", type: "azure-openai" },
   openrouter: { name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", type: "openai" },
   groq: { name: "Groq", baseUrl: "https://api.groq.com/openai/v1", type: "openai" },
   ollama: { name: "Ollama", baseUrl: "http://localhost:11434/v1", type: "openai" },
@@ -22,18 +20,12 @@ const PROVIDER_PRESETS: Record<string, { name: string; baseUrl: string; type: Pr
 
 const PROVIDER_TYPE_OPTIONS: { value: ProviderType; label: string }[] = [
   { value: "openai", label: "OpenAI" },
-  { value: "anthropic", label: "Anthropic" },
-  { value: "gemini", label: "Gemini" },
-  { value: "azure-openai", label: "Azure OpenAI" },
 ];
 
 // Inline SVG Ionicons for preset icons
 const PRESET_SVG: Record<string, string> = {
   deepseek: "M315.7 34.7l145 145c12.5 12.5 12.5 32.8 0 45.3l-145 145c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L370.7 224H192c-17.7 0-32-14.3-32-32s14.3-32 32-32h178.7l-100.3-100.3c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0z",
   openai: "M168 320a24 24 0 100-48 24 24 0 000 48zm88-24a24 24 0 1048 0 24 24 0 00-48 0zm112 24a24 24 0 100-48 24 24 0 000 48z",
-  anthropic: "M405.333 256L256 106.667 106.667 256 256 405.333z",
-  google: "M256 48C141.13 48 48 141.13 48 256s93.13 208 208 208 208-93.13 208-208S370.87 48 256 48z",
-  azure: "M208 352H64l144-256h80L208 352zm96-256l144 256H304l-48-80L352 96z",
   openrouter: "M256 48C141.13 48 48 141.13 48 256s93.13 208 208 208 208-93.13 208-208S370.87 48 256 48zm-11 365a16 16 0 01-16-16V179.84l-46.21 54.38a16 16 0 01-24.42-20.64l74.4-87.81a16.23 16.23 0 0124.38-.09l75.15 87.9a16 16 0 01-24.3 20.84L261 179.65V397a16 16 0 01-16 16z",
   groq: "M256 48C141.13 48 48 141.13 48 256s93.13 208 208 208 208-93.13 208-208S370.87 48 256 48z",
   ollama: "M256 48C141.13 48 48 141.13 48 256s93.13 208 208 208 208-93.13 208-208S370.87 48 256 48zm0 80c44.18 0 80 35.82 80 80v64c0 44.18-35.82 80-80 80s-80-35.82-80-80v-64c0-44.18 35.82-80 80-80z",
@@ -85,7 +77,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
         setName(provider.name);
         setBaseUrl(provider.baseUrl);
         setApiKey(provider.apiKey);
-        setProviderType(provider.type);
+        setProviderType("openai");
         setCustomHeaders(provider.customHeaders ?? []);
         setProviderEnabled(provider.enabled !== false);
         setConnected(provider.status === "connected" || (provider as any).status === "active");
@@ -163,7 +155,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
 
         if (ok) {
           // Auto-save provider on successful connect (no separate Save needed)
-          const newId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+          const newId = generateId();
           const newProvider: Provider = {
             id: newId,
             name: name.trim(),
@@ -219,7 +211,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
     if (savedProviderId) {
       updateProvider(savedProviderId, providerData);
     } else {
-      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      const id = generateId();
       const provider: Provider = {
         id,
         ...providerData,

@@ -10,6 +10,7 @@ import { useChatStore, type ChatState } from "../../stores/chat-store";
 import { useMessages } from "../../hooks/useDatabase";
 import type { Message } from "../../../../src/types";
 import { MessageStatus } from "../../../../src/types";
+import { getAvatarProps } from "../../lib/avatar-utils";
 
 interface ChatViewProps {
   conversationId: string;
@@ -226,12 +227,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onD
 
   // ── AI message — exact RN ModelAvatar color logic ──
   const senderName = message.senderName ?? "AI";
-  const AVATAR_COLORS = ["#3b82f6","#10b981","#8b5cf6","#f59e0b","#f43f5e","#06b6d4","#6366f1","#14b8a6"];
-  let nameHash = 0;
-  for (let i = 0; i < senderName.length; i++) nameHash = senderName.charCodeAt(i) + ((nameHash << 5) - nameHash);
-  const avatarColor = AVATAR_COLORS[Math.abs(nameHash) % AVATAR_COLORS.length];
-  const nameParts = senderName.split(/[-_\s.]+/);
-  const avatarInitials = nameParts.length >= 2 ? (nameParts[0][0] + nameParts[1][0]).toUpperCase() : senderName.slice(0, 2).toUpperCase();
+  const { color: avatarColor, initials: avatarInitials } = getAvatarProps(senderName);
 
   return (
     <div className="mb-6 flex items-start gap-3 px-4">

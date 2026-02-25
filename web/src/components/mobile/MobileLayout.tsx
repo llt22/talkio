@@ -13,6 +13,8 @@ import { useConversations, useMessages } from "../../hooks/useDatabase";
 import { useProviderStore } from "../../stores/provider-store";
 import { useIdentityStore } from "../../stores/identity-store";
 import type { Conversation, Identity } from "../../../../src/types";
+import { getAvatarProps } from "../../lib/avatar-utils";
+import { exportConversationAsMarkdown } from "../../services/export";
 
 // ── Tab Icons using react-icons/io5 ──
 
@@ -37,6 +39,18 @@ const TAB_IDS: { id: MobileTab; Icon: React.FC; labelKey: string }[] = [
   { id: "discover", Icon: IonPersonCircle, labelKey: "tabs.personas" },
   { id: "settings", Icon: IonSettings, labelKey: "tabs.settings" },
 ];
+
+const MOBILE_ACTIVE_TAB_KEY = "talkio:mobile_active_tab";
+
+function loadInitialMobileTab(): MobileTab {
+  try {
+    const v = sessionStorage.getItem(MOBILE_ACTIVE_TAB_KEY);
+    if (v === "chats" || v === "experts" || v === "discover" || v === "settings") return v;
+  } catch {
+    // ignore
+  }
+  return "chats";
+}
 
 export function MobileLayout() {
   return (
@@ -66,16 +80,13 @@ function MobileChatDetailRoute() {
   return <MobileChatDetail conversationId={id} onBack={() => navigate(-1)} />;
 }
 
-// Persist active tab across remounts (survives route navigation)
-let _lastActiveTab: MobileTab = "chats";
-
 // ── Tab Layout ──
 
 function MobileTabLayout() {
   const { t } = useTranslation();
-  const [activeTab, setActiveTabState] = useState<MobileTab>(_lastActiveTab);
+  const [activeTab, setActiveTabState] = useState<MobileTab>(() => loadInitialMobileTab());
   const setActiveTab = useCallback((tab: MobileTab) => {
-    _lastActiveTab = tab;
+    try { sessionStorage.setItem(MOBILE_ACTIVE_TAB_KEY, tab); } catch { /* ignore */ }
     setActiveTabState(tab);
   }, []);
   const tabBg = "var(--background)";
@@ -213,25 +224,14 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
     if (!conv || isExporting || messages.length === 0) return;
     setIsExporting(true);
     try {
-      const titleStr = conv.title || t("chat.chatTitle");
-      const date = new Date(conv.createdAt).toLocaleDateString();
-      let md = `# ${titleStr}\n\n> ${date}\n\n---\n\n`;
-      for (const msg of messages) {
-        const name = msg.role === "user" ? t("chat.you") : (msg.senderName ?? "AI");
-        const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        md += `### ${name}  \`${time}\`\n\n`;
-        if (msg.reasoningContent) md += `<details>\n<summary>${t("chat.thoughtProcess")}}</summary>\n\n${msg.reasoningContent}\n\n</details>\n\n`;
-        if (msg.content) md += `${msg.content}\n\n`;
-        md += `---\n\n`;
-      }
-      md += `\n*Exported from Talkio · ${new Date().toLocaleDateString()}*\n`;
-      const blob = new Blob([md], { type: "text/markdown" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${titleStr.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, "_").slice(0, 50)}.md`;
-      a.click();
-      URL.revokeObjectURL(url);
+      exportConversationAsMarkdown({
+        conversation: conv,
+        messages,
+        titleFallback: t("chat.chatTitle"),
+        youLabel: t("chat.you"),
+        thoughtProcessLabel: t("chat.thoughtProcess"),
+        exportedFooter: `*Exported from Talkio · ${new Date().toLocaleDateString()}*`,
+      });
     } finally {
       setIsExporting(false);
     }
@@ -610,15 +610,7 @@ function ConversationItem({
   const isGroup = conversation.type === "group";
 
   const timeStr = formatDate(conversation.lastMessageAt ?? conversation.updatedAt ?? conversation.createdAt ?? "");
-
-  // ── Exact RN ModelAvatar logic (src/components/common/ModelAvatar.tsx) ──
-  const avatarName = modelName;
-  const AVATAR_COLORS = ["#3b82f6","#10b981","#8b5cf6","#f59e0b","#f43f5e","#06b6d4","#6366f1","#14b8a6"];
-  let hash = 0;
-  for (let i = 0; i < avatarName.length; i++) hash = avatarName.charCodeAt(i) + ((hash << 5) - hash);
-  const avatarColor = AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-  const parts = avatarName.split(/[-_\s.]+/);
-  const initials = parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : avatarName.slice(0, 2).toUpperCase() || "??";
+  const { color: avatarColor, initials } = getAvatarProps(modelName);
 
   return (
     <button

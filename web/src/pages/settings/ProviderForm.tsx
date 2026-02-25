@@ -12,10 +12,7 @@ import {
 import { Switch } from "../../components/ui/switch";
 import type { Provider, ProviderType } from "../../../../src/types";
 import { useProviderStore } from "../../stores/provider-store";
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
+import { generateId } from "../../lib/id";
 
 interface ProviderFormProps {
   provider?: Provider;
@@ -27,7 +24,7 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
   const updateProvider = useProviderStore((s) => s.updateProvider);
 
   const [name, setName] = useState(provider?.name ?? "");
-  const [type, setType] = useState<ProviderType>(provider?.type ?? "openai");
+  const [type, setType] = useState<ProviderType>("openai");
   const [baseUrl, setBaseUrl] = useState(provider?.baseUrl ?? "");
   const [apiKey, setApiKey] = useState(provider?.apiKey ?? "");
   const [showKey, setShowKey] = useState(false);
@@ -108,8 +105,6 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
 
   const presets: Record<string, { name: string; baseUrl: string }> = {
     openai: { name: "OpenAI", baseUrl: "https://api.openai.com/v1" },
-    anthropic: { name: "Anthropic", baseUrl: "https://api.anthropic.com" },
-    gemini: { name: "Google Gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai" },
   };
 
   const handleTypeChange = (val: string) => {
@@ -137,9 +132,6 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="openai">OpenAI Compatible</SelectItem>
-              <SelectItem value="anthropic">Anthropic</SelectItem>
-              <SelectItem value="gemini">Google Gemini</SelectItem>
-              <SelectItem value="azure-openai">Azure OpenAI</SelectItem>
             </SelectContent>
           </Select>
         </div>
