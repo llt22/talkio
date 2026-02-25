@@ -99,7 +99,7 @@ export const ChatInput = memo(function ChatInput({
     setAttachedImages([]);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.focus();
+      if (!isMobile) textareaRef.current.focus();
     }
   }, [text, attachedImages, isGenerating, onSend, isGroup, modelNames]);
 
