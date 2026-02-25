@@ -359,6 +359,7 @@ function DesktopConversationItem({
 }
 
 function DesktopChatPanel({ conversationId }: { conversationId: string }) {
+  const { t } = useTranslation();
   const { confirm } = useConfirm();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -427,44 +428,37 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
           </button>
         </div>
 
-        <div className="flex items-center gap-0.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setModelPickerMode("add"); setShowModelPicker(true); }}>
-                <UserPlus size={15} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Add participant</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} disabled={messages.length === 0 || isExporting}>
-                <Share2 size={15} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Export</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={async () => {
-                  const ok = await confirm({
-                    title: "Are you sure?",
-                    description: "Delete all messages in this conversation?",
-                    destructive: true,
-                  });
-                  if (ok) clearConversationMessages(conversationId);
-                }}
-              >
-                <Pencil size={15} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Clear history</TooltipContent>
-          </Tooltip>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreHorizontal size={16} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[160px]">
+            <DropdownMenuItem onClick={() => { setModelPickerMode("add"); setShowModelPicker(true); }}>
+              <UserPlus size={14} className="mr-2" />
+              {t("chat.addMember")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExport} disabled={messages.length === 0 || isExporting}>
+              <Share2 size={14} className="mr-2" />
+              {t("chat.export")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={async () => {
+                const ok = await confirm({
+                  title: t("common.areYouSure"),
+                  description: t("chat.clearHistoryConfirm"),
+                  destructive: true,
+                });
+                if (ok) clearConversationMessages(conversationId);
+              }}
+            >
+              <Trash2 size={14} className="mr-2" />
+              {t("chat.clearHistory")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Group participants panel */}
