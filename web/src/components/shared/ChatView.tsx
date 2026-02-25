@@ -122,8 +122,27 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
     );
   }
 
+  const switchBranch = useChatStore((s: ChatState) => s.switchBranch);
+
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
+      {/* Branch indicator */}
+      {activeBranchId && (
+        <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))", borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
+          <div className="flex items-center gap-2">
+            <GitBranch size={14} color="var(--primary)" />
+            <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>Branch</span>
+          </div>
+          <button
+            onClick={() => switchBranch(null)}
+            className="text-xs font-medium px-2.5 py-1 rounded-md active:opacity-70"
+            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}
+          >
+            ← Main
+          </button>
+        </div>
+      )}
+
       {/* Messages */}
       <div
         ref={scrollRef}

@@ -240,7 +240,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         reasoningDuration: null,
         toolCalls: [],
         toolResults: [],
-        branchId: null,
+        branchId: get().activeBranchId,
         parentMessageId: null,
         isStreaming: false,
         status: MessageStatus.SUCCESS,
@@ -285,7 +285,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           reasoningDuration: null,
           toolCalls: [],
           toolResults: [],
-          branchId: null,
+          branchId: get().activeBranchId,
           parentMessageId: null,
           isStreaming: false,
           status: MessageStatus.ERROR,
@@ -342,7 +342,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         reasoningDuration: null,
         toolCalls: [],
         toolResults: [],
-        branchId: null,
+        branchId: get().activeBranchId,
         parentMessageId: null,
         isStreaming: true,
         status: MessageStatus.STREAMING,
@@ -373,7 +373,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const toolDefs = [...builtInToolDefs, ...getMcpToolDefsForIdentity(identity)];
 
       try {
-        const allMessages = await getRecentMessages(convId, null, 200);
+        const allMessages = await getRecentMessages(convId, get().activeBranchId, 200);
         const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
         const apiMessages = buildApiMessagesForParticipant(filtered, participant);
 
