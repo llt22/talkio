@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { IoAddCircleOutline, IoTrashOutline, IoChevronBack } from "../../icons";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
+import { getAvatarProps } from "../../lib/avatar-utils";
 
 // ── MCP Tools Page (1:1 RN native style) ──
 
@@ -25,7 +26,7 @@ export function McpPage() {
 
   return (
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
-      <div className="pb-24">
+      <div className="pb-8">
         {servers.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-16 px-5">
             <IoAddCircleOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
@@ -33,29 +34,49 @@ export function McpPage() {
             <p className="mt-1 text-sm text-muted-foreground text-center">
               {t("models.configureHint")}
             </p>
+            <button
+              onClick={() => setShowAdd(true)}
+              className="mt-4 px-5 py-2 rounded-xl text-sm font-semibold text-white active:opacity-80"
+              style={{ backgroundColor: "var(--primary)" }}
+            >
+              {t("personas.addTool")}
+            </button>
           </div>
         ) : (
           <>
             {/* Server list */}
-            <div>
+            <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
               {servers.map((server, idx) => {
                 const status = connectionStatus[server.id] ?? "disconnected";
                 const serverTools = tools.filter((t) => t.serverId === server.id);
+                const isConnected = status === "connected";
+                const isError = status === "error";
+                const { color: avatarColor, initials } = getAvatarProps(server.name);
                 return (
                   <div
                     key={server.id}
-                    className="flex items-center gap-3 px-5 py-3.5 active:bg-black/5 dark:active:bg-white/5 transition-colors"
-                    style={{ borderBottom: idx < servers.length - 1 ? "0.5px solid var(--border)" : "none" }}
+                    className="flex items-center gap-4 px-4 py-3 active:bg-black/5 transition-colors"
+                    style={{ borderBottom: "0.5px solid var(--border)" }}
                   >
-                    <div className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${
-                      status === "connected" ? "bg-green-500" :
-                      status === "connecting" ? "bg-yellow-500 animate-pulse" :
-                      status === "error" ? "bg-red-500" : "bg-gray-300"
-                    }`} />
+                    <div className="relative flex-shrink-0">
+                      <div
+                        className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+                        style={{ backgroundColor: avatarColor }}
+                      >
+                        {initials}
+                      </div>
+                      <div
+                        className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 ${status === "connecting" ? "animate-pulse" : ""}`}
+                        style={{
+                          borderColor: "var(--background)",
+                          backgroundColor: isConnected ? "var(--success)" : isError ? "var(--destructive)" : "var(--border)",
+                        }}
+                      />
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[15px] font-medium text-foreground">{server.name}</p>
-                      <p className="text-[12px] text-muted-foreground truncate">
-                        {server.url} · {serverTools.length} {t("personas.mcpTools").toLowerCase()}
+                      <p className="text-[16px] font-medium text-foreground">{server.name}</p>
+                      <p className="text-[13px] text-muted-foreground truncate">
+                        {serverTools.length} {t("personas.mcpTools").toLowerCase()}
                       </p>
                     </div>
                     {/* Toggle */}
@@ -82,19 +103,31 @@ export function McpPage() {
                   </div>
                 );
               })}
+              {/* Add Server row */}
+              <button
+                onClick={() => setShowAdd(true)}
+                className="w-full flex items-center gap-4 px-4 py-3 active:bg-black/5 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)" }}>
+                  <IoAddCircleOutline size={20} color="var(--primary)" />
+                </div>
+                <span className="text-[16px] font-medium" style={{ color: "var(--primary)" }}>{t("personas.addTool")}</span>
+              </button>
             </div>
 
             {/* Tools summary */}
             {tools.length > 0 && (
-              <div className="px-5 pt-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Available Tools ({tools.length})
-                </p>
-                <div>
+              <>
+                <div className="px-5 py-1.5" style={{ backgroundColor: "var(--secondary)" }}>
+                  <p className="text-[13px] font-semibold text-muted-foreground">
+                    {t("mcp.availableTools", { count: tools.length })}
+                  </p>
+                </div>
+                <div style={{ borderBottom: "0.5px solid var(--border)" }}>
                   {tools.map((tool, idx) => (
                     <div
                       key={`${tool.serverId}-${tool.name}`}
-                      className="px-0 py-2.5"
+                      className="px-4 py-2.5"
                       style={{ borderBottom: idx < tools.length - 1 ? "0.5px solid var(--border)" : "none" }}
                     >
                       <p className="text-[13px] font-medium text-foreground">{tool.name}</p>
@@ -102,22 +135,10 @@ export function McpPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </>
             )}
           </>
         )}
-      </div>
-
-      {/* Add button (sticky at bottom) */}
-      <div className="sticky bottom-0 left-0 right-0 px-5 pb-4 pt-2" style={{ backgroundColor: "var(--background)" }}>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 active:opacity-80 text-base font-semibold text-white"
-          style={{ backgroundColor: "var(--primary)" }}
-        >
-          <IoAddCircleOutline size={18} color="white" />
-          {t("personas.addTool")}
-        </button>
       </div>
     </div>
   );

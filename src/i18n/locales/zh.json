@@ -128,6 +128,9 @@
     "importCommandNotSupported": "\u8fd9\u662f\u684c\u9762\u7aef MCP \u914d\u7f6e\uff08npx/uvx \u547d\u4ee4\uff09\uff0c\u624b\u673a\u7aef\u4ec5\u652f\u6301\u57fa\u4e8e URL \u7684\u8fdc\u7a0b MCP \u670d\u52a1\u5668\u3002\u8bf7\u4f7f\u7528\u5305\u542b \"url\" \u5b57\u6bb5\u7684\u914d\u7f6e\u3002",
     "importDiscoveryFailed": "\u65e0\u6cd5\u4e8e\u6e90\u4e3b\u4e0b\u627e\u5230\u5de5\u5177"
   },
+  "mcp": {
+    "availableTools": "可用工具 ({{count}})"
+  },
   "settings": {
     "title": "设置",
     "configuration": "配置",
