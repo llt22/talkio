@@ -493,7 +493,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
           notifyDbChange("messages", convId);
 
           // Execute tools
-          console.log("[chat] Tool calls detected:", pendingToolCalls.map((tc) => `${tc.name}(${tc.arguments})`));
           const toolResults: { toolCallId: string; content: string }[] = [];
           for (const tc of pendingToolCalls) {
             let args: Record<string, unknown> = {};
@@ -527,7 +526,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
           for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
             // Build follow-up request with tool results
-            console.log(`[chat] Tool round ${round + 1} — results:`, currentToolResults.map((tr) => ({ id: tr.toolCallId, content: tr.content.slice(0, 200) })));
             const toolMessages = [
               ...apiMessages,
               { role: "assistant" as const, content: accumulatedContent || null, tool_calls: currentToolCalls.map((tc) => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: tc.arguments } })) },
@@ -554,10 +552,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
             if (!toolResponse.ok) {
               const errText = await toolResponse.text();
-              console.error("[chat] Follow-up API error:", toolResponse.status, errText);
               throw new Error(`API Error ${toolResponse.status}: ${errText}`);
             }
-            console.log(`[chat] Follow-up round ${round + 1} streaming started`);
             const toolReader = toolResponse.body?.getReader();
             if (!toolReader) throw new Error("No response body");
 
@@ -596,14 +592,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
             });
             toolFlush();
 
-            console.log(`[chat] Follow-up round ${round + 1} complete, content length:`, toolContent.length, "(added", toolContent.length - accumulatedContent.length, "chars), new tool_calls:", newToolCalls.length);
             accumulatedContent = toolContent;
 
             // If no new tool calls, we're done
             if (newToolCalls.length === 0) break;
 
             // Execute new tool calls
-            console.log(`[chat] Round ${round + 2} tool calls:`, newToolCalls.map((tc) => `${tc.name}(${tc.arguments})`));
             await updateMessage(assistantMsgId, { content: accumulatedContent, toolCalls: [...(currentToolCalls), ...newToolCalls] });
             notifyDbChange("messages", convId);
 
