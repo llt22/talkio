@@ -17,6 +17,7 @@ import { useIdentityStore } from "../../stores/identity-store";
 import type { Conversation, Identity } from "../../../../src/types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { exportConversationAsMarkdown } from "../../services/export";
+import i18n from "../../i18n";
 import { useConfirm } from "../shared/ConfirmDialogProvider";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 
@@ -720,7 +721,7 @@ function formatDate(iso: string): string {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  if (diffDays === 1) return "Yesterday";
+  if (diffDays === 1) return i18n.t("common.yesterday", { defaultValue: "Yesterday" });
   if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" });
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }

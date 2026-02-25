@@ -301,8 +301,11 @@ function DesktopConversationItem({
           }`}
           onClick={onSelect}
         >
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <MessageSquare size={14} className="text-primary" />
+          <div
+            className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold"
+            style={{ backgroundColor: getAvatarProps(conversation.title).color }}
+          >
+            {getAvatarProps(conversation.title).initials}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-medium text-sidebar-foreground truncate">
@@ -478,7 +481,7 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-foreground truncate">{displayName}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{pIdentity ? pIdentity.name : "No role"}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{pIdentity ? pIdentity.name : t("chat.noIdentity")}</p>
                 </div>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeParticipant(conversationId, p.id)}>
                   <Trash2 size={13} className="text-destructive" />
@@ -490,7 +493,7 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
             className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 mt-1 text-xs text-primary hover:opacity-70"
             onClick={() => { setModelPickerMode("add"); setShowModelPicker(true); }}
           >
-            <Plus size={14} /> Add Member
+            <Plus size={14} /> {t("chat.addMember")}
           </button>
         </div>
       )}
@@ -505,7 +508,7 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
             <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
               <User size={14} className="text-muted-foreground" />
             </div>
-            <span className="text-[13px] text-foreground flex-1">No role</span>
+            <span className="text-[13px] text-foreground flex-1">{t("chat.noIdentity")}</span>
             {!currentParticipant?.identityId && <span className="text-xs text-primary font-semibold">✓</span>}
           </button>
           {identities.map((identity: Identity) => (
