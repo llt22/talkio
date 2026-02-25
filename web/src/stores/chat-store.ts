@@ -22,7 +22,7 @@ import {
 import { notifyDbChange } from "../hooks/useDatabase";
 import { useProviderStore } from "./provider-store";
 import { getBuiltInToolDefs, executeBuiltInTool } from "../services/built-in-tools";
-import { executeMcpToolByName, getMcpToolDefs, refreshMcpConnections } from "../services/mcp";
+import { executeMcpToolByName, getMcpToolDefsForIdentity, refreshMcpConnections } from "../services/mcp";
 import { generateId } from "../lib/id";
 import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
 import { buildProviderHeaders } from "../services/provider-headers";
@@ -299,6 +299,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ? useIdentityStore.getState().getIdentityById(participant.identityId)
         : null;
 
+      const allowedBuiltInToolNames = identity ? new Set(identity.mcpToolIds ?? []) : null;
+      const allowedServerIds = identity?.mcpServerIds?.length ? identity.mcpServerIds : undefined;
+
       let senderName = model.displayName;
       if (identity?.name) {
         senderName = `${model.displayName}（${identity.name}）`;
@@ -336,7 +339,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const baseUrl = provider.baseUrl.replace(/\/+$/, "");
       const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
       await refreshMcpConnections().catch(() => {});
-      const toolDefs = [...getBuiltInToolDefs(), ...getMcpToolDefs()];
+
+      const builtInToolDefs = (() => {
+        if (!identity) return getBuiltInToolDefs();
+        if (!allowedBuiltInToolNames || allowedBuiltInToolNames.size === 0) return [];
+        return getBuiltInToolDefs().filter((d) => allowedBuiltInToolNames.has(d.function.name));
+      })();
+
+      const toolDefs = [...builtInToolDefs, ...getMcpToolDefsForIdentity(identity)];
 
       try {
         const allMessages = await getRecentMessages(convId, null, 200);
@@ -350,6 +360,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
             model: model.modelId,
             messages: apiMessages,
             stream: true,
+            ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
+            ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
+            ...(identity?.params?.reasoningEffort ? { reasoning_effort: identity.params.reasoningEffort } : {}),
             ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
           }),
           signal: abortController.signal,
@@ -424,12 +437,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
           for (const tc of pendingToolCalls) {
             let args: Record<string, unknown> = {};
             try { args = JSON.parse(tc.arguments); } catch {}
-            const builtIn = await executeBuiltInTool(tc.name, args);
+            const builtInAllowed = !identity || (allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(tc.name));
+            const builtIn = builtInAllowed ? await executeBuiltInTool(tc.name, args) : null;
             if (builtIn) {
               toolResults.push({ toolCallId: tc.id, content: builtIn.success ? builtIn.content : `Error: ${builtIn.error}` });
               continue;
             }
-            const remote = await executeMcpToolByName(tc.name, args);
+            const remote = await executeMcpToolByName(tc.name, args, allowedServerIds);
             if (remote) {
               toolResults.push({ toolCallId: tc.id, content: remote.success ? remote.content : `Error: ${remote.error}` });
               continue;
@@ -479,6 +493,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
               model: model.modelId,
               messages: toolMessages,
               stream: true,
+              ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
+              ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
+              ...(identity?.params?.reasoningEffort ? { reasoning_effort: identity.params.reasoningEffort } : {}),
             }),
             signal: abortController.signal,
           });

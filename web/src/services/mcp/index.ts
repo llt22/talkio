@@ -1,4 +1,4 @@
-import type { McpServer } from "../../../../src/types";
+import type { Identity, McpServer } from "../../../../src/types";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
 import { mcpConnectionManager } from "./connection-manager";
 
@@ -15,6 +15,28 @@ function toSharedServer(server: McpServerConfig): McpServer {
 
 export function getMcpToolDefs() {
   const tools = useMcpStore.getState().getAllEnabledTools();
+  return tools.map((t) => ({
+    type: "function" as const,
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.inputSchema ?? { type: "object", properties: {} },
+    },
+  }));
+}
+
+export function getMcpToolDefsForIdentity(identity?: Identity | null) {
+  const store = useMcpStore.getState();
+  const enabledServerIds = new Set(store.servers.filter((s) => s.enabled).map((s) => s.id));
+
+  let tools = store.getAllEnabledTools();
+  if (identity?.mcpServerIds?.length) {
+    const allowed = new Set(identity.mcpServerIds);
+    tools = tools.filter((t) => allowed.has(t.serverId) && enabledServerIds.has(t.serverId));
+  } else {
+    tools = tools.filter((t) => enabledServerIds.has(t.serverId));
+  }
+
   return tools.map((t) => ({
     type: "function" as const,
     function: {
@@ -72,9 +94,15 @@ export async function refreshMcpConnections(): Promise<void> {
 export async function executeMcpToolByName(
   toolName: string,
   args: Record<string, unknown>,
+  allowedServerIds?: string[],
 ): Promise<{ success: boolean; content: string; error?: string } | null> {
   const store = useMcpStore.getState();
-  const enabledServerIds = new Set(store.servers.filter((s) => s.enabled).map((s) => s.id));
+  let enabledServerIds = new Set(store.servers.filter((s) => s.enabled).map((s) => s.id));
+  if (allowedServerIds && allowedServerIds.length > 0) {
+    const allowed = new Set(allowedServerIds);
+    enabledServerIds = new Set([...enabledServerIds].filter((id) => allowed.has(id)));
+  }
+
   const tool = store.tools.find((t: McpTool) => t.name === toolName && enabledServerIds.has(t.serverId));
   if (!tool) return null;
 
