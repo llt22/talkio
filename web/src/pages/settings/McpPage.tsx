@@ -38,13 +38,6 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
             <p className="mt-1 text-sm text-muted-foreground text-center">
               {t("models.configureHint")}
             </p>
-            <button
-              onClick={() => setShowAdd(true)}
-              className="mt-4 px-5 py-2 rounded-xl text-sm font-semibold text-white active:opacity-80"
-              style={{ backgroundColor: "var(--primary)" }}
-            >
-              {t("personas.addTool")}
-            </button>
           </div>
         ) : (
           <>
