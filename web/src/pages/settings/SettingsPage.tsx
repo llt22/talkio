@@ -5,7 +5,7 @@ import i18n from "../../i18n";
 import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
-import { createBackup, createFullBackup, downloadBackup, importBackup } from "../../services/backup";
+import { createBackup, downloadBackup, importBackup } from "../../services/backup";
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
 import { McpPage, type McpPageHandle } from "./McpPage";
@@ -209,16 +209,7 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
           iconColor="#14b8a6"
           iconBg="rgba(20,184,166,0.1)"
           label={t("settings.exportBackup")}
-          detail={t("settings.configOnly", { defaultValue: "Config" })}
           onPress={() => { const data = createBackup(); downloadBackup(data); }}
-        />
-        <SettingsRow
-          iconPath="M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40M256 48v288M160 192l96 96 96-96"
-          iconColor="#0ea5e9"
-          iconBg="rgba(14,165,233,0.1)"
-          label={t("settings.exportFullBackup", { defaultValue: "Full Backup" })}
-          detail={t("settings.includesChats", { defaultValue: "Config + Chats" })}
-          onPress={async () => { const data = await createFullBackup(); downloadBackup(data); }}
         />
         <SettingsRow
           iconPath="M176 48v288M80 192l96-96 96 96M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40"
