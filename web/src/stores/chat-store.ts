@@ -377,6 +377,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
         const apiMessages = buildApiMessagesForParticipant(filtered, participant);
 
+        // Auto-detect reasoning models and send reasoning_effort
+        const reasoningEffort = identity?.params?.reasoningEffort
+          || (model.capabilities?.reasoning ? "medium" : undefined);
+
         const response = await fetch(`${baseUrl}/chat/completions`, {
           method: "POST",
           headers,
@@ -386,7 +390,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             stream: true,
             ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
             ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
-            ...(identity?.params?.reasoningEffort ? { reasoning_effort: identity.params.reasoningEffort } : {}),
+            ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
             ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
           }),
           signal: abortController.signal,
@@ -542,7 +546,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 stream: true,
                 ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
                 ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
-                ...(identity?.params?.reasoningEffort ? { reasoning_effort: identity.params.reasoningEffort } : {}),
+                ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
                 ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
               }),
               signal: abortController.signal,
