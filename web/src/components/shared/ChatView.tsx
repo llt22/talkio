@@ -9,8 +9,8 @@ import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
 import { useMessages } from "../../hooks/useDatabase";
-import type { Message, ConversationParticipant } from "../../../../src/types";
-import { MessageStatus } from "../../../../src/types";
+import type { Message, ConversationParticipant } from "../../types";
+import { MessageStatus } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useConfirm } from "./ConfirmDialogProvider";
 

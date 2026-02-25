@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { IoLinkOutline, IoChevronForward, IoKeyOutline, IoEyeOutline, IoEyeOffOutline, IoCaretDown, IoCaretUp, IoAdd, IoCloseCircle, IoRefreshOutline, IoSearchOutline, IoLockClosed, IoCheckmarkCircle, IoConstructOutline, IoBulbOutline, IoPulseOutline } from "../../icons";
 import { useProviderStore } from "../../stores/provider-store";
-import type { Provider, ProviderType, CustomHeader, Model } from "../../../../src/types";
+import type { Provider, ProviderType, CustomHeader, Model } from "../../types";
 import { generateId } from "../../lib/id";
 import { buildProviderHeadersFromRaw } from "../../services/provider-headers";
 

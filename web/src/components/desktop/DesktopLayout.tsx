@@ -28,7 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../ui/tooltip";
-import type { Conversation, Identity } from "../../../../src/types";
+import type { Conversation, Identity } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { exportConversationAsMarkdown } from "../../services/export";
 import { useConfirm } from "../shared/ConfirmDialogProvider";

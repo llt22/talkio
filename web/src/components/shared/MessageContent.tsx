@@ -2,8 +2,8 @@ import { memo } from "react";
 import { Bot, User, AlertCircle, Loader2 } from "lucide-react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { ReasoningBlock } from "./ReasoningBlock";
-import type { Message, MessageBlock } from "../../../../src/types";
-import { MessageStatus, MessageBlockType, MessageBlockStatus } from "../../../../src/types";
+import type { Message, MessageBlock } from "../../types";
+import { MessageStatus, MessageBlockType, MessageBlockStatus } from "../../types";
 
 interface MessageContentProps {
   message: Message;

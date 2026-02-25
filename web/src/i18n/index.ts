@@ -1,7 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import en from "../../../src/i18n/locales/en.json";
-import zh from "../../../src/i18n/locales/zh.json";
+import en from "./locales/en.json";
+import zh from "./locales/zh.json";
 
 // Detect browser language
 const browserLang = navigator.language?.split("-")[0] ?? "en";

@@ -9,7 +9,7 @@ import {
 } from "../ui/dialog";
 import { useProviderStore } from "../../stores/provider-store";
 import { getAvatarProps } from "../../lib/avatar-utils";
-import type { Model } from "../../../../src/types";
+import type { Model } from "../../types";
 
 interface ModelPickerProps {
   open: boolean;

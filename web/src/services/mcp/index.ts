@@ -1,4 +1,4 @@
-import type { Identity, McpServer } from "../../../../src/types";
+import type { Identity, McpServer } from "../../types";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
 import { mcpConnectionManager } from "./connection-manager";
 

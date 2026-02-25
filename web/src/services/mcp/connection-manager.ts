@@ -1,5 +1,5 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { CustomHeader, DiscoveredTool, McpServer } from "../../../../src/types";
+import type { CustomHeader, DiscoveredTool, McpServer } from "../../types";
 import { StreamableHTTPClientTransport } from "./streamable-http-transport";
 
 export type McpConnectionStatus = "idle" | "connecting" | "connected" | "error";

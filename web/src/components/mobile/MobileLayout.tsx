@@ -14,7 +14,7 @@ import { useConversations } from "../../hooks/useDatabase";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
 import { useProviderStore } from "../../stores/provider-store";
 import { useIdentityStore } from "../../stores/identity-store";
-import type { Conversation, Identity } from "../../../../src/types";
+import type { Conversation, Identity } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { exportConversationAsMarkdown } from "../../services/export";
 import i18n from "../../i18n";

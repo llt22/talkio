@@ -6,12 +6,12 @@ import { useIdentityStore } from "../../stores/identity-store";
 import { useProviderStore } from "../../stores/provider-store";
 import { useMcpStore } from "../../stores/mcp-store";
 import { useBuiltInToolsStore } from "../../stores/built-in-tools-store";
-import type { Identity } from "../../../../src/types";
+import type { Identity } from "../../types";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { BUILT_IN_TOOLS } from "../../services/built-in-tools";
-import { ApiClient } from "../../../../src/services/api-client";
+import { ApiClient } from "../../services/api-client";
 
 type IdentityStoreState = ReturnType<typeof useIdentityStore.getState>;
 

@@ -1,7 +1,7 @@
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { X, ArrowUp, Image, ArrowLeftRight, Square, Mic, MessagesSquare, AtSign, Loader2 } from "lucide-react";
-import type { ConversationParticipant, Model } from "../../../../src/types";
+import type { ConversationParticipant, Model } from "../../types";
 import { extractMentionedModelIds } from "../../lib/mention-parser";
 import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore } from "../../stores/settings-store";

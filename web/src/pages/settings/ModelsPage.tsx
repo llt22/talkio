@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { IoSearchOutline, IoCloseCircle, IoPeopleOutline, IoChevronForward, IoCheckmarkCircle, IoChatbubbles } from "../../icons";
 import { useProviderStore } from "../../stores/provider-store";
 import { useChatStore } from "../../stores/chat-store";
-import type { Model } from "../../../../src/types";
+import type { Model } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
 

@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Switch } from "../../components/ui/switch";
-import type { Provider, ProviderType } from "../../../../src/types";
+import type { Provider, ProviderType } from "../../types";
 import { useProviderStore } from "../../stores/provider-store";
 import { generateId } from "../../lib/id";
 
