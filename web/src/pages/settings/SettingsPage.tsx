@@ -100,7 +100,7 @@ export function SettingsPage() {
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
       {/* iOS Large Title */}
       <div className="px-4 pt-2 pb-2">
-        <h1 className="text-[28px] font-bold text-foreground tracking-tight">{t("settings.title")}</h1>
+        <h1 className="text-[20px] font-bold text-foreground tracking-tight">{t("settings.title")}</h1>
       </div>
 
       <div>

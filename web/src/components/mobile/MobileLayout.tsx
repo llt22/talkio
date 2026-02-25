@@ -465,7 +465,7 @@ function MobileConversationList({ onNavigateToExperts }: { onNavigateToExperts: 
       {/* iOS Large Title Header */}
       <div className="flex-shrink-0 px-4 pt-2 pb-1">
         <div className="flex items-center justify-between mb-1">
-          <h1 className="text-[28px] font-bold text-foreground tracking-tight">{t("tabs.chats")}</h1>
+          <h1 className="text-[20px] font-bold text-foreground tracking-tight">{t("tabs.chats")}</h1>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setShowSearch((v) => !v)}
