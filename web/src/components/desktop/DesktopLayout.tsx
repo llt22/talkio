@@ -40,6 +40,7 @@ const MAX_SIDEBAR = 480;
 const DEFAULT_SIDEBAR = 288;
 
 export function DesktopLayout() {
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState<DesktopSection>("chats");
   const currentConversationId = useChatStore((s) => s.currentConversationId);
   const setCurrentConversation = useChatStore((s: ChatState) => s.setCurrentConversation);
@@ -106,9 +107,9 @@ export function DesktopLayout() {
       {/* Icon Navigation Bar (WeChat-style) */}
       <div className="flex-shrink-0 w-14 bg-sidebar border-r border-sidebar-border flex flex-col items-center py-4 gap-1">
         {([
-          { id: "chats" as DesktopSection, icon: MessageSquare, label: "Chats" },
-          { id: "experts" as DesktopSection, icon: Bot, label: "Models" },
-          { id: "discover" as DesktopSection, icon: Compass, label: "Discover" },
+          { id: "chats" as DesktopSection, icon: MessageSquare, label: t("tabs.chats") },
+          { id: "experts" as DesktopSection, icon: Bot, label: t("tabs.models") },
+          { id: "discover" as DesktopSection, icon: Compass, label: t("tabs.personas") },
         ]).map(({ id, icon: Icon, label }) => (
           <Tooltip key={id}>
             <TooltipTrigger asChild>
@@ -142,7 +143,7 @@ export function DesktopLayout() {
               <Settings size={20} />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">Settings</TooltipContent>
+          <TooltipContent side="right">{t("tabs.settings")}</TooltipContent>
         </Tooltip>
       </div>
 
@@ -222,14 +223,14 @@ function DesktopConversationList() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-sidebar-border">
-        <h2 className="text-sm font-semibold text-sidebar-foreground">Conversations</h2>
+        <h2 className="text-sm font-semibold text-sidebar-foreground">{t("tabs.chats")}</h2>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" data-new-chat onClick={handleNew}>
               <Plus size={16} />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>New Chat</TooltipContent>
+          <TooltipContent>{t("chats.startConversation")}</TooltipContent>
         </Tooltip>
       </div>
 
@@ -288,6 +289,7 @@ function DesktopConversationItem({
   onDelete: () => void;
   onClear: () => void;
 }) {
+  const { t } = useTranslation();
   const [showMenu, setShowMenu] = useState(false);
 
   return (
@@ -331,14 +333,14 @@ function DesktopConversationItem({
                 onClick={(e) => { e.stopPropagation(); onClear(); }}
               >
                 <Eraser size={14} className="mr-2" />
-                Clear Messages
+                {t("chat.clearHistory")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive text-xs"
                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
               >
                 <Trash2 size={14} className="mr-2" />
-                Delete
+                {t("common.delete")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -347,11 +349,11 @@ function DesktopConversationItem({
       <ContextMenuContent className="w-40">
         <ContextMenuItem className="text-xs" onClick={onClear}>
           <Eraser size={14} className="mr-2" />
-          Clear Messages
+          {t("chat.clearHistory")}
         </ContextMenuItem>
         <ContextMenuItem className="text-destructive focus:text-destructive text-xs" onClick={onDelete}>
           <Trash2 size={14} className="mr-2" />
-          Delete
+          {t("common.delete")}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
@@ -387,10 +389,10 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
     setIsExporting,
     handleModelPickerSelect,
   } = useChatPanelState(conversationId);
-  const title = isGroup ? conv?.title ?? "Group" : model?.displayName ?? "Chat";
+  const title = isGroup ? conv?.title ?? t("chat.group") : model?.displayName ?? t("chat.chatTitle");
   const subtitle = isGroup
-    ? `${conv?.participants.length ?? 0} models`
-    : activeIdentity?.name ?? "Select Role";
+    ? t("chat.modelCount", { count: conv?.participants.length ?? 0 })
+    : activeIdentity?.name ?? t("chat.mountIdentity");
 
   const handleExport = useCallback(async () => {
     if (!conv || isExporting || messages.length === 0) return;
@@ -399,9 +401,9 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
       exportConversationAsMarkdown({
         conversation: conv,
         messages,
-        titleFallback: "Chat",
-        youLabel: "You",
-        thoughtProcessLabel: "Thought process",
+        titleFallback: t("chat.chatTitle"),
+        youLabel: t("chat.you"),
+        thoughtProcessLabel: t("chat.thoughtProcess"),
       });
     } finally {
       setIsExporting(false);
@@ -557,12 +559,13 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
 }
 
 function DesktopEmptyState({ section }: { section: DesktopSection }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
       <MessageSquare size={48} strokeWidth={1} className="mb-4 text-muted-foreground/20" />
-      <p className="text-lg font-medium">Talkio 2.0</p>
+      <p className="text-lg font-medium">Talkio</p>
       <p className="text-sm mt-1 text-muted-foreground/60">
-        Select a conversation or start a new one
+        {t("chats.startConversation")}
       </p>
     </div>
   );
