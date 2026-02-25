@@ -484,71 +484,125 @@ export const useChatStore = create<ChatState>((set, get) => ({
           await updateMessage(assistantMsgId, { toolResults });
           notifyDbChange("messages", convId);
 
-          // Build follow-up request with tool results
-          console.log("[chat] Tool results:", toolResults.map((tr) => ({ id: tr.toolCallId, content: tr.content.slice(0, 200) })));
-          const toolMessages = [
-            ...apiMessages,
-            { role: "assistant" as const, content: fullContent || null, tool_calls: pendingToolCalls.map((tc) => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: tc.arguments } })) },
-            ...toolResults.map((tr) => ({ role: "tool" as const, tool_call_id: tr.toolCallId, content: tr.content })),
-          ];
+          // Multi-round tool call loop (max 5 rounds to prevent infinite loops)
+          let currentToolCalls = pendingToolCalls;
+          let currentToolResults = toolResults;
+          let accumulatedContent = fullContent;
+          const MAX_TOOL_ROUNDS = 5;
 
-          // Stream the follow-up response into the SAME message (1:1 RN pattern)
-          set({ streamingMessage: { messageId: assistantMsgId, content: fullContent, reasoning: fullReasoning } });
+          for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+            // Build follow-up request with tool results
+            console.log(`[chat] Tool round ${round + 1} — results:`, currentToolResults.map((tr) => ({ id: tr.toolCallId, content: tr.content.slice(0, 200) })));
+            const toolMessages = [
+              ...apiMessages,
+              { role: "assistant" as const, content: accumulatedContent || null, tool_calls: currentToolCalls.map((tc) => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: tc.arguments } })) },
+              ...currentToolResults.map((tr) => ({ role: "tool" as const, tool_call_id: tr.toolCallId, content: tr.content })),
+            ];
 
-          const toolResponse = await fetch(`${baseUrl}/chat/completions`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              model: model.modelId,
-              messages: toolMessages,
-              stream: true,
-              ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
-              ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
-              ...(identity?.params?.reasoningEffort ? { reasoning_effort: identity.params.reasoningEffort } : {}),
-            }),
-            signal: abortController.signal,
-          });
+            // Stream the follow-up response into the SAME message (1:1 RN pattern)
+            set({ streamingMessage: { messageId: assistantMsgId, content: accumulatedContent, reasoning: fullReasoning } });
 
-          if (!toolResponse.ok) {
-            const errText = await toolResponse.text();
-            console.error("[chat] Follow-up API error:", toolResponse.status, errText);
-            throw new Error(`API Error ${toolResponse.status}: ${errText}`);
-          }
-          console.log("[chat] Follow-up streaming started");
-          const toolReader = toolResponse.body?.getReader();
-          if (!toolReader) throw new Error("No response body");
+            const toolResponse = await fetch(`${baseUrl}/chat/completions`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                model: model.modelId,
+                messages: toolMessages,
+                stream: true,
+                ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
+                ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
+                ...(identity?.params?.reasoningEffort ? { reasoning_effort: identity.params.reasoningEffort } : {}),
+                ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
+              }),
+              signal: abortController.signal,
+            });
 
-          let toolContent = fullContent;
-          let toolRafPending = false;
-          let toolDirty = false;
-
-          function toolFlush() {
-            toolRafPending = false;
-            if (!toolDirty) return;
-            toolDirty = false;
-            set({ streamingMessage: { messageId: assistantMsgId, content: toolContent, reasoning: fullReasoning } });
-          }
-          function toolSchedule() {
-            toolDirty = true;
-            if (!toolRafPending) { toolRafPending = true; requestAnimationFrame(toolFlush); }
-          }
-
-          await consumeOpenAIChatCompletionsSse(toolReader, (delta) => {
-            if (delta?.content) {
-              toolContent += delta.content;
-              toolSchedule();
+            if (!toolResponse.ok) {
+              const errText = await toolResponse.text();
+              console.error("[chat] Follow-up API error:", toolResponse.status, errText);
+              throw new Error(`API Error ${toolResponse.status}: ${errText}`);
             }
-          });
-          toolFlush();
+            console.log(`[chat] Follow-up round ${round + 1} streaming started`);
+            const toolReader = toolResponse.body?.getReader();
+            if (!toolReader) throw new Error("No response body");
 
-          console.log("[chat] Follow-up complete, content length:", toolContent.length, "(added", toolContent.length - fullContent.length, "chars)");
+            let toolContent = accumulatedContent;
+            let newToolCalls: { id: string; name: string; arguments: string }[] = [];
+            let toolRafPending = false;
+            let toolDirty = false;
+
+            function toolFlush() {
+              toolRafPending = false;
+              if (!toolDirty) return;
+              toolDirty = false;
+              set({ streamingMessage: { messageId: assistantMsgId, content: toolContent, reasoning: fullReasoning } });
+            }
+            function toolSchedule() {
+              toolDirty = true;
+              if (!toolRafPending) { toolRafPending = true; requestAnimationFrame(toolFlush); }
+            }
+
+            await consumeOpenAIChatCompletionsSse(toolReader, (delta) => {
+              if (delta?.content) {
+                toolContent += delta.content;
+                toolSchedule();
+              }
+              if (delta?.tool_calls) {
+                for (const tc of delta.tool_calls) {
+                  const idx = tc.index ?? 0;
+                  while (newToolCalls.length <= idx) {
+                    newToolCalls.push({ id: "", name: "", arguments: "" });
+                  }
+                  if (tc.id) newToolCalls[idx].id = tc.id;
+                  if (tc.function?.name) newToolCalls[idx].name += tc.function.name;
+                  if (tc.function?.arguments) newToolCalls[idx].arguments += tc.function.arguments;
+                }
+              }
+            });
+            toolFlush();
+
+            console.log(`[chat] Follow-up round ${round + 1} complete, content length:`, toolContent.length, "(added", toolContent.length - accumulatedContent.length, "chars), new tool_calls:", newToolCalls.length);
+            accumulatedContent = toolContent;
+
+            // If no new tool calls, we're done
+            if (newToolCalls.length === 0) break;
+
+            // Execute new tool calls
+            console.log(`[chat] Round ${round + 2} tool calls:`, newToolCalls.map((tc) => `${tc.name}(${tc.arguments})`));
+            await updateMessage(assistantMsgId, { content: accumulatedContent, toolCalls: [...(currentToolCalls), ...newToolCalls] });
+            notifyDbChange("messages", convId);
+
+            const newResults: { toolCallId: string; content: string }[] = [];
+            for (const tc of newToolCalls) {
+              let args: Record<string, unknown> = {};
+              try { args = JSON.parse(tc.arguments); } catch {}
+              const builtInOk = builtInEnabledByName[tc.name] !== false || (!!identity && allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(tc.name));
+              const builtIn = builtInOk ? await executeBuiltInTool(tc.name, args) : null;
+              if (builtIn) { newResults.push({ toolCallId: tc.id, content: builtIn.success ? builtIn.content : `Error: ${builtIn.error}` }); continue; }
+              const remote = await executeMcpToolByName(tc.name, args, allowedServerIds);
+              if (remote) { newResults.push({ toolCallId: tc.id, content: remote.success ? remote.content : `Error: ${remote.error}` }); continue; }
+              newResults.push({ toolCallId: tc.id, content: `Tool not found: ${tc.name}` });
+            }
+            await updateMessage(assistantMsgId, { toolResults: [...currentToolResults, ...newResults] });
+            notifyDbChange("messages", convId);
+
+            // Update apiMessages for next round
+            apiMessages.push(
+              { role: "assistant" as const, content: accumulatedContent || null, tool_calls: newToolCalls.map((tc) => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: tc.arguments } })) },
+              ...newResults.map((tr) => ({ role: "tool" as const, tool_call_id: tr.toolCallId, content: tr.content })),
+            );
+
+            currentToolCalls = newToolCalls;
+            currentToolResults = newResults;
+          }
+
           await updateMessage(assistantMsgId, {
-            content: toolContent,
+            content: accumulatedContent,
             isStreaming: false,
             status: MessageStatus.SUCCESS,
           });
 
-          lastAssistantContent = toolContent;
+          lastAssistantContent = accumulatedContent;
         } else {
           await updateMessage(assistantMsgId, {
             content: fullContent,
