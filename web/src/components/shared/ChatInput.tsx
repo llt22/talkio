@@ -75,7 +75,11 @@ export const ChatInput = memo(function ChatInput({
     const model = getModelById(modelId);
     if (!model) return;
     const mentionText = "@" + model.displayName.replace(/\s+/g, "") + " ";
-    setText((prev) => prev + mentionText);
+    setText((prev) => {
+      // If text ends with '@' (user typed it to trigger picker), replace it
+      if (prev.endsWith("@")) return prev.slice(0, -1) + mentionText;
+      return prev + mentionText;
+    });
     setShowMentionPicker(false);
     textareaRef.current?.focus();
   }, [getModelById]);
