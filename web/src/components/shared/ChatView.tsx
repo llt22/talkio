@@ -252,7 +252,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onD
 
         {/* Main bubble */}
         <div
-          className="max-w-[90%] rounded-2xl px-4 py-3"
+          className="max-w-[90%] min-w-0 overflow-hidden rounded-2xl px-4 py-3"
           style={{
             backgroundColor: "var(--muted)",
             borderTopLeftRadius: 0,

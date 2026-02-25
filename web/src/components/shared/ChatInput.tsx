@@ -111,7 +111,7 @@ export const ChatInput = memo(function ChatInput({
       <div className="px-4 pt-2.5 pb-1.5">
         {/* RN: View className="flex-row items-end rounded-2xl border border-border-light/50 bg-bg-input px-3" */}
         <div
-          className="flex items-end rounded-2xl px-3"
+          className="flex items-center rounded-2xl px-3"
           style={{ backgroundColor: "var(--muted)", border: "0.5px solid color-mix(in srgb, var(--border) 50%, transparent)" }}
         >
           {/* RN: TextInput className="max-h-24 min-h-[44px] flex-1 text-[16px] text-text-main py-2.5" */}
@@ -129,7 +129,7 @@ export const ChatInput = memo(function ChatInput({
           {(text.trim() || attachedImages.length > 0) && !isGenerating && (
             <button
               onClick={handleSend}
-              className="mb-1.5 ml-1.5 h-9 w-9 flex items-center justify-center rounded-full flex-shrink-0 active:opacity-70"
+              className="my-1.5 ml-1.5 h-9 w-9 flex items-center justify-center rounded-full flex-shrink-0 active:opacity-70"
               style={{ backgroundColor: "var(--primary)" }}
             >
               {/* RN: Ionicons name="arrow-up" size={18} color="#fff" */}

@@ -25,56 +25,59 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
   if (lang === "mermaid") {
     if (isStreaming) {
       return (
-        <div className="relative my-2 rounded-lg border border-gray-200 overflow-hidden">
-          <div className="flex items-center px-3 py-1 bg-purple-50 border-b border-gray-200">
-            <span className="text-[10px] font-mono text-purple-600 uppercase">mermaid (rendering after completion)</span>
+        <div className="relative mt-1 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
+          <div className="flex items-center px-3 py-1.5" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
+            <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--primary)" }}>mermaid · rendering after completion</span>
           </div>
-          <pre className="p-3 text-xs leading-relaxed overflow-x-auto bg-gray-50 m-0"><code>{codeString}</code></pre>
+          <pre className="px-3 py-2 text-[13px] font-mono leading-relaxed overflow-x-auto m-0" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}><code>{codeString}</code></pre>
         </div>
       );
     }
     return <MermaidRenderer chart={codeString} />;
   }
 
-  // HTML — only render after streaming complete
-  if (lang === "html") {
+  // HTML / SVG — only render after streaming complete
+  if (lang === "html" || lang === "svg") {
     if (isStreaming) {
       return (
-        <div className="relative my-2 rounded-lg border border-gray-200 overflow-hidden">
-          <div className="flex items-center px-3 py-1 bg-blue-50 border-b border-gray-200">
-            <span className="text-[10px] font-mono text-blue-600 uppercase">html (preview after completion)</span>
+        <div className="relative mt-1 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
+          <div className="flex items-center px-3 py-1.5" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
+            <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--primary)" }}>{lang} · preview after completion</span>
           </div>
-          <pre className="p-3 text-xs leading-relaxed overflow-x-auto bg-gray-50 m-0"><code>{codeString}</code></pre>
+          <pre className="px-3 py-2 text-[13px] font-mono leading-relaxed overflow-x-auto m-0" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}><code>{codeString}</code></pre>
         </div>
       );
     }
-    return <HtmlPreview code={codeString} />;
+    return <HtmlPreview code={codeString} language={lang} />;
   }
 
   // Regular code block with language
   if (match) {
     return (
-      <div className="relative my-2 rounded-lg border border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between px-3 py-1 bg-gray-100 border-b border-gray-200">
-          <span className="text-[10px] font-mono text-gray-500 uppercase">{lang}</span>
+      <div className="relative mt-1 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
+        <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
+          <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--muted-foreground)" }}>{lang}</span>
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] active:opacity-60"
+            style={{ color: "var(--muted-foreground)" }}
           >
-            {copied ? <Check size={10} className="text-green-500" /> : <Copy size={10} />}
+            {copied ? <Check size={10} style={{ color: "var(--primary)" }} /> : <Copy size={10} />}
             {copied ? "Copied" : "Copy"}
           </button>
         </div>
-        <pre className="p-3 text-xs leading-relaxed overflow-x-auto bg-gray-50 m-0">
-          <code className={className} {...props}>{children}</code>
-        </pre>
+        <div className="overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+          <pre className="px-3 py-2 text-[13px] font-mono leading-relaxed m-0" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}>
+            <code className={className} {...props}>{children}</code>
+          </pre>
+        </div>
       </div>
     );
   }
 
   // Inline code
   return (
-    <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
+    <code className="px-1.5 py-0.5 rounded text-[13px] font-mono" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }} {...props}>
       {children}
     </code>
   );

@@ -1,49 +1,109 @@
-import { memo, useState } from "react";
-import { Eye, Code, Maximize2, Minimize2 } from "lucide-react";
+import { memo, useState, useCallback } from "react";
+import { IoEyeOutline, IoCodeSlashOutline, IoCopyOutline, IoExpandOutline, IoCloseOutline } from "react-icons/io5";
 
 interface HtmlPreviewProps {
   code: string;
+  language?: string;
 }
 
-export const HtmlPreview = memo(function HtmlPreview({ code }: HtmlPreviewProps) {
-  const [showPreview, setShowPreview] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+export const HtmlPreview = memo(function HtmlPreview({ code, language = "html" }: HtmlPreviewProps) {
+  const [activeTab, setActiveTab] = useState<"preview" | "code">("code");
+  const [previewEnabled, setPreviewEnabled] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const handleTabSwitch = useCallback((tab: "preview" | "code") => {
+    setActiveTab(tab);
+    if (tab === "preview") setPreviewEnabled(true);
+  }, []);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(code);
+  }, [code]);
+
+  const wrappedHtml = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><style>html,body{overflow-x:hidden;max-width:100vw}body{background:#fff;color:#121212;margin:0;padding:12px;font-family:system-ui,sans-serif;box-sizing:border-box;word-break:break-word}</style></head><body>${code}</body></html>`;
 
   return (
-    <div className="my-2 rounded-lg border border-gray-200 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-200">
-        <span className="text-xs font-medium text-gray-500">HTML</span>
-        <div className="flex items-center gap-1">
+    <>
+      <div className="mt-1 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+        {/* Tab bar — 1:1 RN */}
+        <div className="flex" style={{ borderBottom: "0.5px solid var(--border)" }}>
           <button
-            onClick={() => setShowPreview(!showPreview)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+            onClick={() => handleTabSwitch("preview")}
+            className="flex flex-1 items-center justify-center gap-1.5 py-2.5 active:opacity-70"
+            style={{ backgroundColor: activeTab === "preview" ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "var(--secondary)" }}
           >
-            {showPreview ? <Code size={12} /> : <Eye size={12} />}
-            {showPreview ? "Code" : "Preview"}
+            <IoEyeOutline size={15} color={activeTab === "preview" ? "var(--primary)" : "var(--muted-foreground)"} />
+            <span className="text-xs font-bold" style={{ color: activeTab === "preview" ? "var(--primary)" : "var(--muted-foreground)" }}>Preview</span>
           </button>
-          {showPreview && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="p-0.5 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors"
-            >
-              {expanded ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-            </button>
-          )}
+          <div style={{ width: "0.5px", backgroundColor: "var(--border)" }} />
+          <button
+            onClick={() => handleTabSwitch("code")}
+            className="flex flex-1 items-center justify-center gap-1.5 py-2.5 active:opacity-70"
+            style={{ backgroundColor: activeTab === "code" ? "color-mix(in srgb, var(--primary) 8%, transparent)" : "var(--secondary)" }}
+          >
+            <IoCodeSlashOutline size={15} color={activeTab === "code" ? "var(--primary)" : "var(--muted-foreground)"} />
+            <span className="text-xs font-bold" style={{ color: activeTab === "code" ? "var(--primary)" : "var(--muted-foreground)" }}>
+              {language.toUpperCase()}
+            </span>
+          </button>
+          <div style={{ width: "0.5px", backgroundColor: "var(--border)" }} />
+          <button onClick={handleCopy} className="flex items-center justify-center px-3 active:opacity-70" style={{ backgroundColor: "var(--secondary)" }}>
+            <IoCopyOutline size={14} color="var(--muted-foreground)" />
+          </button>
+          <div style={{ width: "0.5px", backgroundColor: "var(--border)" }} />
+          <button onClick={() => setFullscreen(true)} className="flex items-center justify-center px-3 active:opacity-70" style={{ backgroundColor: "var(--secondary)" }}>
+            <IoExpandOutline size={14} color="var(--muted-foreground)" />
+          </button>
         </div>
+
+        {/* Preview pane */}
+        {activeTab === "preview" && (
+          previewEnabled ? (
+            <iframe
+              srcDoc={wrappedHtml}
+              sandbox="allow-scripts allow-same-origin"
+              className="w-full border-0 bg-white"
+              style={{ height: 320 }}
+              title="HTML Preview"
+            />
+          ) : (
+            <button
+              onClick={() => setPreviewEnabled(true)}
+              className="w-full flex flex-col items-center justify-center px-4 py-6 active:opacity-70"
+            >
+              <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Tap to render preview</span>
+              <span className="mt-1 text-[11px]" style={{ color: "var(--muted-foreground)" }}>Lazy-loaded for performance</span>
+            </button>
+          )
+        )}
+
+        {/* Code pane */}
+        {activeTab === "code" && (
+          <div className="overflow-x-auto max-h-60" style={{ scrollbarWidth: "thin" }}>
+            <pre className="px-3 py-2 text-[13px] font-mono leading-relaxed m-0" style={{ color: "var(--foreground)" }}>
+              <code>{code}</code>
+            </pre>
+          </div>
+        )}
       </div>
-      {showPreview ? (
-        <iframe
-          srcDoc={code}
-          sandbox="allow-scripts allow-same-origin"
-          className="w-full bg-white border-0"
-          style={{ height: expanded ? 480 : 240 }}
-          title="HTML Preview"
-        />
-      ) : (
-        <pre className="p-3 text-xs text-gray-800 bg-gray-50 overflow-x-auto max-h-60">
-          <code>{code}</code>
-        </pre>
+
+      {/* Fullscreen modal */}
+      {fullscreen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white">
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+            <span className="text-base font-semibold text-gray-900">HTML Preview</span>
+            <button onClick={() => setFullscreen(false)} className="p-1 active:opacity-60">
+              <IoCloseOutline size={22} color="#6b7280" />
+            </button>
+          </div>
+          <iframe
+            srcDoc={wrappedHtml}
+            sandbox="allow-scripts allow-same-origin"
+            className="flex-1 w-full border-0 bg-white"
+            title="HTML Preview Fullscreen"
+          />
+        </div>
       )}
-    </div>
+    </>
   );
 });
