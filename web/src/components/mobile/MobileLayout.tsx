@@ -293,13 +293,14 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
             const pModel = getModelById(p.modelId);
             const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
             const displayName = pModel?.displayName ?? p.modelId;
+            const displayNameWithRole = pIdentity?.name ? `${displayName}（${pIdentity.name}）` : displayName;
             return (
               <div key={p.id} className="flex items-center gap-3 py-2.5">
                 <div className="h-8 w-8 flex items-center justify-center rounded-full" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }}>
                   <span className="text-xs font-bold text-primary">{displayName.slice(0, 2).toUpperCase()}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-medium text-foreground truncate">{displayName}</p>
+                  <p className="text-[14px] font-medium text-foreground truncate">{displayNameWithRole}</p>
                   <p className="text-[12px] text-muted-foreground truncate">{pIdentity ? pIdentity.name : t("chat.noIdentity")}</p>
                 </div>
                 <button

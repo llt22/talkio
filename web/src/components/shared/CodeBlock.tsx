@@ -57,6 +57,26 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
 
   // Regular code block with language — full-bleed, matches RN MarkdownCodeBlock
   if (match) {
+    // During streaming: show compact "coding" indicator instead of raw code
+    if (isStreaming) {
+      const lineCount = codeString.split("\n").length;
+      return (
+        <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
+          <div className="flex items-center justify-between px-3 py-2.5" style={{ backgroundColor: "var(--secondary)" }}>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: "var(--primary)" }} />
+              <span className="text-[11px] font-mono font-semibold" style={{ color: "var(--primary)" }}>
+                {lang.toUpperCase()}
+              </span>
+              <span className="text-[11px] font-mono" style={{ color: "var(--muted-foreground)" }}>
+                · coding… {lineCount} lines
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
         <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>

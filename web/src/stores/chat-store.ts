@@ -255,13 +255,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!model || !provider) return;
       if (!firstModelDisplayName) firstModelDisplayName = model.displayName;
 
+      const identity = participant.identityId
+        ? useIdentityStore.getState().getIdentityById(participant.identityId)
+        : null;
+
+      let senderName = model.displayName;
+      if (identity?.name) {
+        senderName = `${model.displayName}（${identity.name}）`;
+      }
+
       const assistantMsgId = generateId();
       const assistantMsg: Message = {
         id: assistantMsgId,
         conversationId: convId,
         role: "assistant",
         senderModelId: model.id,
-        senderName: model.displayName,
+        senderName,
         identityId: participant.identityId,
         participantId: participant.id,
         content: "",
@@ -414,7 +423,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             conversationId: convId,
             role: "assistant",
             senderModelId: model.id,
-            senderName: model.displayName,
+            senderName,
             identityId: participant.identityId,
             participantId: participant.id,
             content: "",
