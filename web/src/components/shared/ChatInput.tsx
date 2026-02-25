@@ -369,7 +369,15 @@ export const ChatInput = memo(function ChatInput({
                 <textarea
                   ref={textareaRef}
                   value={text}
-                  onChange={(e) => { setText(e.target.value); handleInput(); }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setText(val);
+                    handleInput();
+                    if (isGroup && val.endsWith("@") && !showMentionPicker) {
+                      setShowMentionPicker(true);
+                      setShowRoundPicker(false);
+                    }
+                  }}
                   onKeyDown={handleKeyDown}
                   placeholder={resolvedPlaceholder}
                   disabled={isGenerating}
