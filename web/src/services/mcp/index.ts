@@ -9,6 +9,7 @@ function toSharedServer(server: McpServerConfig): McpServer {
     id: server.id,
     name: server.name,
     url: server.url,
+    customHeaders: server.customHeaders,
     enabled: server.enabled,
   };
 }

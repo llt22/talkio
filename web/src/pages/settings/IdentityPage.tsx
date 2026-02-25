@@ -9,8 +9,8 @@ import type { Identity } from "../../../../src/types";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
-import { ApiClient } from "../../../../src/services/api-client";
 import { BUILT_IN_TOOLS } from "../../services/built-in-tools";
+import { ApiClient } from "../../../../src/services/api-client";
 
 type IdentityStoreState = ReturnType<typeof useIdentityStore.getState>;
 
@@ -210,7 +210,14 @@ function IdentityForm({
   const selectedAiModel = models.find((m) => m.id === aiModelId);
 
   const handleSave = useCallback(() => {
-    if (!name.trim() || !systemPrompt.trim()) return;
+    if (!name.trim()) {
+      window.alert(`${t("common.error")}: ${t("identityEdit.nameRequired")}`);
+      return;
+    }
+    if (!systemPrompt.trim()) {
+      window.alert(`${t("common.error")}: ${t("identityEdit.promptRequired")}`);
+      return;
+    }
     onSave({
       name: name.trim(),
       icon,
@@ -222,7 +229,14 @@ function IdentityForm({
   }, [name, systemPrompt, temperature, topP, icon, selectedToolIds, selectedServerIds, onSave]);
 
   const handleAiGenerate = useCallback(async () => {
-    if (!aiDesc.trim() || !aiModelId) return;
+    if (!aiDesc.trim()) {
+      window.alert(`${t("common.error")}: ${t("identityEdit.aiDescRequired")}`);
+      return;
+    }
+    if (!aiModelId) {
+      window.alert(`${t("common.error")}: ${t("identityEdit.aiSelectModel")}`);
+      return;
+    }
     const model = models.find((m) => m.id === aiModelId);
     if (!model) return;
     const provider = getProviderById(model.providerId);
@@ -230,158 +244,145 @@ function IdentityForm({
 
     setAiLoading(true);
     try {
-      const baseUrl = provider.baseUrl.replace(/\/+$/, "");
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${provider.apiKey}`,
-      };
-      for (const h of provider.customHeaders ?? []) {
-        if (h.name && h.value) headers[h.name] = h.value;
-      }
-
-      const res = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers,
-        signal: AbortSignal.timeout(30000),
-        body: JSON.stringify({
-          model: model.modelId,
-          temperature: 0.7,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You generate identity cards for an AI assistant app. Given a description, return ONLY a JSON object with:\n" +
-                "- name: short name (2-4 words)\n" +
-                "- systemPrompt: a concise system prompt (2-4 sentences) defining the role, expertise, and tone.\n" +
-                "Return raw JSON only, no markdown fences.",
-            },
-            { role: "user", content: aiDesc.trim() },
-          ],
-        }),
+      const client = new ApiClient(provider);
+      const icons = "code, translate, architecture, security, finance, writing, research, marketing, design, general";
+      const data = await client.chat({
+        model: model.modelId,
+        temperature: 0.7,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You generate identity cards for an AI assistant app. Given a description, return ONLY a JSON object with:\n" +
+              "- name: short name (2-4 words)\n" +
+              `- icon: one of [${icons}]\n` +
+              "- systemPrompt: a concise system prompt (2-4 sentences) defining the role, expertise, and tone.\n" +
+              "Return raw JSON only, no markdown fences.",
+          },
+          { role: "user", content: aiDesc.trim() },
+        ],
+        stream: false,
       });
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data = await res.json();
+
       const text = data.choices?.[0]?.message?.content ?? "";
       const jsonStr = text.replace(/^```[\s\S]*?\n/, "").replace(/\n```$/, "").trim();
       const result = JSON.parse(jsonStr);
       if (result.name) setName(String(result.name));
+      if (result.icon) setIcon(String(result.icon));
       if (result.systemPrompt) setSystemPrompt(String(result.systemPrompt));
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setAiLoading(false);
     }
-  }, [aiDesc, aiModelId, models, getProviderById]);
+  }, [aiDesc, aiModelId, getProviderById, models, t]);
 
   const toggleTool = useCallback((toolName: string) => {
     setSelectedToolIds((prev) =>
-      prev.includes(toolName) ? prev.filter((id) => id !== toolName) : [...prev, toolName],
+      prev.includes(toolName) ? prev.filter((tId) => tId !== toolName) : [...prev, toolName],
     );
   }, []);
 
   const toggleServer = useCallback((serverId: string) => {
     setSelectedServerIds((prev) =>
-      prev.includes(serverId) ? prev.filter((id) => id !== serverId) : [...prev, serverId],
+      prev.includes(serverId) ? prev.filter((sId) => sId !== serverId) : [...prev, serverId],
     );
   }, []);
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--background)" }}>
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center px-1 py-2">
-        <button onClick={onClose} className="flex items-center px-2 py-1 active:opacity-60">
+    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--secondary)" }}>
+      <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)" }}>
+        <button onClick={onClose} className="w-12 flex items-center justify-center active:opacity-60">
           <IoChevronBack size={24} color="var(--primary)" />
         </button>
-        <span className="text-[17px] font-semibold text-foreground flex-1 text-center pr-12">
+        <span className="text-[17px] font-semibold text-foreground flex-1 text-center">
           {isNew ? t("personas.createIdentity") : t("personas.editIdentity")}
         </span>
+        <button
+          onClick={handleSave}
+          disabled={!name.trim() || !systemPrompt.trim()}
+          className="px-3 py-1 active:opacity-60 disabled:opacity-30"
+        >
+          <span className="text-[17px] font-medium" style={{ color: "var(--primary)" }}>{t("common.save")}</span>
+        </button>
       </div>
 
-      {/* Form — 1:1 RN style */}
-      <div className="flex-1 overflow-y-auto">
-        {/* AI Generate Card (new only, when models available) */}
+      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-8">
         {isNew && enabledModels.length > 0 && (
-          <div
-            className="mx-4 mt-4 rounded-xl p-4"
-            style={{ border: "1px solid rgba(147, 51, 234, 0.2)", backgroundColor: "rgba(147, 51, 234, 0.04)" }}
-          >
-            <div className="flex items-center gap-2">
-              <IoSparkles size={18} color="#9333ea" />
-              <span className="text-sm font-semibold" style={{ color: "#6b21a8" }}>{t("identityEdit.aiGenerate")}</span>
-            </div>
+          <div className="mb-4 overflow-hidden rounded-xl border" style={{ borderColor: "rgba(147, 51, 234, 0.2)", backgroundColor: "rgba(147, 51, 234, 0.06)" }}>
+            <div className="px-4 py-3">
+              <div className="flex items-center gap-2">
+                <IoSparkles size={18} color="#9333ea" />
+                <p className="text-[13px] font-semibold" style={{ color: "#6b21a8" }}>{t("identityEdit.aiGenerate")}</p>
+              </div>
 
-            <textarea
-              className="mt-3 w-full rounded-lg px-3 py-2.5 text-sm text-foreground outline-none resize-none"
-              style={{ backgroundColor: "var(--secondary)" }}
-              value={aiDesc}
-              onChange={(e) => setAiDesc(e.target.value)}
-              placeholder={t("identityEdit.aiDescPlaceholder")}
-              rows={2}
-            />
+              <textarea
+                value={aiDesc}
+                onChange={(e) => setAiDesc(e.target.value)}
+                placeholder={t("identityEdit.aiDescPlaceholder")}
+                className="mt-3 w-full rounded-lg px-3 py-2.5 text-[13px] leading-relaxed text-foreground outline-none resize-none"
+                style={{ backgroundColor: "var(--card)", minHeight: 72 }}
+              />
 
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                onClick={() => setShowModelPicker(true)}
-                className="flex-1 flex items-center justify-between rounded-lg px-3 py-2.5 active:opacity-80"
-                style={{ border: "1px solid rgba(147, 51, 234, 0.2)", backgroundColor: "var(--card)" }}
-              >
-                <span className="text-xs text-muted-foreground truncate">
-                  {selectedAiModel?.displayName ?? t("identityEdit.aiSelectModel")}
-                </span>
-                <IoChevronForward size={14} color="var(--muted-foreground)" style={{ transform: "rotate(90deg)" }} />
-              </button>
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={() => setShowModelPicker(true)}
+                  className="flex-1 flex items-center justify-between rounded-lg border px-3 py-2.5 active:opacity-80"
+                  style={{ borderColor: "rgba(147, 51, 234, 0.2)", backgroundColor: "var(--card)" }}
+                >
+                  <span className="text-[12px] text-muted-foreground truncate">
+                    {selectedAiModel?.displayName ?? t("identityEdit.aiSelectModel")}
+                  </span>
+                  <span className="text-[12px] text-muted-foreground">▾</span>
+                </button>
 
-              <button
-                onClick={handleAiGenerate}
-                disabled={aiLoading || !aiDesc.trim()}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2.5"
-                style={{ backgroundColor: aiLoading || !aiDesc.trim() ? "#c084fc" : "#9333ea" }}
-              >
-                {aiLoading ? (
-                  <span className="text-sm font-semibold text-white animate-pulse">...</span>
-                ) : (
+                <button
+                  onClick={handleAiGenerate}
+                  disabled={aiLoading || !aiDesc.trim()}
+                  className="flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-white active:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: aiLoading || !aiDesc.trim() ? "rgba(147, 51, 234, 0.5)" : "#7c3aed" }}
+                >
                   <IoSparkles size={14} color="#fff" />
-                )}
-                <span className="text-sm font-semibold text-white">{t("identityEdit.generate")}</span>
-              </button>
+                  <span className="text-[13px] font-semibold">{t("identityEdit.generate")}</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Name */}
-        <div className="px-4 pt-4">
-          <p className="mb-1 text-sm font-medium text-muted-foreground">{t("identityEdit.name")}</p>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("identityEdit.namePlaceholder")}
-            className="w-full rounded-xl px-4 py-3 text-base text-foreground outline-none"
-            style={{ backgroundColor: "var(--secondary)" }}
-          />
+        <div className="overflow-hidden rounded-xl mb-4" style={{ backgroundColor: "var(--card)" }}>
+          <div className="flex items-center px-4 py-3.5">
+            <span className="w-24 text-[15px] text-foreground flex-shrink-0">{t("identityEdit.name")}</span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t("identityEdit.namePlaceholder")}
+              className="flex-1 bg-transparent text-[16px] text-foreground outline-none"
+            />
+          </div>
         </div>
 
-        {/* System Prompt */}
-        <div className="px-4 pt-4">
-          <p className="mb-1 text-sm font-medium text-muted-foreground">{t("identityEdit.systemPrompt")}</p>
-          <textarea
-            value={systemPrompt}
-            onChange={(e) => setSystemPrompt(e.target.value)}
-            placeholder={t("identityEdit.systemPromptPlaceholder")}
-            className="w-full rounded-xl px-4 py-3 text-sm leading-5 text-foreground outline-none resize-none"
-            style={{ backgroundColor: "var(--secondary)", minHeight: 120 }}
-          />
+        <div className="overflow-hidden rounded-xl mb-4" style={{ backgroundColor: "var(--card)" }}>
+          <div className="px-4 pt-3 pb-1">
+            <p className="text-[13px] text-muted-foreground mb-1.5">{t("identityEdit.systemPrompt")}</p>
+            <textarea
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              placeholder={t("identityEdit.systemPromptPlaceholder")}
+              className="w-full text-[15px] leading-relaxed text-foreground bg-transparent outline-none resize-none"
+              style={{ minHeight: 140 }}
+            />
+          </div>
         </div>
 
-        {/* Parameters */}
-        <div className="px-4 pt-4">
-          <p className="mb-2 text-sm font-medium text-muted-foreground">{t("identityEdit.parameters")}</p>
-          {/* Temperature */}
-          <div className="mt-2">
+        <p className="mb-2 mt-2 px-1 text-[13px] text-muted-foreground/60">{t("identityEdit.parameters")}</p>
+        <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
+          <div className="px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
             <div className="flex justify-between">
-              <span className="text-xs text-muted-foreground">{t("identityEdit.temperature")}</span>
-              <span className="text-xs font-medium text-foreground">{temperature.toFixed(2)}</span>
+              <span className="text-[15px] text-foreground">{t("identityEdit.temperature")}</span>
+              <span className="text-[15px] font-medium text-foreground">{temperature.toFixed(2)}</span>
             </div>
-            <div className="h-10 flex items-center relative">
+            <div className="h-8 flex items-center relative mt-1">
               <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "var(--muted)" }}>
                 <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)", width: `${(temperature / 2) * 100}%` }} />
               </div>
@@ -393,13 +394,12 @@ function IdentityForm({
               />
             </div>
           </div>
-          {/* TopP */}
-          <div className="mt-2">
+          <div className="px-4 py-3">
             <div className="flex justify-between">
-              <span className="text-xs text-muted-foreground">{t("identityEdit.topP")}</span>
-              <span className="text-xs font-medium text-foreground">{topP.toFixed(2)}</span>
+              <span className="text-[15px] text-foreground">{t("identityEdit.topP")}</span>
+              <span className="text-[15px] font-medium text-foreground">{topP.toFixed(2)}</span>
             </div>
-            <div className="h-10 flex items-center relative">
+            <div className="h-8 flex items-center relative mt-1">
               <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "var(--muted)" }}>
                 <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--primary)", width: `${topP * 100}%` }} />
               </div>
@@ -413,81 +413,76 @@ function IdentityForm({
           </div>
         </div>
 
-        {/* Bind MCP Tools */}
         {(BUILT_IN_TOOLS.length > 0 || mcpServers.length > 0) && (
-          <div className="px-4 pt-4">
-            <p className="mb-2 text-sm font-medium text-muted-foreground">{t("identityEdit.bindTools")}</p>
+          <>
+            <p className="mb-2 mt-6 px-1 text-[13px] text-muted-foreground/60">{t("identityEdit.bindTools")}</p>
 
-            {BUILT_IN_TOOLS.map((tool) => {
-              const checked = selectedToolIds.includes(tool.name);
-              return (
-                <button
-                  key={tool.name}
-                  onClick={() => toggleTool(tool.name)}
-                  className="mb-2 w-full flex items-center rounded-lg px-3 py-2.5 active:opacity-70"
-                  style={{ backgroundColor: "var(--secondary)" }}
-                >
-                  <span
-                    className="h-5 w-5 rounded border flex items-center justify-center flex-shrink-0 text-xs"
-                    style={{
-                      borderColor: checked ? "var(--primary)" : "var(--border)",
-                      backgroundColor: checked ? "var(--primary)" : "transparent",
-                      color: checked ? "white" : "transparent",
-                    }}
-                  >
-                    ✓
-                  </span>
-                  <div className="ml-2 flex-1 min-w-0 text-left">
-                    <p className="text-sm text-foreground">{tool.name}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{t("identityEdit.builtIn")}</span>
-                </button>
-              );
-            })}
+            {BUILT_IN_TOOLS.length > 0 && (
+              <div className="overflow-hidden rounded-xl mb-3" style={{ backgroundColor: "var(--card)" }}>
+                {BUILT_IN_TOOLS.map((tool, idx) => {
+                  const checked = selectedToolIds.includes(tool.name);
+                  return (
+                    <button
+                      key={tool.name}
+                      onClick={() => toggleTool(tool.name)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70"
+                      style={{ borderBottom: idx < BUILT_IN_TOOLS.length - 1 ? "0.5px solid var(--border)" : "none" }}
+                    >
+                      <span
+                        className="h-5 w-5 rounded border flex items-center justify-center flex-shrink-0"
+                        style={{
+                          borderColor: checked ? "var(--primary)" : "var(--border)",
+                          backgroundColor: checked ? "var(--primary)" : "transparent",
+                          color: checked ? "white" : "transparent",
+                        }}
+                      >
+                        ✓
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] text-foreground truncate">{tool.name}</p>
+                        <p className="text-[12px] text-muted-foreground line-clamp-1">{tool.description}</p>
+                      </div>
+                      <span className="text-[12px] text-muted-foreground">{t("identityEdit.builtIn")}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-            {mcpServers.map((server) => {
-              const checked = selectedServerIds.includes(server.id);
-              return (
-                <button
-                  key={server.id}
-                  onClick={() => toggleServer(server.id)}
-                  className="mb-2 w-full flex items-center rounded-lg px-3 py-2.5 active:opacity-70"
-                  style={{ backgroundColor: "var(--secondary)" }}
-                >
-                  <span
-                    className="h-5 w-5 rounded border flex items-center justify-center flex-shrink-0 text-xs"
-                    style={{
-                      borderColor: checked ? "var(--primary)" : "var(--border)",
-                      backgroundColor: checked ? "var(--primary)" : "transparent",
-                      color: checked ? "white" : "transparent",
-                    }}
-                  >
-                    ✓
-                  </span>
-                  <div className="ml-2 flex-1 min-w-0 text-left">
-                    <p className="text-sm text-foreground">{server.name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{server.url}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+            {mcpServers.length > 0 && (
+              <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
+                {mcpServers.map((srv, idx) => {
+                  const checked = selectedServerIds.includes(srv.id);
+                  return (
+                    <button
+                      key={srv.id}
+                      onClick={() => toggleServer(srv.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70"
+                      style={{ borderBottom: idx < mcpServers.length - 1 ? "0.5px solid var(--border)" : "none" }}
+                    >
+                      <span
+                        className="h-5 w-5 rounded border flex items-center justify-center flex-shrink-0"
+                        style={{
+                          borderColor: checked ? "var(--primary)" : "var(--border)",
+                          backgroundColor: checked ? "var(--primary)" : "transparent",
+                          color: checked ? "white" : "transparent",
+                        }}
+                      >
+                        ✓
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] text-foreground truncate">{srv.name}</p>
+                        <p className="text-[12px] text-muted-foreground truncate">{srv.url}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
-
-        {/* Save */}
-        <div className="px-4 pb-8 pt-6">
-          <button
-            onClick={handleSave}
-            disabled={!name.trim() || !systemPrompt.trim()}
-            className="w-full rounded-2xl py-4 text-base font-semibold text-white active:opacity-80 disabled:opacity-40"
-            style={{ backgroundColor: "var(--primary)" }}
-          >
-            {isNew ? t("identityEdit.createIdentity") : t("identityEdit.saveChanges")}
-          </button>
-        </div>
       </div>
 
-      {/* Model Picker Modal */}
       {showModelPicker && (
         <div className="fixed inset-0 z-50">
           <button
@@ -505,7 +500,7 @@ function IdentityForm({
                 <IoCloseCircle size={20} color="var(--muted-foreground)" />
               </button>
             </div>
-            <div className="overflow-y-auto max-h-[40vh] pb-8">
+            <div className="overflow-y-auto">
               {enabledModels.map((m) => {
                 const active = m.id === aiModelId;
                 return (
