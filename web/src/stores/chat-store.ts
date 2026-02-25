@@ -26,6 +26,7 @@ import { executeMcpToolByName, getMcpToolDefsForIdentity, refreshMcpConnections 
 import { generateId } from "../lib/id";
 import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
 import { buildProviderHeaders } from "../services/provider-headers";
+import { useBuiltInToolsStore } from "./built-in-tools-store";
 
 interface StreamingState {
   messageId: string;
@@ -302,6 +303,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const allowedBuiltInToolNames = identity ? new Set(identity.mcpToolIds ?? []) : null;
       const allowedServerIds = identity?.mcpServerIds?.length ? identity.mcpServerIds : undefined;
 
+      const builtInEnabledByName = useBuiltInToolsStore.getState().enabledByName;
+
       let senderName = model.displayName;
       if (identity?.name) {
         senderName = `${model.displayName}（${identity.name}）`;
@@ -341,9 +344,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       await refreshMcpConnections().catch(() => {});
 
       const builtInToolDefs = (() => {
-        if (!identity) return getBuiltInToolDefs();
+        const globallyEnabled = getBuiltInToolDefs().filter((d) => builtInEnabledByName[d.function.name] !== false);
+        if (!identity) return globallyEnabled;
         if (!allowedBuiltInToolNames || allowedBuiltInToolNames.size === 0) return [];
-        return getBuiltInToolDefs().filter((d) => allowedBuiltInToolNames.has(d.function.name));
+        return globallyEnabled.filter((d) => allowedBuiltInToolNames.has(d.function.name));
       })();
 
       const toolDefs = [...builtInToolDefs, ...getMcpToolDefsForIdentity(identity)];
@@ -437,8 +441,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
           for (const tc of pendingToolCalls) {
             let args: Record<string, unknown> = {};
             try { args = JSON.parse(tc.arguments); } catch {}
-            const builtInAllowed = !identity || (allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(tc.name));
-            const builtIn = builtInAllowed ? await executeBuiltInTool(tc.name, args) : null;
+            const builtInGloballyEnabled = builtInEnabledByName[tc.name] !== false;
+            const builtInAllowedByIdentity = !identity || (allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(tc.name));
+            const builtIn = builtInGloballyEnabled && builtInAllowedByIdentity
+              ? await executeBuiltInTool(tc.name, args)
+              : null;
             if (builtIn) {
               toolResults.push({ toolCallId: tc.id, content: builtIn.success ? builtIn.content : `Error: ${builtIn.error}` });
               continue;

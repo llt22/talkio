@@ -10,6 +10,7 @@ import { useProviderStore } from "./stores/provider-store";
 import { useIdentityStore } from "./stores/identity-store";
 import { useMcpStore } from "./stores/mcp-store";
 import { useSettingsStore } from "./stores/settings-store";
+import { useBuiltInToolsStore } from "./stores/built-in-tools-store";
 import { refreshMcpConnections } from "./services/mcp";
 
 function useIsMobile() {
@@ -44,6 +45,7 @@ export default function App() {
       useProviderStore.getState().loadFromStorage();
       useIdentityStore.getState().loadFromStorage();
       useMcpStore.getState().loadFromStorage();
+      useBuiltInToolsStore.getState().loadFromStorage();
       setReady(true);
     }
     init().catch(console.error);
