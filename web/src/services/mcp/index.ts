@@ -26,17 +26,10 @@ export function getMcpToolDefs() {
   }));
 }
 
-export function getMcpToolDefsForIdentity(identity?: Identity | null) {
+export function getMcpToolDefsForIdentity(_identity?: Identity | null) {
   const store = useMcpStore.getState();
-  const enabledServerIds = new Set(store.servers.filter((s) => s.enabled).map((s) => s.id));
-
-  let tools = store.getAllEnabledTools();
-  if (identity?.mcpServerIds?.length) {
-    const allowed = new Set(identity.mcpServerIds);
-    tools = tools.filter((t) => allowed.has(t.serverId) && enabledServerIds.has(t.serverId));
-  } else {
-    tools = tools.filter((t) => enabledServerIds.has(t.serverId));
-  }
+  // All globally enabled servers are available to every identity.
+  const tools = store.getAllEnabledTools();
 
   return tools.map((t) => ({
     type: "function" as const,

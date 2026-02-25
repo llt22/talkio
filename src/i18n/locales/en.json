@@ -262,7 +262,8 @@
     "aiSelectModel": "Select Model",
     "selectModel": "Select Model",
     "generate": "Generate",
-    "builtIn": "Built-in"
+    "builtIn": "Built-in",
+    "globalEnabled": "Global"
   },
   "toolEdit": {
     "name": "Name",

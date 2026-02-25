@@ -262,7 +262,8 @@
     "aiSelectModel": "选择模型",
     "selectModel": "选择模型",
     "generate": "生成",
-    "builtIn": "内置"
+    "builtIn": "内置",
+    "globalEnabled": "全局"
   },
   "toolEdit": {
     "name": "名称",

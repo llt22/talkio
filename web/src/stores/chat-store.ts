@@ -344,10 +344,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       await refreshMcpConnections().catch(() => {});
 
       const builtInToolDefs = (() => {
-        const globallyEnabled = getBuiltInToolDefs().filter((d) => builtInEnabledByName[d.function.name] !== false);
-        if (!identity) return globallyEnabled;
-        if (!allowedBuiltInToolNames || allowedBuiltInToolNames.size === 0) return [];
-        return globallyEnabled.filter((d) => allowedBuiltInToolNames.has(d.function.name));
+        const defs = getBuiltInToolDefs();
+        const selected = allowedBuiltInToolNames ?? new Set<string>();
+        return defs.filter((d) => {
+          const name = d.function.name;
+          const globallyEnabled = builtInEnabledByName[name] !== false;
+          const enabledForIdentity = !!identity && selected.has(name);
+          return globallyEnabled || enabledForIdentity;
+        });
       })();
 
       const toolDefs = [...builtInToolDefs, ...getMcpToolDefsForIdentity(identity)];
@@ -442,8 +446,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             let args: Record<string, unknown> = {};
             try { args = JSON.parse(tc.arguments); } catch {}
             const builtInGloballyEnabled = builtInEnabledByName[tc.name] !== false;
-            const builtInAllowedByIdentity = !identity || (allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(tc.name));
-            const builtIn = builtInGloballyEnabled && builtInAllowedByIdentity
+            const builtInEnabledForIdentity = !!identity && allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(tc.name);
+            const builtIn = (builtInGloballyEnabled || builtInEnabledForIdentity)
               ? await executeBuiltInTool(tc.name, args)
               : null;
             if (builtIn) {

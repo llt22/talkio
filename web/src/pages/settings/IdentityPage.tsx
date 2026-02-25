@@ -200,7 +200,6 @@ function IdentityForm({
   const [temperature, setTemperature] = useState(identity?.params?.temperature ?? 0.7);
   const [topP, setTopP] = useState(identity?.params?.topP ?? 0.9);
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>(identity?.mcpToolIds ?? []);
-  const [selectedServerIds, setSelectedServerIds] = useState<string[]>(identity?.mcpServerIds ?? []);
 
   // AI Generate state
   const [aiDesc, setAiDesc] = useState("");
@@ -224,9 +223,9 @@ function IdentityForm({
       systemPrompt: systemPrompt.trim(),
       params: { temperature, topP },
       mcpToolIds: selectedToolIds,
-      mcpServerIds: selectedServerIds,
+      mcpServerIds: [],
     });
-  }, [name, systemPrompt, temperature, topP, icon, selectedToolIds, selectedServerIds, onSave]);
+  }, [name, systemPrompt, temperature, topP, icon, selectedToolIds, onSave]);
 
   const handleAiGenerate = useCallback(async () => {
     if (!aiDesc.trim()) {
@@ -283,11 +282,6 @@ function IdentityForm({
     );
   }, []);
 
-  const toggleServer = useCallback((serverId: string) => {
-    setSelectedServerIds((prev) =>
-      prev.includes(serverId) ? prev.filter((sId) => sId !== serverId) : [...prev, serverId],
-    );
-  }, []);
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: "var(--secondary)" }}>
@@ -413,60 +407,59 @@ function IdentityForm({
           </div>
         </div>
 
-        {(BUILT_IN_TOOLS.length > 0 || mcpServers.length > 0) && (
-          <>
-            <p className="mb-2 mt-6 px-1 text-[13px] text-muted-foreground/60">{t("identityEdit.bindTools")}</p>
+        {(() => {
+          const enabledServers = mcpServers.filter((s) => s.enabled);
+          const hasAnything = BUILT_IN_TOOLS.length > 0 || enabledServers.length > 0;
+          if (!hasAnything) return null;
+          return (
+            <>
+              <p className="mb-2 mt-6 px-1 text-[13px] text-muted-foreground/60">{t("identityEdit.bindTools")}</p>
 
-            {BUILT_IN_TOOLS.length > 0 && (
-              <div className="overflow-hidden rounded-xl mb-3" style={{ backgroundColor: "var(--card)" }}>
-                {BUILT_IN_TOOLS.map((tool, idx) => {
-                  const checked = selectedToolIds.includes(tool.name);
-                  return (
-                    <button
-                      key={tool.name}
-                      onClick={() => toggleTool(tool.name)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70"
-                      style={{ borderBottom: idx < BUILT_IN_TOOLS.length - 1 ? "0.5px solid var(--border)" : "none" }}
-                    >
-                      <span
-                        className="h-5 w-5 rounded border flex items-center justify-center flex-shrink-0"
-                        style={{
-                          borderColor: checked ? "var(--primary)" : "var(--border)",
-                          backgroundColor: checked ? "var(--primary)" : "transparent",
-                          color: checked ? "white" : "transparent",
-                        }}
+              {/* Built-in tools — always selectable */}
+              {BUILT_IN_TOOLS.length > 0 && (
+                <div className="overflow-hidden rounded-xl mb-3" style={{ backgroundColor: "var(--card)" }}>
+                  {BUILT_IN_TOOLS.map((tool, idx) => {
+                    const checked = selectedToolIds.includes(tool.name);
+                    return (
+                      <button
+                        key={tool.name}
+                        onClick={() => toggleTool(tool.name)}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70"
+                        style={{ borderBottom: idx < BUILT_IN_TOOLS.length - 1 ? "0.5px solid var(--border)" : "none" }}
                       >
-                        ✓
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] text-foreground truncate">{tool.name}</p>
-                        <p className="text-[12px] text-muted-foreground line-clamp-1">{tool.description}</p>
-                      </div>
-                      <span className="text-[12px] text-muted-foreground">{t("identityEdit.builtIn")}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                        <span
+                          className="h-5 w-5 rounded border flex items-center justify-center flex-shrink-0"
+                          style={{
+                            borderColor: checked ? "var(--primary)" : "var(--border)",
+                            backgroundColor: checked ? "var(--primary)" : "transparent",
+                            color: checked ? "white" : "transparent",
+                          }}
+                        >
+                          ✓
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] text-foreground truncate">{tool.name}</p>
+                          <p className="text-[12px] text-muted-foreground line-clamp-1">{tool.description}</p>
+                        </div>
+                        <span className="text-[12px] text-muted-foreground">{t("identityEdit.builtIn")}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-            {mcpServers.length > 0 && (
-              <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
-                {mcpServers.map((srv, idx) => {
-                  const checked = selectedServerIds.includes(srv.id);
-                  return (
-                    <button
+              {/* Globally enabled servers — auto-included, not selectable */}
+              {enabledServers.length > 0 && (
+                <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
+                  {enabledServers.map((srv, idx) => (
+                    <div
                       key={srv.id}
-                      onClick={() => toggleServer(srv.id)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70"
-                      style={{ borderBottom: idx < mcpServers.length - 1 ? "0.5px solid var(--border)" : "none" }}
+                      className="flex items-center gap-3 px-4 py-3 opacity-50"
+                      style={{ borderBottom: idx < enabledServers.length - 1 ? "0.5px solid var(--border)" : "none" }}
                     >
                       <span
                         className="h-5 w-5 rounded border flex items-center justify-center flex-shrink-0"
-                        style={{
-                          borderColor: checked ? "var(--primary)" : "var(--border)",
-                          backgroundColor: checked ? "var(--primary)" : "transparent",
-                          color: checked ? "white" : "transparent",
-                        }}
+                        style={{ borderColor: "var(--primary)", backgroundColor: "var(--primary)", color: "white" }}
                       >
                         ✓
                       </span>
@@ -474,13 +467,14 @@ function IdentityForm({
                         <p className="text-[14px] text-foreground truncate">{srv.name}</p>
                         <p className="text-[12px] text-muted-foreground truncate">{srv.url}</p>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
+                      <span className="text-[11px] text-muted-foreground">{t("identityEdit.globalEnabled")}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {showModelPicker && (
