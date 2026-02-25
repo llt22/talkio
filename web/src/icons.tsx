@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ChevronUp,
   CircleUser,
+  Cloud,
   Code,
   Copy,
   Eye,
@@ -31,6 +32,7 @@ import {
   Search,
   Settings,
   Share2,
+  Smartphone,
   Sparkles,
   Trash2,
   User,
@@ -39,6 +41,7 @@ import {
   Volume2,
   X,
   XCircle,
+  Zap,
 } from "lucide-react";
 
 function make(Icon: ComponentType<LucideProps>) {
@@ -99,3 +102,6 @@ export const IoExpandOutline = make(Maximize2);
 
 // Backwards-compat name used in some places
 export const IoArrowUp = make(ArrowUp);
+export const IoCloudOutline = make(Cloud);
+export const IoFlashOutline = make(Zap);
+export const IoPhonePortraitOutline = make(Smartphone);

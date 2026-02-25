@@ -1,10 +1,10 @@
 import { useState, useCallback, useImperativeHandle, forwardRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { IoAddCircleOutline, IoTrashOutline, IoChevronBack } from "../../icons";
+import { IoAddCircleOutline, IoTrashOutline, IoChevronBack, IoCloudOutline, IoFlashOutline, IoPhonePortraitOutline, IoChevronForward } from "../../icons";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
-import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
+import { BUILT_IN_TOOLS } from "../../services/built-in-tools";
 import type { CustomHeader } from "../../../../src/types";
 import { mcpConnectionManager } from "../../services/mcp/connection-manager";
 
@@ -42,114 +42,90 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
   }
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
-      <div className="pb-8">
-        {servers.length === 0 ? (
-          <EmptyState
-            icon={<IoAddCircleOutline size={28} color="var(--muted-foreground)" />}
-            title={t("personas.noCustomTools")}
-            subtitle={t("models.configureHint")}
-          />
-        ) : (
-          <>
-            {/* Server list */}
-            <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
-              {servers.map((server, idx) => {
-                const status = connectionStatus[server.id] ?? "disconnected";
-                const serverTools = tools.filter((t) => t.serverId === server.id);
-                const isConnected = status === "connected";
-                const isError = status === "error";
-                const { color: avatarColor, initials } = getAvatarProps(server.name);
-                return (
-                  <div
-                    key={server.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setEditingServerId(server.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") setEditingServerId(server.id);
-                    }}
-                    className="w-full flex items-center gap-4 px-4 py-3 text-left active:bg-black/5 transition-colors"
-                    style={{ borderBottom: "0.5px solid var(--border)" }}
-                  >
-                    <div className="relative flex-shrink-0">
-                      <div
-                        className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-semibold"
-                        style={{ backgroundColor: avatarColor }}
-                      >
-                        {initials}
-                      </div>
-                      <div
-                        className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 ${status === "connecting" ? "animate-pulse" : ""}`}
-                        style={{
-                          borderColor: "var(--background)",
-                          backgroundColor: isConnected ? "var(--success)" : isError ? "var(--destructive)" : "var(--border)",
-                        }}
-                      />
+    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--secondary)" }}>
+      <div className="px-5 pt-4 pb-8 space-y-6">
+        {/* Built-in Tools */}
+        {BUILT_IN_TOOLS.length > 0 && (
+          <div>
+            <p className="mb-2 px-1 text-[13px] font-medium uppercase tracking-tight text-muted-foreground">
+              {t("personas.builtInTools")}
+            </p>
+            <div className="overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
+              {BUILT_IN_TOOLS.map((tool, idx) => (
+                <div
+                  key={tool.name}
+                  className="flex items-center justify-between px-4 py-3"
+                  style={{ borderBottom: idx < BUILT_IN_TOOLS.length - 1 ? "0.5px solid var(--border)" : "none" }}
+                >
+                  <div className="flex items-center flex-1 mr-3">
+                    <div className="mr-3 h-9 w-9 flex items-center justify-center rounded-lg" style={{ backgroundColor: "#ecfdf5" }}>
+                      <IoPhonePortraitOutline size={18} color="#059669" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[16px] font-medium text-foreground">{server.name}</p>
-                      <p className="text-[13px] text-muted-foreground truncate">
-                        {serverTools.length} {t("personas.mcpTools").toLowerCase()}
-                      </p>
-                    </div>
-                    {/* Toggle */}
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateServer(server.id, { enabled: !server.enabled });
-                      }}
-                      className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors"
-                      style={{ backgroundColor: server.enabled ? "var(--primary)" : "var(--muted)" }}
-                    >
-                      <span
-                        className="inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform"
-                        style={{ transform: server.enabled ? "translateX(20px) translateY(2px)" : "translateX(2px) translateY(2px)" }}
-                      />
-                    </div>
-                    {/* Delete — stop propagation to prevent edit */}
-                    <div
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
-                        if (ok) {
-                          deleteServer(server.id);
-                          mcpConnectionManager.reset(server.id);
-                        }
-                      }}
-                      className="p-1.5 active:opacity-60"
-                    >
-                      <IoTrashOutline size={16} color="var(--destructive)" />
+                      <p className="text-[14px] font-semibold text-foreground">{tool.name}</p>
+                      <p className="text-[11px] text-muted-foreground line-clamp-1">{tool.description}</p>
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* MCP Servers */}
+        <div>
+          <p className="mb-2 px-1 text-[13px] font-medium uppercase tracking-tight text-muted-foreground">
+            MCP Servers
+          </p>
+          {servers.length > 0 ? (
+            <div className="space-y-3">
+              {servers.map((server) => {
+                const serverTools = tools.filter((t) => t.serverId === server.id);
+                return (
+                  <button
+                    key={server.id}
+                    onClick={() => setEditingServerId(server.id)}
+                    className="w-full rounded-xl p-4 text-left active:opacity-80 transition-colors"
+                    style={{ backgroundColor: "var(--card)" }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 flex items-center justify-center rounded-lg" style={{ backgroundColor: "#eff6ff" }}>
+                        <IoCloudOutline size={20} color="#2563eb" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-semibold text-foreground truncate">{server.name}</p>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <p className="text-[11px] text-muted-foreground flex-1 truncate">{server.url}</p>
+                          {server.enabled && serverTools.length > 0 && (
+                            <span className="text-[10px] font-medium" style={{ color: "#059669" }}>
+                              {serverTools.length} tools
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Toggle — stop propagation */}
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateServer(server.id, { enabled: !server.enabled });
+                        }}
+                        className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors cursor-pointer"
+                        style={{ backgroundColor: server.enabled ? "var(--primary)" : "var(--muted)" }}
+                      >
+                        <span
+                          className="inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform"
+                          style={{ transform: server.enabled ? "translateX(20px) translateY(2px)" : "translateX(2px) translateY(2px)" }}
+                        />
+                      </div>
+                    </div>
+                  </button>
                 );
               })}
             </div>
-
-            {/* Tools summary */}
-            {tools.length > 0 && (
-              <>
-                <div className="px-5 py-1.5" style={{ backgroundColor: "var(--secondary)" }}>
-                  <p className="text-[13px] font-semibold text-muted-foreground">
-                    {t("mcp.availableTools", { count: tools.length })}
-                  </p>
-                </div>
-                <div style={{ borderBottom: "0.5px solid var(--border)" }}>
-                  {tools.map((tool, idx) => (
-                    <div
-                      key={`${tool.serverId}-${tool.name}`}
-                      className="px-4 py-2.5"
-                      style={{ borderBottom: idx < tools.length - 1 ? "0.5px solid var(--border)" : "none" }}
-                    >
-                      <p className="text-[13px] font-medium text-foreground">{tool.name}</p>
-                      <p className="text-[11px] text-muted-foreground line-clamp-1">{tool.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        )}
+          ) : (
+            <p className="px-1 text-[13px] text-muted-foreground">{t("personas.noCustomTools")}</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -345,10 +321,17 @@ function McpServerForm({
           <button
             onClick={handleTest}
             disabled={testing}
-            className="w-full rounded-xl border py-3 text-sm font-medium active:opacity-70 disabled:opacity-40"
-            style={{ borderColor: "rgba(124, 58, 237, 0.3)", color: "var(--primary)", backgroundColor: "rgba(124, 58, 237, 0.06)" }}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border py-3 active:opacity-70 disabled:opacity-40"
+            style={{ borderColor: "rgba(124, 58, 237, 0.3)", backgroundColor: "rgba(124, 58, 237, 0.06)" }}
           >
-            {testing ? t("toolEdit.testing") : t("toolEdit.testConnection")}
+            {testing ? (
+              <span className="text-sm font-medium animate-pulse" style={{ color: "var(--primary)" }}>{t("toolEdit.testing")}</span>
+            ) : (
+              <>
+                <IoFlashOutline size={18} color="var(--primary)" />
+                <span className="text-sm font-medium" style={{ color: "var(--primary)" }}>{t("toolEdit.testConnection")}</span>
+              </>
+            )}
           </button>
         </div>
 

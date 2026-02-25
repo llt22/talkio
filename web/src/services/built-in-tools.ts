@@ -15,6 +15,7 @@ export interface BuiltInToolDef {
   description: string;
   parameters: Record<string, unknown>;
   handler: (args: Record<string, unknown>) => Promise<ToolResult>;
+  enabledByDefault?: boolean;
 }
 
 async function handleGetCurrentTime(): Promise<ToolResult> {
@@ -52,12 +53,14 @@ export const BUILT_IN_TOOLS: BuiltInToolDef[] = [
     description: "Get current date, time, timezone, and day of week",
     parameters: { type: "object", properties: {} },
     handler: () => handleGetCurrentTime(),
+    enabledByDefault: true,
   },
   {
     name: "read_clipboard",
     description: "Read the current text content from the device clipboard",
     parameters: { type: "object", properties: {} },
     handler: () => handleReadClipboard(),
+    enabledByDefault: true,
   },
 ];
 
