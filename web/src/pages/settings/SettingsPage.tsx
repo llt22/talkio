@@ -9,6 +9,7 @@ import { createBackup, downloadBackup, importBackup } from "../../services/backu
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
 import { McpPage } from "./McpPage";
+import { getAvatarProps } from "../../lib/avatar-utils";
 
 // ── Ionicons SVG helpers ──
 
@@ -301,39 +302,26 @@ function ProvidersListPage({
                   className={`w-full flex items-center gap-4 px-4 py-3 text-left active:bg-black/5 transition-colors ${isDisabled ? "opacity-50" : ""}`}
                   style={{ borderBottom: idx < providers.length - 1 ? "0.5px solid var(--border)" : "none" }}
                 >
-                  <div
-                    className="h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: isDisabled ? "var(--muted)" : "color-mix(in srgb, var(--primary) 10%, transparent)" }}
-                  >
-                    <span className="text-sm font-bold" style={{ color: isDisabled ? "var(--muted-foreground)" : "var(--primary)" }}>
-                      {provider.name.slice(0, 2)}
-                    </span>
+                  <div className="relative flex-shrink-0">
+                    <div
+                      className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+                      style={{ backgroundColor: getAvatarProps(provider.name).color }}
+                    >
+                      {getAvatarProps(provider.name).initials}
+                    </div>
+                    <div
+                      className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2"
+                      style={{
+                        borderColor: "var(--background)",
+                        backgroundColor: isConnected ? "var(--success)" : isError ? "var(--destructive)" : "var(--border)",
+                      }}
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[16px] font-medium text-foreground truncate">{provider.name}</span>
-                      {isDisabled && (
-                        <span
-                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                          style={{ backgroundColor: "var(--muted)" }}
-                        >
-                          {t("common.disabled")}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[12px] text-muted-foreground truncate">{provider.baseUrl}</p>
-                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                      {t("providers.modelsCount", { total: providerModels.length, active: activeModels.length })}
-                    </p>
+                    <p className="text-[16px] font-medium text-foreground truncate">{provider.name}</p>
+                    <p className="text-[13px] text-muted-foreground truncate">{provider.baseUrl}</p>
                   </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span className={`text-xs font-medium capitalize ${isConnected ? "text-green-500" : isError ? "text-red-500" : "text-muted-foreground"}`}>
-                      {isConnected ? t("providerEdit.connected") : provider.status}
-                    </span>
-                    <span className="rounded px-2 py-0.5 text-[11px] font-medium text-muted-foreground" style={{ backgroundColor: "var(--muted)" }}>
-                      {provider.type}
-                    </span>
-                  </div>
+                  <IoChevronForward size={18} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
                 </button>
               );
             })}
