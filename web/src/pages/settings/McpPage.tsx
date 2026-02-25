@@ -27,7 +27,89 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
   >;
   const deleteServer = useMcpStore((s) => s.deleteServer);
   const updateServer = useMcpStore((s) => s.updateServer);
+  const addServer = useMcpStore((s) => s.addServer);
   const [editingServerId, setEditingServerId] = useState<string | null>(null);
+
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importJson, setImportJson] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleImportJson = useCallback(async () => {
+    let parsed: any;
+    try {
+      parsed = JSON.parse(importJson.trim());
+    } catch {
+      window.alert(`${t("common.error")}: ${t("personas.importInvalidJson")}`);
+      return;
+    }
+
+    let toImport: Array<{ name: string; url: string; headers?: CustomHeader[] }> = [];
+
+    if (parsed?.mcpServers && typeof parsed.mcpServers === "object") {
+      for (const [key, val] of Object.entries(parsed.mcpServers)) {
+        const v = val as Record<string, unknown>;
+        const url = String((v.url ?? v.endpoint ?? "") as string);
+        const hasCommand = !!(v.command || v.args);
+
+        let hdrs: CustomHeader[] | undefined;
+        if (v.headers && typeof v.headers === "object") {
+          hdrs = Object.entries(v.headers as Record<string, string>)
+            .map(([k, vv]) => ({ name: k, value: String(vv) }))
+            .filter((h) => h.name && h.value);
+        }
+
+        if (url) {
+          toImport.push({ name: String(key), url, headers: hdrs });
+        } else if (hasCommand) {
+          // Desktop command-based config, skip
+        }
+      }
+
+      if (toImport.length === 0) {
+        const isCommandConfig = Object.values(parsed.mcpServers).some((v: any) => v?.command || v?.args);
+        window.alert(`${t("common.error")}: ${isCommandConfig ? t("personas.importCommandNotSupported") : t("personas.importNoTools")}`);
+        return;
+      }
+    } else if (Array.isArray(parsed)) {
+      toImport = parsed
+        .map((item: any) => ({
+          name: String(item?.name ?? ""),
+          url: String(item?.url ?? item?.endpoint ?? ""),
+        }))
+        .filter((s: any) => s.url);
+    } else if (parsed?.url || parsed?.endpoint) {
+      toImport = [{ name: String(parsed?.name ?? "MCP Server"), url: String(parsed.url ?? parsed.endpoint) }];
+    }
+
+    if (toImport.length === 0) {
+      window.alert(`${t("common.error")}: ${t("personas.importNoTools")}`);
+      return;
+    }
+
+    setIsImporting(true);
+    const addedNames: string[] = [];
+    try {
+      for (const srv of toImport) {
+        addServer({
+          name: srv.name || "MCP Server",
+          url: srv.url,
+          customHeaders: srv.headers,
+          enabled: false,
+        });
+        addedNames.push(srv.name || "MCP Server");
+      }
+
+      setShowImportModal(false);
+      setImportJson("");
+      window.alert(
+        `${t("common.success")}: ${t("personas.importSuccess", { count: addedNames.length })}\n\n${addedNames.join("\n")}`,
+      );
+    } catch (err) {
+      window.alert(`${t("common.error")}: ${err instanceof Error ? err.message : "Import failed"}`);
+    } finally {
+      setIsImporting(false);
+    }
+  }, [addServer, importJson, t]);
 
   useImperativeHandle(ref, () => ({ triggerAdd: () => setEditingServerId("__new__") }), []);
 
@@ -192,7 +274,80 @@ export const McpPage = forwardRef<McpPageHandle>(function McpPage(_props, ref) {
             )}
           </>
         )}
+
+        {/* Actions */}
+        <div className="px-4 pt-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex-1 rounded-xl py-3 active:opacity-70"
+              style={{ backgroundColor: "rgba(124, 58, 237, 0.08)", color: "var(--primary)" }}
+            >
+              <span className="text-[14px] font-semibold">{t("personas.importJson")}</span>
+            </button>
+            <button
+              onClick={() => setEditingServerId("__new__")}
+              className="flex-1 rounded-xl py-3 text-white active:opacity-70"
+              style={{ backgroundColor: "var(--primary)" }}
+            >
+              <span className="text-[14px] font-semibold">{t("personas.addTool")}</span>
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Import JSON Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50">
+          <button
+            className="absolute inset-0 bg-black/30"
+            onClick={() => { if (!isImporting) setShowImportModal(false); }}
+            aria-label="Close"
+          />
+          <div
+            className="absolute left-0 right-0 bottom-0 rounded-t-2xl overflow-hidden"
+            style={{ backgroundColor: "var(--background)" }}
+          >
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
+              <span className="text-[16px] font-semibold text-foreground">{t("personas.importJson")}</span>
+              <button
+                onClick={() => { if (!isImporting) setShowImportModal(false); }}
+                className="active:opacity-60"
+              >
+                <IoChevronBack size={20} color="var(--muted-foreground)" />
+              </button>
+            </div>
+            <div className="px-4 pt-4 pb-5">
+              <p className="text-[13px] text-muted-foreground mb-2">{t("personas.importHint")}</p>
+              <textarea
+                value={importJson}
+                onChange={(e) => setImportJson(e.target.value)}
+                className="w-full rounded-xl px-3 py-2 text-[13px] font-mono text-foreground outline-none resize-none"
+                style={{ backgroundColor: "var(--secondary)", minHeight: 180 }}
+                placeholder={'{\n  "mcpServers": {\n    "weather": {\n      "url": "https://..."\n    }\n  }\n}'}
+              />
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  disabled={isImporting}
+                  className="flex-1 rounded-xl py-3 active:opacity-70 disabled:opacity-50"
+                  style={{ backgroundColor: "var(--secondary)" }}
+                >
+                  <span className="text-[14px] font-semibold text-foreground">{t("common.cancel")}</span>
+                </button>
+                <button
+                  onClick={handleImportJson}
+                  disabled={isImporting || !importJson.trim()}
+                  className="flex-1 rounded-xl py-3 text-white active:opacity-70 disabled:opacity-50"
+                  style={{ backgroundColor: "var(--primary)" }}
+                >
+                  <span className="text-[14px] font-semibold">{t("personas.import")}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
