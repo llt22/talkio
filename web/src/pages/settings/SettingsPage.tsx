@@ -64,8 +64,8 @@ function SettingsRow({
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="px-4 pt-5 pb-1.5">
-      <span className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
+    <div className="px-5 py-1.5" style={{ backgroundColor: "var(--secondary)" }}>
+      <p className="text-[13px] font-semibold text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -113,7 +113,7 @@ export function SettingsPage() {
 
       {/* ── Group 1: Configuration ── */}
       <SectionHeader label={t("settings.configuration")} />
-      <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
+      <div>
         <SettingsRow
           iconPath="M464 256H48M304 350l96-94-96-94M208 162l-96 94 96 94"
           iconColor="#3b82f6"
@@ -150,7 +150,7 @@ export function SettingsPage() {
 
       {/* ── Group 2: Appearance ── */}
       <SectionHeader label={t("settings.appearance")} />
-      <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
+      <div>
         <SettingsRow
           iconPath="M363 176L246 464h-62L300 176zM96 288l30-60 30 60-30 60zm290 0l30-60 30 60-30 60z"
           iconColor="#6366f1"
@@ -184,7 +184,7 @@ export function SettingsPage() {
 
       {/* ── Group 3: Data ── */}
       <SectionHeader label={t("settings.dataManagement")} />
-      <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
+      <div>
         <SettingsRow
           iconPath="M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40M256 48v288M160 192l96 96 96-96"
           iconColor="#14b8a6"
