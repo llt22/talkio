@@ -135,7 +135,7 @@ function MobileTabLayout() {
       {/* Tab Content — keep all tabs mounted, hide inactive with display:none to preserve state */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
         <div className="absolute inset-0" style={{ display: activeTab === "chats" ? undefined : "none" }}>
-          <MobileConversationList onNavigateToExperts={() => setActiveTab("experts")} />
+          <MobileConversationList onNavigateToExperts={() => setActiveTab("experts")} onNavigateToSettings={() => setActiveTab("settings")} />
         </div>
         <div className="absolute inset-0" style={{ display: activeTab === "experts" ? undefined : "none" }}>
           <ModelsPage isMobile />
@@ -490,7 +490,7 @@ function MobileChatDetail({ conversationId, onBack }: { conversationId: string; 
 
 type FilterType = "all" | "single" | "group";
 
-function MobileConversationList({ onNavigateToExperts }: { onNavigateToExperts: () => void }) {
+function MobileConversationList({ onNavigateToExperts, onNavigateToSettings }: { onNavigateToExperts: () => void; onNavigateToSettings: () => void }) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const navigate = useNavigate();
@@ -577,7 +577,7 @@ function MobileConversationList({ onNavigateToExperts }: { onNavigateToExperts: 
       {/* List */}
       <div className="flex-1 overflow-y-auto flex flex-col">
         {filtered.length === 0 ? (
-          <OnboardingOrEmpty hasProviders={hasProviders} onNew={onNavigateToExperts} />
+          <OnboardingOrEmpty hasProviders={hasProviders} onNew={onNavigateToExperts} onNavigateToSettings={onNavigateToSettings} />
         ) : (
           filtered.map((conv) => (
             <ConversationItem
@@ -601,7 +601,7 @@ function MobileConversationList({ onNavigateToExperts }: { onNavigateToExperts: 
 
 // ── Onboarding / Empty State (1:1 RN original) ──
 
-function OnboardingOrEmpty({ hasProviders, onNew }: { hasProviders: boolean; onNew: () => void }) {
+function OnboardingOrEmpty({ hasProviders, onNew, onNavigateToSettings }: { hasProviders: boolean; onNew: () => void; onNavigateToSettings: () => void }) {
   const { t } = useTranslation();
   if (!hasProviders) {
     return (
@@ -612,7 +612,7 @@ function OnboardingOrEmpty({ hasProviders, onNew }: { hasProviders: boolean; onN
           {t("models.configureHint")}
         </p>
         <button
-          onClick={() => {/* navigate to settings - handled by tab */}}
+          onClick={onNavigateToSettings}
           className="mt-6 rounded-xl px-8 py-3 active:opacity-80 text-base font-semibold text-white"
           style={{ backgroundColor: "var(--primary)" }}
         >
