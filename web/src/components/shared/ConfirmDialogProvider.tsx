@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -30,13 +31,14 @@ export function useConfirm(): ConfirmApi {
 }
 
 export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string | undefined>(undefined);
-  const [confirmText, setConfirmText] = useState<string>("Confirm");
-  const [cancelText, setCancelText] = useState<string>("Cancel");
+  const [confirmText, setConfirmText] = useState<string>("");
+  const [cancelText, setCancelText] = useState<string>("");
   const [destructive, setDestructive] = useState<boolean>(false);
 
   const close = useCallback((result: boolean) => {
@@ -55,15 +57,15 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
 
     setTitle(options.title);
     setDescription(options.description);
-    setConfirmText(options.confirmText ?? "Confirm");
-    setCancelText(options.cancelText ?? "Cancel");
+    setConfirmText(options.confirmText ?? t("common.confirm"));
+    setCancelText(options.cancelText ?? t("common.cancel"));
     setDestructive(!!options.destructive);
     setOpen(true);
 
     return new Promise<boolean>((resolve) => {
       resolverRef.current = resolve;
     });
-  }, []);
+  }, [t]);
 
   const api = useMemo<ConfirmApi>(() => ({ confirm }), [confirm]);
 
