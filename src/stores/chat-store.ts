@@ -535,10 +535,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
             notifyDbChange("messages", cid);
           }
         } else {
+          console.error("[chat-store] generation error:", err);
+          const errMsg = err?.message || (typeof err === "string" ? err : JSON.stringify(err)) || "Unknown error";
           await updateMessage(assistantMsgId, {
             isStreaming: false,
             status: MessageStatus.ERROR,
-            errorMessage: err.message || "Unknown error",
+            errorMessage: errMsg,
           });
           notifyDbChange("messages", cid);
         }

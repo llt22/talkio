@@ -18,7 +18,30 @@
     "http:default",
     {
       "identifier": "http:allow-fetch",
-      "allow": [{ "url": "http://**" }, { "url": "https://**" }]
+      "allow": [
+        { "url": "http://**" },
+        { "url": "https://**" },
+        { "url": "http://*" },
+        { "url": "https://*" }
+      ]
+    },
+    {
+      "identifier": "http:allow-fetch-send",
+      "allow": [
+        { "url": "http://**" },
+        { "url": "https://**" },
+        { "url": "http://*" },
+        { "url": "https://*" }
+      ]
+    },
+    {
+      "identifier": "http:allow-fetch-read-body",
+      "allow": [
+        { "url": "http://**" },
+        { "url": "https://**" },
+        { "url": "http://*" },
+        { "url": "https://*" }
+      ]
     }
   ]
 }

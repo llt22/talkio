@@ -21,7 +21,9 @@
         "fullscreen": false
       }
     ],
-    "security": {}
+    "security": {
+      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src *; img-src * data: blob:; media-src * data: blob:; font-src * data:; style-src 'self' 'unsafe-inline' *;"
+    }
   },
   "plugins": {},
   "bundle": {

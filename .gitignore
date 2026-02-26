@@ -23,6 +23,9 @@ android/
 !src-tauri/gen/android/
 src-tauri/gen/android/app/build/
 ios/
+
+# Rust / Tauri
+src-tauri/target/
 *.jks
 *.keystore
 *.b64
