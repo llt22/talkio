@@ -7,6 +7,7 @@ import type { Provider, Model, ModelCapabilities } from "../types";
 import { kvStore } from "../storage/kv-store";
 import { generateId } from "../lib/id";
 import { buildProviderHeaders } from "../services/provider-headers";
+import { appFetch } from "../lib/http";
 
 const PROVIDERS_KEY = "providers";
 const MODELS_KEY = "models";
@@ -201,7 +202,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
 
     const headers = buildProviderHeaders(provider);
 
-    const res = await fetch(`${baseUrl}/models`, {
+    const res = await appFetch(`${baseUrl}/models`, {
       headers,
       signal: AbortSignal.timeout(15000),
     });
@@ -252,7 +253,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
     const baseUrl = provider.baseUrl.replace(/\/+$/, "");
 
     try {
-      const res = await fetch(`${baseUrl}/models`, {
+      const res = await appFetch(`${baseUrl}/models`, {
         headers: buildProviderHeaders(provider),
         signal: AbortSignal.timeout(10000),
       });
@@ -278,7 +279,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
 
     // Probe vision: send an image in the message
     try {
-      const visionRes = await fetch(`${baseUrl}/chat/completions`, {
+      const visionRes = await appFetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers,
         signal: AbortSignal.timeout(15000),
@@ -293,7 +294,7 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
 
     // Probe tool call
     try {
-      const toolRes = await fetch(`${baseUrl}/chat/completions`, {
+      const toolRes = await appFetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers,
         signal: AbortSignal.timeout(15000),

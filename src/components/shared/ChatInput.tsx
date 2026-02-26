@@ -7,6 +7,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import { getParticipantLabel } from "../../stores/chat-message-builder";
 import { useSettingsStore } from "../../stores/settings-store";
 import { getAvatarProps } from "../../lib/avatar-utils";
+import { appFetch } from "../../lib/http";
 
 // ── ChatInput — 1:1 port of RN src/components/chat/ChatInput.tsx ──
 
@@ -213,7 +214,7 @@ export const ChatInput = memo(function ChatInput({
             formData.append("model", sttModel || "whisper-large-v3-turbo");
 
             const baseUrl = sttBaseUrl.replace(/\/+$/, "");
-            const res = await fetch(`${baseUrl}/audio/transcriptions`, {
+            const res = await appFetch(`${baseUrl}/audio/transcriptions`, {
               method: "POST",
               headers: { Authorization: `Bearer ${sttApiKey}` },
               body: formData,

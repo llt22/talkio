@@ -13,6 +13,7 @@ import {
 import { Switch } from "../../components/ui/switch";
 import type { Provider, ProviderType } from "../../types";
 import { useProviderStore } from "../../stores/provider-store";
+import { appFetch } from "../../lib/http";
 import { generateId } from "../../lib/id";
 
 interface ProviderFormProps {
@@ -39,7 +40,7 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
     setTestResult(null);
     try {
       const url = baseUrl.replace(/\/+$/, "");
-      const res = await fetch(`${url}/models`, {
+      const res = await appFetch(`${url}/models`, {
         headers: { Authorization: `Bearer ${apiKey}` },
         signal: AbortSignal.timeout(10000),
       });

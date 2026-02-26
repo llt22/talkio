@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { IoLinkOutline, IoKeyOutline, IoEyeOutline, IoEyeOffOutline, IoRefreshOutline, IoSearchOutline, IoCloseCircle, IoCheckmarkCircle } from "../../icons";
 import { useSettingsStore } from "../../stores/settings-store";
+import { appFetch } from "../../lib/http";
 
 const STT_PRESETS = [
   { label: "Groq", baseUrl: "https://api.groq.com/openai/v1" },
@@ -29,7 +30,7 @@ export function SttSettingsPage() {
 
   const doFetch = useCallback(async (url: string, key: string) => {
     const endpoint = url.replace(/\/+$/, "") + "/models";
-    const res = await fetch(endpoint, {
+    const res = await appFetch(endpoint, {
       headers: { Authorization: `Bearer ${key}` },
       signal: AbortSignal.timeout(15000),
     });

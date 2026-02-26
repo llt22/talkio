@@ -33,6 +33,7 @@ import { executeMcpToolByName, getMcpToolDefsForIdentity, refreshMcpConnections 
 import { generateId } from "../lib/id";
 import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
 import { buildProviderHeaders } from "../services/provider-headers";
+import { appFetch } from "../lib/http";
 import { useBuiltInToolsStore } from "./built-in-tools-store";
 import i18n from "../i18n";
 
@@ -255,7 +256,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const reasoningEffort = identity?.params?.reasoningEffort
           || (model.capabilities?.reasoning ? "medium" : undefined);
 
-        const response = await fetch(`${baseUrl}/chat/completions`, {
+        const response = await appFetch(`${baseUrl}/chat/completions`, {
           method: "POST",
           headers,
           body: JSON.stringify({
@@ -409,7 +410,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             // Stream the follow-up response into the SAME message (1:1 RN pattern)
             set({ streamingMessage: { messageId: assistantMsgId, content: accumulatedContent, reasoning: fullReasoning } });
 
-            const toolResponse = await fetch(`${baseUrl}/chat/completions`, {
+            const toolResponse = await appFetch(`${baseUrl}/chat/completions`, {
               method: "POST",
               headers,
               body: JSON.stringify({

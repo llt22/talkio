@@ -4,6 +4,7 @@ import type {
   Provider,
   ProviderType,
 } from "../types";
+import { appFetch } from "../lib/http";
 
 export class ApiClient {
   private baseUrl: string;
@@ -382,7 +383,7 @@ export class ApiClient {
     let lastError: unknown;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const response = await fetch(input, init);
+        const response = await appFetch(input, init);
         if (response.ok || !retryableStatus.has(response.status) || attempt === maxRetries) {
           return response;
         }

@@ -8,6 +8,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import type { Provider, ProviderType, CustomHeader, Model } from "../../types";
 import { generateId } from "../../lib/id";
 import { buildProviderHeadersFromRaw } from "../../services/provider-headers";
+import { appFetch } from "../../lib/http";
 
 type ProviderStoreState = ReturnType<typeof useProviderStore.getState>;
 
@@ -143,7 +144,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
 
         const headers = buildProviderHeadersFromRaw({ apiKey: apiKey.trim(), customHeaders });
 
-        const res = await fetch(`${url}/models`, {
+        const res = await appFetch(`${url}/models`, {
           headers,
           signal: AbortSignal.timeout(15000),
         });
