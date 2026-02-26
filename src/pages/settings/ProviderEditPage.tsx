@@ -8,7 +8,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import type { Provider, ProviderType, CustomHeader, Model } from "../../types";
 import { generateId } from "../../lib/id";
 import { buildProviderHeadersFromRaw } from "../../services/provider-headers";
-import { appFetch } from "../../lib/http";
+import { appFetch, appAlert } from "../../lib/http";
 
 type ProviderStoreState = ReturnType<typeof useProviderStore.getState>;
 
@@ -116,7 +116,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
     if (!isEditing && !savedProviderId) {
       const duplicate = providers.find((p: Provider) => p.name.toLowerCase() === name.trim().toLowerCase());
       if (duplicate) {
-        alert(t("providerEdit.duplicateName"));
+        appAlert(t("providerEdit.duplicateName"));
         return;
       }
     }

@@ -7,6 +7,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 import { createBackup, downloadBackup, pickAndImportBackup } from "../../services/backup";
+import { appAlert } from "../../lib/http";
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
 import { McpPage, type McpPageHandle } from "./McpPage";
@@ -217,7 +218,7 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
           iconColor="#14b8a6"
           iconBg="rgba(20,184,166,0.1)"
           label={t("settings.exportBackup")}
-          onPress={async () => { const data = createBackup(); const saved = await downloadBackup(data); if (saved) alert(t("settings.exportSuccess", { defaultValue: "Config exported successfully" })); }}
+          onPress={async () => { const data = createBackup(); const saved = await downloadBackup(data); if (saved) await appAlert(t("settings.exportSuccess", { defaultValue: "Config exported successfully" })); }}
         />
         <SettingsRow
           iconPath="M176 48v288M80 192l96-96 96 96M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40"
@@ -230,10 +231,10 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
             if (result.success) {
               useProviderStore.getState().loadFromStorage();
               useSettingsStore.getState().loadFromStorage();
-              alert(result.message);
+              await appAlert(result.message);
               window.location.reload();
             } else {
-              alert(`Import failed: ${result.message}`);
+              await appAlert(`Import failed: ${result.message}`);
             }
           }}
           isLast

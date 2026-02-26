@@ -10,6 +10,7 @@ import type { CustomHeader } from "../../types";
 import { mcpConnectionManager } from "../../services/mcp/connection-manager";
 import { refreshMcpConnections } from "../../services/mcp";
 import { useBuiltInToolsStore } from "../../stores/built-in-tools-store";
+import { appAlert } from "../../lib/http";
 
 // ── MCP Tools Page (1:1 RN native style) ──
 
@@ -45,7 +46,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
     try {
       parsed = JSON.parse(importJson.trim());
     } catch {
-      window.alert(`${t("common.error")}: ${t("personas.importInvalidJson")}`);
+      appAlert(`${t("common.error")}: ${t("personas.importInvalidJson")}`);
       return;
     }
 
@@ -73,7 +74,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
 
       if (toImport.length === 0) {
         const isCommandConfig = Object.values(parsed.mcpServers).some((v: any) => v?.command || v?.args);
-        window.alert(`${t("common.error")}: ${isCommandConfig ? t("personas.importCommandNotSupported") : t("personas.importNoTools")}`);
+        appAlert(`${t("common.error")}: ${isCommandConfig ? t("personas.importCommandNotSupported") : t("personas.importNoTools")}`);
         return;
       }
     } else if (Array.isArray(parsed)) {
@@ -88,7 +89,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
     }
 
     if (toImport.length === 0) {
-      window.alert(`${t("common.error")}: ${t("personas.importNoTools")}`);
+      appAlert(`${t("common.error")}: ${t("personas.importNoTools")}`);
       return;
     }
 
@@ -107,11 +108,11 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
 
       setShowImportModal(false);
       setImportJson("");
-      window.alert(
+      appAlert(
         `${t("common.success")}: ${t("personas.importSuccess", { count: addedNames.length })}\n\n${addedNames.join("\n")}`,
       );
     } catch (err) {
-      window.alert(`${t("common.error")}: ${err instanceof Error ? err.message : "Import failed"}`);
+      appAlert(`${t("common.error")}: ${err instanceof Error ? err.message : "Import failed"}`);
     } finally {
       setIsImporting(false);
     }
@@ -404,11 +405,11 @@ export function McpServerForm({
 
   const handleSave = useCallback(async () => {
     if (!name.trim()) {
-      window.alert(`${t("common.error")}: ${t("toolEdit.nameRequired")}`);
+      appAlert(`${t("common.error")}: ${t("toolEdit.nameRequired")}`);
       return;
     }
     if (!url.trim()) {
-      window.alert(`${t("common.error")}: ${t("toolEdit.endpointRequired")}`);
+      appAlert(`${t("common.error")}: ${t("toolEdit.endpointRequired")}`);
       return;
     }
 
@@ -433,7 +434,7 @@ export function McpServerForm({
 
   const handleTest = useCallback(async () => {
     if (!url.trim()) {
-      window.alert(`${t("common.error")}: ${t("toolEdit.endpointRequired")}`);
+      appAlert(`${t("common.error")}: ${t("toolEdit.endpointRequired")}`);
       return;
     }
 
@@ -452,10 +453,10 @@ export function McpServerForm({
         mcpConnectionManager.discoverTools(tempServer),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Connection timeout (10s)")), 10000)),
       ]);
-      window.alert(t("toolEdit.testSuccess", { count: tools.length }));
+      appAlert(t("toolEdit.testSuccess", { count: tools.length }));
       mcpConnectionManager.disconnect(tempServer.id);
     } catch (err) {
-      window.alert(`${t("toolEdit.testFailed")}: ${err instanceof Error ? err.message : "Unknown error"}`);
+      appAlert(`${t("toolEdit.testFailed")}: ${err instanceof Error ? err.message : "Unknown error"}`);
       mcpConnectionManager.disconnect(tempServer.id);
     } finally {
       setTesting(false);

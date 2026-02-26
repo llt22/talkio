@@ -4,6 +4,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
 import { SettingsRow, SectionHeader } from "../../pages/settings/SettingsPage";
 import { createBackup, downloadBackup, pickAndImportBackup } from "../../services/backup";
+import { appAlert } from "../../lib/http";
 import i18n from "../../i18n";
 
 export function SettingsMainContent() {
@@ -95,7 +96,7 @@ export function SettingsMainContent() {
           iconColor="#14b8a6"
           iconBg="rgba(20,184,166,0.1)"
           label={t("settings.exportBackup")}
-          onPress={async () => { const data = createBackup(); const saved = await downloadBackup(data); if (saved) alert(t("settings.exportSuccess", { defaultValue: "Config exported successfully" })); }}
+          onPress={async () => { const data = createBackup(); const saved = await downloadBackup(data); if (saved) await appAlert(t("settings.exportSuccess", { defaultValue: "Config exported successfully" })); }}
         />
         <SettingsRow
           iconPath="M176 48v288M80 192l96-96 96 96M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40"
@@ -108,10 +109,10 @@ export function SettingsMainContent() {
             if (result.success) {
               useProviderStore.getState().loadFromStorage();
               useSettingsStore.getState().loadFromStorage();
-              alert(result.message);
+              await appAlert(result.message);
               window.location.reload();
             } else {
-              alert(`Import failed: ${result.message}`);
+              await appAlert(`Import failed: ${result.message}`);
             }
           }}
           isLast

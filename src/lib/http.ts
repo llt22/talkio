@@ -22,3 +22,16 @@ export async function appFetch(
   const fn = await ensureTauriFetch();
   return fn(input, init);
 }
+
+export async function appAlert(msg: string): Promise<void> {
+  if ((window as any).__TAURI_INTERNALS__) {
+    try {
+      const { message } = await import("@tauri-apps/plugin-dialog");
+      await message(msg, { kind: "info" });
+      return;
+    } catch {
+      // fallback
+    }
+  }
+  window.alert(msg);
+}

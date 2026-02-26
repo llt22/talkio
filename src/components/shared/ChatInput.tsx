@@ -7,7 +7,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import { getParticipantLabel } from "../../stores/chat-message-builder";
 import { useSettingsStore } from "../../stores/settings-store";
 import { getAvatarProps } from "../../lib/avatar-utils";
-import { appFetch } from "../../lib/http";
+import { appFetch, appAlert } from "../../lib/http";
 
 // ── ChatInput — 1:1 port of RN src/components/chat/ChatInput.tsx ──
 
@@ -204,7 +204,7 @@ export const ChatInput = memo(function ChatInput({
           try {
             const { sttBaseUrl, sttApiKey, sttModel } = useSettingsStore.getState().settings;
             if (!sttApiKey) {
-              alert(t("chat.noSttProvider"));
+              appAlert(t("chat.noSttProvider"));
               return;
             }
 
@@ -233,7 +233,7 @@ export const ChatInput = memo(function ChatInput({
               textareaRef.current?.focus();
             }
           } catch (err) {
-            alert(err instanceof Error ? err.message : "Transcription failed");
+            appAlert(err instanceof Error ? err.message : "Transcription failed");
           } finally {
             setIsTranscribing(false);
           }
@@ -243,7 +243,7 @@ export const ChatInput = memo(function ChatInput({
         recorder.start();
         setIsRecording(true);
       } catch {
-        alert(t("chat.micPermissionDenied"));
+        appAlert(t("chat.micPermissionDenied"));
       }
     }
   }, [isRecording, isTranscribing, t]);

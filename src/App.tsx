@@ -6,6 +6,7 @@ import { ConfirmDialogProvider } from "./components/shared/ConfirmDialogProvider
 import { MobileLayout } from "./components/mobile/MobileLayout";
 import { DesktopLayout } from "./components/desktop/DesktopLayout";
 import { initDatabase } from "./storage/database";
+import { appAlert } from "./lib/http";
 import { useProviderStore } from "./stores/provider-store";
 import { useIdentityStore } from "./stores/identity-store";
 import { useMcpStore } from "./stores/mcp-store";
@@ -61,9 +62,9 @@ export default function App() {
               useSettingsStore.getState().loadFromStorage();
               useIdentityStore.getState().loadFromStorage();
               useMcpStore.getState().loadFromStorage();
-              alert(result.message);
+              appAlert(result.message);
             } else {
-              alert(result.message);
+              appAlert(result.message);
             }
           }
         } catch { /* not in Tauri or no pending import */ }

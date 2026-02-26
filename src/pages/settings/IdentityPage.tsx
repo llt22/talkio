@@ -8,6 +8,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import { useMcpStore } from "../../stores/mcp-store";
 import { useBuiltInToolsStore } from "../../stores/built-in-tools-store";
 import type { Identity } from "../../types";
+import { appAlert } from "../../lib/http";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
@@ -224,11 +225,11 @@ function IdentityForm({
 
   const handleSave = useCallback(() => {
     if (!name.trim()) {
-      window.alert(`${t("common.error")}: ${t("identityEdit.nameRequired")}`);
+      appAlert(`${t("common.error")}: ${t("identityEdit.nameRequired")}`);
       return;
     }
     if (!systemPrompt.trim()) {
-      window.alert(`${t("common.error")}: ${t("identityEdit.promptRequired")}`);
+      appAlert(`${t("common.error")}: ${t("identityEdit.promptRequired")}`);
       return;
     }
 
@@ -246,11 +247,11 @@ function IdentityForm({
 
   const handleAiGenerate = useCallback(async () => {
     if (!aiDesc.trim()) {
-      window.alert(`${t("common.error")}: ${t("identityEdit.aiDescRequired")}`);
+      appAlert(`${t("common.error")}: ${t("identityEdit.aiDescRequired")}`);
       return;
     }
     if (!aiModelId) {
-      window.alert(`${t("common.error")}: ${t("identityEdit.aiSelectModel")}`);
+      appAlert(`${t("common.error")}: ${t("identityEdit.aiSelectModel")}`);
       return;
     }
     const model = models.find((m) => m.id === aiModelId);
@@ -287,7 +288,7 @@ function IdentityForm({
       if (result.icon) setIcon(String(result.icon));
       if (result.systemPrompt) setSystemPrompt(String(result.systemPrompt));
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "Generation failed");
+      appAlert(err instanceof Error ? err.message : "Generation failed");
     } finally {
       setAiLoading(false);
     }
