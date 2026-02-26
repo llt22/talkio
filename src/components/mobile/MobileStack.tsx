@@ -305,6 +305,9 @@ const result = stackflow({
     basicRendererPlugin(),
     basicUIPlugin({
       theme: "cupertino",
+      appBar: {
+        minSafeAreaInsetTop: "0px",
+      },
     }),
   ],
   initialActivity: () => "Home",
