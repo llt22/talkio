@@ -413,7 +413,7 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
         {/* Scroll to bottom — floating above input */}
         <div
           className="absolute right-3 pointer-events-none"
-          style={{ bottom: 120 }}
+          style={{ bottom: 160 }}
         >
           <button
             className="pointer-events-auto flex items-center justify-center rounded-full active:scale-95"
