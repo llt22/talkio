@@ -1,4 +1,4 @@
-name: Release Desktop
+name: Release
 
 on:
   workflow_dispatch:
@@ -15,7 +15,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  # ── Desktop builds (Windows / macOS / Linux) ──
+  build-desktop:
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +34,7 @@ jobs:
             target: x86_64-unknown-linux-gnu
             label: Linux x64
 
-    name: Build ${{ matrix.label }}
+    name: Desktop — ${{ matrix.label }}
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -98,9 +99,83 @@ jobs:
             | macOS Intel | `.dmg` |
             | macOS Apple Silicon | `.dmg` |
             | Linux x64 | `.AppImage` / `.deb` |
+            | Android | `.apk` |
 
             ---
             🤖 Built by GitHub Actions
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
+
+  # ── Android APK ──
+  build-android:
+    name: Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: sdkmanager "ndk;27.0.12077973"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Get version tag
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Android APK
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+        run: tauri android build --apk
+
+      - name: Find and rename APK
+        id: apk
+        run: |
+          APK=$(find src-tauri/gen/android -name "*.apk" -path "*/release/*" | head -1)
+          TAG="${{ steps.version.outputs.tag }}"
+          cp "$APK" "Talkio-${TAG}.apk"
+          echo "path=Talkio-${TAG}.apk" >> $GITHUB_OUTPUT
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          files: ${{ steps.apk.outputs.path }}
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
