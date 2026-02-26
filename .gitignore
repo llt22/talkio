@@ -24,6 +24,8 @@ android/
 src-tauri/gen/android/app/build/
 ios/
 *.jks
+*.keystore
+*.b64
 *.p8
 *.p12
 *.key
