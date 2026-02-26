@@ -179,10 +179,12 @@ talkio/
 
 ## 为什么从 React Native 迁移到 Tauri
 
-Talkio v1 基于 Expo + React Native 构建。v2 迁移到 Tauri，主要出于两个原因：
+Talkio v1 基于 Expo + React Native 构建。v2 迁移到 Tauri 2，原因如下：
 
-1. **聊天对话性能** — React Native 的桥接机制在长对话、流式渲染、大量消息列表场景下存在明显性能瓶颈。Tauri 使用原生 WebView，前端直接运行标准 Web 技术栈（React + DOM），流式输出和复杂 Markdown/Mermaid/KaTeX 渲染更加流畅。
-2. **桌面端支持** — 项目目标从移动端扩展到桌面端。Tauri 天然支持 Windows / macOS / Linux，打包体积小，系统集成能力强，比 Electron 更轻量。
+1. **聊天渲染性能** — React Native 的桥接机制在长对话、流式渲染、大量消息列表场景下存在明显性能瓶颈。Tauri 使用原生 WebView，前端直接运行标准 Web 技术栈（React + DOM），流式输出和复杂 Markdown / Mermaid / KaTeX 渲染更加流畅。
+2. **全平台覆盖** — Tauri 2 支持 Windows / macOS / Linux 桌面端，同时通过 Android WebView 支持移动端。一套代码覆盖全平台，无需维护 React Native 和桌面端两套代码。
+3. **更轻量** — Tauri 打包体积远小于 Electron（约 20MB vs 100MB+），内存占用更低，启动更快。不捆绑 Chromium，直接使用系统 WebView。
+4. **Rust 生态** — 后端使用 Rust，原生支持 SQLite、文件系统、HTTP 等系统能力，插件生态完善（tauri-plugin-sql / tauri-plugin-http / tauri-plugin-dialog 等），安全性更高。
 
 ## 许可证
 
