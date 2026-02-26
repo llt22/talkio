@@ -156,13 +156,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     const targets = resolveTargetParticipants(conversation, options?.mentionedModelIds);
     let lastAssistantContent = "";
-    let firstModelDisplayName: string | null = null;
 
     async function generateForParticipant(participant: ConversationParticipant, index: number) {
       const model = providerStore.getModelById(participant.modelId);
       const provider = model ? providerStore.getProviderById(model.providerId) : null;
       if (!model || !provider) return;
-      if (!firstModelDisplayName) firstModelDisplayName = model.displayName;
 
       if (provider.type !== "openai") {
         const assistantMsgId = generateId();
@@ -521,13 +519,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           lastAssistantContent = fullContent;
         }
 
-        const currentConv = await getConversation(cid);
-        if (currentConv && firstModelDisplayName && currentConv.title === (firstModelDisplayName ?? "New Chat")) {
-          const title = text.slice(0, 50) || "Chat";
-          await updateConversation(cid, { title, lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
-        } else {
-          await updateConversation(cid, { lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
-        }
+        await updateConversation(cid, { lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
 
         notifyDbChange("messages", cid);
         notifyDbChange("conversations");
