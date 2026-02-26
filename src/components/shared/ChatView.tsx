@@ -422,7 +422,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
 
         {/* Tool Calls (1:1 RN — below bubble) */}
         {message.toolCalls && message.toolCalls.length > 0 && (
-          <div className="max-w-[90%] flex flex-col gap-1.5">
+          <div className="max-w-[90%] flex flex-col gap-1.5" style={{ maxWidth: "min(90%, 720px)" }}>
             {message.toolCalls.map((tc) => {
               const result = message.toolResults?.find((r) => r.toolCallId === tc.id);
               const isExpanded = expandedTools.has(tc.id);
