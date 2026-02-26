@@ -359,8 +359,8 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
 
           {/* Bubble */}
           <div
-            className="max-w-[80%] rounded-2xl px-4 py-3 border border-solid border-muted-foreground/20"
-            style={{ backgroundColor: "var(--primary)", maxWidth: "min(80%, 640px)" }}
+            className="max-w-[80%] rounded-2xl px-4 py-3"
+            style={{ backgroundColor: "var(--primary)", maxWidth: "min(80%, 640px)", borderTopRightRadius: 0 }}
           >
             <p className="text-[15px] leading-relaxed text-white whitespace-pre-wrap break-words">
               {content || (message.images?.length ? "📷" : "")}
