@@ -1,8 +1,8 @@
 # Talkio
 
-**Multiple AI models chatting together, right on your phone.**
+**Multiple AI models chatting together, right on your desktop.**
 
-Talkio is a local-first mobile AI chat app. It's not just another ChatGPT client — you can pull multiple AI models into the same group chat, assign them different personas, and watch them debate, collaborate, or play word games together.
+Talkio is a local-first cross-platform desktop AI chat app. It's not just another ChatGPT client — you can pull multiple AI models into the same group chat, assign them different personas, and watch them debate, collaborate, or play word games together.
 
 [中文](README.md) · English
 
@@ -63,7 +63,7 @@ Connect to remote tool servers via [Model Context Protocol](https://modelcontext
 
 ### 🔒 Local-First
 
-- All data stored on-device (SQLite + MMKV encrypted)
+- All data stored locally (SQLite)
 - No cloud services, no data collection
 - API keys encrypted locally, never leave your device
 
@@ -74,12 +74,11 @@ Connect to remote tool servers via [Model Context Protocol](https://modelcontext
 - **Multi-Provider** — OpenAI / Anthropic / DeepSeek / Groq / Ollama and any OpenAI-compatible API
 - **Streaming Output** — Real-time rendering with Markdown / syntax highlighting / Mermaid diagrams / HTML preview
 - **Deep Reasoning** — Supports reasoning_content and `<think>` tags from DeepSeek, Qwen, etc.
-- **Voice Input** — Built-in speech-to-text
 - **Message Branching** — Regenerate replies with automatic branch history management
 - **Dark Mode** — Follows system theme, CSS variable driven
 - **Data Backup** — Export JSON, migrate across devices
-- **Web Config** — Configure providers from your computer's browser via LAN (pairing code auth)
 - **Bilingual** — 中文 / English
+- **Responsive** — Adaptive layout for desktop and narrow screens
 
 ---
 
@@ -87,14 +86,16 @@ Connect to remote tool servers via [Model Context Protocol](https://modelcontext
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Expo SDK 54 · React Native 0.81 · React 19 |
-| Routing | expo-router (file-system routing) |
+| Desktop | Tauri 2 (Rust) |
+| Frontend | React 19 · Vite |
+| Routing | react-router-dom |
 | State | Zustand |
-| Database | expo-sqlite · Drizzle ORM |
-| Styling | NativeWind v4 (TailwindCSS · CSS variable dark mode) |
-| AI | Vercel AI SDK v6 (`ai` · `@ai-sdk/openai`) |
+| Database | tauri-plugin-sql (SQLite) |
+| Styling | TailwindCSS v4 · shadcn/ui · Radix UI |
+| AI | Custom SSE streaming client (OpenAI compatible) |
 | Tools | @modelcontextprotocol/sdk |
-| Storage | react-native-mmkv (encrypted) · expo-secure-store |
+| Rendering | react-markdown · Mermaid · KaTeX |
+| Animation | Framer Motion |
 
 ---
 
@@ -103,31 +104,20 @@ Connect to remote tool servers via [Model Context Protocol](https://modelcontext
 ### Prerequisites
 
 - Node.js ≥ 18
-- Android Studio or Xcode (device / simulator)
-- JDK 17 (Android builds)
+- Rust toolchain ([rustup.rs](https://rustup.rs/))
+- System dependencies: see [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 ### Install & Run
 
 ```bash
 npm install
-npx expo prebuild
-npm start
-
-# Android
-npm run android
-
-# iOS
-npm run ios
+npm run tauri dev
 ```
 
 ### Production Build
 
 ```bash
-# Local Android APK
-npx expo run:android --variant release
-
-# EAS Cloud Build
-eas build --platform android --profile production
+npm run tauri build
 ```
 
 ---
@@ -136,34 +126,43 @@ eas build --platform android --profile production
 
 ```
 talkio/
-├── app/                    # Pages (expo-router file-system routing)
-│   ├── (tabs)/
-│   │   ├── chats/          # Conversation list
-│   │   ├── experts/        # Model browser
-│   │   ├── discover/       # Personas + MCP tool management
-│   │   └── settings/       # Settings
-│   └── chat/[id].tsx       # Chat detail (single + group)
-├── src/
-│   ├── components/         # UI components
-│   ├── services/           # Business logic (chat / MCP / config server)
-│   ├── stores/             # Zustand state management
-│   ├── storage/            # Persistence (MMKV / SQLite / batch writer)
-│   ├── hooks/              # React Hooks
-│   ├── i18n/               # Internationalization
-│   └── types/              # TypeScript types
-├── db/                     # Drizzle database schema
-├── modules/                # Custom native modules
-└── plugins/                # Expo config plugins
+├── src/                        # Frontend source (React + Vite)
+│   ├── components/
+│   │   ├── desktop/            # Desktop layout
+│   │   ├── mobile/             # Mobile responsive layout
+│   │   ├── shared/             # Shared components (ChatView / ChatInput / Markdown etc.)
+│   │   └── ui/                 # shadcn/ui base components
+│   ├── services/               # Business logic (AI API / MCP / backup & export)
+│   ├── stores/                 # Zustand state management
+│   ├── storage/                # Persistence (SQLite · KV Store)
+│   ├── hooks/                  # React Hooks
+│   ├── i18n/                   # Internationalization (中文 / English)
+│   ├── pages/                  # Page components
+│   ├── lib/                    # Utility functions
+│   └── types/                  # TypeScript types
+├── src-tauri/                  # Tauri backend (Rust)
+│   ├── src/                    # Rust source
+│   ├── capabilities/           # Permission declarations
+│   ├── icons/                  # App icons
+│   ├── Cargo.toml              # Rust dependencies
+│   └── tauri.conf.json         # Tauri configuration
+└── public/                     # Static assets
 ```
 
 ---
 
 ## Privacy
 
-- **Local-First** — Conversations, settings, API keys all stored on-device
+- **Local-First** — Conversations, settings, API keys all stored locally
 - **No Server** — No cloud services, no user data collection
 - **AI Requests** — Chat messages are sent to your configured AI provider, required for AI functionality
-- **LAN Config** — Web config runs on local network only, one-time pairing code auth
+
+## Why Migrate from React Native to Tauri
+
+Talkio v1 was built with Expo + React Native. v2 migrated to Tauri for two main reasons:
+
+1. **Chat performance** — React Native's bridge mechanism created noticeable performance bottlenecks in long conversations, streaming rendering, and large message lists. Tauri uses a native WebView, running standard web technologies (React + DOM) directly, making streaming output and complex Markdown/Mermaid/KaTeX rendering much smoother.
+2. **Desktop support** — The project goal expanded from mobile to desktop. Tauri natively supports Windows / macOS / Linux with small bundle sizes and strong system integration, lighter than Electron.
 
 ## License
 

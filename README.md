@@ -1,12 +1,12 @@
 # Talkio
 
-**让多个 AI 在你的手机上同时对话。**
+**让多个 AI 在你的桌面上同时对话。**
 
-Talkio 是一款本地优先的移动端 AI 聊天应用。它不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉进同一个群聊，让它们各自扮演不同角色，围绕同一个话题展开讨论、辩论、接龙。
+Talkio 是一款本地优先的跨平台桌面 AI 聊天应用。它不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉进同一个群聊，让它们各自扮演不同角色，围绕同一个话题展开讨论、辩论、接龙。
 
 中文 · [English](README-en.md)
 
-> *A local-first mobile AI chat app. Pull multiple AI models into the same group chat, assign them different personas, and watch them debate, collaborate, or play word games together.*
+> *A local-first cross-platform desktop AI chat app. Pull multiple AI models into the same group chat, assign them different personas, and watch them debate, collaborate, or play word games together.*
 
 ---
 
@@ -65,7 +65,7 @@ Talkio 是一款本地优先的移动端 AI 聊天应用。它不只是又一个
 
 ### 🔒 本地优先
 
-- 所有数据存储在设备本地（SQLite + MMKV 加密）
+- 所有数据存储在本地（SQLite）
 - 不运行任何云端服务，不收集用户数据
 - API Key 加密存储，永远不离开你的设备
 
@@ -76,12 +76,11 @@ Talkio 是一款本地优先的移动端 AI 聊天应用。它不只是又一个
 - **多 Provider** — OpenAI / Anthropic / DeepSeek / Groq / Ollama 等任何 OpenAI 兼容 API
 - **流式输出** — 实时渲染，支持 Markdown / 代码高亮 / Mermaid 图表 / HTML 预览
 - **深度推理** — 支持 DeepSeek、Qwen 等模型的 reasoning_content 和 `<think>` 标签
-- **语音输入** — 内置录音转文字
 - **消息分支** — 重新生成回复，自动管理分支历史
 - **暗色模式** — 跟随系统主题，CSS 变量驱动
 - **数据备份** — 导出 JSON，跨设备迁移
-- **网页配置** — 电脑浏览器通过局域网配置 Provider（配对码认证）
 - **双语** — 中文 / English
+- **响应式** — 桌面 / 窄屏自适应布局
 
 ---
 
@@ -89,14 +88,16 @@ Talkio 是一款本地优先的移动端 AI 聊天应用。它不只是又一个
 
 | 层级 | 技术 |
 |------|------|
-| 框架 | Expo SDK 54 · React Native 0.81 · React 19 |
-| 路由 | expo-router（文件系统路由） |
+| 桌面框架 | Tauri 2 (Rust) |
+| 前端框架 | React 19 · Vite |
+| 路由 | react-router-dom |
 | 状态管理 | Zustand |
-| 数据库 | expo-sqlite · Drizzle ORM |
-| 样式 | NativeWind v4（TailwindCSS · CSS 变量暗色模式） |
-| AI | Vercel AI SDK v6（`ai` · `@ai-sdk/openai`） |
+| 数据库 | tauri-plugin-sql (SQLite) |
+| 样式 | TailwindCSS v4 · shadcn/ui · Radix UI |
+| AI | 自定义 SSE 流式客户端（OpenAI 兼容） |
 | 工具协议 | @modelcontextprotocol/sdk |
-| 存储 | react-native-mmkv（加密）· expo-secure-store |
+| 渲染 | react-markdown · Mermaid · KaTeX |
+| 动画 | Framer Motion |
 
 ---
 
@@ -105,31 +106,20 @@ Talkio 是一款本地优先的移动端 AI 聊天应用。它不只是又一个
 ### 前置条件
 
 - Node.js ≥ 18
-- Android Studio 或 Xcode（真机 / 模拟器）
-- JDK 17（Android 构建）
+- Rust 工具链（[rustup.rs](https://rustup.rs/)）
+- 系统依赖：参考 [Tauri 环境搭建指南](https://v2.tauri.app/start/prerequisites/)
 
 ### 安装与运行
 
 ```bash
 npm install
-npx expo prebuild
-npm start
-
-# Android
-npm run android
-
-# iOS
-npm run ios
+npm run tauri dev
 ```
 
 ### 生产构建
 
 ```bash
-# 本地 Android APK
-npx expo run:android --variant release
-
-# EAS 云构建
-eas build --platform android --profile production
+npm run tauri build
 ```
 
 ---
@@ -138,34 +128,43 @@ eas build --platform android --profile production
 
 ```
 talkio/
-├── app/                    # 页面（expo-router 文件系统路由）
-│   ├── (tabs)/
-│   │   ├── chats/          # 对话列表
-│   │   ├── experts/        # 模型浏览
-│   │   ├── discover/       # 身份 + MCP 工具管理
-│   │   └── settings/       # 设置
-│   └── chat/[id].tsx       # 聊天详情页（单聊 + 群聊）
-├── src/
-│   ├── components/         # UI 组件
-│   ├── services/           # 业务逻辑（聊天 / MCP / 配置服务器）
-│   ├── stores/             # Zustand 状态管理
-│   ├── storage/            # 持久化（MMKV / SQLite / 批量写入）
-│   ├── hooks/              # React Hooks
-│   ├── i18n/               # 国际化
-│   └── types/              # TypeScript 类型
-├── db/                     # Drizzle 数据库 schema
-├── modules/                # 自定义原生模块
-└── plugins/                # Expo config 插件
+├── src/                        # 前端源码（React + Vite）
+│   ├── components/
+│   │   ├── desktop/            # 桌面端布局
+│   │   ├── mobile/             # 移动端响应式布局
+│   │   ├── shared/             # 共享组件（ChatView / ChatInput / Markdown 等）
+│   │   └── ui/                 # shadcn/ui 基础组件
+│   ├── services/               # 业务逻辑（AI API / MCP / 备份导出）
+│   ├── stores/                 # Zustand 状态管理
+│   ├── storage/                # 持久化（SQLite · KV Store）
+│   ├── hooks/                  # React Hooks
+│   ├── i18n/                   # 国际化（中文 / English）
+│   ├── pages/                  # 页面组件
+│   ├── lib/                    # 工具函数
+│   └── types/                  # TypeScript 类型
+├── src-tauri/                  # Tauri 后端（Rust）
+│   ├── src/                    # Rust 源码
+│   ├── capabilities/           # 权限声明
+│   ├── icons/                  # 应用图标
+│   ├── Cargo.toml              # Rust 依赖
+│   └── tauri.conf.json         # Tauri 配置
+└── public/                     # 静态资源
 ```
 
 ---
 
 ## 隐私
 
-- **本地优先** — 对话、设置、API Key 全部存储在设备本地
+- **本地优先** — 对话、设置、API Key 全部存储在本地
 - **无服务器** — 不运行云端服务，不收集任何用户数据
 - **AI 请求** — 聊天消息发送到你配置的 AI Provider，这是 AI 功能运行的必要条件
-- **局域网配置** — 网页配置仅在本地网络运行，一次性配对码认证
+
+## 为什么从 React Native 迁移到 Tauri
+
+Talkio v1 基于 Expo + React Native 构建。v2 迁移到 Tauri，主要出于两个原因：
+
+1. **聊天对话性能** — React Native 的桥接机制在长对话、流式渲染、大量消息列表场景下存在明显性能瓶颈。Tauri 使用原生 WebView，前端直接运行标准 Web 技术栈（React + DOM），流式输出和复杂 Markdown/Mermaid/KaTeX 渲染更加流畅。
+2. **桌面端支持** — 项目目标从移动端扩展到桌面端。Tauri 天然支持 Windows / macOS / Linux，打包体积小，系统集成能力强，比 Electron 更轻量。
 
 ## 许可证
 
