@@ -9,6 +9,7 @@ import { MessageStatus } from "../types";
 import { useIdentityStore } from "./identity-store";
 import {
   resolveTargetParticipants,
+  getParticipantLabel,
   buildApiMessagesForParticipant,
   createUserMessage,
   createAssistantMessage,
@@ -57,7 +58,7 @@ export interface ChatState {
   createConversation: (modelId: string, extraModelIds?: string[]) => Promise<Conversation>;
   deleteConversation: (id: string) => Promise<void>;
   setCurrentConversation: (id: string | null) => void;
-  sendMessage: (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedModelIds?: string[] }) => Promise<void>;
+  sendMessage: (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] }) => Promise<void>;
   stopGeneration: () => void;
   startAutoDiscuss: (rounds: number, topicText?: string) => Promise<void>;
   stopAutoDiscuss: () => void;
@@ -123,7 +124,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedModelIds?: string[] }) => {
+  sendMessage: async (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] }) => {
     const convId = get().currentConversationId;
     if (!convId) return;
 
@@ -154,7 +155,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const abortController = new AbortController();
     set({ isGenerating: true, _abortController: abortController });
 
-    const targets = resolveTargetParticipants(conversation, options?.mentionedModelIds);
+    const targets = resolveTargetParticipants(conversation, options?.mentionedParticipantIds);
     let lastAssistantContent = "";
 
     async function generateForParticipant(participant: ConversationParticipant, index: number) {
@@ -169,7 +170,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           conversationId: cid,
           role: "assistant",
           senderModelId: model.id,
-          senderName: model.displayName,
+          senderName: getParticipantLabel(participant, conversation.participants),
           identityId: participant.identityId,
           participantId: participant.id,
           content: "",
@@ -215,10 +216,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       const builtInEnabledByName = useBuiltInToolsStore.getState().enabledByName;
 
-      let senderName = model.displayName;
-      if (identity?.name) {
-        senderName = `${model.displayName}（${identity.name}）`;
-      }
+      const senderName = getParticipantLabel(participant, conversation.participants);
 
       const assistantMsgId = generateId();
       const assistantMsg = createAssistantMessage(

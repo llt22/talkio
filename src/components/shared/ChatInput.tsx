@@ -2,15 +2,16 @@ import { memo, useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { X, ArrowUp, Image, ArrowLeftRight, Square, Mic, MessagesSquare, AtSign, Loader2 } from "lucide-react";
 import type { ConversationParticipant, Model } from "../../types";
-import { extractMentionedModelIds } from "../../lib/mention-parser";
+import { extractMentionedParticipantIds } from "../../lib/mention-parser";
 import { useProviderStore } from "../../stores/provider-store";
+import { getParticipantLabel } from "../../stores/chat-message-builder";
 import { useSettingsStore } from "../../stores/settings-store";
 import { getAvatarProps } from "../../lib/avatar-utils";
 
 // ── ChatInput — 1:1 port of RN src/components/chat/ChatInput.tsx ──
 
 interface ChatInputProps {
-  onSend: (text: string, mentionedModelIds?: string[], images?: string[]) => void;
+  onSend: (text: string, mentionedParticipantIds?: string[], images?: string[]) => void;
   isGenerating: boolean;
   onStop: () => void;
   placeholder?: string;
@@ -59,31 +60,34 @@ export const ChatInput = memo(function ChatInput({
   const handleMicPressRef = useRef<(() => void) | null>(null);
   const isAutoDiscussing = autoDiscussRemaining > 0;
 
-  const modelNames = useMemo(() => {
+  const participantNames = useMemo(() => {
     const map = new Map<string, string>();
     for (const p of participants) {
-      const model = getModelById(p.modelId);
-      if (model) map.set(p.modelId, model.displayName);
+      const label = getParticipantLabel(p, participants);
+      map.set(p.id, label);
     }
     return map;
+  }, [participants]);
+
+  const participantEntries = useMemo(() => {
+    return participants.map((p) => ({
+      participant: p,
+      model: getModelById(p.modelId),
+      label: getParticipantLabel(p, participants),
+    })).filter((e) => e.model != null);
   }, [participants, getModelById]);
 
-  const participantModels = useMemo(() => {
-    return participants.map((p) => getModelById(p.modelId)).filter(Boolean) as Model[];
-  }, [participants, getModelById]);
-
-  const insertMention = useCallback((modelId: string) => {
-    const model = getModelById(modelId);
-    if (!model) return;
-    const mentionText = "@" + model.displayName.replace(/\s+/g, "") + " ";
+  const insertMention = useCallback((participantId: string) => {
+    const label = participantNames.get(participantId);
+    if (!label) return;
+    const mentionText = "@" + label.replace(/\s+/g, "") + " ";
     setText((prev) => {
-      // If text ends with '@' (user typed it to trigger picker), replace it
       if (prev.endsWith("@")) return prev.slice(0, -1) + mentionText;
       return prev + mentionText;
     });
     setShowMentionPicker(false);
     textareaRef.current?.focus();
-  }, [getModelById]);
+  }, [participantNames]);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
@@ -91,7 +95,7 @@ export const ChatInput = memo(function ChatInput({
     if ((!trimmed && !hasImages) || isGenerating) return;
     let mentionedIds: string[] | undefined;
     if (isGroup) {
-      const ids = extractMentionedModelIds(trimmed, modelNames);
+      const ids = extractMentionedParticipantIds(trimmed, participantNames);
       if (ids.length > 0) mentionedIds = ids;
     }
     onSend(trimmed, mentionedIds, hasImages ? attachedImages : undefined);
@@ -101,25 +105,25 @@ export const ChatInput = memo(function ChatInput({
       textareaRef.current.style.height = "auto";
       if (!isMobile) textareaRef.current.focus();
     }
-  }, [text, attachedImages, isGenerating, onSend, isGroup, modelNames]);
+  }, [text, attachedImages, isGenerating, onSend, isGroup, participantNames]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (isMobile) return;
-      if (showMentionPicker && isGroup && participantModels.length > 0) {
+      if (showMentionPicker && isGroup && participantEntries.length > 0) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          setMentionIndex((i) => (i + 1) % participantModels.length);
+          setMentionIndex((i) => (i + 1) % participantEntries.length);
           return;
         }
         if (e.key === "ArrowUp") {
           e.preventDefault();
-          setMentionIndex((i) => (i - 1 + participantModels.length) % participantModels.length);
+          setMentionIndex((i) => (i - 1 + participantEntries.length) % participantEntries.length);
           return;
         }
         if (e.key === "Enter") {
           e.preventDefault();
-          insertMention(participantModels[mentionIndex].id);
+          insertMention(participantEntries[mentionIndex].participant.id);
           return;
         }
         if (e.key === "Escape") {
@@ -130,7 +134,7 @@ export const ChatInput = memo(function ChatInput({
       }
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
     },
-    [isMobile, handleSend, showMentionPicker, isGroup, participantModels, mentionIndex, insertMention],
+    [isMobile, handleSend, showMentionPicker, isGroup, participantEntries, mentionIndex, insertMention],
   );
 
   const handleInput = useCallback(() => {
@@ -306,12 +310,12 @@ export const ChatInput = memo(function ChatInput({
           <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
             {t("chat.selectModel")}
           </p>
-          {participantModels.map((model, idx) => {
-            const { color: avatarColor, initials } = getAvatarProps(model.displayName);
+          {participantEntries.map((entry, idx) => {
+            const { color: avatarColor, initials } = getAvatarProps(entry.label);
             return (
               <button
-                key={model.id}
-                onClick={() => insertMention(model.id)}
+                key={entry.participant.id}
+                onClick={() => insertMention(entry.participant.id)}
                 className={`flex items-center gap-3 py-2.5 w-full text-left active:opacity-60 rounded-lg px-2 -mx-2 ${idx === mentionIndex ? "bg-primary/10" : ""}`}
               >
                 <div
@@ -320,7 +324,7 @@ export const ChatInput = memo(function ChatInput({
                 >
                   {initials}
                 </div>
-                <span className="text-[15px] font-medium text-foreground">{model.displayName}</span>
+                <span className="text-[15px] font-medium text-foreground">{entry.label}</span>
               </button>
             );
           })}

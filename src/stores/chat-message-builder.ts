@@ -12,16 +12,42 @@ import { useIdentityStore } from "./identity-store";
  */
 export function resolveTargetParticipants(
   conv: Conversation,
-  mentionedModelIds?: string[],
+  mentionedParticipantIds?: string[],
 ): ConversationParticipant[] {
   if (conv.type === "single") {
     return conv.participants[0] ? [conv.participants[0]] : [];
   }
-  if (mentionedModelIds && mentionedModelIds.length > 0) {
-    const mentionedSet = new Set(mentionedModelIds);
-    return conv.participants.filter((p) => mentionedSet.has(p.modelId));
+  if (mentionedParticipantIds && mentionedParticipantIds.length > 0) {
+    const mentionedSet = new Set(mentionedParticipantIds);
+    return conv.participants.filter((p) => mentionedSet.has(p.id));
   }
   return conv.participants;
+}
+
+/**
+ * Get a display label for a participant, adding #N suffix for duplicate models.
+ */
+export function getParticipantLabel(
+  participant: ConversationParticipant,
+  allParticipants: ConversationParticipant[],
+): string {
+  const providerStore = useProviderStore.getState();
+  const identityStore = useIdentityStore.getState();
+  const model = providerStore.getModelById(participant.modelId);
+  const modelName = model?.displayName ?? participant.modelId;
+  const identity = participant.identityId ? identityStore.getIdentityById(participant.identityId) : null;
+
+  if (identity?.name) {
+    return `${modelName}（${identity.name}）`;
+  }
+
+  const sameModelParticipants = allParticipants.filter((p) => p.modelId === participant.modelId);
+  if (sameModelParticipants.length > 1) {
+    const index = sameModelParticipants.findIndex((p) => p.id === participant.id);
+    return `${modelName} #${index + 1}`;
+  }
+
+  return modelName;
 }
 
 /**
@@ -31,13 +57,8 @@ export function buildGroupRoster(
   conv: Conversation,
   selfParticipantId: string | null,
 ): string {
-  const providerStore = useProviderStore.getState();
-  const identityStore = useIdentityStore.getState();
   const lines = conv.participants.map((p) => {
-    const model = providerStore.getModelById(p.modelId);
-    const modelName = model?.displayName ?? p.modelId;
-    const identity = p.identityId ? identityStore.getIdentityById(p.identityId) : null;
-    const label = identity?.name ?? modelName;
+    const label = getParticipantLabel(p, conv.participants);
     const isSelf = p.id === selfParticipantId;
     return `- ${label}${isSelf ? "  ← you" : ""}`;
   });
