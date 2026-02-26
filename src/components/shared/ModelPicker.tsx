@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Check } from "lucide-react";
 import {
@@ -16,13 +16,39 @@ interface ModelPickerProps {
   onClose: () => void;
   onSelect: (modelId: string) => void;
   selectedModelId?: string;
+  multiSelect?: boolean;
+  onMultiSelect?: (modelIds: string[]) => void;
 }
 
-export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelPickerProps) {
+export function ModelPicker({ open, onClose, onSelect, selectedModelId, multiSelect, onMultiSelect }: ModelPickerProps) {
   const { t } = useTranslation();
   const models = useProviderStore((s) => s.models);
   const getProviderById = useProviderStore((s) => s.getProviderById);
   const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (open) {
+      setSelectedIds(new Set());
+      setSearch("");
+    }
+  }, [open]);
+
+  const toggleModel = useCallback((modelId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(modelId)) next.delete(modelId);
+      else next.add(modelId);
+      return next;
+    });
+  }, []);
+
+  const handleConfirm = useCallback(() => {
+    if (selectedIds.size > 0 && onMultiSelect) {
+      onMultiSelect(Array.from(selectedIds));
+    }
+    onClose();
+  }, [selectedIds, onMultiSelect, onClose]);
 
   const enabledModels = useMemo(
     () => models.filter((m) => m.enabled),
@@ -55,7 +81,9 @@ export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelP
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm max-h-[70vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-base">{t("chat.selectModel")}</DialogTitle>
+          <DialogTitle className="text-base">
+            {multiSelect ? t("chat.addMember") : t("chat.selectModel")}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="px-1">
@@ -85,13 +113,17 @@ export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelP
                 </div>
                 {section.data.map((model, idx) => {
                   const { color: mColor, initials: mInitials } = getAvatarProps(model.displayName);
-                  const isSelected = model.id === selectedModelId;
+                  const isSelected = multiSelect ? selectedIds.has(model.id) : model.id === selectedModelId;
                   return (
                     <button
                       key={model.id}
                       onClick={() => {
-                        onSelect(model.id);
-                        onClose();
+                        if (multiSelect) {
+                          toggleModel(model.id);
+                        } else {
+                          onSelect(model.id);
+                          onClose();
+                        }
                       }}
                       className="w-full flex items-center gap-4 px-4 py-3 text-left active:opacity-70 transition-colors"
                       style={{
@@ -119,6 +151,19 @@ export function ModelPicker({ open, onClose, onSelect, selectedModelId }: ModelP
             ))
           )}
         </div>
+
+        {multiSelect && (
+          <div className="pt-3 -mx-6 px-6 border-t border-border">
+            <button
+              onClick={handleConfirm}
+              disabled={selectedIds.size === 0}
+              className="w-full py-2.5 rounded-xl text-[15px] font-semibold transition-opacity disabled:opacity-40"
+              style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
+            >
+              {t("common.confirm")}{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+            </button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -144,6 +144,8 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
     isExporting,
     setIsExporting,
     handleModelPickerSelect,
+    handleMultiModelSelect,
+    modelPickerMode,
   } = useChatPanelState(conversationId);
 
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
@@ -396,6 +398,8 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
         open={showModelPicker}
         onClose={() => setShowModelPicker(false)}
         onSelect={handleModelPickerSelect}
+        multiSelect={modelPickerMode === "add"}
+        onMultiSelect={handleMultiModelSelect}
       />
 
       {/* Messages + Input */}

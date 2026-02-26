@@ -391,6 +391,8 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
     isExporting,
     setIsExporting,
     handleModelPickerSelect,
+    handleMultiModelSelect,
+    modelPickerMode,
   } = useChatPanelState(conversationId);
   const title = isGroup ? conv?.title ?? t("chat.group") : model?.displayName ?? t("chat.chatTitle");
   const subtitle = isGroup
@@ -530,7 +532,13 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
         </div>
       )}
 
-      <ModelPicker open={showModelPicker} onClose={() => setShowModelPicker(false)} onSelect={handleModelPickerSelect} />
+      <ModelPicker
+        open={showModelPicker}
+        onClose={() => setShowModelPicker(false)}
+        onSelect={handleModelPickerSelect}
+        multiSelect={modelPickerMode === "add"}
+        onMultiSelect={handleMultiModelSelect}
+      />
 
       {/* Chat */}
       <div className="flex-1 min-h-0 flex flex-col relative">

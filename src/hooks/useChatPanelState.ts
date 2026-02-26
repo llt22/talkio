@@ -40,6 +40,7 @@ export function useChatPanelState(conversationId: string): {
   setIsExporting: React.Dispatch<React.SetStateAction<boolean>>;
 
   handleModelPickerSelect: (modelId: string) => void;
+  handleMultiModelSelect: (modelIds: string[]) => void;
 } {
   const conversations = useConversations();
   const activeBranchId = useChatStore((s: ChatStoreState) => s.activeBranchId);
@@ -80,6 +81,13 @@ export function useChatPanelState(conversationId: string): {
     }
   }, [addParticipant, conversationId, currentParticipant, modelPickerMode, updateParticipantModel]);
 
+  const handleMultiModelSelect = useCallback((modelIds: string[]) => {
+    setShowModelPicker(false);
+    for (const modelId of modelIds) {
+      addParticipant(conversationId, modelId);
+    }
+  }, [addParticipant, conversationId]);
+
   return {
     conversations,
     messages,
@@ -112,5 +120,6 @@ export function useChatPanelState(conversationId: string): {
     setIsExporting,
 
     handleModelPickerSelect,
+    handleMultiModelSelect,
   };
 }
