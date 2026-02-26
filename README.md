@@ -12,25 +12,43 @@ Talkio 是一款本地优先的跨平台桌面 AI 聊天应用。它不只是又
 
 ## 截图
 
+### 桌面端
+
 <p align="center">
-  <img src="docs/screenshots/chat-list.jpg" width="180" alt="对话列表" />
-  <img src="docs/screenshots/group-chat.jpg" width="180" alt="群聊" />
-  <img src="docs/screenshots/personas.jpg" width="180" alt="身份角色" />
-  <img src="docs/screenshots/models.jpg" width="180" alt="模型浏览" />
-  <img src="docs/screenshots/settings.jpg" width="180" alt="设置" />
+  <img src="docs/screenshots/desktop-main.png" width="720" alt="桌面端主界面" />
+</p>
+
+### 移动端
+
+<p align="center">
+  <img src="docs/screenshots/mobile-conversations.jpg" width="180" alt="对话列表" />
+  <img src="docs/screenshots/mobile-chat.jpg" width="180" alt="单聊" />
+  <img src="docs/screenshots/mobile-group-chat.jpg" width="180" alt="群聊" />
+  <img src="docs/screenshots/mobile-auto-discuss.jpg" width="180" alt="托管讨论" />
 </p>
 
 <p align="center">
-  <em>对话列表 · 多 AI 群聊 · 身份角色 · 模型浏览 · 设置</em>
+  <em>对话列表 · AI 单聊 · 多模型群聊 · 托管讨论（成语接龙）</em>
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/html-preview-streaming.jpg" width="180" alt="HTML 编写中" />
-  <img src="docs/screenshots/html-preview-rendered.jpg" width="180" alt="HTML 预览" />
+  <img src="docs/screenshots/mobile-mermaid.jpg" width="180" alt="Mermaid 图表" />
+  <img src="docs/screenshots/mobile-html-preview.jpg" width="180" alt="HTML 预览" />
+  <img src="docs/screenshots/mobile-models.jpg" width="180" alt="模型列表" />
+  <img src="docs/screenshots/mobile-identities.jpg" width="180" alt="身份角色" />
 </p>
 
 <p align="center">
-  <em>HTML 实时编写卡片 · HTML 渲染预览</em>
+  <em>Mermaid 图表渲染 · HTML/Three.js 预览 · 模型浏览 · 身份角色</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/mobile-settings.jpg" width="180" alt="设置" />
+  <img src="docs/screenshots/mobile-provider.jpg" width="180" alt="供应商配置" />
+</p>
+
+<p align="center">
+  <em>设置 · 供应商配置与模型管理</em>
 </p>
 
 ---
