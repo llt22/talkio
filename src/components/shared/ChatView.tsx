@@ -368,7 +368,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
           </div>
 
           {/* User action bar */}
-          <div className="mr-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="mr-1 flex items-center gap-0.5">
             {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
             {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
           </div>
@@ -468,7 +468,6 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
 
         {/* Assistant action bar — primary: copy + regenerate, secondary: ··· menu */}
         {!isStreaming && content && (
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
           <AssistantActionBar
             content={content}
             message={message}
@@ -478,7 +477,6 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
             onDelete={onDelete}
             t={t}
           />
-          </div>
         )}
       </div>
     </div>
