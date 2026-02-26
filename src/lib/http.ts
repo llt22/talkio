@@ -1,26 +1,39 @@
-// On mobile (Android/iOS) we must use Tauri's HTTP plugin to bypass CORS.
-// On desktop we use native fetch + CSP connect-src * instead, because
-// Tauri HTTP plugin scope matching fails for IP:port URLs on macOS.
-let _fetch: typeof globalThis.fetch | null = null;
+// Always prefer Tauri HTTP plugin when running inside Tauri, because:
+// 1. It bypasses CORS (many AI APIs don't support preflight)
+// 2. It runs requests in Rust, not limited by WebView security
+// Falls back to native fetch when Tauri is not available (plain browser).
+let _tauriFetch: typeof globalThis.fetch | null = null;
+let _resolved = false;
 
-async function resolve(): Promise<typeof globalThis.fetch> {
-  if (_fetch) return _fetch;
-  const w = window as any;
-  const isMobile = !!w.__TAURI_IOS__ || !!w.__TAURI_ANDROID__;
-  if (w.__TAURI_INTERNALS__ && isMobile) {
+async function resolveTauriFetch(): Promise<typeof globalThis.fetch | null> {
+  if (_resolved) return _tauriFetch;
+  _resolved = true;
+  if ((window as any).__TAURI_INTERNALS__) {
     try {
       const mod = await import("@tauri-apps/plugin-http");
-      _fetch = mod.fetch as unknown as typeof globalThis.fetch;
-      return _fetch;
-    } catch { /* fallback */ }
+      _tauriFetch = mod.fetch as unknown as typeof globalThis.fetch;
+    } catch { /* plugin not available */ }
   }
-  _fetch = globalThis.fetch.bind(globalThis);
-  return _fetch;
+  return _tauriFetch;
 }
 
 export async function appFetch(
   input: string | URL | Request,
   init?: RequestInit,
 ): Promise<Response> {
-  return (await resolve())(input, init);
+  const tauriFn = await resolveTauriFetch();
+  if (tauriFn) {
+    try {
+      return await tauriFn(input, init);
+    } catch (err: any) {
+      // If Tauri fetch fails due to scope restriction, fall back to native fetch.
+      // This handles the macOS bug where IP:port URLs fail scope matching.
+      const msg = typeof err === "string" ? err : err?.message ?? "";
+      if (msg.includes("url not allowed")) {
+        return globalThis.fetch(input, init);
+      }
+      throw err;
+    }
+  }
+  return globalThis.fetch(input, init);
 }
