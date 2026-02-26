@@ -579,14 +579,11 @@ function OnboardingOrEmpty({ hasProviders, onNew, onNavigateToSettings }: { hasP
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-8">
-      <img src="/logo.png" alt="Talkio" className="h-16 w-16 object-contain opacity-60" />
-      <p className="mt-4 text-center text-lg font-semibold text-foreground">{t("chats.noConversations")}</p>
-      <p className="mt-2 text-center text-sm text-muted-foreground">
-        {t("chats.goToModels")}
-      </p>
+      <img src="/logo.png" alt="Talkio" className="h-14 w-14 object-contain opacity-40" />
+      <p className="mt-3 text-center text-sm text-muted-foreground">{t("chats.noConversations")}</p>
       <button
         onClick={onNew}
-        className="mt-5 rounded-xl px-6 py-2.5 active:opacity-80 text-sm font-semibold text-white"
+        className="mt-4 rounded-full px-6 py-2.5 active:opacity-80 text-sm font-medium text-white"
         style={{ backgroundColor: "var(--primary)" }}
       >
         {t("chats.startConversation")}
