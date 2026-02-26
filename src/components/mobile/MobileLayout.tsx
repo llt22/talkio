@@ -418,12 +418,13 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
           <button
             className="pointer-events-auto flex items-center justify-center rounded-full active:scale-95"
             style={{
-              width: 40,
-              height: 40,
-              backgroundColor: "var(--primary)",
-              boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-              opacity: showScrollToBottom ? 1 : 0,
-              transform: showScrollToBottom ? "translateY(0) scale(1)" : "translateY(8px) scale(0.8)",
+              width: 36,
+              height: 36,
+              backgroundColor: "color-mix(in srgb, var(--muted) 85%, var(--background))",
+              border: "1px solid var(--border)",
+              boxShadow: "0 1px 6px rgba(0,0,0,0.08)",
+              opacity: showScrollToBottom ? 0.85 : 0,
+              transform: showScrollToBottom ? "translateY(0) scale(1)" : "translateY(6px) scale(0.9)",
               transition: "opacity 0.2s ease, transform 0.2s ease",
               pointerEvents: showScrollToBottom ? "auto" : "none",
             }}
@@ -432,7 +433,7 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
               setShowScrollToBottom(false);
             }}
           >
-            <IoArrowDown size={18} color="white" />
+            <IoArrowDown size={16} color="var(--muted-foreground)" />
           </button>
         </div>
       </div>
