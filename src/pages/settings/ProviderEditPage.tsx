@@ -19,6 +19,7 @@ const PROVIDER_PRESETS: Record<string, { name: string; baseUrl: string; type: Pr
   openrouter: { name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", type: "openai" },
   groq: { name: "Groq", baseUrl: "https://api.groq.com/openai/v1", type: "openai" },
   ollama: { name: "Ollama", baseUrl: "http://localhost:11434/v1", type: "openai" },
+  "ollama-cloud": { name: "Ollama Cloud", baseUrl: "https://ollama.com/v1", type: "openai" },
 };
 
 const PROVIDER_TYPE_OPTIONS: { value: ProviderType; label: string }[] = [
@@ -32,6 +33,7 @@ const PRESET_SVG: Record<string, string> = {
   openrouter: "M256 48C141.13 48 48 141.13 48 256s93.13 208 208 208 208-93.13 208-208S370.87 48 256 48zm-11 365a16 16 0 01-16-16V179.84l-46.21 54.38a16 16 0 01-24.42-20.64l74.4-87.81a16.23 16.23 0 0124.38-.09l75.15 87.9a16 16 0 01-24.3 20.84L261 179.65V397a16 16 0 01-16 16z",
   groq: "M256 48C141.13 48 48 141.13 48 256s93.13 208 208 208 208-93.13 208-208S370.87 48 256 48z",
   ollama: "M256 48C141.13 48 48 141.13 48 256s93.13 208 208 208 208-93.13 208-208S370.87 48 256 48zm0 80c44.18 0 80 35.82 80 80v64c0 44.18-35.82 80-80 80s-80-35.82-80-80v-64c0-44.18 35.82-80 80-80z",
+  "ollama-cloud": "M256 48C141.13 48 48 141.13 48 256s93.13 208 208 208 208-93.13 208-208S370.87 48 256 48zm0 80c44.18 0 80 35.82 80 80v64c0 44.18-35.82 80-80 80s-80-35.82-80-80v-64c0-44.18 35.82-80 80-80z",
 };
 
 export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose?: () => void }) {
