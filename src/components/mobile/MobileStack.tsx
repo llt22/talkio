@@ -22,11 +22,26 @@ import { MobileNavContext, type MobileNavFunctions } from "../../contexts/Mobile
 // ── Forward declaration for useFlow ──
 let _useFlow: ReturnType<typeof stackflow>["useFlow"];
 
+// Track stack depth for Android back button (Home = 0, each pushed activity increments)
+let _stackDepth = 0;
+
 // ══════════════════════════════════════════
 // Activity: Home (Tab Layout)
 // ══════════════════════════════════════════
 const Home: ActivityComponentType = () => {
-  const { push } = _useFlow();
+  const { push, pop } = _useFlow();
+
+  // Expose a global back function for Android native back button
+  useEffect(() => {
+    (window as any).__stackflowBack = () => {
+      if (_stackDepth > 0) {
+        pop();
+        return true;
+      }
+      return false;
+    };
+    return () => { delete (window as any).__stackflowBack; };
+  }, [pop]);
 
   const nav: MobileNavFunctions = useMemo(() => ({
     pushChat: (conversationId: string) => push("ChatDetail", { conversationId }),
@@ -55,6 +70,7 @@ const ChatDetail: ActivityComponentType<{ conversationId: string }> = ({ params 
   const { pop } = _useFlow();
   const setCurrentConversation = useChatStore((s) => s.setCurrentConversation);
 
+  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
   useEffect(() => {
     if (params.conversationId) setCurrentConversation(params.conversationId);
     return () => setCurrentConversation(null);
@@ -71,11 +87,11 @@ const ChatDetail: ActivityComponentType<{ conversationId: string }> = ({ params 
 // Activity: Identity New
 // ══════════════════════════════════════════
 const IdentityNew: ActivityComponentType = () => {
-  const { t } = useTranslation();
   const { pop } = _useFlow();
+  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
 
   return (
-    <AppScreen appBar={{ title: t("identityEdit.newTitle", { defaultValue: "New Identity" }) }}>
+    <AppScreen>
       <IdentityEditPage onClose={() => pop()} />
     </AppScreen>
   );
@@ -85,11 +101,11 @@ const IdentityNew: ActivityComponentType = () => {
 // Activity: Identity Edit
 // ══════════════════════════════════════════
 const IdentityEdit: ActivityComponentType<{ identityId: string }> = ({ params }) => {
-  const { t } = useTranslation();
   const { pop } = _useFlow();
+  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
 
   return (
-    <AppScreen appBar={{ title: t("identityEdit.editTitle", { defaultValue: "Edit Identity" }) }}>
+    <AppScreen>
       <IdentityEditPage id={params.identityId} onClose={() => pop()} />
     </AppScreen>
   );
@@ -103,6 +119,7 @@ const ProvidersList: ActivityComponentType = () => {
   const { push, pop } = _useFlow();
   const providers = useProviderStore((s) => s.providers);
   const models = useProviderStore((s) => s.models);
+  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
 
   return (
     <AppScreen
@@ -179,6 +196,7 @@ const ProviderEdit: ActivityComponentType<{ editId?: string }> = ({ params }) =>
   const { pop } = _useFlow();
   const { confirm } = useConfirm();
   const deleteProvider = useProviderStore((s) => s.deleteProvider);
+  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
 
   return (
     <AppScreen
@@ -217,6 +235,7 @@ const ProviderEdit: ActivityComponentType<{ editId?: string }> = ({ params }) =>
 const McpTools: ActivityComponentType = () => {
   const { t } = useTranslation();
   const { push, pop } = _useFlow();
+  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
 
   const onPush = (page: { id: string }) => {
     const match = page.id.match(/^mcp-edit-(.+)$/);
@@ -241,6 +260,7 @@ const McpServerEdit: ActivityComponentType<{ serverId?: string }> = ({ params })
   const { t } = useTranslation();
   const { pop } = _useFlow();
   const servers = useMcpStore((s) => s.servers) as McpServerConfig[];
+  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
 
   const server = params.serverId ? servers.find((s) => s.id === params.serverId) : undefined;
 
@@ -256,6 +276,7 @@ const McpServerEdit: ActivityComponentType<{ serverId?: string }> = ({ params })
 // ══════════════════════════════════════════
 const SttSettings: ActivityComponentType = () => {
   const { t } = useTranslation();
+  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
 
   return (
     <AppScreen appBar={{ title: t("settings.sttProvider") }}>
