@@ -399,32 +399,31 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
       />
 
       {/* Messages + Input */}
-      <div className="flex-1 min-h-0 flex flex-col">
-        <div className="flex-1 min-h-0">
-          <ChatView
-            conversationId={conversationId}
-            isMobile
-            onScrollRef={scrollRef}
-            onScroll={handleScroll}
-            modelName={!isGroup ? model?.displayName : undefined}
-            onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
-            isGroup={isGroup}
-            participants={conv?.participants ?? []}
-          />
-        </div>
+      <div className="flex-1 min-h-0 flex flex-col relative">
+        <ChatView
+          conversationId={conversationId}
+          isMobile
+          onScrollRef={scrollRef}
+          onScroll={handleScroll}
+          modelName={!isGroup ? model?.displayName : undefined}
+          onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
+          isGroup={isGroup}
+          participants={conv?.participants ?? []}
+        />
+        {/* Scroll to bottom — floating above input */}
         <div
-          style={{
-            maxHeight: showScrollToBottom ? 40 : 0,
-            opacity: showScrollToBottom ? 1 : 0,
-            overflow: "hidden",
-            transition: "max-height 0.2s ease, opacity 0.2s ease",
-          }}
+          className="absolute left-0 right-0 flex justify-center pointer-events-none"
+          style={{ bottom: 120 }}
         >
           <button
-            className="w-full flex-shrink-0 flex items-center justify-center gap-1.5 py-2 active:opacity-70"
+            className="pointer-events-auto flex items-center gap-1.5 rounded-full px-4 py-1.5 shadow-lg active:opacity-70"
             style={{
-              backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))",
-              borderTop: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
+              backgroundColor: "var(--background)",
+              border: "1px solid color-mix(in srgb, var(--primary) 25%, transparent)",
+              opacity: showScrollToBottom ? 1 : 0,
+              transform: showScrollToBottom ? "translateY(0)" : "translateY(8px)",
+              transition: "opacity 0.2s ease, transform 0.2s ease",
+              pointerEvents: showScrollToBottom ? "auto" : "none",
             }}
             onClick={() => {
               if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
