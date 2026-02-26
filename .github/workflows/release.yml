@@ -27,9 +27,6 @@ jobs:
           - platform: macos-latest
             target: aarch64-apple-darwin
             label: macOS ARM64
-          - platform: macos-14
-            target: x86_64-apple-darwin
-            label: macOS x64
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             label: Linux x64
@@ -96,7 +93,6 @@ jobs:
             | Platform | File |
             |----------|------|
             | Windows x64 | `.msi` / `.exe` |
-            | macOS Intel | `.dmg` |
             | macOS Apple Silicon | `.dmg` |
             | Linux x64 | `.AppImage` / `.deb` |
             | Android | `.apk` |
