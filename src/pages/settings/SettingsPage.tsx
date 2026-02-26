@@ -6,7 +6,7 @@ import i18n from "../../i18n";
 import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
 import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
-import { createBackup, downloadBackup, importBackup } from "../../services/backup";
+import { createBackup, downloadBackup, pickAndImportBackup } from "../../services/backup";
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
 import { McpPage, type McpPageHandle } from "./McpPage";
@@ -224,24 +224,17 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
           iconColor="#f59e0b"
           iconBg="rgba(245,158,11,0.1)"
           label={t("settings.importBackup")}
-          onPress={() => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = ".json";
-            input.onchange = async (e) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
-              if (!file) return;
-              const result = await importBackup(file);
-              if (result.success) {
-                useProviderStore.getState().loadFromStorage();
-                useSettingsStore.getState().loadFromStorage();
-                alert(result.message);
-                window.location.reload();
-              } else {
-                alert(`Import failed: ${result.message}`);
-              }
-            };
-            input.click();
+          onPress={async () => {
+            const result = await pickAndImportBackup();
+            if (!result) return;
+            if (result.success) {
+              useProviderStore.getState().loadFromStorage();
+              useSettingsStore.getState().loadFromStorage();
+              alert(result.message);
+              window.location.reload();
+            } else {
+              alert(`Import failed: ${result.message}`);
+            }
           }}
           isLast
         />

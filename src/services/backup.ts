@@ -78,3 +78,33 @@ export async function importBackup(file: File): Promise<{ success: boolean; mess
   const text = await file.text();
   return importBackupFromString(text);
 }
+
+export async function pickAndImportBackup(): Promise<{ success: boolean; message: string } | null> {
+  if ((window as any).__TAURI_INTERNALS__) {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const { readTextFile } = await import("@tauri-apps/plugin-fs");
+      const filePath = await open({
+        filters: [{ name: "JSON", extensions: ["json"] }],
+        multiple: false,
+      });
+      if (!filePath) return null;
+      const text = await readTextFile(filePath as string);
+      return importBackupFromString(text);
+    } catch {
+      // Fallback to browser file picker
+    }
+  }
+
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) { resolve(null); return; }
+      resolve(await importBackup(file));
+    };
+    input.click();
+  });
+}
