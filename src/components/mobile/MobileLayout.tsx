@@ -399,27 +399,33 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
       />
 
       {/* Messages + Input */}
-      <div className="flex-1 min-h-0 relative">
-        <ChatView
-          conversationId={conversationId}
-          isMobile
-          onScrollRef={scrollRef}
-          onScroll={handleScroll}
-          modelName={!isGroup ? model?.displayName : undefined}
-          onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
-          isGroup={isGroup}
-          participants={conv?.participants ?? []}
-        />
+      <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0">
+          <ChatView
+            conversationId={conversationId}
+            isMobile
+            onScrollRef={scrollRef}
+            onScroll={handleScroll}
+            modelName={!isGroup ? model?.displayName : undefined}
+            onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
+            isGroup={isGroup}
+            participants={conv?.participants ?? []}
+          />
+        </div>
         {showScrollToBottom && (
           <button
-            className="absolute bottom-20 right-4 z-10 flex items-center justify-center rounded-full p-2.5 shadow-md active:opacity-70"
-            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 90%, transparent)" }}
+            className="flex-shrink-0 flex items-center justify-center gap-1.5 py-2 active:opacity-70"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))",
+              borderTop: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
+            }}
             onClick={() => {
               if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
               setShowScrollToBottom(false);
             }}
           >
-            <IoArrowDown size={16} color="white" />
+            <IoArrowDown size={14} color="var(--primary)" />
+            <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.scrollToBottom")}</span>
           </button>
         )}
       </div>

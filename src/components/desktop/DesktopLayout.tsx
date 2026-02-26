@@ -533,27 +533,33 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
       <ModelPicker open={showModelPicker} onClose={() => setShowModelPicker(false)} onSelect={handleModelPickerSelect} />
 
       {/* Chat */}
-      <div className="flex-1 min-h-0 relative">
-        <ChatView
-          conversationId={conversationId}
-          modelName={!isGroup ? model?.displayName : undefined}
-          onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
-          isGroup={isGroup}
-          participants={conv?.participants ?? []}
-          onScrollRef={scrollRef}
-          onScroll={() => {
-            const el = scrollRef.current;
-            if (!el) return;
-            setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
-          }}
-        />
+      <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0">
+          <ChatView
+            conversationId={conversationId}
+            modelName={!isGroup ? model?.displayName : undefined}
+            onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
+            isGroup={isGroup}
+            participants={conv?.participants ?? []}
+            onScrollRef={scrollRef}
+            onScroll={() => {
+              const el = scrollRef.current;
+              if (!el) return;
+              setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
+            }}
+          />
+        </div>
         {showScrollBottom && (
           <button
-            onClick={() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); }}
-            className="absolute bottom-20 right-4 h-9 w-9 flex items-center justify-center rounded-full shadow-md z-10 active:opacity-70"
-            style={{ backgroundColor: "var(--card)", border: "1px solid var(--border)" }}
+            onClick={() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); setShowScrollBottom(false); }}
+            className="flex-shrink-0 flex items-center justify-center gap-1.5 py-1.5 hover:opacity-80 transition-opacity"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))",
+              borderTop: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
+            }}
           >
-            <ArrowDown size={16} className="text-muted-foreground" />
+            <ArrowDown size={13} style={{ color: "var(--primary)" }} />
+            <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.scrollToBottom")}</span>
           </button>
         )}
       </div>

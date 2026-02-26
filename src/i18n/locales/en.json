@@ -97,7 +97,8 @@
     "autoDiscussProgress": "Round {{current}}/{{total}}",
     "autoDiscussRunning": "Auto-pilot",
     "autoDiscussStop": "Stop",
-    "autoDiscussNeedMessage": "Send a message first to set the discussion topic"
+    "autoDiscussNeedMessage": "Send a message first to set the discussion topic",
+    "scrollToBottom": "Scroll to latest"
   },
   "models": {
     "title": "Models",

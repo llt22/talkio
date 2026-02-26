@@ -97,7 +97,8 @@
     "autoDiscussProgress": "第 {{current}}/{{total}} 轮",
     "autoDiscussRunning": "托管中",
     "autoDiscussStop": "取消托管",
-    "autoDiscussNeedMessage": "请先发送一条消息作为讨论话题"
+    "autoDiscussNeedMessage": "请先发送一条消息作为讨论话题",
+    "scrollToBottom": "滚动到最新"
   },
   "models": {
     "title": "模型",
