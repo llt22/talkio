@@ -45,10 +45,13 @@ interface StreamingState {
   reasoning: string;
 }
 
+// Per-conversation generation tracking (module-level to avoid zustand serialization)
+const _abortControllers = new Map<string, AbortController>();
+const _streamingMessages = new Map<string, StreamingState>();
+
 export interface ChatState {
   currentConversationId: string | null;
   isGenerating: boolean;
-  _abortController: AbortController | null;
   activeBranchId: string | null;
   autoDiscussRemaining: number;
   autoDiscussTotalRounds: number;
@@ -78,7 +81,6 @@ export interface ChatState {
 export const useChatStore = create<ChatState>((set, get) => ({
   currentConversationId: null,
   isGenerating: false,
-  _abortController: null,
   activeBranchId: null,
   autoDiscussRemaining: 0,
   autoDiscussTotalRounds: 0,
@@ -121,7 +123,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setCurrentConversation: (id: string | null) => {
     if (id !== get().currentConversationId) {
-      set({ currentConversationId: id });
+      set({
+        currentConversationId: id,
+        isGenerating: id ? _abortControllers.has(id) : false,
+        streamingMessage: id ? _streamingMessages.get(id) ?? null : null,
+      });
     }
   },
 
@@ -154,7 +160,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
 
     const abortController = new AbortController();
-    set({ isGenerating: true, _abortController: abortController });
+    _abortControllers.set(cid, abortController);
+    if (cid === get().currentConversationId) {
+      set({ isGenerating: true });
+    }
 
     const targets = resolveTargetParticipants(conversation, options?.mentionedParticipantIds);
     let lastAssistantContent = "";
@@ -228,7 +237,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       await insertMessage(assistantMsg);
       notifyDbChange("messages", cid);
-      set({ streamingMessage: { messageId: assistantMsgId, content: "", reasoning: "" } });
+      _streamingMessages.set(cid, { messageId: assistantMsgId, content: "", reasoning: "" });
+      if (cid === get().currentConversationId) {
+        set({ streamingMessage: { messageId: assistantMsgId, content: "", reasoning: "" } });
+      }
 
       const baseUrl = provider.baseUrl.replace(/\/+$/, "");
       const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
@@ -290,13 +302,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
           rafPending = false;
           if (!dirty) return;
           dirty = false;
-          set({
-            streamingMessage: {
-              messageId: assistantMsgId,
-              content: fullContent,
-              reasoning: fullReasoning,
-            },
-          });
+          const sm = { messageId: assistantMsgId, content: fullContent, reasoning: fullReasoning };
+          _streamingMessages.set(cid, sm);
+          if (cid === get().currentConversationId) {
+            set({ streamingMessage: sm });
+          }
         }
 
         function scheduleFlush() {
@@ -408,7 +418,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
             ];
 
             // Stream the follow-up response into the SAME message (1:1 RN pattern)
-            set({ streamingMessage: { messageId: assistantMsgId, content: accumulatedContent, reasoning: fullReasoning } });
+            _streamingMessages.set(cid, { messageId: assistantMsgId, content: accumulatedContent, reasoning: fullReasoning });
+            if (cid === get().currentConversationId) {
+              set({ streamingMessage: { messageId: assistantMsgId, content: accumulatedContent, reasoning: fullReasoning } });
+            }
 
             const toolResponse = await appFetch(`${baseUrl}/chat/completions`, {
               method: "POST",
@@ -441,7 +454,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
               toolRafPending = false;
               if (!toolDirty) return;
               toolDirty = false;
-              set({ streamingMessage: { messageId: assistantMsgId, content: toolContent, reasoning: fullReasoning } });
+              const sm = { messageId: assistantMsgId, content: toolContent, reasoning: fullReasoning };
+              _streamingMessages.set(cid, sm);
+              if (cid === get().currentConversationId) {
+                set({ streamingMessage: sm });
+              }
             }
             function toolSchedule() {
               toolDirty = true;
@@ -524,7 +541,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         notifyDbChange("conversations");
       } catch (err: any) {
         if (err.name === "AbortError") {
-          const sm = get().streamingMessage;
+          const sm = _streamingMessages.get(cid);
           if (sm && sm.messageId === assistantMsgId) {
             await updateMessage(assistantMsgId, {
               content: sm.content,
@@ -545,7 +562,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
           notifyDbChange("messages", cid);
         }
       } finally {
-        set({ streamingMessage: null });
+        _streamingMessages.delete(cid);
+        if (cid === get().currentConversationId) {
+          set({ streamingMessage: null });
+        }
       }
     }
 
@@ -555,15 +575,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
         await generateForParticipant(targets[i], i);
       }
     } finally {
-      set({ isGenerating: false, _abortController: null, streamingMessage: null });
+      _abortControllers.delete(cid);
+      _streamingMessages.delete(cid);
+      if (cid === get().currentConversationId) {
+        set({ isGenerating: false, streamingMessage: null });
+      }
     }
   },
 
   stopGeneration: () => {
-    const ctrl = get()._abortController;
+    const convId = get().currentConversationId;
+    if (!convId) return;
+    const ctrl = _abortControllers.get(convId);
     if (ctrl) {
       ctrl.abort();
-      set({ _abortController: null, autoDiscussRemaining: 0 });
+      _abortControllers.delete(convId);
+      set({ autoDiscussRemaining: 0 });
     }
   },
 
