@@ -416,12 +416,14 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
           style={{ bottom: 120 }}
         >
           <button
-            className="pointer-events-auto flex items-center gap-1.5 rounded-full px-4 py-1.5 shadow-lg active:opacity-70"
+            className="pointer-events-auto flex items-center justify-center rounded-full active:scale-95"
             style={{
-              backgroundColor: "var(--background)",
-              border: "1px solid color-mix(in srgb, var(--primary) 25%, transparent)",
+              width: 40,
+              height: 40,
+              backgroundColor: "var(--primary)",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
               opacity: showScrollToBottom ? 1 : 0,
-              transform: showScrollToBottom ? "translateY(0)" : "translateY(8px)",
+              transform: showScrollToBottom ? "translateY(0) scale(1)" : "translateY(8px) scale(0.8)",
               transition: "opacity 0.2s ease, transform 0.2s ease",
               pointerEvents: showScrollToBottom ? "auto" : "none",
             }}
@@ -430,8 +432,7 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
               setShowScrollToBottom(false);
             }}
           >
-            <IoArrowDown size={14} color="var(--primary)" />
-            <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.scrollToBottom")}</span>
+            <IoArrowDown size={18} color="white" />
           </button>
         </div>
       </div>
