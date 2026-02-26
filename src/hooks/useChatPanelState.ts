@@ -68,8 +68,8 @@ export function useChatPanelState(conversationId: string): {
 
   const isGroup = conv?.type === "group";
   const currentParticipant = conv?.participants[0] ?? null;
-  const model = currentParticipant ? getModelById(currentParticipant.modelId) : null;
-  const activeIdentity = currentParticipant?.identityId ? getIdentityById(currentParticipant.identityId) : null;
+  const model = currentParticipant ? getModelById(currentParticipant.modelId) ?? null : null;
+  const activeIdentity = currentParticipant?.identityId ? getIdentityById(currentParticipant.identityId) ?? null : null;
 
   const handleModelPickerSelect = useCallback((modelId: string) => {
     setShowModelPicker(false);

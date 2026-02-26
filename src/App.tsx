@@ -49,7 +49,7 @@ export default function App() {
       setReady(true);
 
       // Check for pending file import (Android intent)
-      if ((window as any).__TAURI_INTERNALS__) {
+      if (window.__TAURI_INTERNALS__) {
         try {
           const { invoke } = await import("@tauri-apps/api/core");
           const data = await invoke<string | null>("check_pending_import");

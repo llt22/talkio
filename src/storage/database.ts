@@ -454,8 +454,16 @@ export async function clearMessages(conversationId: string): Promise<void> {
 
 export async function insertMessages(msgs: Message[]): Promise<void> {
   if (msgs.length === 0) return;
-  for (const msg of msgs) {
-    await insertMessage(msg);
+  const db = await getDb();
+  try { await db.execute("BEGIN TRANSACTION"); } catch { /* in-memory fallback doesn't support transactions */ }
+  try {
+    for (const msg of msgs) {
+      await insertMessage(msg);
+    }
+    try { await db.execute("COMMIT"); } catch {}
+  } catch (err) {
+    try { await db.execute("ROLLBACK"); } catch {}
+    throw err;
   }
 }
 

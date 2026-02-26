@@ -549,10 +549,17 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
             }}
           />
         </div>
-        {showScrollBottom && (
+        <div
+          style={{
+            maxHeight: showScrollBottom ? 36 : 0,
+            opacity: showScrollBottom ? 1 : 0,
+            overflow: "hidden",
+            transition: "max-height 0.2s ease, opacity 0.2s ease",
+          }}
+        >
           <button
             onClick={() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); setShowScrollBottom(false); }}
-            className="flex-shrink-0 flex items-center justify-center gap-1.5 py-1.5 hover:opacity-80 transition-opacity"
+            className="w-full flex-shrink-0 flex items-center justify-center gap-1.5 py-1.5 hover:opacity-80 transition-opacity"
             style={{
               backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))",
               borderTop: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
@@ -561,7 +568,7 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
             <ArrowDown size={13} style={{ color: "var(--primary)" }} />
             <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.scrollToBottom")}</span>
           </button>
-        )}
+        </div>
       </div>
     </div>
   );

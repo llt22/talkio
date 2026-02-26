@@ -33,14 +33,14 @@ const Home: ActivityComponentType = () => {
 
   // Expose a global back function for Android native back button
   useEffect(() => {
-    (window as any).__stackflowBack = () => {
+    window.__stackflowBack = () => {
       if (_stackDepth > 0) {
         pop();
         return true;
       }
       return false;
     };
-    return () => { delete (window as any).__stackflowBack; };
+    return () => { delete window.__stackflowBack; };
   }, [pop]);
 
   const nav: MobileNavFunctions = useMemo(() => ({

@@ -8,6 +8,12 @@ import type { Message, Conversation, ConversationParticipant, Provider } from ".
 import { MessageStatus } from "../types";
 import { useIdentityStore } from "./identity-store";
 import {
+  resolveTargetParticipants,
+  buildApiMessagesForParticipant,
+  createUserMessage,
+  createAssistantMessage,
+} from "./chat-message-builder";
+import {
   insertConversation,
   updateConversation,
   deleteConversation as dbDeleteConversation,
@@ -123,100 +129,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     const conv = await getConversation(convId);
     if (!conv) return;
+    // convId and conv are guaranteed non-null below this point
+    const cid: string = convId;
+    const conversation: Conversation = conv;
 
-    function resolveTargetParticipants(): ConversationParticipant[] {
-      if (conv.type === "single") {
-        return conv.participants[0] ? [conv.participants[0]] : [];
-      }
-      // @Mention: if specific models mentioned, only those respond
-      if (options?.mentionedModelIds && options.mentionedModelIds.length > 0) {
-        const mentionedSet = new Set(options.mentionedModelIds);
-        return conv.participants.filter((p) => mentionedSet.has(p.modelId));
-      }
-      return conv.participants;
-    }
-
-    function buildGroupRoster(selfParticipantId: string | null): string {
-      const providerStore = useProviderStore.getState();
-      const identityStore = useIdentityStore.getState();
-      const lines = conv.participants.map((p) => {
-        const model = providerStore.getModelById(p.modelId);
-        const modelName = model?.displayName ?? p.modelId;
-        const identity = p.identityId ? identityStore.getIdentityById(p.identityId) : null;
-        const label = identity?.name ?? modelName;
-        const isSelf = p.id === selfParticipantId;
-        return `- ${label}${isSelf ? "  ← you" : ""}`;
-      });
-      return [
-        "You are in a group chat with multiple AI participants and one human user.",
-        "Participants:",
-        ...lines,
-        "",
-        "The human user's messages appear as: [User said]: content",
-        "Other AI participants' messages appear as: [Name said]: content",
-        "Your own previous messages appear as role=assistant (no prefix).",
-        "Always distinguish between the human user and other AI participants.",
-        "Think independently — form your own opinions and do not simply agree with or echo others.",
-        "If you disagree, say so directly and explain why. Constructive debate is encouraged.",
-        "Do not repeat, summarize, or rephrase what others said unless asked.",
-      ].join("\n");
-    }
-
-    function buildApiMessagesForParticipant(
-      allMessages: Message[],
-      participant: ConversationParticipant,
-    ): any[] {
-      const identity = participant.identityId
-        ? useIdentityStore.getState().getIdentityById(participant.identityId)
-        : null;
-
-      const isGroup = conv.type === "group";
-      const apiMessages: any[] = [];
-
-      if (isGroup) {
-        const roster = buildGroupRoster(participant.id);
-        const groupPrompt = identity?.systemPrompt ? `${identity.systemPrompt}\n\n${roster}` : roster;
-        apiMessages.push({ role: "system", content: groupPrompt });
-      } else if (identity?.systemPrompt) {
-        apiMessages.push({ role: "system", content: identity.systemPrompt });
-      }
-
-      for (const m of allMessages) {
-        if (m.role !== "user" && m.role !== "assistant") continue;
-
-        let role: "user" | "assistant" = m.role as any;
-        let content: any = m.content;
-
-        if (m.role === "user") {
-          if (m.images && m.images.length > 0) {
-            const parts: any[] = [];
-            if (m.content) parts.push({ type: "text", text: m.content });
-            for (const uri of m.images) {
-              parts.push({ type: "image_url", image_url: { url: uri } });
-            }
-            content = parts;
-          }
-        }
-
-        if (isGroup) {
-          if (role === "user" && typeof content === "string") {
-            content = `[User said]: ${content}`;
-          }
-          if (role === "assistant" && m.senderName) {
-            const isSelf = m.participantId != null && m.participantId === participant.id;
-            if (!isSelf) {
-              role = "user";
-              const prefix = `[${m.senderName} said]: `;
-              if (typeof content === "string") content = prefix + content;
-            }
-          }
-        }
-
-        apiMessages.push({ role, content });
-      }
-
-      return apiMessages;
-    }
+    // Helper functions extracted to chat-message-builder.ts
 
     const providerStore = useProviderStore.getState();
 
@@ -227,41 +144,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!existing || existing.role !== "user") return;
       userMsg = existing;
     } else {
-      // Create and persist user message
-      userMsg = {
-        id: generateId(),
-        conversationId: convId,
-        role: "user",
-        senderModelId: null,
-        senderName: "You",
-        identityId: null,
-        participantId: null,
-        content: text,
-        images: images ?? [],
-        generatedImages: [],
-        reasoningContent: null,
-        reasoningDuration: null,
-        toolCalls: [],
-        toolResults: [],
-        branchId: get().activeBranchId,
-        parentMessageId: null,
-        isStreaming: false,
-        status: MessageStatus.SUCCESS,
-        errorMessage: null,
-        tokenUsage: null,
-        createdAt: new Date().toISOString(),
-      };
-
+      userMsg = createUserMessage(generateId(), cid, text, images ?? [], get().activeBranchId);
       await insertMessage(userMsg);
-      updateConversation(convId, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(() => {});
-      notifyDbChange("messages", convId);
+      updateConversation(cid, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(() => {});
+      notifyDbChange("messages", cid);
       notifyDbChange("conversations");
     }
 
     const abortController = new AbortController();
     set({ isGenerating: true, _abortController: abortController });
 
-    const targets = resolveTargetParticipants();
+    const targets = resolveTargetParticipants(conversation, options?.mentionedModelIds);
     let lastAssistantContent = "";
     let firstModelDisplayName: string | null = null;
 
@@ -275,7 +168,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const assistantMsgId = generateId();
         const assistantMsg: Message = {
           id: assistantMsgId,
-          conversationId: convId,
+          conversationId: cid,
           role: "assistant",
           senderModelId: model.id,
           senderName: model.displayName,
@@ -311,7 +204,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           createdAt: new Date(Date.parse(userMsg.createdAt) + 1 + index).toISOString(),
         };
         await insertMessage(assistantMsg);
-        notifyDbChange("messages", convId);
+        notifyDbChange("messages", cid);
         return;
       }
 
@@ -330,32 +223,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       const assistantMsgId = generateId();
-      const assistantMsg: Message = {
-        id: assistantMsgId,
-        conversationId: convId,
-        role: "assistant",
-        senderModelId: model.id,
-        senderName,
-        identityId: participant.identityId,
-        participantId: participant.id,
-        content: "",
-        images: [],
-        generatedImages: [],
-        reasoningContent: null,
-        reasoningDuration: null,
-        toolCalls: [],
-        toolResults: [],
-        branchId: get().activeBranchId,
-        parentMessageId: null,
-        isStreaming: true,
-        status: MessageStatus.STREAMING,
-        errorMessage: null,
-        tokenUsage: null,
-        createdAt: new Date(Date.parse(userMsg.createdAt) + 1 + index).toISOString(),
-      };
+      const assistantMsg = createAssistantMessage(
+        assistantMsgId, cid, model.id, senderName,
+        participant.id, participant.identityId, get().activeBranchId,
+        new Date(Date.parse(userMsg.createdAt) + 1 + index).toISOString(),
+      );
 
       await insertMessage(assistantMsg);
-      notifyDbChange("messages", convId);
+      notifyDbChange("messages", cid);
       set({ streamingMessage: { messageId: assistantMsgId, content: "", reasoning: "" } });
 
       const baseUrl = provider.baseUrl.replace(/\/+$/, "");
@@ -376,9 +251,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const toolDefs = [...builtInToolDefs, ...getMcpToolDefsForIdentity(identity)];
 
       try {
-        const allMessages = await getRecentMessages(convId, get().activeBranchId, MAX_HISTORY);
+        const allMessages = await getRecentMessages(cid, get().activeBranchId, MAX_HISTORY);
         const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
-        const apiMessages = buildApiMessagesForParticipant(filtered, participant);
+        const apiMessages = buildApiMessagesForParticipant(filtered, participant, conversation);
 
         // Auto-detect reasoning models and send reasoning_effort
         const reasoningEffort = identity?.params?.reasoningEffort
@@ -493,7 +368,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             reasoningDuration: fullReasoning ? duration : null,
             toolCalls: pendingToolCalls,
           });
-          notifyDbChange("messages", convId);
+          notifyDbChange("messages", cid);
 
           // Execute tools
           const toolResults: { toolCallId: string; content: string }[] = [];
@@ -519,7 +394,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
           // Save toolResults to the same message
           await updateMessage(assistantMsgId, { toolResults });
-          notifyDbChange("messages", convId);
+          notifyDbChange("messages", cid);
 
           // Multi-round tool call loop (max 5 rounds to prevent infinite loops)
           let currentToolCalls = pendingToolCalls;
@@ -602,7 +477,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
             // Execute new tool calls
             await updateMessage(assistantMsgId, { content: accumulatedContent, toolCalls: [...(currentToolCalls), ...newToolCalls] });
-            notifyDbChange("messages", convId);
+            notifyDbChange("messages", cid);
 
             const newResults: { toolCallId: string; content: string }[] = [];
             for (const tc of newToolCalls) {
@@ -616,7 +491,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               newResults.push({ toolCallId: tc.id, content: `Tool not found: ${tc.name}` });
             }
             await updateMessage(assistantMsgId, { toolResults: [...currentToolResults, ...newResults] });
-            notifyDbChange("messages", convId);
+            notifyDbChange("messages", cid);
 
             // Update apiMessages for next round
             apiMessages.push(
@@ -646,15 +521,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
           lastAssistantContent = fullContent;
         }
 
-        const currentConv = await getConversation(convId);
+        const currentConv = await getConversation(cid);
         if (currentConv && firstModelDisplayName && currentConv.title === (firstModelDisplayName ?? "New Chat")) {
           const title = text.slice(0, 50) || "Chat";
-          await updateConversation(convId, { title, lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
+          await updateConversation(cid, { title, lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
         } else {
-          await updateConversation(convId, { lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
+          await updateConversation(cid, { lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
         }
 
-        notifyDbChange("messages", convId);
+        notifyDbChange("messages", cid);
         notifyDbChange("conversations");
       } catch (err: any) {
         if (err.name === "AbortError") {
@@ -666,7 +541,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               isStreaming: false,
               status: MessageStatus.SUCCESS,
             });
-            notifyDbChange("messages", convId);
+            notifyDbChange("messages", cid);
           }
         } else {
           await updateMessage(assistantMsgId, {
@@ -674,7 +549,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             status: MessageStatus.ERROR,
             errorMessage: err.message || "Unknown error",
           });
-          notifyDbChange("messages", convId);
+          notifyDbChange("messages", cid);
         }
       } finally {
         set({ streamingMessage: null });

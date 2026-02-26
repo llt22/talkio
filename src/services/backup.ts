@@ -28,7 +28,7 @@ export async function downloadBackup(data: BackupData): Promise<boolean> {
   const json = JSON.stringify(data, null, 2);
   const defaultName = `talkio-config-${new Date().toISOString().slice(0, 10)}.json`;
 
-  if ((window as any).__TAURI_INTERNALS__) {
+  if (window.__TAURI_INTERNALS__) {
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const { writeTextFile } = await import("@tauri-apps/plugin-fs");

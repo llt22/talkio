@@ -412,9 +412,16 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
             participants={conv?.participants ?? []}
           />
         </div>
-        {showScrollToBottom && (
+        <div
+          style={{
+            maxHeight: showScrollToBottom ? 40 : 0,
+            opacity: showScrollToBottom ? 1 : 0,
+            overflow: "hidden",
+            transition: "max-height 0.2s ease, opacity 0.2s ease",
+          }}
+        >
           <button
-            className="flex-shrink-0 flex items-center justify-center gap-1.5 py-2 active:opacity-70"
+            className="w-full flex-shrink-0 flex items-center justify-center gap-1.5 py-2 active:opacity-70"
             style={{
               backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))",
               borderTop: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
@@ -427,7 +434,7 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
             <IoArrowDown size={14} color="var(--primary)" />
             <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.scrollToBottom")}</span>
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
