@@ -609,6 +609,8 @@ function ConversationItem({
   const getModelById = useProviderStore((s) => s.getModelById);
   const getProviderById = useProviderStore((s) => s.getProviderById);
   const getIdentityById = useIdentityStore((s) => s.getIdentityById);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress = useRef(false);
 
   const firstParticipant = conversation.participants[0];
   const firstModel = firstParticipant ? getModelById(firstParticipant.modelId) : null;
@@ -623,9 +625,33 @@ function ConversationItem({
   const timeStr = formatDate(conversation.lastMessageAt ?? conversation.updatedAt ?? conversation.createdAt ?? "");
   const { color: avatarColor, initials } = getAvatarProps(modelName);
 
+  const handleTouchStart = useCallback(() => {
+    didLongPress.current = false;
+    longPressTimer.current = setTimeout(() => {
+      didLongPress.current = true;
+      onDelete();
+    }, 500);
+  }, [onDelete]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (didLongPress.current) return;
+    onSelect();
+  }, [onSelect]);
+
   return (
     <button
-      onClick={onSelect}
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      onContextMenu={(e) => { e.preventDefault(); onDelete(); }}
       className="w-full flex items-center gap-4 px-4 py-3 text-left active:opacity-80 transition-colors"
       style={{ borderBottom: "0.5px solid var(--border)" }}
     >
