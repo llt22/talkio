@@ -140,6 +140,8 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
           setPulling(true);
           await fetchModels(savedProviderId);
           setPulling(false);
+        } else {
+          appAlert(t("providerEdit.connectionFailed", { defaultValue: "Connection failed" }));
         }
       } else {
         // New provider: test connection WITHOUT saving (1:1 RN)
@@ -154,6 +156,11 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
 
         const ok = res.ok;
         setConnected(ok);
+
+        if (!ok) {
+          const errText = await res.text().catch(() => "");
+          appAlert(t("providerEdit.connectionFailed", { defaultValue: "Connection failed" }) + `\n${res.status}: ${errText.slice(0, 200)}`);
+        }
 
         if (ok) {
           // Auto-save provider on successful connect (no separate Save needed)
@@ -190,9 +197,12 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
           setTestPulledModels([]);
         }
       }
-    } catch {
+    } catch (err: any) {
       setConnected(false);
       setTestPulledModels([]);
+      const msg = err?.message || String(err);
+      console.error("[ProviderEdit] connection error:", err);
+      appAlert(t("providerEdit.connectionFailed", { defaultValue: "Connection failed" }) + `\n${msg.slice(0, 300)}`);
     } finally {
       setTesting(false);
     }
