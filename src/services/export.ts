@@ -28,12 +28,29 @@ export function buildConversationMarkdown(args: {
   return md;
 }
 
-export function downloadMarkdownFile(filenameBase: string, markdown: string) {
+export async function downloadMarkdownFile(filenameBase: string, markdown: string) {
+  const filename = `${filenameBase.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, "_").slice(0, 50)}.md`;
+
+  if ((window as any).__TAURI_INTERNALS__) {
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+      const filePath = await save({
+        defaultPath: filename,
+        filters: [{ name: "Markdown", extensions: ["md"] }],
+      });
+      if (filePath) await writeTextFile(filePath, markdown);
+      return;
+    } catch {
+      // Fallback to browser download
+    }
+  }
+
   const blob = new Blob([markdown], { type: "text/markdown" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${filenameBase.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, "_").slice(0, 50)}.md`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }

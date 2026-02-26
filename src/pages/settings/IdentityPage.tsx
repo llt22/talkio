@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useMobileNav } from "../../contexts/MobileNavContext";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
@@ -27,6 +28,7 @@ export function IdentityPage() {
   const deleteIdentity = useIdentityStore((s: IdentityStoreState) => s.deleteIdentity);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingId, setEditingId] = useState<string | null | "new">(null);
 
   const filtered = useMemo(() =>
     searchQuery
@@ -35,7 +37,26 @@ export function IdentityPage() {
   [identities, searchQuery]);
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
+    <div className="relative flex flex-col h-full overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
+    <AnimatePresence>
+      {editingId && !mobileNav && (
+        <motion.div
+          key="identity-edit"
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "tween", duration: 0.25 }}
+          className="absolute inset-0 z-10"
+          style={{ backgroundColor: "var(--background)" }}
+        >
+          <IdentityEditPage
+            id={editingId === "new" ? undefined : editingId}
+            onClose={() => setEditingId(null)}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+    <div className="flex flex-col h-full">
       {/* Header: title + search + add */}
       <div className="flex-shrink-0 px-4 pt-2 pb-1">
         <div className="flex items-center justify-between mb-1">
@@ -48,7 +69,7 @@ export function IdentityPage() {
               <IoSearchOutline size={22} color="var(--primary)" />
             </button>
             <button
-              onClick={() => mobileNav ? mobileNav.pushIdentityNew() : navigate("/identity/new")}
+              onClick={() => mobileNav ? mobileNav.pushIdentityNew() : setEditingId("new")}
               className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
             >
               <IoAdd size={24} color="var(--primary)" />
@@ -93,7 +114,7 @@ export function IdentityPage() {
                 key={identity.id}
                 identity={identity}
                 isLast={idx === filtered.length - 1}
-                onEdit={() => mobileNav ? mobileNav.pushIdentityEdit(identity.id) : navigate(`/identity/edit/${identity.id}`)}
+                onEdit={() => mobileNav ? mobileNav.pushIdentityEdit(identity.id) : setEditingId(identity.id)}
                 onDelete={async () => {
                   const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
                   if (ok) deleteIdentity(identity.id);
@@ -103,6 +124,7 @@ export function IdentityPage() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }
