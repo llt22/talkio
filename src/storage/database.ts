@@ -136,15 +136,19 @@ function createInMemoryDb() {
 
       let rows = Array.from(tbl.values()).filter((r) => matchRow(r, conditions));
 
-      const orderMatch = sql.match(/ORDER BY\s+(\w+)\s*(ASC|DESC)?/i);
+      const orderMatch = sql.match(/ORDER BY\s+(.+?)(?:\s+LIMIT|\s*$)/i);
       if (orderMatch) {
-        const col = orderMatch[1];
-        const dir = (orderMatch[2] ?? "ASC").toUpperCase();
+        const orderCols = orderMatch[1].split(",").map((part) => {
+          const m = part.trim().match(/(\w+)\s*(ASC|DESC)?/i);
+          return m ? { col: m[1], desc: (m[2] ?? "ASC").toUpperCase() === "DESC" } : null;
+        }).filter(Boolean) as { col: string; desc: boolean }[];
         rows.sort((a, b) => {
-          const av = a[col] ?? "";
-          const bv = b[col] ?? "";
-          if (av < bv) return dir === "ASC" ? -1 : 1;
-          if (av > bv) return dir === "ASC" ? 1 : -1;
+          for (const { col, desc } of orderCols) {
+            const av = a[col] ?? "";
+            const bv = b[col] ?? "";
+            if (av < bv) return desc ? 1 : -1;
+            if (av > bv) return desc ? -1 : 1;
+          }
           return 0;
         });
       }
