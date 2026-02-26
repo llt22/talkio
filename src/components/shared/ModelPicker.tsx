@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, Check } from "lucide-react";
+import { Search, Check, CheckCircle, Circle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -125,7 +125,7 @@ export function ModelPicker({ open, onClose, onSelect, selectedModelId, multiSel
                           onClose();
                         }
                       }}
-                      className="w-full flex items-center gap-4 px-4 py-3 text-left active:opacity-70 transition-colors"
+                      className={`w-full flex items-center gap-4 px-4 py-3 text-left active:opacity-70 transition-colors ${isSelected && multiSelect ? "bg-primary/5" : ""}`}
                       style={{
                         backgroundColor: isSelected ? "color-mix(in srgb, var(--primary) 8%, var(--background))" : "var(--background)",
                         borderBottom: idx < section.data.length - 1 ? "0.5px solid var(--border)" : "none",
@@ -141,8 +141,12 @@ export function ModelPicker({ open, onClose, onSelect, selectedModelId, multiSel
                         <p className="text-[16px] font-medium text-foreground truncate">{model.displayName}</p>
                         <p className="text-[13px] text-muted-foreground truncate">{model.modelId}</p>
                       </div>
-                      {isSelected && (
-                        <Check size={18} className="text-primary flex-shrink-0" />
+                      {multiSelect ? (
+                        isSelected
+                          ? <CheckCircle size={22} className="text-primary flex-shrink-0" />
+                          : <Circle size={22} className="text-muted-foreground flex-shrink-0" />
+                      ) : (
+                        isSelected && <Check size={18} className="text-primary flex-shrink-0" />
                       )}
                     </button>
                   );
