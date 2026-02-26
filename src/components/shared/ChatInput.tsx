@@ -409,7 +409,7 @@ export const ChatInput = memo(function ChatInput({
                   placeholder={resolvedPlaceholder}
                   disabled={isGenerating}
                   rows={1}
-                  className="flex-1 min-h-[44px] max-h-24 resize-none bg-transparent text-[16px] text-foreground py-2.5 outline-none placeholder:text-muted-foreground/50"
+                  className={`flex-1 resize-none bg-transparent text-foreground outline-none placeholder:text-muted-foreground/50 ${isMobile ? 'min-h-[44px] max-h-24 text-[16px] py-2.5' : 'min-h-[36px] max-h-32 text-[14px] py-2'}`}
                 />
                 {(text.trim() || attachedImages.length > 0) && !isGenerating && (
                   <button
@@ -425,18 +425,18 @@ export const ChatInput = memo(function ChatInput({
           </div>
 
           {/* Action bar */}
-          <div className="flex items-center px-3 gap-0.5" style={{ paddingBottom: "max(4px, env(safe-area-inset-bottom, 4px))" }}>
-            <button onClick={handleAttach} className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-60" disabled={isGenerating}>
+          <div className="flex items-center px-3 gap-0.5" style={{ paddingBottom: isMobile ? "max(4px, env(safe-area-inset-bottom, 4px))" : "4px" }}>
+            <button onClick={handleAttach} className={`flex items-center justify-center rounded-full active:opacity-60 ${isMobile ? 'h-10 w-10' : 'h-8 w-8'}`} disabled={isGenerating}>
               <Image size={22} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
             </button>
 
             {isGroup && (
               <button
                 onClick={() => { setShowMentionPicker((v) => !v); setShowRoundPicker(false); }}
-                className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-60"
+                className={`flex items-center justify-center rounded-full active:opacity-60 ${isMobile ? 'h-10 w-10' : 'h-8 w-8'}`}
                 disabled={isGenerating}
               >
-                <AtSign size={20} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
+                <AtSign size={isMobile ? 20 : 18} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
               </button>
             )}
 
@@ -462,17 +462,17 @@ export const ChatInput = memo(function ChatInput({
             <div className="flex-1" />
 
             {isGenerating ? (
-              <button onClick={onStop} className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-70" style={{ backgroundColor: "var(--destructive)" }}>
+              <button onClick={onStop} className={`flex items-center justify-center rounded-full active:opacity-70 ${isMobile ? 'h-10 w-10' : 'h-8 w-8'}`} style={{ backgroundColor: "var(--destructive)" }}>
                 <Square size={14} color="white" />
               </button>
             ) : isTranscribing ? (
-              <div className="h-10 w-10 flex items-center justify-center">
+              <div className={`flex items-center justify-center ${isMobile ? 'h-10 w-10' : 'h-8 w-8'}`}>
                 <Loader2 size={20} color="var(--primary)" className="animate-spin" />
               </div>
             ) : (
               <button
                 onClick={handleMicPress}
-                className="h-10 w-10 flex items-center justify-center rounded-full active:opacity-70"
+                className={`flex items-center justify-center rounded-full active:opacity-70 ${isMobile ? 'h-10 w-10' : 'h-8 w-8'}`}
                 style={isRecording ? { backgroundColor: "var(--destructive)" } : undefined}
               >
                 {isRecording

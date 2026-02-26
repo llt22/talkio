@@ -335,7 +335,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
 
   if (isUser) {
     return (
-      <div className="mb-6 flex flex-row-reverse items-start gap-3 px-4">
+      <div className="group mb-6 flex flex-row-reverse items-start gap-3 px-4">
         {/* User Avatar */}
         <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--primary)" }}>
           <IoPerson size={20} color="white" />
@@ -360,7 +360,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
           {/* Bubble */}
           <div
             className="max-w-[80%] rounded-2xl px-4 py-3 border border-solid border-muted-foreground/20"
-            style={{ backgroundColor: "var(--primary)" }}
+            style={{ backgroundColor: "var(--primary)", maxWidth: "min(80%, 640px)" }}
           >
             <p className="text-[15px] leading-relaxed text-white whitespace-pre-wrap break-words">
               {content || (message.images?.length ? "📷" : "")}
@@ -368,7 +368,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
           </div>
 
           {/* User action bar */}
-          <div className="mr-1 flex items-center gap-0.5">
+          <div className="mr-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
             {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
           </div>
@@ -382,7 +382,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
   const { color: avatarColor, initials: avatarInitials } = getAvatarProps(senderName);
 
   return (
-    <div className="mb-6 flex items-start gap-3 px-4">
+    <div className="group mb-6 flex items-start gap-3 px-4">
       {/* AI Avatar — RN: ModelAvatar name={message.senderName} */}
       <div
         className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
@@ -405,6 +405,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
             style={{
               backgroundColor: "var(--muted)",
               borderTopLeftRadius: 0,
+              maxWidth: "min(90%, 720px)",
             }}
           >
             {isStreaming && !content && !message.reasoningContent ? (
@@ -467,6 +468,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
 
         {/* Assistant action bar — primary: copy + regenerate, secondary: ··· menu */}
         {!isStreaming && content && (
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
           <AssistantActionBar
             content={content}
             message={message}
@@ -476,6 +478,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
             onDelete={onDelete}
             t={t}
           />
+          </div>
         )}
       </div>
     </div>
