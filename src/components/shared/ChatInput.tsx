@@ -7,7 +7,8 @@ import { useProviderStore } from "../../stores/provider-store";
 import { getParticipantLabel } from "../../stores/chat-message-builder";
 import { useSettingsStore } from "../../stores/settings-store";
 import { getAvatarProps } from "../../lib/avatar-utils";
-import { appFetch, appAlert } from "../../lib/http";
+import { appFetch } from "../../lib/http";
+import { appAlert } from "../../components/shared/ConfirmDialogProvider";
 
 // ── ChatInput — 1:1 port of RN src/components/chat/ChatInput.tsx ──
 

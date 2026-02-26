@@ -2,7 +2,7 @@ import { useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { useTranslation } from "react-i18next";
 import { IoAddCircleOutline, IoTrashOutline, IoChevronBack, IoFlashOutline } from "../../icons";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
-import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
+import { useConfirm, appAlert } from "../../components/shared/ConfirmDialogProvider";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
 import { BUILT_IN_TOOLS } from "../../services/built-in-tools";
@@ -10,7 +10,6 @@ import type { CustomHeader } from "../../types";
 import { mcpConnectionManager } from "../../services/mcp/connection-manager";
 import { refreshMcpConnections } from "../../services/mcp";
 import { useBuiltInToolsStore } from "../../stores/built-in-tools-store";
-import { appAlert } from "../../lib/http";
 
 // ── MCP Tools Page (1:1 RN native style) ──
 

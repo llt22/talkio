@@ -4,7 +4,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
 import { SettingsRow, SectionHeader } from "../../pages/settings/SettingsPage";
 import { createBackup, downloadBackup, pickAndImportBackup } from "../../services/backup";
-import { appAlert } from "../../lib/http";
+import { appAlert } from "../../components/shared/ConfirmDialogProvider";
 import i18n from "../../i18n";
 
 export function SettingsMainContent() {

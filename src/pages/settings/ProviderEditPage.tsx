@@ -8,7 +8,8 @@ import { useProviderStore } from "../../stores/provider-store";
 import type { Provider, ProviderType, CustomHeader, Model } from "../../types";
 import { generateId } from "../../lib/id";
 import { buildProviderHeadersFromRaw } from "../../services/provider-headers";
-import { appFetch, appAlert } from "../../lib/http";
+import { appFetch } from "../../lib/http";
+import { appAlert } from "../../components/shared/ConfirmDialogProvider";
 
 type ProviderStoreState = ReturnType<typeof useProviderStore.getState>;
 

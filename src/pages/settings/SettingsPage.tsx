@@ -5,9 +5,8 @@ import { IoChevronForward, IoChevronBack, IoAddCircleOutline, IoTrashOutline, Io
 import i18n from "../../i18n";
 import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
-import { useConfirm } from "../../components/shared/ConfirmDialogProvider";
+import { useConfirm, appAlert } from "../../components/shared/ConfirmDialogProvider";
 import { createBackup, downloadBackup, pickAndImportBackup } from "../../services/backup";
-import { appAlert } from "../../lib/http";
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
 import { McpPage, type McpPageHandle } from "./McpPage";
