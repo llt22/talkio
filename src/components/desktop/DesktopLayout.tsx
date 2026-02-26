@@ -533,7 +533,7 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
       <ModelPicker open={showModelPicker} onClose={() => setShowModelPicker(false)} onSelect={handleModelPickerSelect} />
 
       {/* Chat */}
-      <div className="flex-1 min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 flex flex-col relative">
         <div className="flex-1 min-h-0">
           <ChatView
             conversationId={conversationId}
@@ -549,24 +549,27 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
             }}
           />
         </div>
+        {/* Scroll to bottom — floating above input */}
         <div
-          style={{
-            maxHeight: showScrollBottom ? 36 : 0,
-            opacity: showScrollBottom ? 1 : 0,
-            overflow: "hidden",
-            transition: "max-height 0.2s ease, opacity 0.2s ease",
-          }}
+          className="absolute right-4 pointer-events-none"
+          style={{ bottom: 100 }}
         >
           <button
-            onClick={() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); setShowScrollBottom(false); }}
-            className="w-full flex-shrink-0 flex items-center justify-center gap-1.5 py-1.5 hover:opacity-80 transition-opacity"
+            className="pointer-events-auto flex items-center justify-center rounded-full hover:opacity-100 transition-opacity"
             style={{
-              backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))",
-              borderTop: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
+              width: 32,
+              height: 32,
+              backgroundColor: "color-mix(in srgb, var(--muted) 85%, var(--background))",
+              border: "1px solid var(--border)",
+              boxShadow: "0 1px 6px rgba(0,0,0,0.08)",
+              opacity: showScrollBottom ? 0.75 : 0,
+              transform: showScrollBottom ? "translateY(0) scale(1)" : "translateY(6px) scale(0.9)",
+              transition: "opacity 0.2s ease, transform 0.2s ease",
+              pointerEvents: showScrollBottom ? "auto" : "none",
             }}
+            onClick={() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); setShowScrollBottom(false); }}
           >
-            <ArrowDown size={13} style={{ color: "var(--primary)" }} />
-            <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.scrollToBottom")}</span>
+            <ArrowDown size={14} style={{ color: "var(--muted-foreground)" }} />
           </button>
         </div>
       </div>
