@@ -329,34 +329,30 @@ export const ChatInput = memo(function ChatInput({
 
       {/* Auto-discuss control panel */}
       {isAutoDiscussing ? (
-        <div className="px-4 pt-3 pb-2">
-          <div className="rounded-2xl px-4 py-4" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
-            <div className="flex items-center justify-center mb-3">
-              <MessagesSquare size={20} color="var(--primary)" className="animate-pulse" />
-              <span className="ml-2 text-[15px] font-semibold" style={{ color: "var(--primary)" }}>
-                {t("chat.autoDiscussRunning")}
-              </span>
-            </div>
-            <div className="mb-3.5 rounded-full h-1.5 overflow-hidden" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }}>
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ backgroundColor: "var(--primary)", width: ((autoDiscussTotalRounds - autoDiscussRemaining + 1) / autoDiscussTotalRounds * 100) + "%" }}
-              />
-            </div>
-            <p className="text-center text-[13px] text-muted-foreground mb-4">
+        <div className="px-4 pt-3" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom, 8px))" }}>
+          <div className="flex items-center gap-2 mb-2.5">
+            <MessagesSquare size={16} color="var(--primary)" className="animate-pulse flex-shrink-0" />
+            <span className="text-[13px] font-semibold" style={{ color: "var(--primary)" }}>
+              {t("chat.autoDiscussRunning")}
+            </span>
+            <span className="text-[13px] text-muted-foreground">
               {t("chat.autoDiscussProgress", { current: autoDiscussTotalRounds - autoDiscussRemaining + 1, total: autoDiscussTotalRounds })}
-            </p>
-            <button
-              onClick={onStopAutoDiscuss}
-              className="w-full flex items-center justify-center gap-2 rounded-xl py-3 active:opacity-70"
-              style={{ backgroundColor: "var(--card)", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}
-            >
-              <div className="h-5 w-5 flex items-center justify-center rounded-full" style={{ backgroundColor: "var(--destructive)" }}>
-                <Square size={10} color="white" />
-              </div>
-              <span className="text-[14px] font-semibold" style={{ color: "var(--destructive)" }}>{t("chat.autoDiscussStop")}</span>
-            </button>
+            </span>
           </div>
+          <div className="mb-3 rounded-full h-1 overflow-hidden" style={{ backgroundColor: "var(--secondary)" }}>
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ backgroundColor: "var(--primary)", width: ((autoDiscussTotalRounds - autoDiscussRemaining + 1) / autoDiscussTotalRounds * 100) + "%" }}
+            />
+          </div>
+          <button
+            onClick={onStopAutoDiscuss}
+            className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 active:opacity-70"
+            style={{ backgroundColor: "var(--secondary)", border: "0.5px solid var(--border)" }}
+          >
+            <Square size={12} color="var(--destructive)" />
+            <span className="text-[14px] font-medium" style={{ color: "var(--destructive)" }}>{t("chat.autoDiscussStop")}</span>
+          </button>
         </div>
       ) : (
         <>
@@ -455,7 +451,6 @@ export const ChatInput = memo(function ChatInput({
               <button
                 onClick={() => { setShowRoundPicker((v) => !v); setShowMentionPicker(false); }}
                 className="flex items-center gap-1.5 rounded-full px-3 py-2 ml-0.5 active:opacity-60"
-                disabled={isGenerating}
               >
                 <MessagesSquare size={20} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
                 <span className="text-[13px] font-medium" style={{ color: isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)" }}>

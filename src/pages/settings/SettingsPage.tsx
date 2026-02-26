@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { IoChevronForward, IoChevronBack, IoAddCircleOutline, IoTrashOutline, IoAdd } from "../../icons";
 import i18n from "../../i18n";
@@ -25,11 +26,11 @@ function IonIcon({ d, color, bg, filled }: { d: string; color: string; bg: strin
 }
 
 // Internal sub-page stack
-interface SubPage { id: string; title: string; component: React.ReactNode; headerRight?: React.ReactNode; }
+export interface SubPage { id: string; title: string; component: React.ReactNode; headerRight?: React.ReactNode; }
 
 // ── Settings Row (1:1 RN SettingsRow) ──
 
-function SettingsRow({
+export function SettingsRow({
   iconPath,
   iconColor,
   iconBg,
@@ -64,7 +65,7 @@ function SettingsRow({
   );
 }
 
-function SectionHeader({ label }: { label: string }) {
+export function SectionHeader({ label }: { label: string }) {
   return (
     <div className="px-5 py-1.5" style={{ backgroundColor: "var(--secondary)" }}>
       <p className="text-[13px] font-semibold text-muted-foreground">{label}</p>
@@ -81,46 +82,53 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
   const updateSettings = useSettingsStore((s: ReturnType<typeof useSettingsStore.getState>) => s.updateSettings);
   const [subPageStack, setSubPageStack] = useState<SubPage[]>([]);
   const mcpRef = useRef<McpPageHandle>(null);
+  const stackRef = useRef(subPageStack);
+  stackRef.current = subPageStack;
 
-  const push = (page: SubPage) => {
-    setSubPageStack((s) => {
-      const next = [...s, page];
-      if (next.length === 1) onSubPageChange?.(true);
-      return next;
-    });
-  };
-  const pop = () => {
+  // Pop triggered internally (from popstate or direct call)
+  const popInternal = useCallback(() => {
     setSubPageStack((s) => {
       const next = s.slice(0, -1);
       if (next.length === 0) onSubPageChange?.(false);
       return next;
     });
-  };
+  }, [onSubPageChange]);
 
-  // Sub-page with back header
-  if (subPageStack.length > 0) {
-    const top = subPageStack[subPageStack.length - 1];
-    return (
-      <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
-        <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)" }}>
-          <button onClick={pop} className="w-12 flex items-center justify-center active:opacity-60">
-            <IoChevronBack size={24} color="var(--primary)" />
-          </button>
-          <span className="text-[17px] font-semibold text-foreground flex-1 text-center">{top.title}</span>
-          <div className="w-12 flex items-center justify-center">
-            {top.headerRight ?? null}
-          </div>
-        </div>
-        <div className="flex-1 min-h-0 overflow-hidden">{top.component}</div>
-      </div>
-    );
-  }
+  const push = useCallback((page: SubPage) => {
+    setSubPageStack((s) => {
+      const next = [...s, page];
+      if (next.length === 1) onSubPageChange?.(true);
+      return next;
+    });
+    window.history.pushState({ settingsSubPage: true }, "");
+  }, [onSubPageChange]);
+
+  const pop = useCallback(() => {
+    if (stackRef.current.length > 0) {
+      window.history.back();
+    }
+  }, []);
+
+  // Listen for browser back (Android back button triggers this)
+  useEffect(() => {
+    const handler = (e: PopStateEvent) => {
+      if (stackRef.current.length > 0) {
+        popInternal();
+      }
+    };
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, [popInternal]);
+
+  const top = subPageStack.length > 0 ? subPageStack[subPageStack.length - 1] : null;
 
   const themeLabel = settings.theme === "dark" ? t("settings.themeDark") : settings.theme === "light" ? t("settings.themeLight") : t("settings.themeSystem");
   const langLabel = settings.language === "zh" ? t("settings.langZh") : settings.language === "en" ? t("settings.langEn") : t("settings.langSystem");
 
   return (
-    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+    <div className="h-full w-full relative overflow-hidden">
+      {/* Main settings list — always mounted */}
+      <div className="absolute inset-0 overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
       {/* iOS Large Title */}
       <div className="px-4 pt-2 pb-2">
         <h1 className="text-[20px] font-bold text-foreground tracking-tight">{t("settings.title")}</h1>
@@ -251,13 +259,40 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
           <p className="mt-1 text-xs text-muted-foreground">v2.0.0</p>
         </div>
       </div>
+      </div>
+
+      {/* Sub-pages slide over, each layer on top of the previous */}
+      <AnimatePresence>
+        {subPageStack.map((page, index) => (
+          <motion.div
+            key={page.id}
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "tween", duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            className="absolute inset-0 flex flex-col"
+            style={{ backgroundColor: "var(--background)", zIndex: index + 1 }}
+          >
+            <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)" }}>
+              <button onClick={pop} className="w-12 flex items-center justify-center active:opacity-60">
+                <IoChevronBack size={24} color="var(--primary)" />
+              </button>
+              <span className="text-[17px] font-semibold text-foreground flex-1 text-center">{page.title}</span>
+              <div className="w-12 flex items-center justify-center">
+                {page.headerRight ?? null}
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">{page.component}</div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
 
 // ── Providers List Sub-page (1:1 RN original) ──
 
-function ProvidersListPage({
+export function ProvidersListPage({
   onPush,
   onPop,
 }: {

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { useMobileNav } from "../../contexts/MobileNavContext";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { IoPersonOutline, IoAddCircleOutline, IoTrashOutline, IoChevronForward, IoChevronBack, IoSearchOutline, IoCloseCircle, IoAdd, IoSparkles } from "../../icons";
@@ -21,6 +22,7 @@ export function IdentityPage() {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const navigate = useNavigate();
+  const mobileNav = useMobileNav();
   const identities = useIdentityStore((s: IdentityStoreState) => s.identities);
   const deleteIdentity = useIdentityStore((s: IdentityStoreState) => s.deleteIdentity);
   const [showSearch, setShowSearch] = useState(false);
@@ -46,7 +48,7 @@ export function IdentityPage() {
               <IoSearchOutline size={22} color="var(--primary)" />
             </button>
             <button
-              onClick={() => navigate("/identity/new")}
+              onClick={() => mobileNav ? mobileNav.pushIdentityNew() : navigate("/identity/new")}
               className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
             >
               <IoAdd size={24} color="var(--primary)" />
@@ -91,7 +93,7 @@ export function IdentityPage() {
                 key={identity.id}
                 identity={identity}
                 isLast={idx === filtered.length - 1}
-                onEdit={() => navigate(`/identity/edit/${identity.id}`)}
+                onEdit={() => mobileNav ? mobileNav.pushIdentityEdit(identity.id) : navigate(`/identity/edit/${identity.id}`)}
                 onDelete={async () => {
                   const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
                   if (ok) deleteIdentity(identity.id);
@@ -107,10 +109,12 @@ export function IdentityPage() {
 
 // ── Identity Edit Page (full-screen route) ──
 
-export function IdentityEditPage() {
+export function IdentityEditPage({ id: idProp, onClose: onCloseProp }: { id?: string; onClose?: () => void } = {}) {
   const { t } = useTranslation();
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const id = idProp ?? routeId;
+  const goBack = onCloseProp ?? (() => navigate(-1));
   const getIdentityById = useIdentityStore((s) => s.getIdentityById);
   const addIdentity = useIdentityStore((s) => s.addIdentity);
   const updateIdentity = useIdentityStore((s) => s.updateIdentity);
@@ -123,14 +127,14 @@ export function IdentityEditPage() {
     } else {
       addIdentity(data);
     }
-    navigate(-1);
-  }, [existing, addIdentity, updateIdentity, navigate]);
+    goBack();
+  }, [existing, addIdentity, updateIdentity, goBack]);
 
   return (
     <IdentityForm
       identity={existing}
       onSave={handleSave}
-      onClose={() => navigate(-1)}
+      onClose={goBack}
     />
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { useMobileNav } from "../../contexts/MobileNavContext";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { IoSearchOutline, IoCloseCircle, IoPeopleOutline, IoChevronForward, IoCheckmarkCircle, IoChatbubbles } from "../../icons";
@@ -35,6 +36,7 @@ interface ModelsPageProps {
 export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPageProps = {}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const mobileNav = useMobileNav();
   const models = useProviderStore((s) => s.models);
   const enabledModels = useMemo(() => models.filter((m: Model) => m.enabled), [models]);
   const getProviderById = useProviderStore((s) => s.getProviderById);
@@ -46,8 +48,9 @@ export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPagePro
 
   const goToChat = useCallback((convId: string) => {
     if (onNavigateToChat) onNavigateToChat(convId);
+    else if (mobileNav) mobileNav.pushChat(convId);
     else navigate(`/chat/${convId}`);
-  }, [onNavigateToChat, navigate]);
+  }, [onNavigateToChat, mobileNav, navigate]);
 
   const filtered = useMemo(() => enabledModels.filter((m: Model) =>
     searchQuery

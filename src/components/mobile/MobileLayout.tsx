@@ -1,14 +1,13 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { useMobileNav } from "../../contexts/MobileNavContext";
 import { IoChatbubbles, IoCube, IoPersonCircle, IoSettings, IoChevronBack, IoPeopleOutline, IoCaretDown, IoCaretUp, IoPersonOutline, IoShareOutline, IoCreateOutline, IoSearchOutline, IoCloseCircle, IoSparkles, IoChatbubbleOutline, IoArrowDown, IoAddCircleOutline, IoTrashOutline, IoPersonAddOutline, IoEllipsisHorizontal } from "../../icons";
 import { ChatView } from "../shared/ChatView";
 import { ModelPicker } from "../shared/ModelPicker";
-import { SettingsPage } from "../../pages/settings/SettingsPage";
+import { MobileStack } from "./MobileStack";
+import { SettingsMainContent } from "./SettingsMainContent";
 import { DiscoverPage } from "../../pages/DiscoverPage";
 import { ModelsPage } from "../../pages/settings/ModelsPage";
-import { IdentityEditPage } from "../../pages/settings/IdentityPage";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
 import { useConversations } from "../../hooks/useDatabase";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
@@ -57,69 +56,13 @@ function loadInitialMobileTab(): MobileTab {
   return "chats";
 }
 
-// Detail routes that slide in from the right
-const DETAIL_PATHS = ["/chat/", "/identity/"];
-function isDetailPath(path: string) {
-  return DETAIL_PATHS.some((p) => path.startsWith(p));
-}
-
 export function MobileLayout() {
-  const location = useLocation();
-  const isDetail = isDetailPath(location.pathname);
-
-  return (
-    <div className="h-full w-full relative overflow-hidden">
-      {/* Tab layout is always mounted underneath */}
-      <div className="absolute inset-0">
-        <Routes>
-          <Route path="*" element={<MobileTabLayout />} />
-        </Routes>
-      </div>
-
-      {/* Detail pages slide over the top */}
-      <AnimatePresence>
-        {isDetail && (
-          <motion.div
-            key={location.pathname}
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "tween", duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-            className="absolute inset-0 z-10"
-            style={{ backgroundColor: "var(--background)" }}
-          >
-            <Routes location={location}>
-              <Route path="/chat/:id" element={<MobileChatDetailRoute />} />
-              <Route path="/identity/new" element={<IdentityEditPage />} />
-              <Route path="/identity/edit/:id" element={<IdentityEditPage />} />
-            </Routes>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ── Chat Detail Route (uses react-router for back navigation) ──
-
-function MobileChatDetailRoute() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const setCurrentConversation = useChatStore((s) => s.setCurrentConversation);
-
-  // Sync store with route param
-  useEffect(() => {
-    if (id) setCurrentConversation(id);
-    return () => setCurrentConversation(null);
-  }, [id, setCurrentConversation]);
-
-  if (!id) return null;
-  return <MobileChatDetail conversationId={id} onBack={() => navigate(-1)} />;
+  return <MobileStack />;
 }
 
 // ── Tab Layout ──
 
-function MobileTabLayout() {
+export function MobileTabLayout() {
   const { t } = useTranslation();
   const [activeTab, setActiveTabState] = useState<MobileTab>(() => loadInitialMobileTab());
   const setActiveTab = useCallback((tab: MobileTab) => {
@@ -127,8 +70,6 @@ function MobileTabLayout() {
     setActiveTabState(tab);
   }, []);
   const tabBg = "var(--background)";
-  const [settingsInSubPage, setSettingsInSubPage] = useState(false);
-  const hideTabBar = settingsInSubPage && activeTab === "settings";
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: tabBg }}>
@@ -144,12 +85,12 @@ function MobileTabLayout() {
           <DiscoverPage />
         </div>
         <div className="absolute inset-0" style={{ display: activeTab === "settings" ? undefined : "none" }}>
-          <SettingsPage onSubPageChange={setSettingsInSubPage} />
+          <SettingsMainContent />
         </div>
       </div>
 
       {/* Bottom Tab Bar — iOS native style */}
-      {!hideTabBar && <div
+      <div
         className="flex-shrink-0 flex items-center justify-around px-2 pt-1.5"
         style={{
           paddingBottom: "max(6px, env(safe-area-inset-bottom, 6px))",
@@ -170,14 +111,14 @@ function MobileTabLayout() {
             <span className="text-[10px] font-medium leading-tight">{t(labelKey)}</span>
           </button>
         ))}
-      </div>}
+      </div>
     </div>
   );
 }
 
 // ── Chat Detail (1:1 RN ChatDetailScreen) ──
 
-function MobileChatDetail({ conversationId, onBack }: { conversationId: string; onBack: () => void }) {
+export function MobileChatDetail({ conversationId, onBack }: { conversationId: string; onBack: () => void }) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const keyboardHeight = useKeyboardHeight();
@@ -493,7 +434,7 @@ type FilterType = "all" | "single" | "group";
 function MobileConversationList({ onNavigateToExperts, onNavigateToSettings }: { onNavigateToExperts: () => void; onNavigateToSettings: () => void }) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
-  const navigate = useNavigate();
+  const mobileNav = useMobileNav();
   const conversations = useConversations();
   const deleteConversation = useChatStore((s) => s.deleteConversation);
   const providers = useProviderStore((s) => s.providers);
@@ -583,7 +524,7 @@ function MobileConversationList({ onNavigateToExperts, onNavigateToSettings }: {
             <ConversationItem
               key={conv.id}
               conversation={conv}
-              onSelect={() => navigate(`/chat/${conv.id}`)}
+              onSelect={() => mobileNav?.pushChat(conv.id)}
               onDelete={async () => {
                 const ok = await confirm({
                   title: t("common.areYouSure"),

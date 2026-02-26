@@ -701,12 +701,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   startAutoDiscuss: async (rounds: number, topicText?: string) => {
     const convId = get().currentConversationId;
-    if (!convId || get().isGenerating) return;
+    if (!convId) return;
 
     const conv = await getConversation(convId);
     if (!conv || conv.type !== "group" || conv.participants.length < 2) return;
 
     set({ autoDiscussRemaining: rounds, autoDiscussTotalRounds: rounds });
+
+    // Wait for any in-progress generation to finish before starting
+    while (get().isGenerating) {
+      await new Promise((r) => setTimeout(r, 300));
+      if (get().autoDiscussRemaining <= 0) return; // stopped while waiting
+    }
 
     // First round: send topicText (or continue prompt) as user message
     const firstMsg = topicText?.trim() || i18n.t("chat.continue", { defaultValue: "Continue" });

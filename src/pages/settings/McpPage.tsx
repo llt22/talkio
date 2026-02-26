@@ -381,7 +381,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
 
 // ── MCP Server Form (full-screen, 1:1 RN tool-edit.tsx) ──
 
-function McpServerForm({
+export function McpServerForm({
   server,
   onClose,
 }: {
