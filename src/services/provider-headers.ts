@@ -1,21 +1,25 @@
 import type { CustomHeader, Provider } from "../types";
 
+function build(
+  apiKey: string,
+  customHeaders: CustomHeader[],
+  extra?: Record<string, string>,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    ...(extra ?? {}),
+  };
+  for (const h of customHeaders) {
+    if (h.name && h.value) headers[h.name] = h.value;
+  }
+  return headers;
+}
+
 export function buildProviderHeaders(
   provider: Provider,
   extra?: Record<string, string>,
 ): Record<string, string> {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${provider.apiKey}`,
-    ...(extra ?? {}),
-  };
-
-  if (provider.customHeaders) {
-    for (const h of provider.customHeaders as CustomHeader[]) {
-      if (h.name && h.value) headers[h.name] = h.value;
-    }
-  }
-
-  return headers;
+  return build(provider.apiKey, (provider.customHeaders ?? []) as CustomHeader[], extra);
 }
 
 export function buildProviderHeadersFromRaw(args: {
@@ -23,12 +27,5 @@ export function buildProviderHeadersFromRaw(args: {
   customHeaders: CustomHeader[];
   extra?: Record<string, string>;
 }): Record<string, string> {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${args.apiKey}`,
-    ...(args.extra ?? {}),
-  };
-  for (const h of args.customHeaders) {
-    if (h.name && h.value) headers[h.name] = h.value;
-  }
-  return headers;
+  return build(args.apiKey, args.customHeaders, args.extra);
 }

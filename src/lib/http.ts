@@ -1,33 +1,26 @@
-let tauriFetch: typeof globalThis.fetch | null = null;
-let resolved = false;
+// On mobile (Android/iOS) we must use Tauri's HTTP plugin to bypass CORS.
+// On desktop we use native fetch + CSP connect-src * instead, because
+// Tauri HTTP plugin scope matching fails for IP:port URLs on macOS.
+let _fetch: typeof globalThis.fetch | null = null;
 
-// Detect if running on mobile (Android/iOS) where Tauri fetch is needed to bypass CORS.
-// On desktop (macOS/Windows/Linux), use native browser fetch with CSP connect-src * instead,
-// because Tauri HTTP plugin scope matching has issues with IP:port URLs on macOS.
-function isMobilePlatform(): boolean {
-  const ua = navigator.userAgent.toLowerCase();
-  return /android|iphone|ipad|ipod/i.test(ua) || (window as any).__TAURI_IOS__ || (window as any).__TAURI_ANDROID__;
-}
-
-async function ensureTauriFetch(): Promise<typeof globalThis.fetch> {
-  if (resolved) return tauriFetch ?? globalThis.fetch;
-  resolved = true;
-  if ((window as any).__TAURI_INTERNALS__ && isMobilePlatform()) {
+async function resolve(): Promise<typeof globalThis.fetch> {
+  if (_fetch) return _fetch;
+  const w = window as any;
+  const isMobile = !!w.__TAURI_IOS__ || !!w.__TAURI_ANDROID__;
+  if (w.__TAURI_INTERNALS__ && isMobile) {
     try {
       const mod = await import("@tauri-apps/plugin-http");
-      tauriFetch = mod.fetch as unknown as typeof globalThis.fetch;
-    } catch {
-      // fallback to browser fetch
-    }
+      _fetch = mod.fetch as unknown as typeof globalThis.fetch;
+      return _fetch;
+    } catch { /* fallback */ }
   }
-  return tauriFetch ?? globalThis.fetch;
+  _fetch = globalThis.fetch.bind(globalThis);
+  return _fetch;
 }
 
 export async function appFetch(
   input: string | URL | Request,
   init?: RequestInit,
 ): Promise<Response> {
-  const fn = await ensureTauriFetch();
-  return fn(input, init);
+  return (await resolve())(input, init);
 }
-
