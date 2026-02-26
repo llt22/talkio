@@ -540,7 +540,8 @@ function MobileConversationList({ onNavigateToExperts, onNavigateToSettings }: {
               onSelect={() => mobileNav?.pushChat(conv.id)}
               onDelete={async () => {
                 const ok = await confirm({
-                  title: t("common.areYouSure"),
+                  title: t("chat.deleteConversation"),
+                  description: t("chat.deleteConversationConfirm"),
                   destructive: true,
                 });
                 if (ok) deleteConversation(conv.id);

@@ -98,7 +98,9 @@
     "autoDiscussRunning": "Auto-pilot",
     "autoDiscussStop": "Stop",
     "autoDiscussNeedMessage": "Send a message first to set the discussion topic",
-    "scrollToBottom": "Scroll to latest"
+    "scrollToBottom": "Scroll to latest",
+    "deleteConversation": "Delete Conversation",
+    "deleteConversationConfirm": "This conversation and all its messages will be permanently deleted."
   },
   "models": {
     "title": "Models",

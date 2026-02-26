@@ -98,7 +98,9 @@
     "autoDiscussRunning": "托管中",
     "autoDiscussStop": "取消托管",
     "autoDiscussNeedMessage": "请先发送一条消息作为讨论话题",
-    "scrollToBottom": "滚动到最新"
+    "scrollToBottom": "滚动到最新",
+    "deleteConversation": "删除对话",
+    "deleteConversationConfirm": "此对话及所有消息将被永久删除。"
   },
   "models": {
     "title": "模型",
