@@ -31,6 +31,10 @@ ios/
 *.key
 *.mobileprovision
 
+# Local drafts
+docs/forum-post.md
+docs/release-*.md
+
 # Environment
 .env
 .env.local
