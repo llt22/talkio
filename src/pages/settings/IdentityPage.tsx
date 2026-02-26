@@ -306,7 +306,7 @@ function IdentityForm({
   }, []);
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--secondary)" }}>
+    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--secondary)", paddingTop: "env(safe-area-inset-top, 0px)" }}>
       {/* iOS Navigation Bar */}
       <div className="flex-shrink-0 flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)", borderBottom: "0.5px solid var(--border)" }}>
         <button onClick={onClose} className="min-w-[60px] flex items-center px-2 active:opacity-60">

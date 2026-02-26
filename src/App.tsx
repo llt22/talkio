@@ -82,9 +82,6 @@ export default function App() {
         <TooltipProvider>
           <div
             className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground antialiased"
-            style={{
-              paddingTop: "env(safe-area-inset-top, 0px)",
-            }}
           >
             <div className="flex-1 min-h-0 relative">
               {ready ? (

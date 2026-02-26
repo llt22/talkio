@@ -72,7 +72,7 @@ export function MobileTabLayout() {
   const tabBg = "var(--background)";
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: tabBg }}>
+    <div className="flex flex-col h-full" style={{ backgroundColor: tabBg, paddingTop: "env(safe-area-inset-top, 0px)" }}>
       {/* Tab Content — keep all tabs mounted, hide inactive with display:none to preserve state */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
         <div className="absolute inset-0" style={{ display: activeTab === "chats" ? undefined : "none" }}>
@@ -223,7 +223,7 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
   }, [conv, messages, isExporting, t]);
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)", paddingBottom: keyboardHeight > 0 ? keyboardHeight : undefined }}>
+    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)", paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: keyboardHeight > 0 ? keyboardHeight : undefined }}>
       {/* Header */}
       <div className="flex-shrink-0 relative flex items-center px-1 py-2" style={{ backgroundColor: "var(--background)", borderBottom: "0.5px solid var(--border)" }}>
         <button className="flex items-center gap-0.5 px-2 py-1 active:opacity-60 z-10" onClick={onBack}>
