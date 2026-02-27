@@ -16,6 +16,7 @@ import { ProviderEditPage } from "../../pages/settings/ProviderEditPage";
 import { SttSettingsPage } from "../../pages/settings/SttSettingsPage";
 import { McpPage, McpServerForm } from "../../pages/settings/McpPage";
 import { IdentityEditPage } from "../../pages/settings/IdentityPage";
+import { AddMemberContent, type SelectedMember } from "../shared/AddMemberPicker";
 import { MobileTabLayout, MobileChatDetail } from "./MobileLayout";
 import { MobileNavContext, type MobileNavFunctions } from "../../contexts/MobileNavContext";
 
@@ -45,6 +46,7 @@ const Home: ActivityComponentType = () => {
 
   const nav: MobileNavFunctions = useMemo(() => ({
     pushChat: (conversationId: string) => push("ChatDetail", { conversationId }),
+    pushAddMember: (conversationId?: string) => push("AddMember", { conversationId: conversationId ?? "" }),
     pushIdentityNew: () => push("IdentityNew", {}),
     pushIdentityEdit: (id: string) => push("IdentityEdit", { identityId: id }),
     pushSettingsProviders: () => push("ProvidersList", {}),
@@ -79,6 +81,42 @@ const ChatDetail: ActivityComponentType<{ conversationId: string }> = ({ params 
   return (
     <AppScreen>
       <MobileChatDetail conversationId={params.conversationId} onBack={() => pop()} />
+    </AppScreen>
+  );
+};
+
+// ══════════════════════════════════════════
+// Activity: Add Member (full-screen, shared for create group & add to existing)
+// ══════════════════════════════════════════
+const AddMember: ActivityComponentType<{ conversationId: string }> = ({ params }) => {
+  const { t } = useTranslation();
+  const { pop, push } = _useFlow();
+  const createConversation = useChatStore((s) => s.createConversation);
+  const addParticipants = useChatStore((s) => s.addParticipants);
+  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
+
+  const isCreateMode = !params.conversationId;
+
+  const handleConfirm = async (members: SelectedMember[]) => {
+    if (isCreateMode) {
+      const conv = await createConversation(members[0].modelId, undefined, members);
+      pop();
+      setTimeout(() => push("ChatDetail", { conversationId: conv.id }), 100);
+    } else {
+      await addParticipants(params.conversationId, members);
+      pop();
+    }
+  };
+
+  return (
+    <AppScreen appBar={{ title: isCreateMode ? t("models.createGroup", { count: 0 }).replace(" (0)", "") : t("chat.addMember") }}>
+      <div className="h-full flex flex-col" style={{ backgroundColor: "var(--background)" }}>
+        <AddMemberContent
+          onConfirm={handleConfirm}
+          minMembers={isCreateMode ? 2 : 1}
+          confirmLabel={isCreateMode ? t("models.createGroup", { count: 0 }).replace("(0)", "").trim() : undefined}
+        />
+      </div>
     </AppScreen>
   );
 };
@@ -293,6 +331,7 @@ const result = stackflow({
   activities: {
     Home,
     ChatDetail,
+    AddMember,
     IdentityNew,
     IdentityEdit,
     ProvidersList,

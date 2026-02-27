@@ -1,5 +1,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useMobileNav } from "../../contexts/MobileNavContext";
 import { IoChatbubbles, IoCube, IoPersonCircle, IoSettings, IoChevronBack, IoPeopleOutline, IoCaretDown, IoCaretUp, IoPersonOutline, IoShareOutline, IoCreateOutline, IoSearchOutline, IoCloseCircle, IoSparkles, IoChatbubbleOutline, IoArrowDown, IoAddCircleOutline, IoTrashOutline, IoPersonAddOutline, IoEllipsisHorizontal } from "../../icons";
 import { ChatView } from "../shared/ChatView";
@@ -13,7 +16,7 @@ import { useConversations } from "../../hooks/useDatabase";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
 import { useProviderStore } from "../../stores/provider-store";
 import { useIdentityStore } from "../../stores/identity-store";
-import type { Conversation, Identity } from "../../types";
+import type { Conversation, ConversationParticipant, Identity } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { exportConversationAsMarkdown } from "../../services/export";
 import i18n from "../../i18n";
@@ -121,6 +124,7 @@ export function MobileTabLayout() {
 export function MobileChatDetail({ conversationId, onBack }: { conversationId: string; onBack: () => void }) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
+  const mobileNav = useMobileNav();
   const keyboardHeight = useKeyboardHeight();
   const {
     conv,
@@ -145,11 +149,17 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
     setIsExporting,
     handleModelPickerSelect,
     handleMultiModelSelect,
+    handleAddMembers,
     modelPickerMode,
+    showAddMemberPicker,
+    setShowAddMemberPicker,
   } = useChatPanelState(conversationId);
 
+  const renameConversation = useChatStore((s) => s.renameConversation);
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   // Optimistic identity id — updates immediately on selection, before DB roundtrip
@@ -233,6 +243,18 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
         </button>
 
         {/* Tappable center title — absolute centered, symmetric padding matches button widths */}
+        {isEditingTitle ? (
+          <div className="absolute inset-y-0 flex items-center justify-center" style={{ left: 48, right: 48 }}>
+            <input
+              autoFocus
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onBlur={() => { renameConversation(conversationId, editTitle); setIsEditingTitle(false); }}
+              onKeyDown={(e) => { if (e.key === "Enter") { renameConversation(conversationId, editTitle); setIsEditingTitle(false); } if (e.key === "Escape") setIsEditingTitle(false); }}
+              className="text-sm font-bold text-foreground bg-transparent border-b border-primary outline-none text-center w-full mx-4"
+            />
+          </div>
+        ) : (
         <button
           className="absolute inset-y-0 flex flex-col items-center justify-center active:opacity-70"
           style={{ left: 48, right: 48 }}
@@ -248,6 +270,7 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
             }
           </div>
         </button>
+        )}
 
         {/* Right: single ··· more button */}
         <div className="ml-auto z-10 relative">
@@ -266,9 +289,18 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
                 className="absolute right-0 top-full mt-1 z-30 min-w-[180px] rounded-xl py-1 shadow-lg"
                 style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
               >
+                {isGroup && (
+                  <button
+                    className="w-full flex items-center gap-3 px-4 py-3 active:opacity-60"
+                    onClick={() => { setShowMoreMenu(false); setEditTitle(conv?.title ?? ""); setIsEditingTitle(true); }}
+                  >
+                    <IoCreateOutline size={18} color="var(--foreground)" />
+                    <span className="text-[14px] text-foreground">{t("chat.rename")}</span>
+                  </button>
+                )}
                 <button
                   className="w-full flex items-center gap-3 px-4 py-3 active:opacity-60"
-                  onClick={() => { setShowMoreMenu(false); setModelPickerMode("add"); setShowModelPicker(true); }}
+                  onClick={() => { setShowMoreMenu(false); mobileNav?.pushAddMember(conversationId); }}
                 >
                   <IoPersonAddOutline size={18} color="var(--foreground)" />
                   <span className="text-[14px] text-foreground">{t("chat.addMember")}</span>
@@ -307,47 +339,45 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
       {/* Group participant panel */}
       {isGroup && showParticipants && conv && (
         <div className="flex-shrink-0 border-b px-4 py-2" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-          {conv.participants.map((p) => {
-            const pModel = getModelById(p.modelId);
-            const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
-            const displayName = pModel?.displayName ?? p.modelId;
-            const displayNameWithRole = pIdentity?.name ? `${displayName}（${pIdentity.name}）` : displayName;
-            const { initials } = getAvatarProps(displayName);
-            return (
-              <div key={p.id} className="flex items-center gap-3 py-2.5">
-                <div className="h-8 w-8 flex items-center justify-center rounded-full" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }}>
-                  <span className="text-xs font-bold text-primary">{initials}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-medium text-foreground truncate">{displayNameWithRole}</p>
-                  <p className="text-[12px] text-muted-foreground truncate">{pIdentity ? pIdentity.name : t("chat.noIdentity")}</p>
-                </div>
-                <button
-                  className="p-1.5 active:opacity-60"
-                  onClick={() => { setEditingParticipantId(p.id); setShowParticipants(false); setShowIdentityPanel(true); }}
-                >
-                  <IoPersonOutline size={16} color="var(--primary)" />
-                </button>
-                <button
-                  className="p-1.5 active:opacity-60"
-                  onClick={async () => {
-                    const ok = await confirm({
-                      title: t("common.areYouSure"),
-                      description: `${t("chat.removeMember")}: ${displayName}`,
-                      destructive: true,
-                    });
-                    if (ok) removeParticipant(conversationId, p.id);
-                  }}
-                >
-                  <IoTrashOutline size={16} color="var(--destructive)" />
-                </button>
-              </div>
-            );
-          })}
+          {/* Speaking order toggle */}
+          <div className="flex items-center gap-2 mb-2 pb-2" style={{ borderBottom: "0.5px solid var(--border)" }}>
+            <span className="text-[11px] text-muted-foreground font-medium">{t("chat.speakingOrder")}</span>
+            <div className="flex-1" />
+            <button
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium active:opacity-60 ${
+                (conv.speakingOrder ?? "sequential") === "sequential" ? "text-primary" : "text-muted-foreground"
+              }`}
+              style={(conv.speakingOrder ?? "sequential") === "sequential" ? { backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)" } : {}}
+              onClick={() => useChatStore.getState().updateSpeakingOrder(conversationId, "sequential")}
+            >
+              {t("chat.sequential")}
+            </button>
+            <button
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium active:opacity-60 ${
+                conv.speakingOrder === "random" ? "text-primary" : "text-muted-foreground"
+              }`}
+              style={conv.speakingOrder === "random" ? { backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)" } : {}}
+              onClick={() => useChatStore.getState().updateSpeakingOrder(conversationId, "random")}
+            >
+              {t("chat.random")}
+            </button>
+          </div>
+          <MobileDndParticipantList
+            participants={conv.participants}
+            conversationId={conversationId}
+            isSequential={(conv.speakingOrder ?? "sequential") === "sequential"}
+            getModelById={getModelById}
+            getIdentityById={getIdentityById}
+            onEditRole={(pid) => { setEditingParticipantId(pid); setShowParticipants(false); setShowIdentityPanel(true); }}
+            onRemove={async (pid, name) => {
+              const ok = await confirm({ title: t("common.areYouSure"), description: `${t("chat.removeMember")}: ${name}`, destructive: true });
+              if (ok) removeParticipant(conversationId, pid);
+            }}
+          />
           <button
             className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 mt-1 mb-1 border border-dashed active:opacity-60"
             style={{ borderColor: "var(--border)" }}
-            onClick={() => { setModelPickerMode("add"); setShowModelPicker(true); }}
+            onClick={() => mobileNav?.pushAddMember(conversationId)}
           >
             <IoAddCircleOutline size={18} color="var(--primary)" />
             <span className="text-[13px] font-medium text-primary">{t("chat.addMember")}</span>
@@ -597,6 +627,114 @@ function OnboardingOrEmpty({ hasProviders, onNew, onNavigateToSettings }: { hasP
   );
 }
 
+// ── Drag-sortable participant list (mobile) ──
+
+function MobileSortableRow({
+  participant: p,
+  index: idx,
+  getModelById,
+  getIdentityById,
+  onEditRole,
+  onRemove,
+  isSequential,
+}: {
+  participant: ConversationParticipant;
+  index: number;
+  getModelById: (id: string) => any;
+  getIdentityById: (id: string) => any;
+  onEditRole: () => void;
+  onRemove: () => void;
+  isSequential: boolean;
+}) {
+  const { t } = useTranslation();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
+  const pModel = getModelById(p.modelId);
+  const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
+  const displayName = pModel?.displayName ?? p.modelId;
+  const { initials } = getAvatarProps(displayName);
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-3 py-2.5">
+      {isSequential && (
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing flex-shrink-0 p-0.5 touch-none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="5" r="1.5" fill="var(--muted-foreground)"/><circle cx="16" cy="5" r="1.5" fill="var(--muted-foreground)"/><circle cx="8" cy="12" r="1.5" fill="var(--muted-foreground)"/><circle cx="16" cy="12" r="1.5" fill="var(--muted-foreground)"/><circle cx="8" cy="19" r="1.5" fill="var(--muted-foreground)"/><circle cx="16" cy="19" r="1.5" fill="var(--muted-foreground)"/></svg>
+        </button>
+      )}
+      <span className="text-[11px] text-muted-foreground w-4 text-center flex-shrink-0">{idx + 1}</span>
+      <div className="h-8 w-8 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }}>
+        <span className="text-xs font-bold text-primary">{initials}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-medium text-foreground truncate">{displayName}</p>
+        <button className="text-[12px] text-muted-foreground truncate active:opacity-60 text-left" onClick={onEditRole}>
+          {pIdentity ? pIdentity.name : t("chat.noIdentity")}
+        </button>
+      </div>
+      <button className="p-1.5 active:opacity-60" onClick={onEditRole}>
+        <IoPersonOutline size={16} color="var(--primary)" />
+      </button>
+      <button className="p-1.5 active:opacity-60" onClick={onRemove}>
+        <IoTrashOutline size={16} color="var(--destructive)" />
+      </button>
+    </div>
+  );
+}
+
+function MobileDndParticipantList({
+  participants,
+  conversationId,
+  isSequential,
+  getModelById,
+  getIdentityById,
+  onEditRole,
+  onRemove,
+}: {
+  participants: ConversationParticipant[];
+  conversationId: string;
+  isSequential: boolean;
+  getModelById: (id: string) => any;
+  getIdentityById: (id: string) => any;
+  onEditRole: (participantId: string) => void;
+  onRemove: (participantId: string, displayName: string) => void;
+}) {
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } });
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } });
+  const sensors = useSensors(pointerSensor, touchSensor);
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={(event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+          const ids = participants.map((pp) => pp.id);
+          const oldIdx = ids.indexOf(active.id as string);
+          const newIdx = ids.indexOf(over.id as string);
+          useChatStore.getState().reorderParticipants(conversationId, arrayMove(ids, oldIdx, newIdx));
+        }
+      }}
+    >
+      <SortableContext items={participants.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+        {participants.map((p, idx) => (
+          <MobileSortableRow
+            key={p.id}
+            participant={p}
+            index={idx}
+            getModelById={getModelById}
+            getIdentityById={getIdentityById}
+            onEditRole={() => onEditRole(p.id)}
+            onRemove={() => {
+              const m = getModelById(p.modelId);
+              onRemove(p.id, m?.displayName ?? p.modelId);
+            }}
+            isSequential={isSequential}
+          />
+        ))}
+      </SortableContext>
+    </DndContext>
+  );
+}
+
 // ── Conversation Item (1:1 RN original with ModelAvatar + status dot) ──
 
 function ConversationItem({
@@ -660,13 +798,22 @@ function ConversationItem({
     >
       {/* Avatar with status dot (1:1 RN) */}
       <div className="relative flex-shrink-0">
-        <div
-          className="h-12 w-12 rounded-full flex items-center justify-center text-white text-sm font-semibold"
-          style={{ backgroundColor: avatarColor }}
-        >
-          {initials}
-        </div>
-        {firstModel && (
+        {isGroup ? (
+          <div
+            className="h-12 w-12 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }}
+          >
+            <IoPeopleOutline size={22} color="var(--primary)" />
+          </div>
+        ) : (
+          <div
+            className="h-12 w-12 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+            style={{ backgroundColor: avatarColor }}
+          >
+            {initials}
+          </div>
+        )}
+        {!isGroup && firstModel && (
           <div
             className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2"
             style={{

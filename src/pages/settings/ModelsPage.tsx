@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useMobileNav } from "../../contexts/MobileNavContext";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { IoSearchOutline, IoCloseCircle, IoPeopleOutline, IoChevronForward, IoCheckmarkCircle, IoChatbubbles } from "../../icons";
+import { IoSearchOutline, IoCloseCircle, IoPeopleOutline, IoChevronForward, IoChatbubbles } from "../../icons";
 import { useProviderStore } from "../../stores/provider-store";
 import { useChatStore } from "../../stores/chat-store";
 import type { Model } from "../../types";
@@ -30,10 +30,11 @@ function groupByProvider(
 
 interface ModelsPageProps {
   onNavigateToChat?: (convId: string) => void;
+  onCreateGroup?: () => void;
   isMobile?: boolean;
 }
 
-export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPageProps = {}) {
+export function ModelsPage({ onNavigateToChat, onCreateGroup, isMobile = false }: ModelsPageProps = {}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const mobileNav = useMobileNav();
@@ -43,8 +44,6 @@ export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPagePro
   const createConversation = useChatStore((s) => s.createConversation);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-  const [selectedForGroup, setSelectedForGroup] = useState<string[]>([]);
-  const [groupMode, setGroupMode] = useState(false);
 
   const goToChat = useCallback((convId: string) => {
     if (onNavigateToChat) onNavigateToChat(convId);
@@ -62,26 +61,17 @@ export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPagePro
   const sections = useMemo(() => groupByProvider(filtered, getProviderById), [filtered, getProviderById]);
 
   const handleStartChat = useCallback(async (model: Model) => {
-    if (groupMode) {
-      setSelectedForGroup((prev) =>
-        prev.includes(model.id)
-          ? prev.filter((id) => id !== model.id)
-          : [...prev, model.id],
-      );
-      return;
-    }
     const conv = await createConversation(model.id);
     goToChat(conv.id);
-  }, [groupMode, createConversation, goToChat]);
+  }, [createConversation, goToChat]);
 
-  const handleCreateGroup = useCallback(async () => {
-    if (selectedForGroup.length < 1) return;
-    const [first, ...rest] = selectedForGroup;
-    const conv = await createConversation(first, rest);
-    setGroupMode(false);
-    setSelectedForGroup([]);
-    goToChat(conv.id);
-  }, [selectedForGroup, createConversation, goToChat]);
+  const handleGroupClick = useCallback(() => {
+    if (onCreateGroup) {
+      onCreateGroup();
+    } else if (mobileNav) {
+      mobileNav.pushAddMember();
+    }
+  }, [onCreateGroup, mobileNav]);
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
@@ -98,10 +88,10 @@ export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPagePro
             </button>
             {sections.length > 0 && (
               <button
-                onClick={() => { setGroupMode((v) => !v); setSelectedForGroup([]); }}
+                onClick={handleGroupClick}
                 className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
               >
-                <IoChatbubbles size={20} color={groupMode ? "var(--destructive)" : "var(--primary)"} />
+                <IoChatbubbles size={20} color="var(--primary)" />
               </button>
             )}
           </div>
@@ -130,7 +120,7 @@ export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPagePro
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: groupMode ? 80 : 24 }}>
+      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 24 }}>
         {sections.length === 0 ? (
           <EmptyState
             icon={<IoPeopleOutline size={28} color="var(--muted-foreground)" />}
@@ -146,15 +136,14 @@ export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPagePro
               </div>
               {/* Items */}
               {section.data.map((model, idx) => {
-                const isSelected = selectedForGroup.includes(model.id);
                 const { color: mColor, initials: mInitials } = getAvatarProps(model.displayName);
                 return (
                   <button
                     key={model.id}
                     onClick={() => handleStartChat(model)}
-                    className={`w-full flex items-center gap-4 px-4 py-3 active:opacity-70 transition-colors ${isSelected ? "bg-primary/5" : ""}`}
+                    className="w-full flex items-center gap-4 px-4 py-3 active:opacity-70 transition-colors"
                     style={{
-                      backgroundColor: isSelected ? "color-mix(in srgb, var(--primary) 8%, var(--background))" : "var(--background)",
+                      backgroundColor: "var(--background)",
                       borderBottom: idx < section.data.length - 1 ? "0.5px solid var(--border)" : "none",
                     }}
                   >
@@ -169,13 +158,7 @@ export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPagePro
                       <p className="text-[16px] font-medium text-foreground truncate">{model.displayName}</p>
                       <p className="text-[13px] text-muted-foreground truncate">{model.modelId}</p>
                     </div>
-                    {groupMode ? (
-                      isSelected
-                        ? <IoCheckmarkCircle size={22} color="var(--primary)" />
-                        : <svg width="22" height="22" viewBox="0 0 512 512" fill="none" stroke="var(--muted-foreground)" strokeWidth="32"><circle cx="256" cy="256" r="192" /></svg>
-                    ) : (
-                      <IoChevronForward size={18} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
-                    )}
+                    <IoChevronForward size={18} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
                   </button>
                 );
               })}
@@ -184,18 +167,6 @@ export function ModelsPage({ onNavigateToChat, isMobile = false }: ModelsPagePro
         )}
       </div>
 
-      {/* Group Mode Bottom Bar */}
-      {groupMode && selectedForGroup.length > 0 && (
-        <div className="absolute left-5 right-5" style={{ bottom: isMobile ? "4rem" : "1rem" }}>
-          <button
-            onClick={handleCreateGroup}
-            className="w-full rounded-xl py-3.5 text-base font-semibold text-white active:opacity-70"
-            style={{ backgroundColor: "var(--primary)" }}
-          >
-            {t("models.createGroup", { count: selectedForGroup.length })}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

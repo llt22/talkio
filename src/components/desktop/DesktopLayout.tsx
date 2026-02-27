@@ -1,8 +1,12 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { MessageSquare, Bot, Compass, Settings, Plus, MoreHorizontal, Trash2, Eraser, UserPlus, Share2, ChevronDown, ChevronUp, User, Users, Pencil, Search, ArrowDown } from "lucide-react";
+import { MessageSquare, Bot, Compass, Settings, Plus, MoreHorizontal, Trash2, Eraser, UserPlus, Share2, ChevronDown, ChevronUp, User, Users, Pencil, Search, ArrowDown, ArrowUpDown, Shuffle, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useTranslation } from "react-i18next";
 import { ChatView } from "../shared/ChatView";
 import { ModelPicker } from "../shared/ModelPicker";
+import { AddMemberPicker, type SelectedMember } from "../shared/AddMemberPicker";
 import { SettingsPage } from "../../pages/settings/SettingsPage";
 import { DiscoverPage } from "../../pages/DiscoverPage";
 import { ModelsPage } from "../../pages/settings/ModelsPage";
@@ -28,7 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../ui/tooltip";
-import type { Conversation, Identity } from "../../types";
+import type { Conversation, ConversationParticipant, Identity } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { exportConversationAsMarkdown } from "../../services/export";
 import { useConfirm } from "../shared/ConfirmDialogProvider";
@@ -44,6 +48,8 @@ export function DesktopLayout() {
   const [activeSection, setActiveSection] = useState<DesktopSection>("chats");
   const currentConversationId = useChatStore((s) => s.currentConversationId);
   const setCurrentConversation = useChatStore((s: ChatState) => s.setCurrentConversation);
+  const createConversation = useChatStore((s: ChatState) => s.createConversation);
+  const [showCreateGroupPicker, setShowCreateGroupPicker] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem("desktop-sidebar-width");
     return saved ? Math.max(MIN_SIDEBAR, Math.min(MAX_SIDEBAR, Number(saved))) : DEFAULT_SIDEBAR;
@@ -167,13 +173,27 @@ export function DesktopLayout() {
         ) : activeSection === "discover" ? (
           <DiscoverPage />
         ) : activeSection === "experts" ? (
-          <ModelsPage onNavigateToChat={(convId) => { setCurrentConversation(convId); setActiveSection("chats"); }} />
+          <ModelsPage
+            onNavigateToChat={(convId) => { setCurrentConversation(convId); setActiveSection("chats"); }}
+            onCreateGroup={() => setShowCreateGroupPicker(true)}
+          />
         ) : activeSection === "chats" && currentConversationId ? (
           <DesktopChatPanel conversationId={currentConversationId} />
         ) : (
           <DesktopEmptyState section={activeSection} />
         )}
       </div>
+
+      <AddMemberPicker
+        open={showCreateGroupPicker}
+        onClose={() => setShowCreateGroupPicker(false)}
+        onConfirm={async (members: SelectedMember[]) => {
+          if (members.length < 2) return;
+          const conv = await createConversation(members[0].modelId, undefined, members);
+          setCurrentConversation(conv.id);
+          setActiveSection("chats");
+        }}
+      />
     </div>
   );
 }
@@ -186,6 +206,7 @@ function DesktopConversationList() {
   const setCurrentConversation = useChatStore((s) => s.setCurrentConversation);
   const deleteConversation = useChatStore((s) => s.deleteConversation);
   const clearConversationMessages = useChatStore((s) => s.clearConversationMessages);
+  const renameConversation = useChatStore((s) => s.renameConversation);
   const models = useProviderStore((s) => s.models);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -268,6 +289,7 @@ function DesktopConversationList() {
               onSelect={() => setCurrentConversation(conv.id)}
               onDelete={() => deleteConversation(conv.id)}
               onClear={() => clearConversationMessages(conv.id)}
+              onRename={(title) => renameConversation(conv.id, title)}
             />
           ))
         )}
@@ -282,15 +304,19 @@ function DesktopConversationItem({
   onSelect,
   onDelete,
   onClear,
+  onRename,
 }: {
   conversation: Conversation;
   isActive: boolean;
   onSelect: () => void;
   onDelete: () => void;
   onClear: () => void;
+  onRename: (title: string) => void;
 }) {
   const { t } = useTranslation();
   const [showMenu, setShowMenu] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
 
   return (
     <ContextMenu>
@@ -301,16 +327,34 @@ function DesktopConversationItem({
           }`}
           onClick={onSelect}
         >
-          <div
-            className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold"
-            style={{ backgroundColor: getAvatarProps(conversation.title).color }}
-          >
-            {getAvatarProps(conversation.title).initials}
-          </div>
+          {conversation.type === "group" ? (
+            <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-primary/15">
+              <Users size={15} className="text-primary" />
+            </div>
+          ) : (
+            <div
+              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold"
+              style={{ backgroundColor: getAvatarProps(conversation.title).color }}
+            >
+              {getAvatarProps(conversation.title).initials}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-sidebar-foreground truncate">
-              {conversation.title}
-            </p>
+            {isRenaming ? (
+              <input
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={() => { onRename(renameValue); setIsRenaming(false); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { onRename(renameValue); setIsRenaming(false); } if (e.key === "Escape") setIsRenaming(false); }}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[13px] font-medium text-sidebar-foreground bg-transparent border-b border-primary outline-none w-full"
+              />
+            ) : (
+              <p className="text-[13px] font-medium text-sidebar-foreground truncate">
+                {conversation.title}
+              </p>
+            )}
             {conversation.lastMessage && (
               <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                 {conversation.lastMessage}
@@ -350,6 +394,10 @@ function DesktopConversationItem({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-40">
+        <ContextMenuItem className="text-xs" onClick={() => { setRenameValue(conversation.title); setIsRenaming(true); }}>
+          <Pencil size={14} className="mr-2" />
+          {t("chat.rename")}
+        </ContextMenuItem>
         <ContextMenuItem className="text-xs" onClick={onClear}>
           <Eraser size={14} className="mr-2" />
           {t("chat.clearHistory")}
@@ -360,6 +408,57 @@ function DesktopConversationItem({
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
+  );
+}
+
+function SortableParticipantRow({
+  participant: p,
+  index: idx,
+  getModelById,
+  getIdentityById,
+  onEditRole,
+  onRemove,
+  isSequential,
+}: {
+  participant: ConversationParticipant;
+  index: number;
+  getModelById: (id: string) => any;
+  getIdentityById: (id: string) => any;
+  onEditRole: () => void;
+  onRemove: () => void;
+  isSequential: boolean;
+}) {
+  const { t } = useTranslation();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
+  const pModel = getModelById(p.modelId);
+  const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
+  const displayName = pModel?.displayName ?? p.modelId;
+  const { initials } = getAvatarProps(displayName);
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-3 py-2">
+      {isSequential && (
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing flex-shrink-0 p-0.5 hover:opacity-70">
+          <GripVertical size={14} className="text-muted-foreground" />
+        </button>
+      )}
+      <span className="text-[11px] text-muted-foreground w-4 text-center flex-shrink-0">{idx + 1}</span>
+      <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <span className="text-[11px] font-bold text-primary">{initials}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium text-foreground truncate">{displayName}</p>
+        <button className="text-[11px] text-muted-foreground truncate hover:text-primary transition-colors text-left" onClick={onEditRole}>
+          {pIdentity ? pIdentity.name : t("chat.noIdentity")}
+        </button>
+      </div>
+      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEditRole}>
+        <User size={13} className="text-primary" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRemove}>
+        <Trash2 size={13} className="text-destructive" />
+      </Button>
+    </div>
   );
 }
 
@@ -392,8 +491,16 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
     setIsExporting,
     handleModelPickerSelect,
     handleMultiModelSelect,
+    handleAddMembers,
     modelPickerMode,
+    showAddMemberPicker,
+    setShowAddMemberPicker,
   } = useChatPanelState(conversationId);
+  const renameConversation = useChatStore((s) => s.renameConversation);
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
   const title = isGroup ? conv?.title ?? t("chat.group") : model?.displayName ?? t("chat.chatTitle");
   const subtitle = isGroup
     ? t("chat.modelCount", { count: conv?.participants.length ?? 0 })
@@ -420,6 +527,21 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
       {/* Header */}
       <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-border bg-background">
         <div className="flex-1 min-w-0">
+          {isEditingTitle ? (
+            <form
+              className="flex items-center gap-1.5"
+              onSubmit={(e) => { e.preventDefault(); renameConversation(conversationId, editTitle); setIsEditingTitle(false); }}
+            >
+              <input
+                autoFocus
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onBlur={() => { renameConversation(conversationId, editTitle); setIsEditingTitle(false); }}
+                onKeyDown={(e) => { if (e.key === "Escape") setIsEditingTitle(false); }}
+                className="text-sm font-semibold text-foreground bg-transparent border-b border-primary outline-none w-48"
+              />
+            </form>
+          ) : (
           <button
             className="flex items-center gap-1.5 hover:opacity-70 transition-opacity text-left"
             onClick={() => {
@@ -433,6 +555,15 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
             <span className="text-xs text-primary truncate">{subtitle}</span>
             {(showIdentityPanel || showParticipants) ? <ChevronUp size={12} className="text-muted-foreground flex-shrink-0" /> : <ChevronDown size={12} className="text-muted-foreground flex-shrink-0" />}
           </button>
+          )}
+          {isGroup && !isEditingTitle && (
+            <button
+              className="ml-1 hover:opacity-70 flex-shrink-0"
+              onClick={() => { setEditTitle(conv?.title ?? ""); setIsEditingTitle(true); }}
+            >
+              <Pencil size={12} className="text-muted-foreground" />
+            </button>
+          )}
         </div>
 
         <DropdownMenu>
@@ -471,53 +602,82 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
       {/* Group participants panel */}
       {isGroup && showParticipants && conv && (
         <div className="flex-shrink-0 border-b border-border bg-card px-4 py-2">
-          {conv.participants.map((p) => {
-            const pModel = getModelById(p.modelId);
-            const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
-            const displayName = pModel?.displayName ?? p.modelId;
-            const { initials } = getAvatarProps(displayName);
-            return (
-              <div key={p.id} className="flex items-center gap-3 py-2">
-                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[11px] font-bold text-primary">{initials}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-foreground truncate">{displayName}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{pIdentity ? pIdentity.name : t("chat.noIdentity")}</p>
-                </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeParticipant(conversationId, p.id)}>
-                  <Trash2 size={13} className="text-destructive" />
-                </Button>
-              </div>
-            );
-          })}
+          {/* Speaking order toggle */}
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border">
+            <span className="text-[11px] text-muted-foreground font-medium">{t("chat.speakingOrder")}</span>
+            <div className="flex-1" />
+            <button
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                (conv.speakingOrder ?? "sequential") === "sequential" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50"
+              }`}
+              onClick={() => useChatStore.getState().updateSpeakingOrder(conversationId, "sequential")}
+            >
+              <ArrowUpDown size={11} /> {t("chat.sequential")}
+            </button>
+            <button
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                conv.speakingOrder === "random" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50"
+              }`}
+              onClick={() => useChatStore.getState().updateSpeakingOrder(conversationId, "random")}
+            >
+              <Shuffle size={11} /> {t("chat.random")}
+            </button>
+          </div>
+          <DndContext
+            sensors={dndSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event: DragEndEvent) => {
+              const { active, over } = event;
+              if (over && active.id !== over.id) {
+                const ids = conv.participants.map((pp) => pp.id);
+                const oldIdx = ids.indexOf(active.id as string);
+                const newIdx = ids.indexOf(over.id as string);
+                useChatStore.getState().reorderParticipants(conversationId, arrayMove(ids, oldIdx, newIdx));
+              }
+            }}
+          >
+            <SortableContext items={conv.participants.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+              {conv.participants.map((p, idx) => (
+                <SortableParticipantRow
+                  key={p.id}
+                  participant={p}
+                  index={idx}
+                  getModelById={getModelById}
+                  getIdentityById={getIdentityById}
+                  onEditRole={() => { setEditingParticipantId(p.id); setShowParticipants(false); setShowIdentityPanel(true); }}
+                  onRemove={() => removeParticipant(conversationId, p.id)}
+                  isSequential={(conv.speakingOrder ?? "sequential") === "sequential"}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
           <button
             className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 mt-1 text-xs text-primary hover:opacity-70"
-            onClick={() => { setModelPickerMode("add"); setShowModelPicker(true); }}
+            onClick={() => setShowAddMemberPicker(true)}
           >
             <Plus size={14} /> {t("chat.addMember")}
           </button>
         </div>
       )}
 
-      {/* Identity panel (single chat) */}
-      {!isGroup && showIdentityPanel && (
+      {/* Identity panel (single chat or editing group participant) */}
+      {showIdentityPanel && (
         <div className="flex-shrink-0 border-b border-border bg-card" style={{ maxHeight: 240, overflowY: "auto" }}>
           <button
             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 text-left"
-            onClick={() => { updateParticipantIdentity(conversationId, currentParticipant?.id ?? "", null); setShowIdentityPanel(false); }}
+            onClick={() => { updateParticipantIdentity(conversationId, editingParticipantId ?? currentParticipant?.id ?? "", null); setShowIdentityPanel(false); setEditingParticipantId(null); }}
           >
             <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
               <User size={14} className="text-muted-foreground" />
             </div>
             <span className="text-[13px] text-foreground flex-1">{t("chat.noIdentity")}</span>
-            {!currentParticipant?.identityId && <span className="text-xs text-primary font-semibold">✓</span>}
+            {!(editingParticipantId ? conv?.participants.find((p) => p.id === editingParticipantId)?.identityId : currentParticipant?.identityId) && <span className="text-xs text-primary font-semibold">✓</span>}
           </button>
           {identities.map((identity: Identity) => (
             <button
               key={identity.id}
               className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 text-left border-t border-border/50"
-              onClick={() => { updateParticipantIdentity(conversationId, currentParticipant?.id ?? "", identity.id); setShowIdentityPanel(false); }}
+              onClick={() => { updateParticipantIdentity(conversationId, editingParticipantId ?? currentParticipant?.id ?? "", identity.id); setShowIdentityPanel(false); setEditingParticipantId(null); }}
             >
               <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-[11px] font-bold text-primary">{identity.name.slice(0, 1)}</span>
@@ -526,7 +686,7 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
                 <p className="text-[13px] font-medium text-foreground truncate">{identity.name}</p>
                 {identity.systemPrompt && <p className="text-[11px] text-muted-foreground truncate">{identity.systemPrompt.slice(0, 60)}</p>}
               </div>
-              {currentParticipant?.identityId === identity.id && <span className="text-xs text-primary font-semibold">✓</span>}
+              {(editingParticipantId ? conv?.participants.find((p) => p.id === editingParticipantId)?.identityId : currentParticipant?.identityId) === identity.id && <span className="text-xs text-primary font-semibold">✓</span>}
             </button>
           ))}
         </div>
@@ -538,6 +698,12 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
         onSelect={handleModelPickerSelect}
         multiSelect={modelPickerMode === "add"}
         onMultiSelect={handleMultiModelSelect}
+      />
+
+      <AddMemberPicker
+        open={showAddMemberPicker}
+        onClose={() => setShowAddMemberPicker(false)}
+        onConfirm={handleAddMembers}
       />
 
       {/* Chat */}

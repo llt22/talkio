@@ -4,6 +4,7 @@ import { useProviderStore } from "../stores/provider-store";
 import { useIdentityStore } from "../stores/identity-store";
 import { useChatStore, type ChatState } from "../stores/chat-store";
 import type { Conversation, ConversationParticipant, Identity, Message, Model } from "../types";
+import type { SelectedMember } from "../components/shared/AddMemberPicker";
 type ChatStoreState = ReturnType<typeof useChatStore.getState>;
 
 export type ModelPickerMode = "add" | "switch";
@@ -21,6 +22,7 @@ export function useChatPanelState(conversationId: string): {
   updateParticipantIdentity: ChatState["updateParticipantIdentity"];
   updateParticipantModel: ChatState["updateParticipantModel"];
   addParticipant: ChatState["addParticipant"];
+  addParticipants: ChatState["addParticipants"];
   removeParticipant: ChatState["removeParticipant"];
 
   isGroup: boolean;
@@ -39,8 +41,12 @@ export function useChatPanelState(conversationId: string): {
   isExporting: boolean;
   setIsExporting: React.Dispatch<React.SetStateAction<boolean>>;
 
+  showAddMemberPicker: boolean;
+  setShowAddMemberPicker: React.Dispatch<React.SetStateAction<boolean>>;
+
   handleModelPickerSelect: (modelId: string) => void;
   handleMultiModelSelect: (modelIds: string[]) => void;
+  handleAddMembers: (members: SelectedMember[]) => void;
 } {
   const conversations = useConversations();
   const activeBranchId = useChatStore((s: ChatStoreState) => s.activeBranchId);
@@ -59,6 +65,7 @@ export function useChatPanelState(conversationId: string): {
   const updateParticipantIdentity = useChatStore((s: ChatState) => s.updateParticipantIdentity);
   const updateParticipantModel = useChatStore((s: ChatState) => s.updateParticipantModel);
   const addParticipant = useChatStore((s: ChatState) => s.addParticipant);
+  const addParticipants = useChatStore((s: ChatState) => s.addParticipants);
   const removeParticipant = useChatStore((s: ChatState) => s.removeParticipant);
 
   const [showIdentityPanel, setShowIdentityPanel] = useState(false);
@@ -66,6 +73,7 @@ export function useChatPanelState(conversationId: string): {
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelPickerMode, setModelPickerMode] = useState<ModelPickerMode>("switch");
   const [isExporting, setIsExporting] = useState(false);
+  const [showAddMemberPicker, setShowAddMemberPicker] = useState(false);
 
   const isGroup = conv?.type === "group";
   const currentParticipant = conv?.participants[0] ?? null;
@@ -88,6 +96,10 @@ export function useChatPanelState(conversationId: string): {
     }
   }, [addParticipant, conversationId]);
 
+  const handleAddMembers = useCallback((members: SelectedMember[]) => {
+    addParticipants(conversationId, members);
+  }, [addParticipants, conversationId]);
+
   return {
     conversations,
     messages,
@@ -101,6 +113,7 @@ export function useChatPanelState(conversationId: string): {
     updateParticipantIdentity,
     updateParticipantModel,
     addParticipant,
+    addParticipants,
     removeParticipant,
 
     isGroup: !!isGroup,
@@ -119,7 +132,11 @@ export function useChatPanelState(conversationId: string): {
     isExporting,
     setIsExporting,
 
+    showAddMemberPicker,
+    setShowAddMemberPicker,
+
     handleModelPickerSelect,
     handleMultiModelSelect,
+    handleAddMembers,
   };
 }

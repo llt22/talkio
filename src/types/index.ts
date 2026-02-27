@@ -111,11 +111,14 @@ export interface ConversationParticipant {
   identityId: string | null;
 }
 
+export type SpeakingOrder = "sequential" | "random";
+
 export interface Conversation {
   id: string;
   type: ConversationType;
   title: string;
   participants: ConversationParticipant[];
+  speakingOrder?: SpeakingOrder;
   lastMessage: string | null;
   lastMessageAt: string | null;
   pinned: boolean;

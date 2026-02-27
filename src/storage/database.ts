@@ -176,6 +176,7 @@ function rowToConversation(row: any): Conversation {
     type: row.type || "single",
     title: row.title || "",
     participants: safeJsonParse(row.participants, []),
+    speakingOrder: row.speakingOrder ?? undefined,
     lastMessage: row.lastMessage ?? null,
     lastMessageAt: row.lastMessageAt ?? null,
     pinned: row.pinned === 1,
@@ -233,6 +234,7 @@ export async function initDatabase(): Promise<void> {
       type TEXT NOT NULL DEFAULT 'single',
       title TEXT NOT NULL DEFAULT '',
       participants TEXT NOT NULL DEFAULT '[]',
+      speakingOrder TEXT,
       lastMessage TEXT,
       lastMessageAt TEXT,
       pinned INTEGER NOT NULL DEFAULT 0,
@@ -290,10 +292,10 @@ export async function initDatabase(): Promise<void> {
 export async function insertConversation(conv: Conversation): Promise<void> {
   const db = await getDb();
   await db.execute(
-    `INSERT INTO conversations (id, type, title, participants, lastMessage, lastMessageAt, pinned, createdAt, updatedAt)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    `INSERT INTO conversations (id, type, title, participants, speakingOrder, lastMessage, lastMessageAt, pinned, createdAt, updatedAt)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [conv.id, conv.type, conv.title, JSON.stringify(conv.participants),
-     conv.lastMessage, conv.lastMessageAt, conv.pinned ? 1 : 0,
+     conv.speakingOrder ?? null, conv.lastMessage, conv.lastMessageAt, conv.pinned ? 1 : 0,
      conv.createdAt, conv.updatedAt]
   );
 }
@@ -310,6 +312,7 @@ export async function updateConversation(id: string, updates: Partial<Conversati
   if (updates.lastMessage !== undefined) { sets.push(`lastMessage = $${idx}`); params.push(updates.lastMessage); idx++; }
   if (updates.lastMessageAt !== undefined) { sets.push(`lastMessageAt = $${idx}`); params.push(updates.lastMessageAt); idx++; }
   if (updates.pinned !== undefined) { sets.push(`pinned = $${idx}`); params.push(updates.pinned ? 1 : 0); idx++; }
+  if (updates.speakingOrder !== undefined) { sets.push(`speakingOrder = $${idx}`); params.push(updates.speakingOrder); idx++; }
 
   params.push(id);
   await db.execute(`UPDATE conversations SET ${sets.join(", ")} WHERE id = $${idx}`, params);

@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 
 export interface MobileNavFunctions {
   pushChat: (conversationId: string) => void;
+  pushAddMember: (conversationId?: string) => void;
   pushIdentityNew: () => void;
   pushIdentityEdit: (id: string) => void;
   pushSettingsProviders: () => void;

@@ -17,11 +17,21 @@ export function resolveTargetParticipants(
   if (conv.type === "single") {
     return conv.participants[0] ? [conv.participants[0]] : [];
   }
+  let targets: ConversationParticipant[];
   if (mentionedParticipantIds && mentionedParticipantIds.length > 0) {
     const mentionedSet = new Set(mentionedParticipantIds);
-    return conv.participants.filter((p) => mentionedSet.has(p.id));
+    targets = conv.participants.filter((p) => mentionedSet.has(p.id));
+  } else {
+    targets = [...conv.participants];
   }
-  return conv.participants;
+  if (conv.speakingOrder === "random") {
+    // Fisher-Yates shuffle
+    for (let i = targets.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [targets[i], targets[j]] = [targets[j], targets[i]];
+    }
+  }
+  return targets;
 }
 
 /**

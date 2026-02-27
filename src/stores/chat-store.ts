@@ -4,7 +4,7 @@
  * rAF-throttled UI updates for smooth streaming.
  */
 import { create } from "zustand";
-import type { Message, Conversation, ConversationParticipant, Provider } from "../types";
+import type { Message, Conversation, ConversationParticipant, Provider, SpeakingOrder } from "../types";
 import { MessageStatus } from "../types";
 import { useIdentityStore } from "./identity-store";
 import {
@@ -59,7 +59,7 @@ export interface ChatState {
   // In-memory streaming state — not persisted, used for rAF updates
   streamingMessage: StreamingState | null;
 
-  createConversation: (modelId: string, extraModelIds?: string[]) => Promise<Conversation>;
+  createConversation: (modelId: string, extraModelIds?: string[], membersWithIdentity?: { modelId: string; identityId: string | null }[]) => Promise<Conversation>;
   deleteConversation: (id: string) => Promise<void>;
   setCurrentConversation: (id: string | null) => void;
   sendMessage: (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] }) => Promise<void>;
@@ -74,8 +74,12 @@ export interface ChatState {
   searchAllMessages: (query: string) => Promise<Message[]>;
   updateParticipantIdentity: (conversationId: string, participantId: string, identityId: string | null) => Promise<void>;
   updateParticipantModel: (conversationId: string, participantId: string, modelId: string) => Promise<void>;
-  addParticipant: (conversationId: string, modelId: string) => Promise<void>;
+  addParticipant: (conversationId: string, modelId: string, identityId?: string | null) => Promise<void>;
+  addParticipants: (conversationId: string, members: { modelId: string; identityId: string | null }[]) => Promise<void>;
   removeParticipant: (conversationId: string, participantId: string) => Promise<void>;
+  renameConversation: (conversationId: string, title: string) => Promise<void>;
+  updateSpeakingOrder: (conversationId: string, order: SpeakingOrder) => Promise<void>;
+  reorderParticipants: (conversationId: string, participantIds: string[]) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -86,20 +90,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
   autoDiscussTotalRounds: 0,
   streamingMessage: null,
 
-  createConversation: async (modelId: string, extraModelIds?: string[]) => {
+  createConversation: async (modelId: string, extraModelIds?: string[], membersWithIdentity?: { modelId: string; identityId: string | null }[]) => {
     const providerStore = useProviderStore.getState();
     const model = providerStore.getModelById(modelId);
-    const allIds = [modelId, ...(extraModelIds ?? [])];
-    const participants: ConversationParticipant[] = allIds.map((mid) => ({
-      id: generateId(),
-      modelId: mid,
-      identityId: null,
-    }));
+    let participants: ConversationParticipant[];
+    if (membersWithIdentity && membersWithIdentity.length > 0) {
+      participants = membersWithIdentity.map((m) => ({
+        id: generateId(),
+        modelId: m.modelId,
+        identityId: m.identityId,
+      }));
+    } else {
+      const allIds = [modelId, ...(extraModelIds ?? [])];
+      participants = allIds.map((mid) => ({
+        id: generateId(),
+        modelId: mid,
+        identityId: null,
+      }));
+    }
     const isGroup = participants.length > 1;
+    const names = participants.map((p) => providerStore.getModelById(p.modelId)?.displayName ?? p.modelId);
+    const groupTitle = names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")}...`;
     const conv: Conversation = {
       id: generateId(),
       type: isGroup ? "group" : "single",
-      title: isGroup ? (model?.displayName ?? i18n.t("chats.groupChat", { defaultValue: "Group Chat" })) : (model?.displayName ?? i18n.t("chats.newChat", { defaultValue: "New Chat" })),
+      title: isGroup ? groupTitle : (model?.displayName ?? i18n.t("chats.newChat", { defaultValue: "New Chat" })),
       participants,
       lastMessage: null,
       lastMessageAt: null,
@@ -688,7 +703,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     notifyDbChange("conversations");
   },
 
-  addParticipant: async (conversationId: string, modelId: string) => {
+  addParticipant: async (conversationId: string, modelId: string, identityId?: string | null) => {
     const conv = await getConversation(conversationId);
     if (!conv) return;
     const providerStore = useProviderStore.getState();
@@ -696,7 +711,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const newParticipant: ConversationParticipant = {
       id: generateId(),
       modelId,
-      identityId: null,
+      identityId: identityId ?? null,
     };
     const participants = [...conv.participants, newParticipant];
     const isFirstGroup = conv.type === "single" && participants.length > 1;
@@ -704,6 +719,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
       participants,
       type: isFirstGroup ? "group" : conv.type,
       title: isFirstGroup ? (model?.displayName ?? conv.title) : conv.title,
+    });
+    notifyDbChange("conversations");
+  },
+
+  addParticipants: async (conversationId: string, members: { modelId: string; identityId: string | null }[]) => {
+    const conv = await getConversation(conversationId);
+    if (!conv || members.length === 0) return;
+    const newParticipants: ConversationParticipant[] = members.map((m) => ({
+      id: generateId(),
+      modelId: m.modelId,
+      identityId: m.identityId,
+    }));
+    const participants = [...conv.participants, ...newParticipants];
+    const isFirstGroup = conv.type === "single" && participants.length > 1;
+    const providerStore = useProviderStore.getState();
+    const names = participants.map((p) => providerStore.getModelById(p.modelId)?.displayName ?? p.modelId);
+    const groupTitle = names.join(", ");
+    await updateConversation(conversationId, {
+      participants,
+      type: isFirstGroup ? "group" : conv.type,
+      ...(isFirstGroup ? { title: groupTitle } : {}),
     });
     notifyDbChange("conversations");
   },
@@ -716,6 +752,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
       participants,
       type: participants.length <= 1 ? "single" : "group",
     });
+    notifyDbChange("conversations");
+  },
+
+  renameConversation: async (conversationId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    await updateConversation(conversationId, { title: trimmed });
+    notifyDbChange("conversations");
+  },
+
+  updateSpeakingOrder: async (conversationId: string, order) => {
+    await updateConversation(conversationId, { speakingOrder: order });
+    notifyDbChange("conversations");
+  },
+
+  reorderParticipants: async (conversationId: string, participantIds: string[]) => {
+    const conv = await getConversation(conversationId);
+    if (!conv) return;
+    const idxMap = new Map(participantIds.map((id, i) => [id, i]));
+    const sorted = [...conv.participants].sort((a, b) => (idxMap.get(a.id) ?? 0) - (idxMap.get(b.id) ?? 0));
+    await updateConversation(conversationId, { participants: sorted });
     notifyDbChange("conversations");
   },
 
