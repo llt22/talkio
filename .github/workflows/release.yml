@@ -186,10 +186,14 @@ jobs:
           echo "path=Talkio-${TAG}.apk" >> $GITHUB_OUTPUT
 
       - name: Upload APK to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.create-release.outputs.tag }}
-          files: ${{ steps.apk.outputs.path }}
-          draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+        run: |
+          FILE="${{ steps.apk.outputs.path }}"
+          FILENAME=$(basename "$FILE")
+          curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary @"$FILE" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=${FILENAME}"
