@@ -5,6 +5,7 @@
 export {};
 
 declare global {
+  const __APP_VERSION__: string;
   interface Window {
     /** Stackflow back navigation bridge for Android native back button */
     __stackflowBack?: () => boolean;

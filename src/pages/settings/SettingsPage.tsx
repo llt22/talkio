@@ -252,7 +252,7 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
         </div>
         <div className="text-center pb-6">
           <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Talkio</p>
-          <p className="mt-1 text-xs text-muted-foreground">v2.0.0</p>
+          <p className="mt-1 text-xs text-muted-foreground">v{__APP_VERSION__}</p>
         </div>
       </div>
       </div>
