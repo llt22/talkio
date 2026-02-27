@@ -1,9 +1,9 @@
 /**
  * ChatView — shared chat message list + input (1:1 RN original).
  */
-import { useRef, useEffect, useCallback, useMemo, useState, memo } from "react"; // useState used by MessageRow
+import { useRef, useEffect, useCallback, useMemo, useState, memo } from "react";
 import { useTranslation } from "react-i18next";
-import { IoCopyOutline, IoRefreshOutline, IoVolumeMediumOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
+import { IoCopyOutline, IoRefreshOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
 import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown } from "lucide-react";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
@@ -196,7 +196,6 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
 const ICON_MAP: Record<string, React.FC<{ size: number; color?: string }>> = {
   "copy-outline": IoCopyOutline,
   "refresh-outline": IoRefreshOutline,
-  "volume-medium-outline": IoVolumeMediumOutline,
   "share-outline": IoShareOutline,
   "trash-outline": IoTrashOutline,
 };
@@ -274,18 +273,6 @@ function AssistantActionBar({ content, message, onCopy, onRegenerate, onBranch, 
               className="absolute left-0 bottom-full mb-1 z-30 min-w-[150px] rounded-xl py-1 shadow-lg"
               style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
             >
-              <button
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 active:opacity-60"
-                onClick={() => {
-                  setShowMenu(false);
-                  if ('speechSynthesis' in window) {
-                    window.speechSynthesis.speaking ? window.speechSynthesis.cancel() : window.speechSynthesis.speak(new SpeechSynthesisUtterance(content));
-                  }
-                }}
-              >
-                <IoVolumeMediumOutline size={15} color="var(--foreground)" />
-                <span className="text-[13px] text-foreground">{window.speechSynthesis?.speaking ? t("common.cancel") : t("chat.readAloud")}</span>
-              </button>
               {onBranch && (
                 <button
                   className="w-full flex items-center gap-3 px-3.5 py-2.5 active:opacity-60"

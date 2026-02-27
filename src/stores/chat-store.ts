@@ -82,6 +82,16 @@ export interface ChatState {
   reorderParticipants: (conversationId: string, participantIds: string[]) => Promise<void>;
 }
 
+/** Find the earliest occurrence of any of the given tags in a string */
+function findFirst(str: string, ...tags: string[]): { idx: number; len: number } | null {
+  let best: { idx: number; len: number } | null = null;
+  for (const tag of tags) {
+    const i = str.indexOf(tag);
+    if (i !== -1 && (best === null || i < best.idx)) best = { idx: i, len: tag.length };
+  }
+  return best;
+}
+
 /** Generate an auto-title from participant model names */
 function autoTitle(participants: ConversationParticipant[], providerStore: ReturnType<typeof useProviderStore.getState>): string {
   const names = participants.map((p) => providerStore.getModelById(p.modelId)?.displayName ?? p.modelId);
@@ -295,6 +305,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             model: model.modelId,
             messages: apiMessages,
             stream: true,
+            stream_options: { include_usage: true },
             ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
             ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
             ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
@@ -337,30 +348,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
           }
         }
 
-        await consumeOpenAIChatCompletionsSse(reader, (delta) => {
+        const sseUsage = await consumeOpenAIChatCompletionsSse(reader, (delta) => {
           // Reasoning: support multiple field names used by different providers
           const rc = delta.reasoning_content ?? delta.reasoning;
           if (rc) fullReasoning += rc;
 
-          // Content: parse <think> tags (DeepSeek, Hunyuan, etc.)
+          // Content: parse <think>/<thinking> tags (DeepSeek, Hunyuan, Claude, etc.)
           if (delta.content) {
             let chunk = delta.content as string;
             while (chunk.length > 0) {
               if (inThinkTag) {
-                const closeIdx = chunk.indexOf("</think>");
-                if (closeIdx !== -1) {
-                  fullReasoning += chunk.slice(0, closeIdx);
-                  chunk = chunk.slice(closeIdx + 8);
+                const m = findFirst(chunk, "</think>", "</thinking>");
+                if (m) {
+                  fullReasoning += chunk.slice(0, m.idx);
+                  chunk = chunk.slice(m.idx + m.len);
                   inThinkTag = false;
                 } else {
                   fullReasoning += chunk;
                   chunk = "";
                 }
               } else {
-                const openIdx = chunk.indexOf("<think>");
-                if (openIdx !== -1) {
-                  fullContent += chunk.slice(0, openIdx);
-                  chunk = chunk.slice(openIdx + 7);
+                const m = findFirst(chunk, "<think>", "<thinking>");
+                if (m) {
+                  fullContent += chunk.slice(0, m.idx);
+                  chunk = chunk.slice(m.idx + m.len);
                   inThinkTag = true;
                 } else {
                   fullContent += chunk;
@@ -386,6 +397,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         flushToUI();
         const duration = (Date.now() - startTime) / 1000;
+        let tokenUsage = sseUsage ? { inputTokens: sseUsage.prompt_tokens, outputTokens: sseUsage.completion_tokens } : null;
 
         if (pendingToolCalls.length > 0) {
           // Save toolCalls to the same assistant message (1:1 RN — single message holds everything)
@@ -450,6 +462,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 model: model.modelId,
                 messages: toolMessages,
                 stream: true,
+                stream_options: { include_usage: true },
                 ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
                 ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
                 ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
@@ -485,7 +498,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               if (!toolRafPending) { toolRafPending = true; requestAnimationFrame(toolFlush); }
             }
 
-            await consumeOpenAIChatCompletionsSse(toolReader, (delta) => {
+            const toolSseUsage = await consumeOpenAIChatCompletionsSse(toolReader, (delta) => {
               if (delta?.content) {
                 toolContent += delta.content;
                 toolSchedule();
@@ -502,6 +515,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 }
               }
             });
+            if (toolSseUsage) tokenUsage = { inputTokens: toolSseUsage.prompt_tokens, outputTokens: toolSseUsage.completion_tokens };
             toolFlush();
 
             accumulatedContent = toolContent;
@@ -541,6 +555,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             content: accumulatedContent,
             isStreaming: false,
             status: MessageStatus.SUCCESS,
+            tokenUsage,
           });
 
           lastAssistantContent = accumulatedContent;
@@ -551,6 +566,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             reasoningDuration: fullReasoning ? duration : null,
             isStreaming: false,
             status: MessageStatus.SUCCESS,
+            tokenUsage,
           });
           lastAssistantContent = fullContent;
         }
@@ -629,15 +645,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (get().autoDiscussRemaining <= 0) return; // stopped while waiting
     }
 
-    // First round: send topicText (or continue prompt) as user message
-    const firstMsg = topicText?.trim() || i18n.t("chat.continue", { defaultValue: "Continue" });
-    await get().sendMessage(firstMsg);
+    const continuePrompt = i18n.t("chat.continue", { defaultValue: "Continue" });
 
-    // Subsequent rounds: auto-send continue prompt
+    // Round 1: send topic if provided, otherwise the existing conversation counts as round 1
+    if (topicText?.trim()) {
+      await get().sendMessage(topicText.trim());
+    }
+    set({ autoDiscussRemaining: rounds - 1 });
+
+    // Rounds 2..N: send continues
     for (let round = 1; round < rounds; round++) {
       if (get().autoDiscussRemaining <= 0) break;
-      set({ autoDiscussRemaining: rounds - round });
-      await get().sendMessage(i18n.t("chat.continue", { defaultValue: "Continue" }));
+      await get().sendMessage(continuePrompt);
+      set({ autoDiscussRemaining: Math.max(0, rounds - round - 1) });
     }
 
     set({ autoDiscussRemaining: 0, autoDiscussTotalRounds: 0 });

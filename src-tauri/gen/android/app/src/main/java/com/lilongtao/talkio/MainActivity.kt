@@ -11,6 +11,8 @@ import java.io.File
 import java.io.InputStreamReader
 
 class MainActivity : TauriActivity() {
+  private val shareHelper by lazy { ShareHelper(this) }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     handleIncomingIntent(intent)
@@ -59,6 +61,11 @@ class MainActivity : TauriActivity() {
     } catch (e: Exception) {
       e.printStackTrace()
     }
+  }
+
+  override fun onWebViewCreate(webView: WebView) {
+    super.onWebViewCreate(webView)
+    webView.addJavascriptInterface(shareHelper, "NativeShare")
   }
 
   private fun findWebView(view: View): WebView? {

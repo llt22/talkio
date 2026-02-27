@@ -1,9 +1,16 @@
+export interface SseUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 export async function consumeOpenAIChatCompletionsSse(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   onDelta: (delta: any) => void,
-): Promise<void> {
+): Promise<SseUsage | null> {
   const decoder = new TextDecoder();
   let buffer = "";
+  let usage: SseUsage | null = null;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -21,6 +28,7 @@ export async function consumeOpenAIChatCompletionsSse(
 
       try {
         const parsed = JSON.parse(data);
+        if (parsed.usage) usage = parsed.usage;
         const delta = parsed.choices?.[0]?.delta;
         if (!delta) continue;
         onDelta(delta);
@@ -29,4 +37,6 @@ export async function consumeOpenAIChatCompletionsSse(
       }
     }
   }
+
+  return usage;
 }
