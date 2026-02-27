@@ -187,8 +187,8 @@ export function DesktopLayout() {
       <AddMemberPicker
         open={showCreateGroupPicker}
         onClose={() => setShowCreateGroupPicker(false)}
+        minMembers={2}
         onConfirm={async (members: SelectedMember[]) => {
-          if (members.length < 2) return;
           const conv = await createConversation(members[0].modelId, undefined, members);
           setCurrentConversation(conv.id);
           setActiveSection("chats");
@@ -434,7 +434,6 @@ function SortableParticipantRow({
   const pModel = getModelById(p.modelId);
   const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
   const displayName = pModel?.displayName ?? p.modelId;
-  const { initials } = getAvatarProps(displayName);
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-3 py-2">
       {isSequential && (
@@ -443,18 +442,16 @@ function SortableParticipantRow({
         </button>
       )}
       <span className="text-[11px] text-muted-foreground w-4 text-center flex-shrink-0">{idx + 1}</span>
-      <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-        <span className="text-[11px] font-bold text-primary">{initials}</span>
-      </div>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-medium text-foreground truncate">{displayName}</p>
-        <button className="text-[11px] text-muted-foreground truncate hover:text-primary transition-colors text-left" onClick={onEditRole}>
-          {pIdentity ? pIdentity.name : t("chat.noIdentity")}
-        </button>
       </div>
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEditRole}>
-        <User size={13} className="text-primary" />
-      </Button>
+      <button
+        className="flex-shrink-0 px-2 py-0.5 rounded text-[11px] hover:opacity-80 transition-opacity"
+        style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)", color: "var(--primary)" }}
+        onClick={onEditRole}
+      >
+        {pIdentity ? pIdentity.name : t("chat.noIdentity")}
+      </button>
       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRemove}>
         <Trash2 size={13} className="text-destructive" />
       </Button>
@@ -665,7 +662,7 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
         <div className="flex-shrink-0 border-b border-border bg-card" style={{ maxHeight: 240, overflowY: "auto" }}>
           <button
             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 text-left"
-            onClick={() => { updateParticipantIdentity(conversationId, editingParticipantId ?? currentParticipant?.id ?? "", null); setShowIdentityPanel(false); setEditingParticipantId(null); }}
+            onClick={() => { updateParticipantIdentity(conversationId, editingParticipantId ?? currentParticipant?.id ?? "", null); if (editingParticipantId) { setShowIdentityPanel(false); setShowParticipants(true); } else { setShowIdentityPanel(false); } setEditingParticipantId(null); }}
           >
             <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
               <User size={14} className="text-muted-foreground" />
@@ -677,7 +674,7 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
             <button
               key={identity.id}
               className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 text-left border-t border-border/50"
-              onClick={() => { updateParticipantIdentity(conversationId, editingParticipantId ?? currentParticipant?.id ?? "", identity.id); setShowIdentityPanel(false); setEditingParticipantId(null); }}
+              onClick={() => { updateParticipantIdentity(conversationId, editingParticipantId ?? currentParticipant?.id ?? "", identity.id); if (editingParticipantId) { setShowIdentityPanel(false); setShowParticipants(true); } else { setShowIdentityPanel(false); } setEditingParticipantId(null); }}
             >
               <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-[11px] font-bold text-primary">{identity.name.slice(0, 1)}</span>

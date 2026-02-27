@@ -242,6 +242,9 @@ export async function initDatabase(): Promise<void> {
       updatedAt TEXT NOT NULL
     )
   `);
+  // Migration: add speakingOrder column for databases created before this field existed
+  try { await db.execute(`ALTER TABLE conversations ADD COLUMN speakingOrder TEXT`); } catch { /* column already exists */ }
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS messages (
       id TEXT PRIMARY KEY,

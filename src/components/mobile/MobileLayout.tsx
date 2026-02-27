@@ -213,7 +213,14 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
       if (!editingParticipantId) setOptimisticIdentityId(identityId);
       updateParticipantIdentity(conversationId, targetId, identityId);
     }
-    setShowIdentityPanel(false);
+    if (editingParticipantId) {
+      // Group member role edit: return to participants panel
+      setShowIdentityPanel(false);
+      setShowParticipants(true);
+    } else {
+      // Single chat identity change: just close
+      setShowIdentityPanel(false);
+    }
     setEditingParticipantId(null);
   }, [conversationId, editingParticipantId, currentParticipant, updateParticipantIdentity]);
 
@@ -652,29 +659,26 @@ function MobileSortableRow({
   const pModel = getModelById(p.modelId);
   const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
   const displayName = pModel?.displayName ?? p.modelId;
-  const { initials } = getAvatarProps(displayName);
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-3 py-2.5">
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2.5 py-2">
       {isSequential && (
         <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing flex-shrink-0 p-0.5 touch-none">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="5" r="1.5" fill="var(--muted-foreground)"/><circle cx="16" cy="5" r="1.5" fill="var(--muted-foreground)"/><circle cx="8" cy="12" r="1.5" fill="var(--muted-foreground)"/><circle cx="16" cy="12" r="1.5" fill="var(--muted-foreground)"/><circle cx="8" cy="19" r="1.5" fill="var(--muted-foreground)"/><circle cx="16" cy="19" r="1.5" fill="var(--muted-foreground)"/></svg>
         </button>
       )}
       <span className="text-[11px] text-muted-foreground w-4 text-center flex-shrink-0">{idx + 1}</span>
-      <div className="h-8 w-8 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }}>
-        <span className="text-xs font-bold text-primary">{initials}</span>
-      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-medium text-foreground truncate">{displayName}</p>
-        <button className="text-[12px] text-muted-foreground truncate active:opacity-60 text-left" onClick={onEditRole}>
-          {pIdentity ? pIdentity.name : t("chat.noIdentity")}
-        </button>
+        <p className="text-[13px] font-medium text-foreground truncate">{displayName}</p>
       </div>
-      <button className="p-1.5 active:opacity-60" onClick={onEditRole}>
-        <IoPersonOutline size={16} color="var(--primary)" />
+      <button
+        className="flex-shrink-0 px-2 py-0.5 rounded text-[11px] active:opacity-60"
+        style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)", color: "var(--primary)" }}
+        onClick={onEditRole}
+      >
+        {pIdentity ? pIdentity.name : t("chat.noIdentity")}
       </button>
-      <button className="p-1.5 active:opacity-60" onClick={onRemove}>
-        <IoTrashOutline size={16} color="var(--destructive)" />
+      <button className="p-1 active:opacity-60 flex-shrink-0" onClick={onRemove}>
+        <IoTrashOutline size={15} color="var(--destructive)" />
       </button>
     </div>
   );

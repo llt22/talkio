@@ -69,7 +69,7 @@ const Home: ActivityComponentType = () => {
 // Activity: Chat Detail
 // ══════════════════════════════════════════
 const ChatDetail: ActivityComponentType<{ conversationId: string }> = ({ params }) => {
-  const { pop } = _useFlow();
+  const { pop, push } = _useFlow();
   const setCurrentConversation = useChatStore((s) => s.setCurrentConversation);
 
   useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
@@ -78,9 +78,23 @@ const ChatDetail: ActivityComponentType<{ conversationId: string }> = ({ params 
     return () => setCurrentConversation(null);
   }, [params.conversationId, setCurrentConversation]);
 
+  const nav: MobileNavFunctions = useMemo(() => ({
+    pushChat: (conversationId: string) => push("ChatDetail", { conversationId }),
+    pushAddMember: (conversationId?: string) => push("AddMember", { conversationId: conversationId ?? "" }),
+    pushIdentityNew: () => push("IdentityNew", {}),
+    pushIdentityEdit: (id: string) => push("IdentityEdit", { identityId: id }),
+    pushSettingsProviders: () => push("ProvidersList", {}),
+    pushSettingsProviderEdit: (editId?: string) => push("ProviderEdit", { editId: editId ?? "" }),
+    pushSettingsMcpTools: () => push("McpTools", {}),
+    pushSettingsMcpServerEdit: (serverId?: string) => push("McpServerEdit", { serverId: serverId ?? "" }),
+    pushSettingsStt: () => push("SttSettings", {}),
+  }), [push]);
+
   return (
     <AppScreen>
-      <MobileChatDetail conversationId={params.conversationId} onBack={() => pop()} />
+      <MobileNavContext.Provider value={nav}>
+        <MobileChatDetail conversationId={params.conversationId} onBack={() => pop()} />
+      </MobileNavContext.Provider>
     </AppScreen>
   );
 };

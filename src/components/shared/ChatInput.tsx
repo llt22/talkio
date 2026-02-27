@@ -47,7 +47,8 @@ export const ChatInput = memo(function ChatInput({
 }: ChatInputProps) {
   const { t } = useTranslation();
   const getModelById = useProviderStore((s) => s.getModelById);
-  const resolvedPlaceholder = placeholder ?? t("chat.message");
+  const basePlaceholder = placeholder ?? t("chat.message");
+  const resolvedPlaceholder = isMobile ? basePlaceholder : `${basePlaceholder}  (Shift+Enter)`;
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
@@ -134,7 +135,7 @@ export const ChatInput = memo(function ChatInput({
           return;
         }
       }
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+      if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); handleSend(); }
     },
     [isMobile, handleSend, showMentionPicker, isGroup, participantEntries, mentionIndex, insertMention],
   );

@@ -82,6 +82,13 @@ export interface ChatState {
   reorderParticipants: (conversationId: string, participantIds: string[]) => Promise<void>;
 }
 
+/** Generate an auto-title from participant model names */
+function autoTitle(participants: ConversationParticipant[], providerStore: ReturnType<typeof useProviderStore.getState>): string {
+  const names = participants.map((p) => providerStore.getModelById(p.modelId)?.displayName ?? p.modelId);
+  if (names.length <= 1) return names[0] ?? "";
+  return names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")}...`;
+}
+
 export const useChatStore = create<ChatState>((set, get) => ({
   currentConversationId: null,
   isGenerating: false,
@@ -109,12 +116,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }));
     }
     const isGroup = participants.length > 1;
-    const names = participants.map((p) => providerStore.getModelById(p.modelId)?.displayName ?? p.modelId);
-    const groupTitle = names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")}...`;
     const conv: Conversation = {
       id: generateId(),
       type: isGroup ? "group" : "single",
-      title: isGroup ? groupTitle : (model?.displayName ?? i18n.t("chats.newChat", { defaultValue: "New Chat" })),
+      title: isGroup ? autoTitle(participants, providerStore) : (model?.displayName ?? i18n.t("chats.newChat", { defaultValue: "New Chat" })),
       participants,
       lastMessage: null,
       lastMessageAt: null,
@@ -707,19 +712,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const conv = await getConversation(conversationId);
     if (!conv) return;
     const providerStore = useProviderStore.getState();
-    const model = providerStore.getModelById(modelId);
     const newParticipant: ConversationParticipant = {
       id: generateId(),
       modelId,
       identityId: identityId ?? null,
     };
     const participants = [...conv.participants, newParticipant];
-    const isFirstGroup = conv.type === "single" && participants.length > 1;
-    await updateConversation(conversationId, {
+    const becomesGroup = conv.type === "single" && participants.length > 1;
+    const oldAutoTitle = autoTitle(conv.participants, providerStore);
+    const isAutoTitle = becomesGroup || conv.title === oldAutoTitle;
+    const updates: Partial<Conversation> = {
       participants,
-      type: isFirstGroup ? "group" : conv.type,
-      title: isFirstGroup ? (model?.displayName ?? conv.title) : conv.title,
-    });
+      type: becomesGroup ? "group" : conv.type,
+    };
+    if (isAutoTitle) updates.title = autoTitle(participants, providerStore);
+    await updateConversation(conversationId, updates);
     notifyDbChange("conversations");
   },
 
@@ -732,15 +739,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       identityId: m.identityId,
     }));
     const participants = [...conv.participants, ...newParticipants];
-    const isFirstGroup = conv.type === "single" && participants.length > 1;
+    const becomesGroup = conv.type === "single" && participants.length > 1;
     const providerStore = useProviderStore.getState();
-    const names = participants.map((p) => providerStore.getModelById(p.modelId)?.displayName ?? p.modelId);
-    const groupTitle = names.join(", ");
-    await updateConversation(conversationId, {
+    const oldAutoTitle = autoTitle(conv.participants, providerStore);
+    const isAutoTitle = becomesGroup || conv.title === oldAutoTitle;
+    const updates: Partial<Conversation> = {
       participants,
-      type: isFirstGroup ? "group" : conv.type,
-      ...(isFirstGroup ? { title: groupTitle } : {}),
-    });
+      type: becomesGroup ? "group" : conv.type,
+    };
+    if (isAutoTitle) updates.title = autoTitle(participants, providerStore);
+    await updateConversation(conversationId, updates);
     notifyDbChange("conversations");
   },
 
@@ -748,10 +756,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const conv = await getConversation(conversationId);
     if (!conv) return;
     const participants = conv.participants.filter((p) => p.id !== participantId);
-    await updateConversation(conversationId, {
+    const providerStore = useProviderStore.getState();
+    const isAutoTitle = conv.title === autoTitle(conv.participants, providerStore);
+    const updates: Partial<Conversation> = {
       participants,
       type: participants.length <= 1 ? "single" : "group",
-    });
+    };
+    if (isAutoTitle) updates.title = autoTitle(participants, providerStore);
+    await updateConversation(conversationId, updates);
     notifyDbChange("conversations");
   },
 
