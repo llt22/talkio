@@ -15,8 +15,53 @@ permissions:
   contents: write
 
 jobs:
-  # ── Desktop builds (Windows / macOS / Linux) ──
+  # ── Step 1: Create a single draft release ──
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.id }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version tag
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create draft release
+        id: create
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: 'Talkio ${{ steps.version.outputs.tag }}'
+          body: |
+            ## Talkio ${{ steps.version.outputs.tag }}
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | Windows x64 | `.msi` / `.exe` |
+            | macOS (Intel + Apple Silicon) | `.dmg` |
+            | Linux x64 | `.AppImage` / `.deb` |
+            | Android | `.apk` |
+
+            ---
+            Built by GitHub Actions
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Step 2: Desktop builds (Windows / macOS / Linux) ──
   build-desktop:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -69,42 +114,17 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Get version tag
-        id: version
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
-
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ steps.version.outputs.tag }}
-          releaseName: 'Talkio ${{ steps.version.outputs.tag }}'
-          releaseBody: |
-            ## Talkio ${{ steps.version.outputs.tag }}
-
-            ### Downloads
-            | Platform | File |
-            |----------|------|
-            | Windows x64 | `.msi` / `.exe` |
-            | macOS (Intel + Apple Silicon) | `.dmg` |
-            | Linux x64 | `.AppImage` / `.deb` |
-            | Android | `.apk` |
-
-            ---
-            🤖 Built by GitHub Actions
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           args: --target ${{ matrix.target }}
 
-  # ── Android APK ──
+  # ── Step 2: Android APK (runs in parallel with Desktop) ──
   build-android:
+    needs: create-release
     name: Android APK
     runs-on: ubuntu-latest
 
@@ -144,16 +164,6 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli
 
-      - name: Get version tag
-        id: version
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
-
       - name: Decode keystore
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/talkio-release.keystore
@@ -171,14 +181,14 @@ jobs:
         id: apk
         run: |
           APK=$(find src-tauri/gen/android -name "*.apk" -path "*/release/*" | head -1)
-          TAG="${{ steps.version.outputs.tag }}"
+          TAG="${{ needs.create-release.outputs.tag }}"
           cp "$APK" "Talkio-${TAG}.apk"
           echo "path=Talkio-${TAG}.apk" >> $GITHUB_OUTPUT
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
+          tag_name: ${{ needs.create-release.outputs.tag }}
           files: ${{ steps.apk.outputs.path }}
           draft: true
         env:
