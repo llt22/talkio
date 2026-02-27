@@ -111,7 +111,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
         `${t("common.success")}: ${t("personas.importSuccess", { count: addedNames.length })}\n\n${addedNames.join("\n")}`,
       );
     } catch (err) {
-      appAlert(`${t("common.error")}: ${err instanceof Error ? err.message : "Import failed"}`);
+      appAlert(`${t("common.error")}: ${err instanceof Error ? err.message : t("settings.importFailed")}`);
     } finally {
       setIsImporting(false);
     }

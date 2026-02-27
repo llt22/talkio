@@ -12,6 +12,7 @@ import { useMcpStore } from "./stores/mcp-store";
 import { useSettingsStore } from "./stores/settings-store";
 import { useBuiltInToolsStore } from "./stores/built-in-tools-store";
 import { refreshMcpConnections } from "./services/mcp";
+import i18n from "./i18n";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => {
@@ -61,9 +62,12 @@ export default function App() {
               useSettingsStore.getState().loadFromStorage();
               useIdentityStore.getState().loadFromStorage();
               useMcpStore.getState().loadFromStorage();
-              appAlert(result.message);
+              appAlert(i18n.t("settings.importSuccess", result.counts!));
             } else {
-              appAlert(result.message);
+              const msg = result.errorCode === "UNSUPPORTED_VERSION"
+                ? i18n.t("settings.importUnsupportedVersion", { version: result.errorDetail })
+                : i18n.t("settings.importParseError");
+              appAlert(msg);
             }
           }
         } catch { /* not in Tauri or no pending import */ }

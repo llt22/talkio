@@ -54,12 +54,19 @@ export async function downloadBackup(data: BackupData): Promise<boolean> {
   return true;
 }
 
-export function importBackupFromString(text: string): { success: boolean; message: string } {
+export interface ImportResult {
+  success: boolean;
+  errorCode?: "UNSUPPORTED_VERSION" | "PARSE_ERROR";
+  errorDetail?: string;
+  counts?: { providers: number; models: number; identities: number; mcpServers: number };
+}
+
+export function importBackupFromString(text: string): ImportResult {
   try {
     const data = JSON.parse(text) as BackupData;
 
     if (data.version !== "2.0") {
-      return { success: false, message: `Unsupported backup version: ${data.version}` };
+      return { success: false, errorCode: "UNSUPPORTED_VERSION", errorDetail: data.version };
     }
 
     if (data.providers) kvStore.setObject("providers", data.providers);
@@ -67,19 +74,26 @@ export function importBackupFromString(text: string): { success: boolean; messag
     if (data.identities) kvStore.setObject("identities", data.identities);
     if (data.mcpServers) kvStore.setObject("mcp_servers", data.mcpServers);
 
-    const parts = [`${data.providers?.length ?? 0} providers`, `${data.models?.length ?? 0} models`, `${data.identities?.length ?? 0} identities`];
-    return { success: true, message: `Imported ${parts.join(", ")}` };
+    return {
+      success: true,
+      counts: {
+        providers: data.providers?.length ?? 0,
+        models: data.models?.length ?? 0,
+        identities: data.identities?.length ?? 0,
+        mcpServers: data.mcpServers?.length ?? 0,
+      },
+    };
   } catch (err) {
-    return { success: false, message: err instanceof Error ? err.message : "Failed to parse backup file" };
+    return { success: false, errorCode: "PARSE_ERROR", errorDetail: err instanceof Error ? err.message : undefined };
   }
 }
 
-export async function importBackup(file: File): Promise<{ success: boolean; message: string }> {
+export async function importBackup(file: File): Promise<ImportResult> {
   const text = await file.text();
   return importBackupFromString(text);
 }
 
-export async function pickAndImportBackup(): Promise<{ success: boolean; message: string } | null> {
+export async function pickAndImportBackup(): Promise<ImportResult | null> {
   if ((window as any).__TAURI_INTERNALS__) {
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");

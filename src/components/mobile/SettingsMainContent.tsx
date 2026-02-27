@@ -96,7 +96,7 @@ export function SettingsMainContent() {
           iconColor="#14b8a6"
           iconBg="rgba(20,184,166,0.1)"
           label={t("settings.exportBackup")}
-          onPress={async () => { const data = createBackup(); const saved = await downloadBackup(data); if (saved) await appAlert(t("settings.exportSuccess", { defaultValue: "Config exported successfully" })); }}
+          onPress={async () => { const data = createBackup(); const saved = await downloadBackup(data); if (saved) await appAlert(t("settings.exportSuccess")); }}
         />
         <SettingsRow
           iconPath="M176 48v288M80 192l96-96 96 96M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40"
@@ -109,10 +109,13 @@ export function SettingsMainContent() {
             if (result.success) {
               useProviderStore.getState().loadFromStorage();
               useSettingsStore.getState().loadFromStorage();
-              await appAlert(result.message);
+              await appAlert(t("settings.importSuccess", result.counts!));
               window.location.reload();
             } else {
-              await appAlert(`Import failed: ${result.message}`);
+              const msg = result.errorCode === "UNSUPPORTED_VERSION"
+                ? t("settings.importUnsupportedVersion", { version: result.errorDetail })
+                : t("settings.importParseError");
+              await appAlert(`${t("settings.importFailed")}: ${msg}`);
             }
           }}
           isLast
