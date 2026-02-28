@@ -28,7 +28,18 @@ export async function downloadBackup(data: BackupData): Promise<boolean> {
   const json = JSON.stringify(data, null, 2);
   const defaultName = `talkio-config-${new Date().toISOString().slice(0, 10)}.json`;
 
-  if (window.__TAURI_INTERNALS__) {
+  if ((window as any).__TAURI_INTERNALS__) {
+    // Mobile (Android/iOS): share file via native bridge
+    const nativeShare = (window as any).NativeShare;
+    if (nativeShare) {
+      try {
+        nativeShare.shareFile(defaultName, json, "application/json");
+        return true;
+      } catch {
+        // fall through to save dialog
+      }
+    }
+    // Desktop Tauri: save dialog
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const { writeTextFile } = await import("@tauri-apps/plugin-fs");
