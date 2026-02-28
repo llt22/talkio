@@ -50,14 +50,14 @@ async function handleReadClipboard(): Promise<ToolResult> {
 export const BUILT_IN_TOOLS: BuiltInToolDef[] = [
   {
     name: "get_current_time",
-    description: "Get current date, time, timezone, and day of week",
+    description: "Get current date/time. Only call when the user explicitly asks about the current time, date, or timezone.",
     parameters: { type: "object", properties: {} },
     handler: () => handleGetCurrentTime(),
     enabledByDefault: true,
   },
   {
     name: "read_clipboard",
-    description: "Read the current text content from the device clipboard",
+    description: "Read clipboard text. Only call when the user explicitly asks to read or paste clipboard content.",
     parameters: { type: "object", properties: {} },
     handler: () => handleReadClipboard(),
     enabledByDefault: true,
