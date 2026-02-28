@@ -25,11 +25,11 @@ function getTauriInvoke(): Promise<((cmd: string, args?: Record<string, unknown>
 
 export function isStdioAvailable(): boolean {
   if (typeof window === "undefined") return false;
-  const hasTauri = "__TAURI_INTERNALS__" in window || "__TAURI__" in window;
+  const w = window as any;
+  const hasTauri = "__TAURI_INTERNALS__" in w || "__TAURI__" in w;
   if (!hasTauri) return false;
   // Stdio subprocess only works on desktop Tauri, not mobile (Android/iOS)
-  const ua = navigator.userAgent.toLowerCase();
-  const isMobile = /android|iphone|ipad|ipod/i.test(ua);
+  const isMobile = !!(w.__TAURI_IOS__ || w.__TAURI_ANDROID__);
   return !isMobile;
 }
 
