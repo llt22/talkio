@@ -192,10 +192,13 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
               </div>
             )}
 
-            {/* Server cards */}
-            {servers.length > 0 ? (
+            {/* Server cards — hide stdio servers on mobile (no Tauri) */}
+            {(() => {
+              const stdioOk = isStdioAvailable();
+              const visibleServers = stdioOk ? servers : servers.filter((s) => s.type !== "stdio");
+              return visibleServers.length > 0 ? (
               <div className="px-4 pt-2 flex flex-col gap-3">
-                {servers.map((server) => (
+                {visibleServers.map((server) => (
                   <McpServerCard
                     key={server.id}
                     server={server}
@@ -235,7 +238,8 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
               </div>
             ) : (
               <p className="px-4 pt-4 text-[13px] text-muted-foreground">{t("personas.noCustomTools")}</p>
-            )}
+            );
+            })()}
           </>
         )}
 
