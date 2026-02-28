@@ -45,6 +45,12 @@ function sanitizePath(relativePath: string): string | null {
   return parts.join("/");
 }
 
+/** Build an absolute path from workspace root + sanitized relative path. */
+function buildFullPath(workspaceDir: string, safePath: string): string {
+  const sep = workspaceDir.includes("\\") ? "\\" : "/";
+  return workspaceDir.replace(/[/\\]+$/, "") + sep + safePath.replace(/\//g, sep);
+}
+
 /**
  * Write parsed file blocks to the workspace directory.
  * Requires Tauri environment. Returns list of successfully written files.
@@ -53,8 +59,7 @@ export async function writeFilesToWorkspace(
   blocks: { path: string; content: string }[],
   workspaceDir: string,
 ): Promise<WrittenFile[]> {
-  if (!window.__TAURI_INTERNALS__) return [];
-  if (!workspaceDir) return [];
+  if (!window.__TAURI_INTERNALS__ || !workspaceDir) return [];
 
   const { writeTextFile, mkdir } = await import("@tauri-apps/plugin-fs");
   const written: WrittenFile[] = [];
@@ -63,41 +68,22 @@ export async function writeFilesToWorkspace(
     const safePath = sanitizePath(block.path);
     if (!safePath) continue;
 
-    // Build full path
+    const fullPath = buildFullPath(workspaceDir, safePath);
     const sep = workspaceDir.includes("\\") ? "\\" : "/";
-    const fullPath = workspaceDir.replace(/[/\\]+$/, "") + sep + safePath.replace(/\//g, sep);
-
-    // Ensure parent directory exists
     const parentDir = fullPath.substring(0, fullPath.lastIndexOf(sep));
     if (parentDir && parentDir !== workspaceDir) {
-      try {
-        await mkdir(parentDir, { recursive: true });
-      } catch {
-        // Directory might already exist
-      }
+      try { await mkdir(parentDir, { recursive: true }); } catch { /* exists */ }
     }
 
     try {
       await writeTextFile(fullPath, block.content);
-      written.push({
-        path: safePath,
-        fullPath,
-        size: new Blob([block.content]).size,
-      });
+      written.push({ path: safePath, fullPath, size: new Blob([block.content]).size });
     } catch (err) {
       console.error(`[file-writer] Failed to write ${fullPath}:`, err);
     }
   }
 
   return written;
-}
-
-/**
- * Strip <file path="...">...</file> blocks from message text,
- * returning the clean text without file blocks.
- */
-export function stripFileBlocks(text: string): string {
-  return text.replace(/<file\s+path=["'][^"']+["']\s*>[\s\S]*?<\/file>/g, "").trim();
 }
 
 /**
@@ -109,24 +95,24 @@ export async function readWorkspaceTree(workspaceDir: string): Promise<string> {
 
   const { readDir } = await import("@tauri-apps/plugin-fs");
   const lines: string[] = [];
-  const MAX_ENTRIES = 200;
+  const MAX = 200;
+  const sep = workspaceDir.includes("\\") ? "\\" : "/";
 
   try {
     const entries = await readDir(workspaceDir);
     for (const entry of entries) {
-      if (lines.length >= MAX_ENTRIES) break;
-      if (entry.name?.startsWith(".")) continue; // skip hidden
+      if (lines.length >= MAX) break;
+      if (entry.name?.startsWith(".")) continue;
       if (entry.isDirectory) {
         lines.push(`📁 ${entry.name}/`);
         try {
-          const sep = workspaceDir.includes("\\") ? "\\" : "/";
           const subEntries = await readDir(workspaceDir + sep + entry.name);
           for (const sub of subEntries) {
-            if (lines.length >= MAX_ENTRIES) break;
+            if (lines.length >= MAX) break;
             if (sub.name?.startsWith(".")) continue;
             lines.push(`  ${sub.isDirectory ? "📁" : "📄"} ${entry.name}/${sub.name}${sub.isDirectory ? "/" : ""}`);
           }
-        } catch { /* permission denied or not readable */ }
+        } catch { /* not readable */ }
       } else {
         lines.push(`📄 ${entry.name}`);
       }
@@ -137,28 +123,4 @@ export async function readWorkspaceTree(workspaceDir: string): Promise<string> {
   }
 
   return lines.join("\n");
-}
-
-/**
- * Read a file from the workspace directory. Returns content or null.
- * Path is sanitized to prevent directory traversal.
- */
-export async function readWorkspaceFile(
-  relativePath: string,
-  workspaceDir: string,
-): Promise<string | null> {
-  if (!window.__TAURI_INTERNALS__ || !workspaceDir) return null;
-
-  const safePath = sanitizePath(relativePath);
-  if (!safePath) return null;
-
-  const { readTextFile } = await import("@tauri-apps/plugin-fs");
-  const sep = workspaceDir.includes("\\") ? "\\" : "/";
-  const fullPath = workspaceDir.replace(/[/\\]+$/, "") + sep + safePath.replace(/\//g, sep);
-
-  try {
-    return await readTextFile(fullPath);
-  } catch {
-    return null;
-  }
 }
