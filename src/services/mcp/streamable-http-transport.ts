@@ -1,6 +1,7 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { isInitializedNotification, JSONRPCMessageSchema } from "@modelcontextprotocol/sdk/types.js";
+import { isTauri } from "../../lib/platform";
 
 // Use Tauri's native HTTP fetch (bypasses browser CORS) when available.
 // Lazy-loaded promise ensures the import is resolved before first use.
@@ -8,8 +9,7 @@ let tauriFetchPromise: Promise<typeof globalThis.fetch | null> | null = null;
 
 function getTauriFetch(): Promise<typeof globalThis.fetch | null> {
   if (tauriFetchPromise) return tauriFetchPromise;
-  // Tauri v2 uses __TAURI_INTERNALS__, v1 used __TAURI__
-  const isTauri = typeof window !== "undefined" && ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
+  // Use centralized platform detection
   if (isTauri) {
     tauriFetchPromise = import("@tauri-apps/plugin-http")
       .then((mod) => {

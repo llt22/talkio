@@ -7,12 +7,12 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { JSONRPCMessageSchema } from "@modelcontextprotocol/sdk/types.js";
+import { isTauri, isDesktop } from "../../lib/platform";
 
 let invokePromise: Promise<((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null> | null = null;
 
 function getTauriInvoke(): Promise<((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null> {
   if (invokePromise) return invokePromise;
-  const isTauri = typeof window !== "undefined" && ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
   if (isTauri) {
     invokePromise = import("@tauri-apps/api/core")
       .then((mod) => mod.invoke as (cmd: string, args?: Record<string, unknown>) => Promise<unknown>)
@@ -23,14 +23,9 @@ function getTauriInvoke(): Promise<((cmd: string, args?: Record<string, unknown>
   return invokePromise!;
 }
 
+/** Stdio subprocess transport is only available on desktop Tauri */
 export function isStdioAvailable(): boolean {
-  if (typeof window === "undefined") return false;
-  const w = window as any;
-  const hasTauri = "__TAURI_INTERNALS__" in w || "__TAURI__" in w;
-  if (!hasTauri) return false;
-  // Stdio subprocess only works on desktop Tauri, not mobile (Android/iOS)
-  const isMobile = !!(w.__TAURI_IOS__ || w.__TAURI_ANDROID__);
-  return !isMobile;
+  return isDesktop;
 }
 
 export class TauriStdioTransport implements Transport {
