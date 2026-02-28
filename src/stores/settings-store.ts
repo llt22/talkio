@@ -35,7 +35,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   sttBaseUrl: "https://api.groq.com/openai/v1",
   sttApiKey: "",
   sttModel: "whisper-large-v3-turbo",
-  contextCompressionEnabled: true,
+  contextCompressionEnabled: false,
   contextCompressionThreshold: 16000,
   workspaceDir: "",
 };
