@@ -388,33 +388,35 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
           {/* Bubble or Edit textarea */}
           {isEditing ? (
             <div className="w-full max-w-[80%]" style={{ maxWidth: "min(80%, 640px)" }}>
-              <textarea
-                ref={editRef}
-                value={editText}
-                onChange={(e) => setEditText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") cancelEditing();
-                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); confirmEdit(); }
-                }}
-                className="w-full rounded-2xl px-4 py-3 text-[15px] leading-relaxed text-foreground outline-none resize-none"
-                style={{ backgroundColor: "var(--secondary)", border: "2px solid var(--primary)", minHeight: "80px" }}
-                rows={Math.max(2, editText.split("\n").length)}
-              />
-              <div className="flex justify-end gap-1.5 mt-1.5">
+              <div className="rounded-2xl px-3" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--primary)" }}>
+                <textarea
+                  ref={editRef}
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") cancelEditing();
+                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); confirmEdit(); }
+                  }}
+                  className="w-full bg-transparent py-3 text-[15px] leading-relaxed text-foreground outline-none resize-none"
+                  style={{ minHeight: "60px" }}
+                  rows={Math.max(2, editText.split("\n").length)}
+                />
+              </div>
+              <div className="flex justify-end gap-2 mt-2">
                 <button
                   onClick={cancelEditing}
-                  className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium active:opacity-70"
-                  style={{ backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}
+                  className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-medium active:opacity-70"
+                  style={{ backgroundColor: "var(--secondary)", color: "var(--muted-foreground)" }}
                 >
-                  <X size={13} />
+                  <X size={14} />
                   {t("common.cancel")}
                 </button>
                 <button
                   onClick={confirmEdit}
-                  className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-white active:opacity-70"
+                  className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-medium text-white active:opacity-70"
                   style={{ backgroundColor: "var(--primary)" }}
                 >
-                  <Check size={13} />
+                  <Check size={14} />
                   {t("common.save")}
                 </button>
               </div>
