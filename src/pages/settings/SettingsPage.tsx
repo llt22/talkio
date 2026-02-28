@@ -197,11 +197,11 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
               className="rounded-lg px-2 py-1 text-[13px] text-muted-foreground outline-none appearance-none cursor-pointer flex-shrink-0"
               style={{ backgroundColor: "var(--secondary)" }}
             >
-              <option value={4000}>4K</option>
               <option value={8000}>8K</option>
               <option value={16000}>16K</option>
               <option value={32000}>32K</option>
               <option value={64000}>64K</option>
+              <option value={128000}>128K</option>
             </select>
           )}
           <div

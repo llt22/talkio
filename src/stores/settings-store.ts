@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   sttApiKey: "",
   sttModel: "whisper-large-v3-turbo",
   contextCompressionEnabled: true,
-  contextCompressionThreshold: 8000,
+  contextCompressionThreshold: 16000,
 };
 
 const SETTINGS_KEY = "settings";
