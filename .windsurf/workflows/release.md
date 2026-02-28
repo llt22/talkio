@@ -9,7 +9,7 @@ Talkio 已配置 GitHub Actions CI/CD（`.github/workflows/release.yml`），推
 ## 前置条件
 
 - 所有功能已合并到 `main` 分支
-- 本地代码已拉取最新：`git pull --rebase github main`
+- 本地代码已拉取最新：`git pull --rebase`
 - 工作区无未提交改动：`git status` 干净
 - GitHub Secrets 已配置（Android 签名）：
   - `ANDROID_KEYSTORE_BASE64`
@@ -51,8 +51,8 @@ git tag vX.Y.Z
 ## 5. 推送代码和 Tag（触发自动构建）
 
 ```bash
-git push github main
-git push github vX.Y.Z
+git push origin main
+git push origin vX.Y.Z
 ```
 
 > 推送 tag 后 GitHub Actions 自动触发 `release.yml`，执行以下操作：
