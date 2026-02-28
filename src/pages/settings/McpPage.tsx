@@ -145,7 +145,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
   useImperativeHandle(ref, () => ({ triggerAdd: () => pushServerForm() }), [pushServerForm]);
 
   return (
-    <div className="relative h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+    <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
       <div className="pb-8">
         {servers.length === 0 && BUILT_IN_TOOLS.length === 0 ? (
           <EmptyState
@@ -339,7 +339,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
 
       {/* Import JSON Modal */}
       {showImportModal && (
-        <div className="absolute inset-0 z-50">
+        <div className="fixed inset-0 z-50">
           <button
             className="absolute inset-0 bg-black/30"
             onClick={() => { if (!isImporting) setShowImportModal(false); }}
