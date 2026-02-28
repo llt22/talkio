@@ -128,18 +128,49 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
   const dragCountRef = useRef(0);
   const [droppedFiles, setDroppedFiles] = useState<{ images: string[]; files: ParsedFile[] } | null>(null);
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (isMobile) return;
+    if (!e.dataTransfer?.types.includes("Files")) return;
+    e.preventDefault();
+  }, [isMobile]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (isMobile) return;
+    if (!e.dataTransfer?.types.includes("Files")) return;
+    dragCountRef.current++;
+    setIsDragging(true);
+  }, [isMobile]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCountRef.current--;
+    if (dragCountRef.current <= 0) { dragCountRef.current = 0; setIsDragging(false); }
+  }, []);
+
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     dragCountRef.current = 0;
     setIsDragging(false);
     if (isMobile) return;
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) return;
+    if (!e.dataTransfer?.items || e.dataTransfer.items.length === 0) return;
+    if (!e.dataTransfer.types.includes("Files")) return;
+
+    // Extract files from DataTransferItems (LobeChat pattern)
+    const fileList: File[] = [];
+    for (const item of Array.from(e.dataTransfer.items)) {
+      if (item.kind === "file") {
+        const f = item.getAsFile();
+        if (f) fileList.push(f);
+      }
+    }
+    if (fileList.length === 0) return;
+
     const images: string[] = [];
     const docs: ParsedFile[] = [];
-    for (let i = 0; i < Math.min(files.length, 4); i++) {
+    for (let i = 0; i < Math.min(fileList.length, 4); i++) {
       try {
-        const parsed = await parseFile(files[i]);
+        const parsed = await parseFile(fileList[i]);
         if (parsed.type === "image") images.push(parsed.content);
         else docs.push(parsed);
       } catch { /* skip unsupported */ }
@@ -207,9 +238,9 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
     <div
       className="flex flex-col h-full relative"
       style={{ backgroundColor: "var(--background)" }}
-      onDragEnter={(e) => { e.preventDefault(); dragCountRef.current++; if (!isMobile) setIsDragging(true); }}
-      onDragOver={(e) => e.preventDefault()}
-      onDragLeave={(e) => { e.preventDefault(); dragCountRef.current--; if (dragCountRef.current <= 0) { dragCountRef.current = 0; setIsDragging(false); } }}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {/* Drop overlay */}
