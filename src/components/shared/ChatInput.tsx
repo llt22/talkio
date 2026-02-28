@@ -469,9 +469,11 @@ export const ChatInput = memo(function ChatInput({
 
           {/* Action bar */}
           <div className="flex items-center px-3 gap-0.5" style={{ paddingBottom: isMobile ? "max(4px, env(safe-area-inset-bottom, 4px))" : "4px" }}>
-            <button onClick={handleAttach} className={`flex items-center justify-center rounded-full active:opacity-60 ${isMobile ? 'h-10 w-10' : 'h-8 w-8'}`} disabled={isGenerating}>
-              <Paperclip size={20} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
-            </button>
+            {!isMobile && (
+              <button onClick={handleAttach} className="flex items-center justify-center rounded-full active:opacity-60 h-8 w-8" disabled={isGenerating}>
+                <Paperclip size={20} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
+              </button>
+            )}
 
             {isGroup && (
               <button

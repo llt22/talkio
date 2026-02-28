@@ -38,14 +38,11 @@ function isExcel(filename: string): boolean {
   return ["xlsx", "xls"].includes(getExtension(filename));
 }
 
-export function isImageFile(filename: string): boolean {
+function isImageFile(filename: string): boolean {
   const ext = getExtension(filename);
   return ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic", "heif"].includes(ext);
 }
 
-export function isSupportedFile(filename: string): boolean {
-  return isTextFile(filename) || isPdf(filename) || isDocx(filename) || isExcel(filename) || isImageFile(filename);
-}
 
 async function readAsText(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
