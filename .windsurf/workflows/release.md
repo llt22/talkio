@@ -4,11 +4,18 @@ description: Talkio 版本发布流程（macOS + Android + Web）
 
 # Talkio 发布流程
 
+Talkio 已配置 GitHub Actions CI/CD（`.github/workflows/release.yml`），推送 tag 后自动构建所有平台产物并创建 draft release。
+
 ## 前置条件
 
 - 所有功能已合并到 `main` 分支
 - 本地代码已拉取最新：`git pull --rebase github main`
 - 工作区无未提交改动：`git status` 干净
+- GitHub Secrets 已配置（Android 签名）：
+  - `ANDROID_KEYSTORE_BASE64`
+  - `ANDROID_KEYSTORE_PASSWORD`
+  - `ANDROID_KEY_ALIAS`
+  - `ANDROID_KEY_PASSWORD`
 
 ## 1. 确定新版本号
 
@@ -41,53 +48,49 @@ git commit -m "🔖 release: vX.Y.Z"
 git tag vX.Y.Z
 ```
 
-## 5. 推送代码和 Tag
+## 5. 推送代码和 Tag（触发自动构建）
 
 ```bash
 git push github main
 git push github vX.Y.Z
 ```
 
-## 6. 构建 macOS 桌面端
+> 推送 tag 后 GitHub Actions 自动触发 `release.yml`，执行以下操作：
+> 1. 创建 **Draft Release**
+> 2. 并行构建 **Desktop**（Windows x64 `.msi/.exe` + macOS Universal `.dmg` + Linux x64 `.AppImage/.deb`）
+> 3. 并行构建 **Android APK**（release 签名）
+> 4. 所有产物自动上传到 Draft Release
+
+## 6. 等待 GitHub Actions 完成
+
+前往 https://github.com/llt22/talkio/actions 查看构建进度。
+
+所有 job 完成后，前往 https://github.com/llt22/talkio/releases 找到 draft release。
+
+## 7. 编辑并发布 Release
+
+1. 编辑 Draft Release 的 body，补充 Release Notes（列出主要改动）
+2. 确认所有产物已上传（dmg、msi、AppImage、deb、apk）
+3. 取消 "Set as a draft" → 点击 "Publish release"
+
+## 8. 本地测试验证（可选）
+
+### 本地 macOS 构建（跳过 CI）
 
 ```bash
 npx tauri build
 ```
 
-产物路径：
-- `.dmg`: `src-tauri/target/release/bundle/dmg/talkio_X.Y.Z_aarch64.dmg`
-- `.app`: `src-tauri/target/release/bundle/macos/talkio.app`
+产物：`src-tauri/target/release/bundle/dmg/talkio_X.Y.Z_aarch64.dmg`
 
-## 7. 构建 Android APK
-
-### Debug 版（测试用）
+### 本地 Android Debug 构建（快速测试）
 
 ```bash
 npx tauri android build -d -t aarch64 --apk
+adb install -r "src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk"
 ```
 
-产物路径：`src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk`
-
-### Release 版（发布用）
-
-需要先配置签名环境变量：
-
-```bash
-export ANDROID_KEYSTORE_PATH="/path/to/your/keystore.jks"
-export ANDROID_KEYSTORE_PASSWORD="your-password"
-export ANDROID_KEY_ALIAS="your-alias"
-export ANDROID_KEY_PASSWORD="your-key-password"
-```
-
-然后构建：
-
-```bash
-npx tauri android build -t aarch64 --apk
-```
-
-产物路径：`src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`
-
-## 8. 构建 Web 版（可选）
+### Web 版构建
 
 ```bash
 npm run build
@@ -95,22 +98,29 @@ npm run build
 
 产物目录：`dist/`
 
-## 9. 创建 GitHub Release
+---
 
-1. 前往 https://github.com/llt22/talkio/releases/new
-2. 选择 tag `vX.Y.Z`
-3. 标题：`vX.Y.Z`
-4. 填写 Release Notes（列出主要改动）
-5. 上传构建产物：
-   - `talkio_X.Y.Z_aarch64.dmg`（macOS）
-   - `app-universal-release.apk`（Android，重命名为 `talkio-X.Y.Z-android-arm64.apk`）
-6. 发布
+## CI/CD 架构参考
 
-## 10. 安装到手机验证（可选）
+### GitHub Actions Workflows
 
-```bash
-adb install -r "src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk"
-```
+| Workflow | 触发条件 | 用途 |
+|----------|----------|------|
+| `ci.yml` | push/PR to `main` | TypeScript 类型检查 |
+| `release.yml` | push tag `v*.*.*` 或手动 workflow_dispatch | 全平台构建 + Draft Release |
+
+### release.yml 构建矩阵
+
+| Job | Runner | 产物 |
+|-----|--------|------|
+| `build-desktop` (Windows) | `windows-latest` | `.msi`, `.exe` |
+| `build-desktop` (macOS) | `macos-latest` | `.dmg` (Universal: Intel + Apple Silicon) |
+| `build-desktop` (Linux) | `ubuntu-22.04` | `.AppImage`, `.deb` |
+| `build-android` | `ubuntu-latest` | `Talkio-vX.Y.Z.apk` (release 签名) |
+
+### 手动触发构建（无需打 tag）
+
+在 GitHub Actions 页面 → Release workflow → Run workflow → 输入 tag 名称。
 
 ---
 
@@ -119,9 +129,11 @@ adb install -r "src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-
 | 项目 | 路径/命令 |
 |------|----------|
 | 版本号文件 | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` |
-| macOS 构建 | `npx tauri build` |
+| CI/CD 配置 | `.github/workflows/release.yml`, `.github/workflows/ci.yml` |
+| macOS 本地构建 | `npx tauri build` |
 | Android debug | `npx tauri android build -d -t aarch64 --apk` |
-| Android release | `npx tauri android build -t aarch64 --apk`（需签名环境变量） |
 | Web 构建 | `npm run build` |
 | 安装到手机 | `adb install -r <apk-path>` |
 | 版本注入 | `vite.config.ts` → `__APP_VERSION__` from `package.json` |
+| GitHub Releases | https://github.com/llt22/talkio/releases |
+| GitHub Actions | https://github.com/llt22/talkio/actions |
