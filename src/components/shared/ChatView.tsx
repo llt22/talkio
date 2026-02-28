@@ -73,9 +73,19 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
     setCurrentConversation(conversationId);
   }, [conversationId, setCurrentConversation]);
 
+  // Re-lock scroll when streaming starts — covers the gap after handleSend's initial lock
+  const wasGenerating = useRef(false);
+  useEffect(() => {
+    if (isGenerating && !wasGenerating.current) {
+      scrollToBottom({ animation: "instant" });
+    }
+    wasGenerating.current = isGenerating;
+  }, [isGenerating, scrollToBottom]);
+
   const displayMessages = useMemo(() => {
     if (!streamingMessage) return messages;
-    return messages.map((m) => {
+    const found = messages.some((m) => m.id === streamingMessage.messageId);
+    const mapped = messages.map((m) => {
       if (m.id === streamingMessage.messageId) {
         return {
           ...m,
@@ -86,11 +96,42 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
       }
       return m;
     });
-  }, [messages, streamingMessage]);
+    // If the assistant message hasn't loaded from DB yet but streaming has started,
+    // append a synthetic entry so the streaming content renders immediately in the DOM.
+    if (!found) {
+      mapped.push({
+        id: streamingMessage.messageId,
+        conversationId: conversationId,
+        role: "assistant",
+        senderModelId: null,
+        senderName: "",
+        identityId: null,
+        participantId: null,
+        content: streamingMessage.content,
+        images: [],
+        generatedImages: [],
+        reasoningContent: streamingMessage.reasoning || null,
+        reasoningDuration: null,
+        toolCalls: [],
+        toolResults: [],
+        branchId: null,
+        parentMessageId: null,
+        isStreaming: true,
+        status: MessageStatus.STREAMING,
+        errorMessage: null,
+        tokenUsage: null,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    return mapped;
+  }, [messages, streamingMessage, conversationId]);
 
   const handleSend = useCallback(
     (text: string, mentionedParticipantIds?: string[], images?: string[]) => {
-      scrollToBottom();
+      // Use "instant" animation + ignoreEscapes to lock scroll to bottom
+      // throughout the entire send → stream cycle, preventing race conditions
+      // where isAtBottom becomes false between message insert and DOM render.
+      scrollToBottom({ animation: "instant", ignoreEscapes: true, duration: 500 });
       sendMessage(text, images, { mentionedParticipantIds });
     },
     [sendMessage, scrollToBottom],
