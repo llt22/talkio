@@ -89,56 +89,37 @@ export interface CompressOptions {
   signal?: AbortSignal;
 }
 
-/**
- * Compress API messages if they exceed the token threshold.
- * Returns the (possibly compressed) messages array.
- *
- * - If under threshold: returns original messages unchanged
- * - If over threshold: summarizes old messages, returns [system, summary, ...recent]
- */
-export async function compressIfNeeded(
+/** Split messages into system, old (to compress), and recent (to keep) */
+function splitMessages(
   messages: Array<{ role: string; content: unknown }>,
-  options: CompressOptions,
-): Promise<{ messages: Array<{ role: string; content: unknown }>; compressed: boolean }> {
-  const {
-    maxTokens = 8000,
-    keepRecentCount = 6,
-    baseUrl,
-    headers,
-    model,
-    signal,
-  } = options;
-
-  const totalTokens = estimateMessagesTokens(messages);
-  if (totalTokens <= maxTokens) {
-    return { messages, compressed: false };
-  }
-
-  console.log(`[ContextCompression] ${totalTokens} tokens > ${maxTokens} threshold, compressing...`);
-
-  // Split: system message(s) + old messages + recent messages
-  const systemMessages: Array<{ role: string; content: unknown }> = [];
-  const conversationMessages: Array<{ role: string; content: unknown }> = [];
-
+  keepRecentCount: number,
+): {
+  systemMsgs: Array<{ role: string; content: unknown }>;
+  toCompress: Array<{ role: string; content: unknown }>;
+  toKeep: Array<{ role: string; content: unknown }>;
+} {
+  const systemMsgs: Array<{ role: string; content: unknown }> = [];
+  const convMsgs: Array<{ role: string; content: unknown }> = [];
   for (const m of messages) {
-    if (m.role === "system") {
-      systemMessages.push(m);
-    } else {
-      conversationMessages.push(m);
-    }
+    if (m.role === "system") systemMsgs.push(m);
+    else convMsgs.push(m);
   }
+  const keepCount = Math.min(keepRecentCount, convMsgs.length);
+  return {
+    systemMsgs,
+    toCompress: convMsgs.slice(0, convMsgs.length - keepCount),
+    toKeep: convMsgs.slice(convMsgs.length - keepCount),
+  };
+}
 
-  // Keep at least keepRecentCount conversation messages uncompressed
-  const keepCount = Math.min(keepRecentCount, conversationMessages.length);
-  const toCompress = conversationMessages.slice(0, conversationMessages.length - keepCount);
-  const toKeep = conversationMessages.slice(conversationMessages.length - keepCount);
-
-  if (toCompress.length <= 1) {
-    // Not enough messages to compress
-    return { messages, compressed: false };
-  }
-
-  // Build the text to compress
+/** Call the LLM to generate a compression summary */
+async function callCompressionApi(
+  toCompress: Array<{ role: string; content: unknown }>,
+  baseUrl: string,
+  headers: Record<string, string>,
+  model: string,
+  signal?: AbortSignal,
+): Promise<string> {
   const compressText = toCompress
     .map((m) => {
       const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
@@ -146,51 +127,56 @@ export async function compressIfNeeded(
     })
     .join("\n\n");
 
+  const response = await appFetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: COMPRESS_SYSTEM_PROMPT },
+        { role: "user", content: compressText },
+        { role: "user", content: COMPRESS_USER_PROMPT },
+      ],
+      stream: false,
+      max_tokens: 1000,
+      temperature: 0.2,
+    }),
+    signal,
+  });
+
+  if (!response.ok) throw new Error(`API error ${response.status}`);
+  const data = await response.json();
+  const summary = data.choices?.[0]?.message?.content?.trim();
+  if (!summary) throw new Error("Empty compression result");
+  return summary;
+}
+
+/**
+ * Compress API messages if they exceed the token threshold.
+ * Returns the (possibly compressed) messages array.
+ */
+export async function compressIfNeeded(
+  messages: Array<{ role: string; content: unknown }>,
+  options: CompressOptions,
+): Promise<{ messages: Array<{ role: string; content: unknown }>; compressed: boolean }> {
+  const { maxTokens = 8000, keepRecentCount = 6, baseUrl, headers, model, signal } = options;
+
+  if (estimateMessagesTokens(messages) <= maxTokens) {
+    return { messages, compressed: false };
+  }
+
+  const { systemMsgs, toCompress, toKeep } = splitMessages(messages, keepRecentCount);
+  if (toCompress.length <= 1) return { messages, compressed: false };
+
   try {
-    const response = await appFetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: COMPRESS_SYSTEM_PROMPT },
-          { role: "user", content: compressText },
-          { role: "user", content: COMPRESS_USER_PROMPT },
-        ],
-        stream: false,
-        max_tokens: 1000,
-        temperature: 0.2,
-      }),
-      signal,
-    });
-
-    if (!response.ok) {
-      console.warn(`[ContextCompression] API error ${response.status}, skipping compression`);
-      return { messages, compressed: false };
-    }
-
-    const data = await response.json();
-    const summary = data.choices?.[0]?.message?.content?.trim();
-
-    if (!summary) {
-      console.warn("[ContextCompression] Empty summary, skipping");
-      return { messages, compressed: false };
-    }
-
-    const compressedTokens = estimateTokens(summary);
+    const summary = await callCompressionApi(toCompress, baseUrl, headers, model, signal);
     const originalTokens = estimateMessagesTokens(toCompress);
+    const compressedTokens = estimateTokens(summary);
     console.log(
-      `[ContextCompression] Compressed ${toCompress.length} messages: ${originalTokens} → ${compressedTokens} tokens (${Math.round((1 - compressedTokens / originalTokens) * 100)}% reduction)`,
+      `[ContextCompression] ${toCompress.length} messages: ${originalTokens} → ${compressedTokens} tokens (${Math.round((1 - compressedTokens / originalTokens) * 100)}% reduction)`,
     );
-
-    // Build new messages: system + summary + recent
-    const summaryMessage = {
-      role: "user" as const,
-      content: `[Previous conversation summary]\n${summary}`,
-    };
-
     return {
-      messages: [...systemMessages, summaryMessage, ...toKeep],
+      messages: [...systemMsgs, { role: "user", content: `[Previous conversation summary]\n${summary}` }, ...toKeep],
       compressed: true,
     };
   } catch (err) {
@@ -225,55 +211,11 @@ export async function manualCompress(
   messages: Array<{ role: string; content: unknown }>,
   options: Omit<CompressOptions, "maxTokens">,
 ): Promise<{ summary: string; originalTokens: number; compressedTokens: number }> {
-  // Separate system messages from conversation messages
-  const systemMessages: Array<{ role: string; content: unknown }> = [];
-  const conversationMessages: Array<{ role: string; content: unknown }> = [];
-  for (const m of messages) {
-    if (m.role === "system") systemMessages.push(m);
-    else conversationMessages.push(m);
-  }
+  const { toCompress } = splitMessages(messages, options.keepRecentCount ?? 4);
+  if (toCompress.length <= 1) throw new Error("Not enough messages to compress");
 
-  const keepCount = Math.min(options.keepRecentCount ?? 4, conversationMessages.length);
-  const toCompress = conversationMessages.slice(0, conversationMessages.length - keepCount);
-
-  if (toCompress.length <= 1) {
-    throw new Error("Not enough messages to compress");
-  }
-
-  const compressText = toCompress
-    .map((m) => {
-      const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
-      return `[${m.role}]: ${content}`;
-    })
-    .join("\n\n");
-
-  const response = await appFetch(`${options.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: options.headers,
-    body: JSON.stringify({
-      model: options.model,
-      messages: [
-        { role: "system", content: COMPRESS_SYSTEM_PROMPT },
-        { role: "user", content: compressText },
-        { role: "user", content: COMPRESS_USER_PROMPT },
-      ],
-      stream: false,
-      max_tokens: 1000,
-      temperature: 0.2,
-    }),
-    signal: options.signal,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Compression API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const summary = data.choices?.[0]?.message?.content?.trim();
-  if (!summary) throw new Error("Empty compression result");
-
+  const summary = await callCompressionApi(toCompress, options.baseUrl, options.headers, options.model, options.signal);
   const originalTokens = estimateMessagesTokens(toCompress);
   const compressedTokens = estimateTokens(summary);
-
   return { summary, originalTokens, compressedTokens };
 }

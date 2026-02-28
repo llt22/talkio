@@ -1,18 +1,15 @@
 /**
  * Chat Store — manages conversations and streaming SSE.
  * Uses SQLite for persistence + in-memory streaming state.
- * rAF-throttled UI updates for smooth streaming.
+ * Generation logic extracted to chat-generation.ts.
  */
 import { create } from "zustand";
-import type { Message, Conversation, ConversationParticipant, Provider, SpeakingOrder } from "../types";
+import type { Message, Conversation, ConversationParticipant, SpeakingOrder } from "../types";
 import { MessageStatus } from "../types";
-import { useIdentityStore } from "./identity-store";
 import {
   resolveTargetParticipants,
-  getParticipantLabel,
-  buildApiMessagesForParticipant,
   createUserMessage,
-  createAssistantMessage,
+  buildApiMessagesForParticipant,
 } from "./chat-message-builder";
 import {
   insertConversation,
@@ -24,28 +21,17 @@ import {
   deleteMessage as dbDeleteMessage,
   clearMessages as dbClearMessages,
   insertMessages,
-  updateMessage,
 } from "../storage/database";
 import { notifyDbChange } from "../hooks/useDatabase";
 import { useProviderStore } from "./provider-store";
-import { getBuiltInToolDefs, executeBuiltInTool } from "../services/built-in-tools";
-import { executeMcpToolByName, getMcpToolDefsForIdentity, refreshMcpConnections } from "../services/mcp";
 import { generateId } from "../lib/id";
-import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
 import { buildProviderHeaders } from "../services/provider-headers";
-import { appFetch } from "../lib/http";
-import { useBuiltInToolsStore } from "./built-in-tools-store";
-import { compressIfNeeded, getManualSummary } from "../lib/context-compression";
 import { useSettingsStore } from "./settings-store";
+import { generateForParticipant, type StreamingState } from "./chat-generation";
+import { estimateMessagesTokens, compressIfNeeded } from "../lib/context-compression";
 import i18n from "../i18n";
 
 const MAX_HISTORY = 200;
-
-interface StreamingState {
-  messageId: string;
-  content: string;
-  reasoning: string;
-}
 
 // Per-conversation generation tracking (module-level to avoid zustand serialization)
 const _abortControllers = new Map<string, AbortController>();
@@ -84,21 +70,52 @@ export interface ChatState {
   reorderParticipants: (conversationId: string, participantIds: string[]) => Promise<void>;
 }
 
-/** Find the earliest occurrence of any of the given tags in a string */
-function findFirst(str: string, ...tags: string[]): { idx: number; len: number } | null {
-  let best: { idx: number; len: number } | null = null;
-  for (const tag of tags) {
-    const i = str.indexOf(tag);
-    if (i !== -1 && (best === null || i < best.idx)) best = { idx: i, len: tag.length };
-  }
-  return best;
-}
-
 /** Generate an auto-title from participant model names */
 function autoTitle(participants: ConversationParticipant[], providerStore: ReturnType<typeof useProviderStore.getState>): string {
   const names = participants.map((p) => providerStore.getModelById(p.modelId)?.displayName ?? p.modelId);
   if (names.length <= 1) return names[0] ?? "";
   return names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")}...`;
+}
+
+/** Pre-compute compression summary once for all participants in group chat */
+async function preComputeCompression(
+  cid: string,
+  conversation: Conversation,
+  targets: ConversationParticipant[],
+  userMsg: Message,
+  abortController: AbortController,
+  activeBranchId: string | null,
+): Promise<string | null> {
+  const compressionSettings = useSettingsStore.getState().settings;
+  if (!compressionSettings.contextCompressionEnabled || targets.length === 0) return null;
+
+  const providerStore = useProviderStore.getState();
+  const firstModel = providerStore.getModelById(targets[0].modelId);
+  const firstProvider = firstModel ? providerStore.getProviderById(firstModel.providerId) : null;
+  if (!firstModel || !firstProvider || firstProvider.type !== "openai") return null;
+
+  const allMsgs = await getRecentMessages(cid, activeBranchId, MAX_HISTORY);
+  const filtered = allMsgs.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
+  const sampleApiMessages = buildApiMessagesForParticipant(filtered, targets[0], conversation);
+  const tokenCount = estimateMessagesTokens(sampleApiMessages);
+  if (tokenCount <= compressionSettings.contextCompressionThreshold) return null;
+
+  const baseUrl = firstProvider.baseUrl.replace(/\/+$/, "");
+  const headers = buildProviderHeaders(firstProvider, { "Content-Type": "application/json" });
+  const result = await compressIfNeeded(sampleApiMessages, {
+    maxTokens: compressionSettings.contextCompressionThreshold,
+    keepRecentCount: 6,
+    baseUrl,
+    headers,
+    model: firstModel.modelId,
+    signal: abortController.signal,
+  });
+  if (!result.compressed) return null;
+
+  const summaryMsg = result.messages.find(
+    (m) => typeof m.content === "string" && (m.content as string).startsWith("[Previous conversation summary]"),
+  );
+  return summaryMsg ? (summaryMsg.content as string) : null;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -166,17 +183,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sendMessage: async (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] }) => {
     const convId = get().currentConversationId;
     if (!convId) return;
-
     const conv = await getConversation(convId);
     if (!conv) return;
-    // convId and conv are guaranteed non-null below this point
     const cid: string = convId;
-    const conversation: Conversation = conv;
 
-    // Helper functions extracted to chat-message-builder.ts
-
-    const providerStore = useProviderStore.getState();
-
+    // Create or reuse user message
     let userMsg: Message;
     if (options?.reuseUserMessageId) {
       const all = await getRecentMessages(convId, null, MAX_HISTORY);
@@ -193,483 +204,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     const abortController = new AbortController();
     _abortControllers.set(cid, abortController);
-    if (cid === get().currentConversationId) {
-      set({ isGenerating: true });
-    }
+    if (cid === get().currentConversationId) set({ isGenerating: true });
 
-    const targets = resolveTargetParticipants(conversation, options?.mentionedParticipantIds);
-    let lastAssistantContent = "";
+    const targets = resolveTargetParticipants(conv, options?.mentionedParticipantIds);
 
-    // Pre-compute context compression once for all participants (avoid N redundant calls in group chat)
-    let cachedCompressionSummary: string | null = null;
+    // Pre-compute compression summary once for group chats
+    const cachedCompressionSummary = await preComputeCompression(cid, conv, targets, userMsg, abortController, get().activeBranchId);
     const compressionSettings = useSettingsStore.getState().settings;
-    if (compressionSettings.contextCompressionEnabled && targets.length > 0) {
-      const firstModel = providerStore.getModelById(targets[0].modelId);
-      const firstProvider = firstModel ? providerStore.getProviderById(firstModel.providerId) : null;
-      if (firstModel && firstProvider && firstProvider.type === "openai") {
-        const allMsgs = await getRecentMessages(cid, get().activeBranchId, MAX_HISTORY);
-        const filtered = allMsgs.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
-        const sampleApiMessages = buildApiMessagesForParticipant(filtered, targets[0], conversation);
-        const { estimateMessagesTokens } = await import("../lib/context-compression");
-        const tokenCount = estimateMessagesTokens(sampleApiMessages);
-        if (tokenCount > compressionSettings.contextCompressionThreshold) {
-          const firstBaseUrl = firstProvider.baseUrl.replace(/\/+$/, "");
-          const firstHeaders = buildProviderHeaders(firstProvider, { "Content-Type": "application/json" });
-          const result = await compressIfNeeded(sampleApiMessages, {
-            maxTokens: compressionSettings.contextCompressionThreshold,
-            keepRecentCount: 6,
-            baseUrl: firstBaseUrl,
-            headers: firstHeaders,
-            model: firstModel.modelId,
-            signal: abortController.signal,
-          });
-          if (result.compressed) {
-            // Extract the summary text from the compressed messages
-            const summaryMsg = result.messages.find((m) => typeof m.content === "string" && (m.content as string).startsWith("[Previous conversation summary]"));
-            cachedCompressionSummary = summaryMsg ? (summaryMsg.content as string) : null;
-          }
-        }
-      }
-    }
 
-    async function generateForParticipant(participant: ConversationParticipant, index: number) {
-      const model = providerStore.getModelById(participant.modelId);
-      const provider = model ? providerStore.getProviderById(model.providerId) : null;
-      if (!model || !provider) return;
-
-      if (provider.type !== "openai") {
-        const assistantMsgId = generateId();
-        const assistantMsg: Message = {
-          id: assistantMsgId,
-          conversationId: cid,
-          role: "assistant",
-          senderModelId: model.id,
-          senderName: getParticipantLabel(participant, conversation.participants),
-          identityId: participant.identityId,
-          participantId: participant.id,
-          content: "",
-          images: [],
-          generatedImages: [],
-          reasoningContent: null,
-          reasoningDuration: null,
-          toolCalls: [],
-          toolResults: [],
-          branchId: get().activeBranchId,
-          parentMessageId: null,
-          isStreaming: false,
-          status: MessageStatus.ERROR,
-          errorMessage: [
-            `This provider type is not supported yet: ${provider.type}.`,
-            "",
-            "Talkio currently supports OpenAI-compatible APIs only:",
-            "- GET /models",
-            "- POST /chat/completions (SSE streaming)",
-            "",
-            "How to fix:",
-            "- Use an OpenAI-compatible gateway such as OpenRouter or LiteLLM.",
-            "  Example baseUrl:",
-            "  - https://openrouter.ai/api/v1",
-            "  - http://<your-litellm-host>:4000/v1",
-            "",
-            "See: docs/provider-unified-protocol.md",
-          ].join("\n"),
-          tokenUsage: null,
-          createdAt: new Date(Date.parse(userMsg.createdAt) + 1 + index).toISOString(),
-        };
-        await insertMessage(assistantMsg);
-        notifyDbChange("messages", cid);
-        return;
-      }
-
-      const identity = participant.identityId
-        ? useIdentityStore.getState().getIdentityById(participant.identityId)
-        : null;
-
-      const allowedBuiltInToolNames = identity ? new Set(identity.mcpToolIds ?? []) : null;
-      const allowedServerIds = identity?.mcpServerIds?.length ? identity.mcpServerIds : undefined;
-
-      const builtInEnabledByName = useBuiltInToolsStore.getState().enabledByName;
-
-      const senderName = getParticipantLabel(participant, conversation.participants);
-
-      const assistantMsgId = generateId();
-      const assistantMsg = createAssistantMessage(
-        assistantMsgId, cid, model.id, senderName,
-        participant.id, participant.identityId, get().activeBranchId,
-        new Date(Date.parse(userMsg.createdAt) + 1 + index).toISOString(),
-      );
-
-      await insertMessage(assistantMsg);
-      notifyDbChange("messages", cid);
-      _streamingMessages.set(cid, { messageId: assistantMsgId, content: "", reasoning: "" });
-      if (cid === get().currentConversationId) {
-        set({ streamingMessage: { messageId: assistantMsgId, content: "", reasoning: "" } });
-      }
-
-      const baseUrl = provider.baseUrl.replace(/\/+$/, "");
-      const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
-      await refreshMcpConnections().catch(() => {});
-
-      const builtInToolDefs = (() => {
-        const defs = getBuiltInToolDefs();
-        const selected = allowedBuiltInToolNames ?? new Set<string>();
-        return defs.filter((d) => {
-          const name = d.function.name;
-          const globallyEnabled = builtInEnabledByName[name] !== false;
-          const enabledForIdentity = !!identity && selected.has(name);
-          return globallyEnabled || enabledForIdentity;
-        });
-      })();
-
-      const toolDefs = [...builtInToolDefs, ...getMcpToolDefsForIdentity(identity)];
-
-      try {
-        const allMessages = await getRecentMessages(cid, get().activeBranchId, MAX_HISTORY);
-        const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
-        let apiMessages = buildApiMessagesForParticipant(filtered, participant, conversation);
-
-        // Context compression: manual summary > pre-computed group summary > auto-compress
-        const manualSummary = getManualSummary(cid);
-        if (manualSummary) {
-          const systemMsgs = apiMessages.filter((m) => m.role === "system");
-          const convMsgs = apiMessages.filter((m) => m.role !== "system");
-          const keepCount = Math.min(6, convMsgs.length);
-          const recent = convMsgs.slice(convMsgs.length - keepCount);
-          apiMessages = [...systemMsgs, { role: "user", content: manualSummary }, ...recent];
-        } else if (compressionSettings.contextCompressionEnabled && cachedCompressionSummary) {
-          // Reuse pre-computed summary: keep system + inject summary + keep recent messages
-          const systemMsgs = apiMessages.filter((m) => m.role === "system");
-          const convMsgs = apiMessages.filter((m) => m.role !== "system");
-          const keepCount = Math.min(6, convMsgs.length);
-          const recent = convMsgs.slice(convMsgs.length - keepCount);
-          apiMessages = [...systemMsgs, { role: "user", content: cachedCompressionSummary }, ...recent];
-        } else if (compressionSettings.contextCompressionEnabled && !cachedCompressionSummary) {
-          const result = await compressIfNeeded(apiMessages, {
-            maxTokens: compressionSettings.contextCompressionThreshold,
-            keepRecentCount: 6,
-            baseUrl,
-            headers,
-            model: model.modelId,
-            signal: abortController.signal,
-          });
-          apiMessages = result.messages;
-        }
-
-        // Auto-detect reasoning models and send reasoning_effort
-        const reasoningEffort = identity?.params?.reasoningEffort
-          || (model.capabilities?.reasoning ? "medium" : undefined);
-
-        const response = await appFetch(`${baseUrl}/chat/completions`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            model: model.modelId,
-            messages: apiMessages,
-            stream: true,
-            stream_options: { include_usage: true },
-            ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
-            ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
-            ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
-            ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
-          }),
-          signal: abortController.signal,
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`API Error ${response.status}: ${errorText}`);
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error("No response body");
-        let fullContent = "";
-        let fullReasoning = "";
-        let inThinkTag = false;
-        let rafPending = false;
-        let dirty = false;
-        const startTime = Date.now();
-        const pendingToolCalls: { id: string; name: string; arguments: string }[] = [];
-
-        function flushToUI() {
-          rafPending = false;
-          if (!dirty) return;
-          dirty = false;
-          const sm = { messageId: assistantMsgId, content: fullContent, reasoning: fullReasoning };
-          _streamingMessages.set(cid, sm);
-          if (cid === get().currentConversationId) {
-            set({ streamingMessage: sm });
-          }
-        }
-
-        function scheduleFlush() {
-          dirty = true;
-          if (!rafPending) {
-            rafPending = true;
-            requestAnimationFrame(flushToUI);
-          }
-        }
-
-        const sseUsage = await consumeOpenAIChatCompletionsSse(reader, (delta) => {
-          // Reasoning: support multiple field names used by different providers
-          const rc = delta.reasoning_content ?? delta.reasoning;
-          if (rc) fullReasoning += rc;
-
-          // Content: parse <think>/<thinking> tags (DeepSeek, Hunyuan, Claude, etc.)
-          if (delta.content) {
-            let chunk = delta.content as string;
-            while (chunk.length > 0) {
-              if (inThinkTag) {
-                const m = findFirst(chunk, "</think>", "</thinking>");
-                if (m) {
-                  fullReasoning += chunk.slice(0, m.idx);
-                  chunk = chunk.slice(m.idx + m.len);
-                  inThinkTag = false;
-                } else {
-                  fullReasoning += chunk;
-                  chunk = "";
-                }
-              } else {
-                const m = findFirst(chunk, "<think>", "<thinking>");
-                if (m) {
-                  fullContent += chunk.slice(0, m.idx);
-                  chunk = chunk.slice(m.idx + m.len);
-                  inThinkTag = true;
-                } else {
-                  fullContent += chunk;
-                  chunk = "";
-                }
-              }
-            }
-          }
-
-          if (delta.tool_calls) {
-            for (const tc of delta.tool_calls) {
-              const idx = tc.index ?? 0;
-              while (pendingToolCalls.length <= idx) {
-                pendingToolCalls.push({ id: "", name: "", arguments: "" });
-              }
-              if (tc.id) pendingToolCalls[idx].id = tc.id;
-              if (tc.function?.name) pendingToolCalls[idx].name += tc.function.name;
-              if (tc.function?.arguments) pendingToolCalls[idx].arguments += tc.function.arguments;
-            }
-          }
-          scheduleFlush();
-        });
-
-        flushToUI();
-        const duration = (Date.now() - startTime) / 1000;
-        let tokenUsage = sseUsage ? { inputTokens: sseUsage.prompt_tokens, outputTokens: sseUsage.completion_tokens } : null;
-
-        if (pendingToolCalls.length > 0) {
-          // Save toolCalls to the same assistant message (1:1 RN — single message holds everything)
-          await updateMessage(assistantMsgId, {
-            content: fullContent,
-            reasoningContent: fullReasoning || null,
-            reasoningDuration: fullReasoning ? duration : null,
-            toolCalls: pendingToolCalls,
-          });
-          notifyDbChange("messages", cid);
-
-          // Execute tools
-          const toolResults: { toolCallId: string; content: string }[] = [];
-          for (const tc of pendingToolCalls) {
-            let args: Record<string, unknown> = {};
-            try { args = JSON.parse(tc.arguments); } catch {}
-            const builtInGloballyEnabled = builtInEnabledByName[tc.name] !== false;
-            const builtInEnabledForIdentity = !!identity && allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(tc.name);
-            const builtIn = (builtInGloballyEnabled || builtInEnabledForIdentity)
-              ? await executeBuiltInTool(tc.name, args)
-              : null;
-            if (builtIn) {
-              toolResults.push({ toolCallId: tc.id, content: builtIn.success ? builtIn.content : `Error: ${builtIn.error}` });
-              continue;
-            }
-            const remote = await executeMcpToolByName(tc.name, args, allowedServerIds);
-            if (remote) {
-              toolResults.push({ toolCallId: tc.id, content: remote.success ? remote.content : `Error: ${remote.error}` });
-              continue;
-            }
-            toolResults.push({ toolCallId: tc.id, content: `Tool not found: ${tc.name}` });
-          }
-
-          // Save toolResults to the same message
-          await updateMessage(assistantMsgId, { toolResults });
-          notifyDbChange("messages", cid);
-
-          // Multi-round tool call loop (max 5 rounds to prevent infinite loops)
-          let currentToolCalls = pendingToolCalls;
-          let currentToolResults = toolResults;
-          let accumulatedContent = fullContent;
-          const MAX_TOOL_ROUNDS = 5;
-
-          for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-            // Build follow-up request with tool results
-            const toolMessages = [
-              ...apiMessages,
-              { role: "assistant" as const, content: accumulatedContent || null, tool_calls: currentToolCalls.map((tc) => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: tc.arguments } })) },
-              ...currentToolResults.map((tr) => ({ role: "tool" as const, tool_call_id: tr.toolCallId, content: tr.content })),
-            ];
-
-            // Stream the follow-up response into the SAME message (1:1 RN pattern)
-            _streamingMessages.set(cid, { messageId: assistantMsgId, content: accumulatedContent, reasoning: fullReasoning });
-            if (cid === get().currentConversationId) {
-              set({ streamingMessage: { messageId: assistantMsgId, content: accumulatedContent, reasoning: fullReasoning } });
-            }
-
-            const toolResponse = await appFetch(`${baseUrl}/chat/completions`, {
-              method: "POST",
-              headers,
-              body: JSON.stringify({
-                model: model.modelId,
-                messages: toolMessages,
-                stream: true,
-                stream_options: { include_usage: true },
-                ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
-                ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
-                ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
-                ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
-              }),
-              signal: abortController.signal,
-            });
-
-            if (!toolResponse.ok) {
-              const errText = await toolResponse.text();
-              throw new Error(`API Error ${toolResponse.status}: ${errText}`);
-            }
-            const toolReader = toolResponse.body?.getReader();
-            if (!toolReader) throw new Error("No response body");
-
-            let toolContent = accumulatedContent;
-            let newToolCalls: { id: string; name: string; arguments: string }[] = [];
-            let toolRafPending = false;
-            let toolDirty = false;
-
-            function toolFlush() {
-              toolRafPending = false;
-              if (!toolDirty) return;
-              toolDirty = false;
-              const sm = { messageId: assistantMsgId, content: toolContent, reasoning: fullReasoning };
-              _streamingMessages.set(cid, sm);
-              if (cid === get().currentConversationId) {
-                set({ streamingMessage: sm });
-              }
-            }
-            function toolSchedule() {
-              toolDirty = true;
-              if (!toolRafPending) { toolRafPending = true; requestAnimationFrame(toolFlush); }
-            }
-
-            const toolSseUsage = await consumeOpenAIChatCompletionsSse(toolReader, (delta) => {
-              if (delta?.content) {
-                toolContent += delta.content;
-                toolSchedule();
-              }
-              if (delta?.tool_calls) {
-                for (const tc of delta.tool_calls) {
-                  const idx = tc.index ?? 0;
-                  while (newToolCalls.length <= idx) {
-                    newToolCalls.push({ id: "", name: "", arguments: "" });
-                  }
-                  if (tc.id) newToolCalls[idx].id = tc.id;
-                  if (tc.function?.name) newToolCalls[idx].name += tc.function.name;
-                  if (tc.function?.arguments) newToolCalls[idx].arguments += tc.function.arguments;
-                }
-              }
-            });
-            if (toolSseUsage) tokenUsage = { inputTokens: toolSseUsage.prompt_tokens, outputTokens: toolSseUsage.completion_tokens };
-            toolFlush();
-
-            accumulatedContent = toolContent;
-
-            // If no new tool calls, we're done
-            if (newToolCalls.length === 0) break;
-
-            // Execute new tool calls
-            await updateMessage(assistantMsgId, { content: accumulatedContent, toolCalls: [...(currentToolCalls), ...newToolCalls] });
-            notifyDbChange("messages", cid);
-
-            const newResults: { toolCallId: string; content: string }[] = [];
-            for (const tc of newToolCalls) {
-              let args: Record<string, unknown> = {};
-              try { args = JSON.parse(tc.arguments); } catch {}
-              const builtInOk = builtInEnabledByName[tc.name] !== false || (!!identity && allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(tc.name));
-              const builtIn = builtInOk ? await executeBuiltInTool(tc.name, args) : null;
-              if (builtIn) { newResults.push({ toolCallId: tc.id, content: builtIn.success ? builtIn.content : `Error: ${builtIn.error}` }); continue; }
-              const remote = await executeMcpToolByName(tc.name, args, allowedServerIds);
-              if (remote) { newResults.push({ toolCallId: tc.id, content: remote.success ? remote.content : `Error: ${remote.error}` }); continue; }
-              newResults.push({ toolCallId: tc.id, content: `Tool not found: ${tc.name}` });
-            }
-            await updateMessage(assistantMsgId, { toolResults: [...currentToolResults, ...newResults] });
-            notifyDbChange("messages", cid);
-
-            // Update apiMessages for next round
-            apiMessages.push(
-              { role: "assistant" as const, content: accumulatedContent || null, tool_calls: newToolCalls.map((tc) => ({ id: tc.id, type: "function" as const, function: { name: tc.name, arguments: tc.arguments } })) },
-              ...newResults.map((tr) => ({ role: "tool" as const, tool_call_id: tr.toolCallId, content: tr.content })),
-            );
-
-            currentToolCalls = newToolCalls;
-            currentToolResults = newResults;
-          }
-
-          await updateMessage(assistantMsgId, {
-            content: accumulatedContent,
-            isStreaming: false,
-            status: MessageStatus.SUCCESS,
-            tokenUsage,
-          });
-
-          lastAssistantContent = accumulatedContent;
-        } else {
-          await updateMessage(assistantMsgId, {
-            content: fullContent,
-            reasoningContent: fullReasoning || null,
-            reasoningDuration: fullReasoning ? duration : null,
-            isStreaming: false,
-            status: MessageStatus.SUCCESS,
-            tokenUsage,
-          });
-          lastAssistantContent = fullContent;
-        }
-
-        await updateConversation(cid, { lastMessage: (lastAssistantContent || text).slice(0, 100), lastMessageAt: new Date().toISOString() });
-
-        notifyDbChange("messages", cid);
-        notifyDbChange("conversations");
-      } catch (err: any) {
-        if (err.name === "AbortError") {
-          const sm = _streamingMessages.get(cid);
-          if (sm && sm.messageId === assistantMsgId) {
-            await updateMessage(assistantMsgId, {
-              content: sm.content,
-              reasoningContent: sm.reasoning || null,
-              isStreaming: false,
-              status: MessageStatus.SUCCESS,
-            });
-            notifyDbChange("messages", cid);
-          }
-        } else {
-          console.error("[chat-store] generation error:", err);
-          const errMsg = err?.message || (typeof err === "string" ? err : JSON.stringify(err)) || "Unknown error";
-          await updateMessage(assistantMsgId, {
-            isStreaming: false,
-            status: MessageStatus.ERROR,
-            errorMessage: errMsg,
-          });
-          notifyDbChange("messages", cid);
-        }
-      } finally {
-        _streamingMessages.delete(cid);
-        if (cid === get().currentConversationId) {
-          set({ streamingMessage: null });
-        }
-      }
-    }
+    // Build generation context
+    const ctx = {
+      cid,
+      conversation: conv,
+      userMsg,
+      activeBranchId: get().activeBranchId,
+      abortController,
+      cachedCompressionSummary,
+      compressionEnabled: compressionSettings.contextCompressionEnabled,
+      compressionThreshold: compressionSettings.contextCompressionThreshold,
+      streamingMessages: _streamingMessages,
+      getCurrentConversationId: () => get().currentConversationId,
+      setStoreState: (partial: { streamingMessage: StreamingState | null }) => set(partial),
+    };
 
     try {
       for (let i = 0; i < targets.length; i++) {
         if (abortController.signal.aborted) break;
-        await generateForParticipant(targets[i], i);
+        await generateForParticipant(ctx, targets[i], i);
       }
     } finally {
       _abortControllers.delete(cid);
