@@ -139,23 +139,15 @@ pub async fn mcp_stdio_send(
     };
     // Sessions lock released here
 
-    log::info!("[MCP stdio {}] send() called, message len={}", session_id, message.len());
-    log::debug!("[MCP stdio {}] message: {}", session_id, &message[..message.len().min(200)]);
+    log::debug!("[MCP stdio {}] send() len={}", session_id, message.len());
 
     // Lock the receiver and drain any buffered lines (startup text, etc.)
     // that arrived before this send — they are not responses to our request.
     let mut rx = stdout_rx.lock().await;
-    let mut drained = 0;
-    while let Ok(old) = rx.try_recv() {
-        drained += 1;
-        log::info!("[MCP stdio {}] Drained buffered line: {}", session_id, &old[..old.len().min(200)]);
-    }
-    if drained > 0 {
-        log::info!("[MCP stdio {}] Drained {} buffered lines", session_id, drained);
+    while rx.try_recv().is_ok() {
+        log::debug!("[MCP stdio {}] Drained buffered line", session_id);
     }
 
-    // Send the message
-    log::info!("[MCP stdio {}] Sending to stdin...", session_id);
     stdin_tx
         .send(message)
         .await
@@ -163,20 +155,15 @@ pub async fn mcp_stdio_send(
             log::error!("[MCP stdio {}] stdin send failed: {}", session_id, e);
             format!("Failed to send message: {}", e)
         })?;
-    log::info!("[MCP stdio {}] Sent to stdin, waiting for response...", session_id);
 
     // Wait for response on the channel (no polling, no memory leak)
     match tokio::time::timeout(
         tokio::time::Duration::from_secs(60),
         rx.recv(),
     ).await {
-        Ok(Some(line)) => {
-            log::info!("[MCP stdio {}] Got response, len={}", session_id, line.len());
-            log::debug!("[MCP stdio {}] response: {}", session_id, &line[..line.len().min(300)]);
-            Ok(line)
-        }
+        Ok(Some(line)) => Ok(line),
         Ok(None) => {
-            log::error!("[MCP stdio {}] Process closed (channel dropped)", session_id);
+            log::error!("[MCP stdio {}] Process closed", session_id);
             Err("MCP stdio process closed".to_string())
         }
         Err(_) => {

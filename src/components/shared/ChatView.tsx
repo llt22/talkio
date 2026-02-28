@@ -120,20 +120,22 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
 
   const hasMessages = displayMessages.length > 0;
 
+  const branchBanner = activeBranchId ? (
+    <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))", borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
+      <div className="flex items-center gap-2">
+        <GitBranch size={14} color="var(--primary)" />
+        <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.branch")}</span>
+      </div>
+      <button onClick={() => switchBranch(null)} className="text-xs font-medium px-2.5 py-1 rounded-md active:opacity-70" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
+        {t("chat.backToMain")}
+      </button>
+    </div>
+  ) : null;
+
   if (!hasMessages && !isGenerating) {
     return (
       <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
-        {activeBranchId && (
-          <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))", borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
-            <div className="flex items-center gap-2">
-              <GitBranch size={14} color="var(--primary)" />
-              <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.branch")}</span>
-            </div>
-            <button onClick={() => switchBranch(null)} className="text-xs font-medium px-2.5 py-1 rounded-md active:opacity-70" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
-              {t("chat.backToMain")}
-            </button>
-          </div>
-        )}
+        {branchBanner}
         <div className="flex-1 flex flex-col items-center justify-center px-6">
           <IoChatbubbleOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
           <p className="mt-4 text-lg font-medium text-muted-foreground">{t("chats.startConversation")}</p>
@@ -146,22 +148,7 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
-      {/* Branch indicator */}
-      {activeBranchId && (
-        <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))", borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
-          <div className="flex items-center gap-2">
-            <GitBranch size={14} color="var(--primary)" />
-            <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.branch")}</span>
-          </div>
-          <button
-            onClick={() => switchBranch(null)}
-            className="text-xs font-medium px-2.5 py-1 rounded-md active:opacity-70"
-            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}
-          >
-            {t("chat.backToMain")}
-          </button>
-        </div>
-      )}
+      {branchBanner}
 
       {/* Messages */}
       <div

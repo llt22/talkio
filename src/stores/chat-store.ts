@@ -17,6 +17,7 @@ import {
   deleteConversation as dbDeleteConversation,
   getConversation,
   insertMessage,
+  updateMessage,
   getRecentMessages,
   deleteMessage as dbDeleteMessage,
   clearMessages as dbClearMessages,
@@ -322,8 +323,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const msg = messages[msgIndex];
     if (msg.role !== "user") return;
 
-    // Update the user message content
-    const { updateMessage } = await import("../storage/database");
     await updateMessage(messageId, { content: newContent });
 
     // Delete all messages after the edited one
