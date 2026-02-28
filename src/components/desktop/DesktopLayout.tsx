@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
-import { MessageSquare, Bot, Compass, Settings, Plus, MoreHorizontal, Trash2, Eraser, UserPlus, Share2, ChevronDown, ChevronUp, User, Users, Pencil, Search, ArrowDown, ArrowUpDown, Shuffle, GripVertical } from "lucide-react";
+import { MessageSquare, Bot, Compass, Settings, Plus, MoreHorizontal, Trash2, Eraser, UserPlus, Share2, ChevronDown, ChevronUp, User, Users, Pencil, Search, ArrowDown, ArrowUpDown, Shuffle, GripVertical, Minimize2 } from "lucide-react";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -13,6 +13,9 @@ import { SettingsPage } from "../../pages/settings/SettingsPage";
 import { DiscoverPage } from "../../pages/DiscoverPage";
 import { ModelsPage } from "../../pages/settings/ModelsPage";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
+import { manualCompress, setManualSummary, getManualSummary, estimateMessagesTokens } from "../../lib/context-compression";
+import { buildApiMessagesForParticipant } from "../../stores/chat-message-builder";
+import { buildProviderHeaders } from "../../services/provider-headers";
 import { useConversations } from "../../hooks/useDatabase";
 import { useProviderStore } from "../../stores/provider-store";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
@@ -507,6 +510,43 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
     }
   }, [conv, messages, isExporting]);
 
+  const [isCompressing, setIsCompressing] = useState(false);
+  const hasManualSummary = !!getManualSummary(conversationId);
+
+  const handleCompress = useCallback(async () => {
+    if (!conv || isCompressing || messages.length < 4) return;
+    const firstParticipant = conv.participants[0];
+    if (!firstParticipant) return;
+    const providerStore = useProviderStore.getState();
+    const pModel = providerStore.getModelById(firstParticipant.modelId);
+    const pProvider = pModel ? providerStore.getProviderById(pModel.providerId) : null;
+    if (!pModel || !pProvider) return;
+
+    setIsCompressing(true);
+    try {
+      const apiMessages = buildApiMessagesForParticipant(messages, firstParticipant, conv);
+      const baseUrl = pProvider.baseUrl.replace(/\/+$/, "");
+      const headers = buildProviderHeaders(pProvider, { "Content-Type": "application/json" });
+      const result = await manualCompress(apiMessages, {
+        keepRecentCount: 6,
+        baseUrl,
+        headers,
+        model: pModel.modelId,
+      });
+      setManualSummary(conversationId, `[Previous conversation summary]\n${result.summary}`);
+      const pct = Math.round((1 - result.compressedTokens / result.originalTokens) * 100);
+      await (await import("../../components/shared/ConfirmDialogProvider")).appAlert(
+        `${t("chat.compressSuccess")}\n${result.originalTokens} → ${result.compressedTokens} tokens (${pct}% ${t("chat.reduction")})`,
+      );
+    } catch (err) {
+      await (await import("../../components/shared/ConfirmDialogProvider")).appAlert(
+        `${t("chat.compressFailed")}: ${err instanceof Error ? err.message : "Unknown"}`,
+      );
+    } finally {
+      setIsCompressing(false);
+    }
+  }, [conv, messages, isCompressing, conversationId, t]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -565,6 +605,10 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
             <DropdownMenuItem onClick={handleExport} disabled={messages.length === 0 || isExporting}>
               <Share2 size={14} className="mr-2" />
               {t("chat.export")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleCompress} disabled={messages.length < 4 || isCompressing}>
+              <Minimize2 size={14} className="mr-2" />
+              {isCompressing ? t("chat.compressing") : hasManualSummary ? t("chat.recompress") : t("chat.compressContext")}
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"

@@ -35,7 +35,7 @@ import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
 import { buildProviderHeaders } from "../services/provider-headers";
 import { appFetch } from "../lib/http";
 import { useBuiltInToolsStore } from "./built-in-tools-store";
-import { compressIfNeeded } from "../lib/context-compression";
+import { compressIfNeeded, getManualSummary } from "../lib/context-compression";
 import { useSettingsStore } from "./settings-store";
 import i18n from "../i18n";
 
@@ -328,8 +328,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
         let apiMessages = buildApiMessagesForParticipant(filtered, participant, conversation);
 
-        // Context compression: use cached summary if available, otherwise compress individually
-        if (compressionSettings.contextCompressionEnabled && cachedCompressionSummary) {
+        // Context compression: manual summary > pre-computed group summary > auto-compress
+        const manualSummary = getManualSummary(cid);
+        if (manualSummary) {
+          const systemMsgs = apiMessages.filter((m) => m.role === "system");
+          const convMsgs = apiMessages.filter((m) => m.role !== "system");
+          const keepCount = Math.min(6, convMsgs.length);
+          const recent = convMsgs.slice(convMsgs.length - keepCount);
+          apiMessages = [...systemMsgs, { role: "user", content: manualSummary }, ...recent];
+        } else if (compressionSettings.contextCompressionEnabled && cachedCompressionSummary) {
           // Reuse pre-computed summary: keep system + inject summary + keep recent messages
           const systemMsgs = apiMessages.filter((m) => m.role === "system");
           const convMsgs = apiMessages.filter((m) => m.role !== "system");

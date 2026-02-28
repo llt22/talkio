@@ -199,3 +199,81 @@ export async function compressIfNeeded(
     return { messages, compressed: false };
   }
 }
+
+// ── Manual compression cache ──
+
+/** In-memory cache: conversationId → summary text */
+const _manualSummaryCache = new Map<string, string>();
+
+export function getManualSummary(conversationId: string): string | null {
+  return _manualSummaryCache.get(conversationId) ?? null;
+}
+
+export function setManualSummary(conversationId: string, summary: string): void {
+  _manualSummaryCache.set(conversationId, summary);
+}
+
+export function clearManualSummary(conversationId: string): void {
+  _manualSummaryCache.delete(conversationId);
+}
+
+/**
+ * Manually compress the conversation history right now.
+ * Returns the generated summary text.
+ */
+export async function manualCompress(
+  messages: Array<{ role: string; content: unknown }>,
+  options: Omit<CompressOptions, "maxTokens">,
+): Promise<{ summary: string; originalTokens: number; compressedTokens: number }> {
+  // Separate system messages from conversation messages
+  const systemMessages: Array<{ role: string; content: unknown }> = [];
+  const conversationMessages: Array<{ role: string; content: unknown }> = [];
+  for (const m of messages) {
+    if (m.role === "system") systemMessages.push(m);
+    else conversationMessages.push(m);
+  }
+
+  const keepCount = Math.min(options.keepRecentCount ?? 4, conversationMessages.length);
+  const toCompress = conversationMessages.slice(0, conversationMessages.length - keepCount);
+
+  if (toCompress.length <= 1) {
+    throw new Error("Not enough messages to compress");
+  }
+
+  const compressText = toCompress
+    .map((m) => {
+      const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+      return `[${m.role}]: ${content}`;
+    })
+    .join("\n\n");
+
+  const response = await appFetch(`${options.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: options.headers,
+    body: JSON.stringify({
+      model: options.model,
+      messages: [
+        { role: "system", content: COMPRESS_SYSTEM_PROMPT },
+        { role: "user", content: compressText },
+        { role: "user", content: COMPRESS_USER_PROMPT },
+      ],
+      stream: false,
+      max_tokens: 1000,
+      temperature: 0.2,
+    }),
+    signal: options.signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Compression API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const summary = data.choices?.[0]?.message?.content?.trim();
+  if (!summary) throw new Error("Empty compression result");
+
+  const originalTokens = estimateMessagesTokens(toCompress);
+  const compressedTokens = estimateTokens(summary);
+
+  return { summary, originalTokens, compressedTokens };
+}
