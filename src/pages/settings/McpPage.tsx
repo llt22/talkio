@@ -346,7 +346,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
             aria-label="Close"
           />
           <div
-            className="absolute left-1/2 bottom-0 -translate-x-1/2 w-full max-w-lg rounded-t-2xl overflow-hidden"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg rounded-2xl overflow-hidden shadow-xl"
             style={{ backgroundColor: "var(--background)" }}
           >
             <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
