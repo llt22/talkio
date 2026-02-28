@@ -43,7 +43,6 @@ function isImageFile(filename: string): boolean {
   return ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic", "heif"].includes(ext);
 }
 
-
 async function readAsText(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   // Try UTF-8 first

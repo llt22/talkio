@@ -11,9 +11,9 @@ import { useChatStore, type ChatState } from "../../stores/chat-store";
 import { useMessages } from "../../hooks/useDatabase";
 import { useProviderStore } from "../../stores/provider-store";
 import type { Message, ConversationParticipant } from "../../types";
+import { MessageStatus } from "../../types";
 import { generateSuggestQuestions } from "../../services/suggest-questions";
 import { parseFile, type ParsedFile } from "../../lib/file-parser";
-import { MessageStatus } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useConfirm } from "./ConfirmDialogProvider";
 import { useStickToBottom } from "use-stick-to-bottom";
@@ -246,7 +246,7 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
     generateSuggestQuestions(context, provider, model.modelId, i18n.language)
       .then((qs) => { if (qs.length > 0) setSuggestQuestions(qs); })
       .catch(() => {});
-  }, [isGenerating, displayMessages, isGroup, participants, getModelById, getProviderById]);
+  }, [isGenerating, displayMessages, isGroup, participants, getModelById, getProviderById, i18n.language]);
 
   const branchBanner = activeBranchId ? (
     <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))", borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
