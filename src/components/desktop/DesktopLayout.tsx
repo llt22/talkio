@@ -591,6 +591,18 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
           )}
         </div>
 
+        {isCompressing && (
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg animate-pulse" style={{ backgroundColor: "var(--secondary)" }}>
+            <Minimize2 size={12} className="text-primary animate-spin" style={{ animationDuration: "2s" }} />
+            <span className="text-[11px] text-primary font-medium">{t("chat.compressing")}</span>
+          </div>
+        )}
+        {hasManualSummary && !isCompressing && (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
+            <Minimize2 size={11} className="text-primary" />
+            <span className="text-[10px] text-primary font-medium">{t("chat.compressed")}</span>
+          </div>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">

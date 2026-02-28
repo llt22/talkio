@@ -72,6 +72,7 @@
     "compressing": "Compressing...",
     "compressSuccess": "Context compressed",
     "compressFailed": "Compression failed",
+    "compressed": "Compressed",
     "reduction": "reduction",
     "clearHistory": "Clear History",
     "clearHistoryConfirm": "Delete all messages in this conversation?",
