@@ -4,7 +4,7 @@
 import { useRef, useEffect, useCallback, useMemo, useState, memo, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
 import { IoCopyOutline, IoRefreshOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
-import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown, Pencil, Check, X } from "lucide-react";
+import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown, Pencil, Check, X, FileText } from "lucide-react";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
@@ -319,7 +319,18 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
   const { t } = useTranslation();
   const isUser = message.role === "user";
   const isStreaming = message.status === MessageStatus.STREAMING;
-  const content = (message.content || "").trimEnd();
+  const rawContent = (message.content || "").trimEnd();
+
+  // Parse out <file> tags: extract names for chips, return clean user text
+  const { displayText: content, fileNames } = useMemo(() => {
+    const names: string[] = [];
+    // Match <file name="...">...</file> blocks
+    const cleaned = rawContent.replace(/<file\s+name="([^"]+)">[\s\S]*?<\/file>\s*/g, (_m, name) => {
+      names.push(name);
+      return "";
+    });
+    return { displayText: cleaned.trimStart(), fileNames: names };
+  }, [rawContent]);
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState("");
@@ -368,6 +379,22 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
             <div className="flex flex-wrap gap-1.5 max-w-[80%]">
               {message.images.map((uri: string, idx: number) => (
                 <img key={idx} src={uri} className="h-32 w-32 rounded-lg object-cover" />
+              ))}
+            </div>
+          )}
+
+          {/* Attached file chips */}
+          {fileNames.length > 0 && !isEditing && (
+            <div className="flex flex-wrap gap-1 max-w-[80%]" style={{ maxWidth: "min(80%, 640px)" }}>
+              {fileNames.map((name, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1"
+                  style={{ backgroundColor: "color-mix(in srgb, var(--primary) 80%, white)", opacity: 0.9 }}
+                >
+                  <FileText size={12} color="white" className="flex-shrink-0" />
+                  <span className="text-[11px] font-medium text-white truncate max-w-[140px]">{name}</span>
+                </div>
               ))}
             </div>
           )}

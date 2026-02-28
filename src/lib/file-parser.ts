@@ -1,6 +1,6 @@
 /**
  * File parser — extracts text content from documents for chat context.
- * Supports: PDF, plain text (.txt, .md, .csv, .json, .xml, .html, .js, .ts, .py, etc.)
+ * Supports: PDF, Word (.docx), Excel (.xlsx/.xls), plain text (.txt, .md, .csv, etc.)
  */
 
 const TEXT_EXTENSIONS = new Set([
@@ -12,7 +12,7 @@ const TEXT_EXTENSIONS = new Set([
 
 export interface ParsedFile {
   name: string;
-  type: "text" | "pdf" | "image";
+  type: "text" | "pdf" | "docx" | "excel" | "image";
   content: string; // extracted text or data URI for images
   size: number;
 }
@@ -30,13 +30,21 @@ function isPdf(filename: string): boolean {
   return getExtension(filename) === "pdf";
 }
 
+function isDocx(filename: string): boolean {
+  return getExtension(filename) === "docx";
+}
+
+function isExcel(filename: string): boolean {
+  return ["xlsx", "xls"].includes(getExtension(filename));
+}
+
 export function isImageFile(filename: string): boolean {
   const ext = getExtension(filename);
   return ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic", "heif"].includes(ext);
 }
 
 export function isSupportedFile(filename: string): boolean {
-  return isTextFile(filename) || isPdf(filename) || isImageFile(filename);
+  return isTextFile(filename) || isPdf(filename) || isDocx(filename) || isExcel(filename) || isImageFile(filename);
 }
 
 async function readAsText(file: File): Promise<string> {
@@ -58,38 +66,92 @@ async function readAsDataUrl(file: File): Promise<string> {
 }
 
 async function extractPdfText(file: File): Promise<string> {
-  const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
-
-  // Use fake worker to avoid web worker setup issues in Tauri
-  GlobalWorkerOptions.workerSrc = "";
   const pdfjs = await import("pdfjs-dist");
-  if ("workerPort" in GlobalWorkerOptions) {
-    // pdfjs v4+ uses workerPort; disable it
-    (GlobalWorkerOptions as any).workerPort = null;
+  // @ts-ignore — Vite ?url import resolves to a local URL served from same origin (CSP safe)
+  const workerUrl = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+
+  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl.default;
   }
 
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await getDocument({
+  const pdf = await pdfjs.getDocument({
     data: new Uint8Array(arrayBuffer),
-    useWorkerFetch: false,
-    isEvalSupported: false,
     useSystemFonts: true,
   }).promise;
 
   const pages: string[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item: any) => ("str" in item ? item.str : ""))
-      .join("");
+    const content = await page.getTextContent();
+
+    // Langchain-style text extraction with Y-position line breaks
+    let lastY: number | undefined;
+    const textItems: string[] = [];
+    for (const item of content.items) {
+      if ("str" in item) {
+        if (lastY === (item as any).transform[5] || lastY === undefined) {
+          textItems.push((item as any).str);
+        } else {
+          textItems.push(`\n${(item as any).str}`);
+        }
+        lastY = (item as any).transform[5];
+      }
+    }
+    const pageText = textItems.join("").replace(/\0/g, "");
     if (pageText.trim()) pages.push(pageText);
+    page.cleanup();
   }
 
+  await pdf.destroy();
   return pages.join("\n\n");
 }
 
+async function extractDocxText(file: File): Promise<string> {
+  const mammoth = await import("mammoth");
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.default.extractRawText({ arrayBuffer });
+  return result.value;
+}
+
+function sheetToMarkdownTable(jsonData: Record<string, any>[]): string {
+  if (!jsonData || jsonData.length === 0) return "*Sheet is empty.*";
+  const headers = Object.keys(jsonData[0] || {});
+  if (headers.length === 0) return "*Sheet has no data.*";
+  const headerRow = `| ${headers.join(" | ")} |`;
+  const separator = `| ${headers.map(() => "---").join(" | ")} |`;
+  const dataRows = jsonData.map((row) => {
+    const cells = headers.map((h) => {
+      const v = row[h];
+      return v == null ? "" : String(v).replace(/\|/g, "\\|").trim();
+    });
+    return `| ${cells.join(" | ")} |`;
+  }).join("\n");
+  return `${headerRow}\n${separator}\n${dataRows}`;
+}
+
+async function extractExcelText(file: File): Promise<string> {
+  const xlsx = await import("xlsx");
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = xlsx.read(arrayBuffer, { type: "array" });
+  const sheets: string[] = [];
+  for (const name of workbook.SheetNames) {
+    const ws = workbook.Sheets[name];
+    const json = xlsx.utils.sheet_to_json<Record<string, any>>(ws, { defval: "", raw: false });
+    const md = sheetToMarkdownTable(json);
+    sheets.push(`## Sheet: ${name}\n\n${md}`);
+  }
+  return sheets.join("\n\n");
+}
+
 const MAX_TEXT_LENGTH = 50_000; // ~12k tokens
+
+function truncate(text: string): string {
+  if (text.length > MAX_TEXT_LENGTH) {
+    return text.slice(0, MAX_TEXT_LENGTH) + "\n\n[... truncated]";
+  }
+  return text;
+}
 
 export async function parseFile(file: File): Promise<ParsedFile> {
   const name = file.name;
@@ -100,18 +162,22 @@ export async function parseFile(file: File): Promise<ParsedFile> {
   }
 
   if (isPdf(name)) {
-    let text = await extractPdfText(file);
-    if (text.length > MAX_TEXT_LENGTH) {
-      text = text.slice(0, MAX_TEXT_LENGTH) + "\n\n[... truncated]";
-    }
+    const text = truncate(await extractPdfText(file));
     return { name, type: "pdf", content: text, size: file.size };
   }
 
+  if (isDocx(name)) {
+    const text = truncate(await extractDocxText(file));
+    return { name, type: "docx", content: text, size: file.size };
+  }
+
+  if (isExcel(name)) {
+    const text = truncate(await extractExcelText(file));
+    return { name, type: "excel", content: text, size: file.size };
+  }
+
   if (isTextFile(name)) {
-    let text = await readAsText(file);
-    if (text.length > MAX_TEXT_LENGTH) {
-      text = text.slice(0, MAX_TEXT_LENGTH) + "\n\n[... truncated]";
-    }
+    const text = truncate(await readAsText(file));
     return { name, type: "text", content: text, size: file.size };
   }
 

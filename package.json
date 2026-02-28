@@ -42,9 +42,10 @@
     "i18next": "^25.2.1",
     "katex": "^0.16.22",
     "lucide-react": "^0.575.0",
+    "mammoth": "^1.11.0",
     "mermaid": "^11.6.0",
     "nanoid": "^5.1.6",
-    "pdfjs-dist": "^5.4.624",
+    "pdfjs-dist": "^5.4.530",
     "radix-ui": "^1.4.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -60,6 +61,7 @@
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.5.0",
     "use-stick-to-bottom": "^1.1.3",
+    "xlsx": "^0.18.5",
     "zustand": "^5.0.5"
   },
   "devDependencies": {

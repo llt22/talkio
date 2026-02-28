@@ -265,7 +265,7 @@ export const ChatInput = memo(function ChatInput({
   const handleAttach = useCallback(() => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*,.pdf,.txt,.md,.csv,.json,.xml,.html,.js,.ts,.jsx,.tsx,.py,.rb,.go,.rs,.java,.c,.cpp,.h,.cs,.swift,.sh,.yaml,.yml,.toml,.sql,.css,.scss,.svg,.log";
+    input.accept = "image/*,.pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.json,.xml,.html,.js,.ts,.jsx,.tsx,.py,.rb,.go,.rs,.java,.c,.cpp,.h,.cs,.swift,.sh,.yaml,.yml,.toml,.sql,.css,.scss,.svg,.log";
     input.multiple = true;
     input.onchange = async () => {
       const files = input.files;
@@ -278,8 +278,8 @@ export const ChatInput = memo(function ChatInput({
           } else {
             setAttachedFiles((prev) => [...prev, parsed].slice(0, 4));
           }
-        } catch {
-          appAlert(`Unsupported file: ${files[i].name}`);
+        } catch (err) {
+          appAlert(err instanceof Error ? err.message : `Failed to parse: ${files[i].name}`);
         }
       }
     };
@@ -470,7 +470,7 @@ export const ChatInput = memo(function ChatInput({
           {/* Action bar */}
           <div className="flex items-center px-3 gap-0.5" style={{ paddingBottom: isMobile ? "max(4px, env(safe-area-inset-bottom, 4px))" : "4px" }}>
             <button onClick={handleAttach} className={`flex items-center justify-center rounded-full active:opacity-60 ${isMobile ? 'h-10 w-10' : 'h-8 w-8'}`} disabled={isGenerating}>
-              <Image size={22} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
+              <Paperclip size={20} color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"} />
             </button>
 
             {isGroup && (
