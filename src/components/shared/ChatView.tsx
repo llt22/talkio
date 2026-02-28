@@ -47,6 +47,7 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
   const _internalScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = onScrollRef ?? _internalScrollRef;
   const isNearBottomRef = useRef(true);
+  const userScrollingRef = useRef(false);
 
   useEffect(() => {
     setCurrentConversation(conversationId);
@@ -70,9 +71,30 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    if (userScrollingRef.current) {
+      isNearBottomRef.current = nearBottom;
+      if (nearBottom) userScrollingRef.current = false;
+    } else {
+      isNearBottomRef.current = nearBottom;
+    }
     onScroll?.();
   }, [onScroll]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onUserScroll = () => {
+      userScrollingRef.current = true;
+      isNearBottomRef.current = false;
+    };
+    el.addEventListener("wheel", onUserScroll, { passive: true });
+    el.addEventListener("touchmove", onUserScroll, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", onUserScroll);
+      el.removeEventListener("touchmove", onUserScroll);
+    };
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -82,6 +104,8 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
 
   const handleSend = useCallback(
     (text: string, mentionedParticipantIds?: string[], images?: string[]) => {
+      userScrollingRef.current = false;
+      isNearBottomRef.current = true;
       sendMessage(text, images, { mentionedParticipantIds });
     },
     [sendMessage],
