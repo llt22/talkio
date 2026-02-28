@@ -200,6 +200,38 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const targets = resolveTargetParticipants(conversation, options?.mentionedParticipantIds);
     let lastAssistantContent = "";
 
+    // Pre-compute context compression once for all participants (avoid N redundant calls in group chat)
+    let cachedCompressionSummary: string | null = null;
+    const compressionSettings = useSettingsStore.getState().settings;
+    if (compressionSettings.contextCompressionEnabled && targets.length > 0) {
+      const firstModel = providerStore.getModelById(targets[0].modelId);
+      const firstProvider = firstModel ? providerStore.getProviderById(firstModel.providerId) : null;
+      if (firstModel && firstProvider && firstProvider.type === "openai") {
+        const allMsgs = await getRecentMessages(cid, get().activeBranchId, MAX_HISTORY);
+        const filtered = allMsgs.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
+        const sampleApiMessages = buildApiMessagesForParticipant(filtered, targets[0], conversation);
+        const { estimateMessagesTokens } = await import("../lib/context-compression");
+        const tokenCount = estimateMessagesTokens(sampleApiMessages);
+        if (tokenCount > compressionSettings.contextCompressionThreshold) {
+          const firstBaseUrl = firstProvider.baseUrl.replace(/\/+$/, "");
+          const firstHeaders = buildProviderHeaders(firstProvider, { "Content-Type": "application/json" });
+          const result = await compressIfNeeded(sampleApiMessages, {
+            maxTokens: compressionSettings.contextCompressionThreshold,
+            keepRecentCount: 6,
+            baseUrl: firstBaseUrl,
+            headers: firstHeaders,
+            model: firstModel.modelId,
+            signal: abortController.signal,
+          });
+          if (result.compressed) {
+            // Extract the summary text from the compressed messages
+            const summaryMsg = result.messages.find((m) => typeof m.content === "string" && (m.content as string).startsWith("[Previous conversation summary]"));
+            cachedCompressionSummary = summaryMsg ? (summaryMsg.content as string) : null;
+          }
+        }
+      }
+    }
+
     async function generateForParticipant(participant: ConversationParticipant, index: number) {
       const model = providerStore.getModelById(participant.modelId);
       const provider = model ? providerStore.getProviderById(model.providerId) : null;
@@ -296,9 +328,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
         let apiMessages = buildApiMessagesForParticipant(filtered, participant, conversation);
 
-        // Context compression: summarize old messages if over token threshold
-        const compressionSettings = useSettingsStore.getState().settings;
-        if (compressionSettings.contextCompressionEnabled) {
+        // Context compression: use cached summary if available, otherwise compress individually
+        if (compressionSettings.contextCompressionEnabled && cachedCompressionSummary) {
+          // Reuse pre-computed summary: keep system + inject summary + keep recent messages
+          const systemMsgs = apiMessages.filter((m) => m.role === "system");
+          const convMsgs = apiMessages.filter((m) => m.role !== "system");
+          const keepCount = Math.min(6, convMsgs.length);
+          const recent = convMsgs.slice(convMsgs.length - keepCount);
+          apiMessages = [...systemMsgs, { role: "user", content: cachedCompressionSummary }, ...recent];
+        } else if (compressionSettings.contextCompressionEnabled && !cachedCompressionSummary) {
           const result = await compressIfNeeded(apiMessages, {
             maxTokens: compressionSettings.contextCompressionThreshold,
             keepRecentCount: 6,
