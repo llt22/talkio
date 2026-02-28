@@ -1,7 +1,7 @@
 /**
  * ChatView — shared chat message list + input (1:1 RN original).
  */
-import { useRef, useEffect, useCallback, useMemo, useState, memo } from "react";
+import { useRef, useEffect, useCallback, useMemo, useState, memo, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
 import { IoCopyOutline, IoRefreshOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
 import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown } from "lucide-react";
@@ -13,19 +13,25 @@ import type { Message, ConversationParticipant } from "../../types";
 import { MessageStatus } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useConfirm } from "./ConfirmDialogProvider";
+import { useStickToBottom } from "use-stick-to-bottom";
+
+export interface ChatViewHandle {
+  scrollToBottom: () => void;
+  getScrollElement: () => HTMLElement | null;
+}
 
 interface ChatViewProps {
   conversationId: string;
   isMobile?: boolean;
-  onScrollRef?: React.RefObject<HTMLDivElement | null>;
-  onScroll?: () => void;
+  onAtBottomChange?: (isAtBottom: boolean) => void;
+  handleRef?: React.Ref<ChatViewHandle>;
   modelName?: string;
   onSwitchModel?: () => void;
   isGroup?: boolean;
   participants?: ConversationParticipant[];
 }
 
-export function ChatView({ conversationId, isMobile = false, onScrollRef, onScroll, modelName, onSwitchModel, isGroup = false, participants = [] }: ChatViewProps) {
+export function ChatView({ conversationId, isMobile = false, onAtBottomChange, handleRef, modelName, onSwitchModel, isGroup = false, participants = [] }: ChatViewProps) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const activeBranchId = useChatStore((s: ChatState) => s.activeBranchId);
@@ -44,11 +50,20 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
   const switchBranch = useChatStore((s: ChatState) => s.switchBranch);
   const deleteMessageById = useChatStore((s: ChatState) => s.deleteMessageById);
 
-  const _internalScrollRef = useRef<HTMLDivElement>(null);
-  const scrollRef = onScrollRef ?? _internalScrollRef;
-  const isNearBottomRef = useRef(true);
-  const userScrollingRef = useRef(false);
-  const forceScrollRef = useRef(false);
+  const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({ resize: "instant" });
+
+  useImperativeHandle(handleRef, () => ({
+    scrollToBottom: () => scrollToBottom(),
+    getScrollElement: () => scrollRef.current,
+  }), [scrollToBottom]);
+
+  const prevIsAtBottom = useRef(isAtBottom);
+  useEffect(() => {
+    if (prevIsAtBottom.current !== isAtBottom) {
+      prevIsAtBottom.current = isAtBottom;
+      onAtBottomChange?.(isAtBottom);
+    }
+  }, [isAtBottom, onAtBottomChange]);
 
   useEffect(() => {
     setCurrentConversation(conversationId);
@@ -69,56 +84,12 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
     });
   }, [messages, streamingMessage]);
 
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
-    if (userScrollingRef.current) {
-      isNearBottomRef.current = nearBottom;
-      if (nearBottom) userScrollingRef.current = false;
-    } else {
-      isNearBottomRef.current = nearBottom;
-    }
-    onScroll?.();
-  }, [onScroll]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onUserScroll = () => {
-      userScrollingRef.current = true;
-      isNearBottomRef.current = false;
-    };
-    el.addEventListener("wheel", onUserScroll, { passive: true });
-    el.addEventListener("touchmove", onUserScroll, { passive: true });
-    return () => {
-      el.removeEventListener("wheel", onUserScroll);
-      el.removeEventListener("touchmove", onUserScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    if (forceScrollRef.current) {
-      forceScrollRef.current = false;
-      userScrollingRef.current = false;
-      isNearBottomRef.current = true;
-      el.scrollTop = el.scrollHeight;
-      return;
-    }
-    if (!isNearBottomRef.current) return;
-    el.scrollTop = el.scrollHeight;
-  }, [displayMessages]);
-
   const handleSend = useCallback(
     (text: string, mentionedParticipantIds?: string[], images?: string[]) => {
-      forceScrollRef.current = true;
-      userScrollingRef.current = false;
-      isNearBottomRef.current = true;
+      scrollToBottom();
       sendMessage(text, images, { mentionedParticipantIds });
     },
-    [sendMessage],
+    [sendMessage, scrollToBottom],
   );
 
   const handleCopy = useCallback((content: string) => {
@@ -190,19 +161,20 @@ export function ChatView({ conversationId, isMobile = false, onScrollRef, onScro
       {/* Messages */}
       <div
         ref={scrollRef}
-        onScroll={handleScroll}
         className="flex-1 min-h-0 overflow-y-auto pt-3 pb-2"
       >
-        {displayMessages.map((msg) => (
-          <MessageRow
-            key={msg.id}
-            message={msg}
-            onCopy={handleCopy}
-            onRegenerate={msg.role === "assistant" ? handleRegenerate : undefined}
-            onBranch={msg.role === "assistant" ? handleBranch : undefined}
-            onDelete={handleDelete}
-          />
-        ))}
+        <div ref={contentRef}>
+          {displayMessages.map((msg) => (
+            <MessageRow
+              key={msg.id}
+              message={msg}
+              onCopy={handleCopy}
+              onRegenerate={msg.role === "assistant" ? handleRegenerate : undefined}
+              onBranch={msg.role === "assistant" ? handleBranch : undefined}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Input */}

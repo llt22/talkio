@@ -54,6 +54,7 @@
     "remark-math": "^6.0.0",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.5.0",
+    "use-stick-to-bottom": "^1.1.3",
     "zustand": "^5.0.5"
   },
   "devDependencies": {

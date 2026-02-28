@@ -4,7 +4,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type D
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useTranslation } from "react-i18next";
-import { ChatView } from "../shared/ChatView";
+import { ChatView, type ChatViewHandle } from "../shared/ChatView";
 import { ModelPicker } from "../shared/ModelPicker";
 import { AddMemberPicker, type SelectedMember } from "../shared/AddMemberPicker";
 import { SettingsPage } from "../../pages/settings/SettingsPage";
@@ -462,7 +462,7 @@ function SortableParticipantRow({
 function DesktopChatPanel({ conversationId }: { conversationId: string }) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const chatViewRef = useRef<ChatViewHandle>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const {
     conv,
@@ -712,12 +712,8 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
             onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
             isGroup={isGroup}
             participants={conv?.participants ?? []}
-            onScrollRef={scrollRef}
-            onScroll={() => {
-              const el = scrollRef.current;
-              if (!el) return;
-              setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
-            }}
+            handleRef={chatViewRef}
+            onAtBottomChange={(atBottom) => setShowScrollBottom(!atBottom)}
           />
         </div>
         {/* Scroll to bottom — floating above input */}
@@ -738,7 +734,7 @@ function DesktopChatPanel({ conversationId }: { conversationId: string }) {
               transition: "opacity 0.2s ease, transform 0.2s ease",
               pointerEvents: showScrollBottom ? "auto" : "none",
             }}
-            onClick={() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); setShowScrollBottom(false); }}
+            onClick={() => { chatViewRef.current?.scrollToBottom(); setShowScrollBottom(false); }}
           >
             <ArrowDown size={14} style={{ color: "var(--muted-foreground)" }} />
           </button>

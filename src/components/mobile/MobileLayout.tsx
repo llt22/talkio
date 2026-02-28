@@ -5,7 +5,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { useMobileNav } from "../../contexts/MobileNavContext";
 import { IoChatbubbles, IoCube, IoPersonCircle, IoSettings, IoChevronBack, IoPeopleOutline, IoCaretDown, IoCaretUp, IoPersonOutline, IoShareOutline, IoCreateOutline, IoSearchOutline, IoCloseCircle, IoSparkles, IoChatbubbleOutline, IoArrowDown, IoAddCircleOutline, IoTrashOutline, IoPersonAddOutline, IoEllipsisHorizontal } from "../../icons";
-import { ChatView } from "../shared/ChatView";
+import { ChatView, type ChatViewHandle } from "../shared/ChatView";
 import { ModelPicker } from "../shared/ModelPicker";
 import { MobileStack } from "./MobileStack";
 import { SettingsMainContent } from "./SettingsMainContent";
@@ -160,7 +160,7 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const chatViewRef = useRef<ChatViewHandle>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   // Optimistic identity id — updates immediately on selection, before DB roundtrip
   const [optimisticIdentityId, setOptimisticIdentityId] = useState<string | null | undefined>(undefined);
@@ -190,11 +190,6 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
     ? t("chat.modelCount", { count: conv?.participants.length ?? 0 })
     : activeIdentity?.name ?? t("chat.mountIdentity");
 
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setShowScrollToBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 100);
-  }, []);
 
   const handleHeaderTitlePress = useCallback(() => {
     if (isGroup) {
@@ -444,8 +439,8 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
         <ChatView
           conversationId={conversationId}
           isMobile
-          onScrollRef={scrollRef}
-          onScroll={handleScroll}
+          handleRef={chatViewRef}
+          onAtBottomChange={(atBottom) => setShowScrollToBottom(!atBottom)}
           modelName={!isGroup ? model?.displayName : undefined}
           onSwitchModel={!isGroup ? () => { setModelPickerMode("switch"); setShowModelPicker(true); } : undefined}
           isGroup={isGroup}
@@ -470,7 +465,7 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
               pointerEvents: showScrollToBottom ? "auto" : "none",
             }}
             onClick={() => {
-              if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+              chatViewRef.current?.scrollToBottom();
               setShowScrollToBottom(false);
             }}
           >
