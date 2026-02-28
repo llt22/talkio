@@ -53,6 +53,55 @@ pub async fn mcp_stdio_start(
     for (k, v) in &env {
         cmd.env(k, v);
     }
+
+    // macOS .app bundles don't inherit the user's shell PATH, so commands
+    // like "npx", "node", "python3" etc. won't be found. Prepend common
+    // executable paths to the child process PATH.
+    {
+        let current_path = std::env::var("PATH").unwrap_or_default();
+        let home = std::env::var("HOME").unwrap_or_default();
+
+        let mut paths: Vec<String> = Vec::new();
+
+        // Try to find the actual nvm node binary dir
+        let nvm_dir = format!("{}/.nvm/versions/node", home);
+        if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+            let mut versions: Vec<String> = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+                .map(|e| e.file_name().to_string_lossy().to_string())
+                .collect();
+            versions.sort();
+            if let Some(latest) = versions.last() {
+                paths.push(format!("{}/{}/bin", nvm_dir, latest));
+            }
+        }
+
+        // Homebrew (Apple Silicon + Intel)
+        paths.push("/opt/homebrew/bin".into());
+        paths.push("/opt/homebrew/sbin".into());
+        paths.push("/usr/local/bin".into());
+        paths.push("/usr/local/sbin".into());
+        // Common tool paths
+        paths.push(format!("{}/.local/bin", home));
+        paths.push(format!("{}/.cargo/bin", home));
+        paths.push(format!("{}/.volta/bin", home));
+        paths.push(format!("{}/.fnm/aliases/default/bin", home));
+        // System
+        paths.push("/usr/bin".into());
+        paths.push("/bin".into());
+        paths.push("/usr/sbin".into());
+        paths.push("/sbin".into());
+        // Existing PATH
+        if !current_path.is_empty() {
+            paths.push(current_path);
+        }
+
+        let merged = paths.join(":");
+        cmd.env("PATH", &merged);
+        log::info!("[MCP stdio] PATH set to: {}", merged);
+    }
+
     cmd.stdin(std::process::Stdio::piped());
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
