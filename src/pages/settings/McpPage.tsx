@@ -291,28 +291,32 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
               <p className="px-4 pt-4 text-[13px] text-muted-foreground">{t("personas.noCustomTools")}</p>
             )}
 
-            {/* Tools summary */}
-            {tools.length > 0 && (
-              <>
-                <div className="px-5 py-1.5" style={{ backgroundColor: "var(--secondary)" }}>
-                  <p className="text-[13px] font-semibold text-muted-foreground">
-                    {t("mcp.availableTools", { count: tools.length })}
-                  </p>
+            {/* Tools summary — grouped by server */}
+            {tools.length > 0 && servers.filter((s) => s.enabled).map((srv) => {
+              const serverTools = tools.filter((t) => t.serverId === srv.id);
+              if (serverTools.length === 0) return null;
+              return (
+                <div key={srv.id}>
+                  <div className="px-5 py-1.5" style={{ backgroundColor: "var(--secondary)" }}>
+                    <p className="text-[13px] font-semibold text-muted-foreground">
+                      {srv.name} ({serverTools.length})
+                    </p>
+                  </div>
+                  <div style={{ borderBottom: "0.5px solid var(--border)" }}>
+                    {serverTools.map((tool, idx) => (
+                      <div
+                        key={`${tool.serverId}-${tool.name}`}
+                        className="px-4 py-2.5"
+                        style={{ borderBottom: idx < serverTools.length - 1 ? "0.5px solid var(--border)" : "none" }}
+                      >
+                        <p className="text-[13px] font-medium text-foreground">{tool.name}</p>
+                        <p className="text-[11px] text-muted-foreground line-clamp-1">{tool.description}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ borderBottom: "0.5px solid var(--border)" }}>
-                  {tools.map((tool, idx) => (
-                    <div
-                      key={`${tool.serverId}-${tool.name}`}
-                      className="px-4 py-2.5"
-                      style={{ borderBottom: idx < tools.length - 1 ? "0.5px solid var(--border)" : "none" }}
-                    >
-                      <p className="text-[13px] font-medium text-foreground">{tool.name}</p>
-                      <p className="text-[11px] text-muted-foreground line-clamp-1">{tool.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+              );
+            })}
           </>
         )}
 
