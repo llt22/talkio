@@ -8,7 +8,11 @@ import { useChatStore } from "../../stores/chat-store";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
 import type { Identity } from "../../types";
 import { exportConversationAsMarkdown } from "../../services/export";
-import { useConfirm } from "../shared/ConfirmDialogProvider";
+import { useConfirm, appAlert } from "../shared/ConfirmDialogProvider";
+import { manualCompress, setManualSummary, getManualSummary } from "../../lib/context-compression";
+import { buildApiMessagesForParticipant } from "../../stores/chat-message-builder";
+import { buildProviderHeaders } from "../../services/provider-headers";
+import { useProviderStore } from "../../stores/provider-store";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 import { MobileDndParticipantList } from "./MobileDndParticipantList";
 
@@ -49,6 +53,8 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
   const renameConversation = useChatStore((s) => s.renameConversation);
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const hasManualSummary = !!getManualSummary(conversationId);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const chatViewRef = useRef<ChatViewHandle>(null);
@@ -109,6 +115,30 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
     }
     setEditingParticipantId(null);
   }, [conversationId, editingParticipantId, currentParticipant, updateParticipantIdentity]);
+
+  const handleCompress = useCallback(async () => {
+    if (!conv || isCompressing || messages.length < 4) return;
+    const firstParticipant = conv.participants[0];
+    if (!firstParticipant) return;
+    const providerStore = useProviderStore.getState();
+    const pModel = providerStore.getModelById(firstParticipant.modelId);
+    const pProvider = pModel ? providerStore.getProviderById(pModel.providerId) : null;
+    if (!pModel || !pProvider) return;
+    setIsCompressing(true);
+    try {
+      const apiMessages = buildApiMessagesForParticipant(messages, firstParticipant, conv);
+      const baseUrl = pProvider.baseUrl.replace(/\/+$/, "");
+      const headers = buildProviderHeaders(pProvider, { "Content-Type": "application/json" });
+      const result = await manualCompress(apiMessages, { keepRecentCount: 6, baseUrl, headers, model: pModel.modelId });
+      setManualSummary(conversationId, `[Previous conversation summary]\n${result.summary}`);
+      const pct = Math.round((1 - result.compressedTokens / result.originalTokens) * 100);
+      await appAlert(`${t("chat.compressSuccess")}\n${result.originalTokens} → ${result.compressedTokens} tokens (${pct}% ${t("chat.reduction")})`);
+    } catch (err) {
+      await appAlert(`${t("chat.compressFailed")}: ${err instanceof Error ? err.message : "Unknown"}`);
+    } finally {
+      setIsCompressing(false);
+    }
+  }, [conv, messages, isCompressing, conversationId, t]);
 
   const handleExport = useCallback(async () => {
     if (!conv || isExporting || messages.length === 0) return;
@@ -206,6 +236,19 @@ export function MobileChatDetail({ conversationId, onBack }: { conversationId: s
                 >
                   <IoShareOutline size={18} color="var(--foreground)" />
                   <span className="text-[14px] text-foreground">{t("chat.export")}</span>
+                </button>
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 active:opacity-60"
+                  style={{ opacity: messages.length < 4 || isCompressing ? 0.4 : 1 }}
+                  disabled={messages.length < 4 || isCompressing}
+                  onClick={() => { setShowMoreMenu(false); handleCompress(); }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                  <span className="text-[14px] text-foreground">
+                    {isCompressing ? t("chat.compressing") : hasManualSummary ? t("chat.recompress") : t("chat.compressContext")}
+                  </span>
                 </button>
                 <div style={{ height: "0.5px", backgroundColor: "var(--border)", margin: "0 16px" }} />
                 <button
