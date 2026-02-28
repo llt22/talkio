@@ -54,6 +54,45 @@ export function SettingsMainContent() {
         />
       </div>
 
+      {/* Chat */}
+      <SectionHeader label={t("settings.chat")} />
+      <div>
+        <div className="w-full flex items-center gap-4 px-4 py-3">
+          <div className="h-10 w-10 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: "rgba(16,185,129,0.1)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-[16px] font-medium text-foreground">{t("settings.contextCompression")}</span>
+          </div>
+          {settings.contextCompressionEnabled && (
+            <select
+              value={settings.contextCompressionThreshold}
+              onChange={(e) => updateSettings({ contextCompressionThreshold: Number(e.target.value) })}
+              className="rounded-lg px-2 py-1 text-[13px] text-muted-foreground outline-none appearance-none cursor-pointer flex-shrink-0"
+              style={{ backgroundColor: "var(--secondary)" }}
+            >
+              <option value={8000}>8K</option>
+              <option value={16000}>16K</option>
+              <option value={32000}>32K</option>
+              <option value={64000}>64K</option>
+              <option value={128000}>128K</option>
+            </select>
+          )}
+          <div
+            onClick={() => updateSettings({ contextCompressionEnabled: !settings.contextCompressionEnabled })}
+            className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors cursor-pointer"
+            style={{ backgroundColor: settings.contextCompressionEnabled ? "var(--primary)" : "var(--muted)" }}
+          >
+            <span
+              className="inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform"
+              style={{ transform: settings.contextCompressionEnabled ? "translateX(20px) translateY(2px)" : "translateX(2px) translateY(2px)" }}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Appearance */}
       <SectionHeader label={t("settings.appearance")} />
       <div>
@@ -131,7 +170,7 @@ export function SettingsMainContent() {
         </div>
         <div className="text-center pb-6">
           <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Talkio</p>
-          <p className="mt-1 text-xs text-muted-foreground">v2.0.0</p>
+          <p className="mt-1 text-xs text-muted-foreground">v{__APP_VERSION__}</p>
         </div>
       </div>
     </div>
