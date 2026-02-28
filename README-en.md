@@ -1,10 +1,30 @@
-# Talkio
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" width="100" alt="Talkio Logo" />
+</p>
 
-**Multiple AI models chatting together, right on your desktop.**
+<h1 align="center">Talkio</h1>
 
-Talkio is a local-first cross-platform desktop AI chat app. It's not just another ChatGPT client — you can pull multiple AI models into the same group chat, assign them different personas, and watch them debate, collaborate, or play word games together.
+<p align="center">
+  <strong>Multiple AI models chatting together, right on your desktop.</strong>
+</p>
 
-[中文](README.md) · English
+<p align="center">
+  <a href="https://github.com/llt22/talkio/releases"><img src="https://img.shields.io/github/v/release/llt22/talkio?style=flat-square&color=blue" alt="Release" /></a>
+  <a href="https://github.com/llt22/talkio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/llt22/talkio?style=flat-square" alt="License" /></a>
+  <a href="https://github.com/llt22/talkio/stargazers"><img src="https://img.shields.io/github/stars/llt22/talkio?style=flat-square" alt="Stars" /></a>
+  <a href="https://github.com/llt22/talkio/releases"><img src="https://img.shields.io/github/downloads/llt22/talkio/total?style=flat-square&color=green" alt="Downloads" /></a>
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-brightgreen?style=flat-square" alt="Platform" />
+</p>
+
+<p align="center">
+  <code>Multi-AI Group Chat</code> · <code>Persona System</code> · <code>MCP Tool Calling</code> · <code>Local-First</code> · <code>Tauri 2 + React 19</code>
+</p>
+
+<p align="center">
+  <a href="README.md">中文</a> · English
+</p>
+
+Talkio is not just another ChatGPT client — you can pull multiple AI models into the same group chat, assign them different personas, and watch them debate, collaborate, or play word games together.
 
 ---
 

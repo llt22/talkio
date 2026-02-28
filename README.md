@@ -1,12 +1,30 @@
-# Talkio
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" width="100" alt="Talkio Logo" />
+</p>
 
-**让多个 AI 在你的桌面上同时对话。**
+<h1 align="center">Talkio</h1>
 
-Talkio 是一款本地优先的跨平台桌面 AI 聊天应用。它不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉进同一个群聊，让它们各自扮演不同角色，围绕同一个话题展开讨论、辩论、接龙。
+<p align="center">
+  <strong>让多个 AI 在你的桌面上同时对话。</strong>
+</p>
 
-中文 · [English](README-en.md)
+<p align="center">
+  <a href="https://github.com/llt22/talkio/releases"><img src="https://img.shields.io/github/v/release/llt22/talkio?style=flat-square&color=blue" alt="Release" /></a>
+  <a href="https://github.com/llt22/talkio/blob/main/LICENSE"><img src="https://img.shields.io/github/license/llt22/talkio?style=flat-square" alt="License" /></a>
+  <a href="https://github.com/llt22/talkio/stargazers"><img src="https://img.shields.io/github/stars/llt22/talkio?style=flat-square" alt="Stars" /></a>
+  <a href="https://github.com/llt22/talkio/releases"><img src="https://img.shields.io/github/downloads/llt22/talkio/total?style=flat-square&color=green" alt="Downloads" /></a>
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-brightgreen?style=flat-square" alt="Platform" />
+</p>
 
-> *A local-first cross-platform desktop AI chat app. Pull multiple AI models into the same group chat, assign them different personas, and watch them debate, collaborate, or play word games together.*
+<p align="center">
+  <code>多模型群聊</code> · <code>身份角色系统</code> · <code>MCP 工具调用</code> · <code>本地优先</code> · <code>Tauri 2 + React 19</code>
+</p>
+
+<p align="center">
+  中文 · <a href="README-en.md">English</a>
+</p>
+
+Talkio 不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉进同一个群聊，让它们各自扮演不同角色，围绕同一个话题展开讨论、辩论、接龙。
 
 ---
 
