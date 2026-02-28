@@ -346,7 +346,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
             aria-label="Close"
           />
           <div
-            className="absolute left-0 right-0 bottom-0 rounded-t-2xl overflow-hidden"
+            className="absolute left-1/2 bottom-0 -translate-x-1/2 w-full max-w-lg rounded-t-2xl overflow-hidden"
             style={{ backgroundColor: "var(--background)" }}
           >
             <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
@@ -365,7 +365,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
                 onChange={(e) => setImportJson(e.target.value)}
                 className="w-full rounded-xl px-3 py-2 text-[13px] font-mono text-foreground outline-none resize-none"
                 style={{ backgroundColor: "var(--secondary)", minHeight: 180 }}
-                placeholder={'{\n  "mcpServers": {\n    "weather": {\n      "url": "https://..."\n    }\n  }\n}'}
+                placeholder={'{\n  "mcpServers": {\n    "weather": { "url": "https://..." },\n    "filesystem": {\n      "command": "npx",\n      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]\n    }\n  }\n}'}
               />
               <div className="mt-4 flex items-center gap-3">
                 <button
