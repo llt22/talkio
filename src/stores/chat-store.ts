@@ -57,6 +57,7 @@ export interface ChatState {
   regenerateMessage: (messageId: string) => Promise<void>;
   branchFromMessage: (messageId: string, messages: Message[]) => Promise<string>;
   switchBranch: (branchId: string | null) => void;
+  editMessage: (messageId: string, newContent: string) => Promise<void>;
   deleteMessageById: (messageId: string) => Promise<void>;
   clearConversationMessages: (conversationId: string) => Promise<void>;
   searchAllMessages: (query: string) => Promise<Message[]>;
@@ -309,6 +310,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Re-generate assistant response without creating a duplicate user message
     await get().sendMessage(prevUserMsg.content, prevUserMsg.images, { reuseUserMessageId: prevUserMsg.id });
+  },
+
+  editMessage: async (messageId: string, newContent: string) => {
+    const convId = get().currentConversationId;
+    if (!convId || get().isGenerating) return;
+
+    const messages = await getRecentMessages(convId, get().activeBranchId, MAX_HISTORY);
+    const msgIndex = messages.findIndex((m) => m.id === messageId);
+    if (msgIndex < 0) return;
+    const msg = messages[msgIndex];
+    if (msg.role !== "user") return;
+
+    // Update the user message content
+    const { updateMessage } = await import("../storage/database");
+    await updateMessage(messageId, { content: newContent });
+
+    // Delete all messages after the edited one
+    const subsequent = messages.slice(msgIndex + 1);
+    for (const m of subsequent) {
+      await dbDeleteMessage(m.id);
+    }
+    notifyDbChange("messages", convId);
+
+    // Re-generate AI response
+    await get().sendMessage(newContent, msg.images, { reuseUserMessageId: messageId });
   },
 
   deleteMessageById: async (messageId: string) => {

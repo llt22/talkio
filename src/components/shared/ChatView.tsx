@@ -4,7 +4,7 @@
 import { useRef, useEffect, useCallback, useMemo, useState, memo, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
 import { IoCopyOutline, IoRefreshOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
-import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown } from "lucide-react";
+import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown, Pencil, Check, X } from "lucide-react";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
@@ -49,6 +49,7 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
   const branchFromMessage = useChatStore((s: ChatState) => s.branchFromMessage);
   const switchBranch = useChatStore((s: ChatState) => s.switchBranch);
   const deleteMessageById = useChatStore((s: ChatState) => s.deleteMessageById);
+  const editMessage = useChatStore((s: ChatState) => s.editMessage);
 
   const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({ resize: "instant" });
 
@@ -113,6 +114,10 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
     if (ok) deleteMessageById(messageId);
   }, [confirm, deleteMessageById, t]);
 
+  const handleEdit = useCallback((messageId: string, newContent: string) => {
+    editMessage(messageId, newContent);
+  }, [editMessage]);
+
   const hasMessages = displayMessages.length > 0;
 
   if (!hasMessages && !isGenerating) {
@@ -172,6 +177,8 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
               onRegenerate={msg.role === "assistant" ? handleRegenerate : undefined}
               onBranch={msg.role === "assistant" ? handleBranch : undefined}
               onDelete={handleDelete}
+              onEdit={msg.role === "user" ? handleEdit : undefined}
+              isGenerating={isGenerating}
             />
           ))}
         </div>
@@ -237,6 +244,8 @@ interface MessageRowProps {
   onRegenerate?: (messageId: string) => void;
   onBranch?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
+  onEdit?: (messageId: string, newContent: string) => void;
+  isGenerating?: boolean;
 }
 
 // ── Assistant action bar: primary buttons + ··· overflow menu ──
@@ -319,12 +328,38 @@ function AssistantActionBar({ content, message, onCopy, onRegenerate, onBranch, 
   );
 }
 
-const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onBranch, onDelete }: MessageRowProps) {
+const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onBranch, onDelete, onEdit, isGenerating }: MessageRowProps) {
   const { t } = useTranslation();
   const isUser = message.role === "user";
   const isStreaming = message.status === MessageStatus.STREAMING;
   const content = (message.content || "").trimEnd();
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState("");
+  const editRef = useRef<HTMLTextAreaElement>(null);
+
+  const startEditing = useCallback(() => {
+    setEditText(content);
+    setIsEditing(true);
+    // Auto-focus after render
+    setTimeout(() => editRef.current?.focus(), 50);
+  }, [content]);
+
+  const cancelEditing = useCallback(() => {
+    setIsEditing(false);
+    setEditText("");
+  }, []);
+
+  const confirmEdit = useCallback(() => {
+    const trimmed = editText.trim();
+    if (!trimmed || trimmed === content) {
+      cancelEditing();
+      return;
+    }
+    onEdit?.(message.id, trimmed);
+    setIsEditing(false);
+    setEditText("");
+  }, [editText, content, onEdit, message.id, cancelEditing]);
 
   if (isUser) {
     return (
@@ -350,21 +385,63 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
             </div>
           )}
 
-          {/* Bubble */}
-          <div
-            className="max-w-[80%] rounded-2xl px-4 py-3"
-            style={{ backgroundColor: "var(--primary)", maxWidth: "min(80%, 640px)", borderTopRightRadius: 0 }}
-          >
-            <p className="text-[15px] leading-relaxed text-white whitespace-pre-wrap break-words">
-              {content || (message.images?.length ? "📷" : "")}
-            </p>
-          </div>
+          {/* Bubble or Edit textarea */}
+          {isEditing ? (
+            <div className="w-full max-w-[80%]" style={{ maxWidth: "min(80%, 640px)" }}>
+              <textarea
+                ref={editRef}
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") cancelEditing();
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); confirmEdit(); }
+                }}
+                className="w-full rounded-2xl px-4 py-3 text-[15px] leading-relaxed text-foreground outline-none resize-none"
+                style={{ backgroundColor: "var(--secondary)", border: "2px solid var(--primary)", minHeight: "80px" }}
+                rows={Math.max(2, editText.split("\n").length)}
+              />
+              <div className="flex justify-end gap-1.5 mt-1.5">
+                <button
+                  onClick={cancelEditing}
+                  className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium active:opacity-70"
+                  style={{ backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }}
+                >
+                  <X size={13} />
+                  {t("common.cancel")}
+                </button>
+                <button
+                  onClick={confirmEdit}
+                  className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-white active:opacity-70"
+                  style={{ backgroundColor: "var(--primary)" }}
+                >
+                  <Check size={13} />
+                  {t("common.save")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="max-w-[80%] rounded-2xl px-4 py-3"
+              style={{ backgroundColor: "var(--primary)", maxWidth: "min(80%, 640px)", borderTopRightRadius: 0 }}
+            >
+              <p className="text-[15px] leading-relaxed text-white whitespace-pre-wrap break-words">
+                {content || (message.images?.length ? "📷" : "")}
+              </p>
+            </div>
+          )}
 
           {/* User action bar */}
-          <div className="mr-1 flex items-center gap-0.5">
-            {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
-            {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
-          </div>
+          {!isEditing && (
+            <div className="mr-1 flex items-center gap-0.5">
+              {onEdit && !isGenerating && (
+                <button onClick={startEditing} className="rounded-md p-1.5 active:opacity-60" title={t("common.edit")}>
+                  <Pencil size={14} color="var(--muted-foreground)" />
+                </button>
+              )}
+              {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
+              {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
+            </div>
+          )}
         </div>
       </div>
     );
