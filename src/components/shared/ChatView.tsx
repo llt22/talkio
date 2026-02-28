@@ -4,7 +4,7 @@
 import { useRef, useEffect, useCallback, useMemo, useState, memo, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
 import { IoCopyOutline, IoRefreshOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
-import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown, Pencil, Check, X, FileText } from "lucide-react";
+import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown, Pencil, Check, X, FileText, Paperclip } from "lucide-react";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
@@ -12,6 +12,7 @@ import { useMessages } from "../../hooks/useDatabase";
 import { useProviderStore } from "../../stores/provider-store";
 import type { Message, ConversationParticipant } from "../../types";
 import { generateSuggestQuestions } from "../../services/suggest-questions";
+import { parseFile, type ParsedFile } from "../../lib/file-parser";
 import { MessageStatus } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useConfirm } from "./ConfirmDialogProvider";
@@ -122,6 +123,30 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
 
   const hasMessages = displayMessages.length > 0;
 
+  // ── Drag & drop zone (whole chat area) ──
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCountRef = useRef(0);
+  const [droppedFiles, setDroppedFiles] = useState<{ images: string[]; files: ParsedFile[] } | null>(null);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCountRef.current = 0;
+    setIsDragging(false);
+    if (isMobile) return;
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+    const images: string[] = [];
+    const docs: ParsedFile[] = [];
+    for (let i = 0; i < Math.min(files.length, 4); i++) {
+      try {
+        const parsed = await parseFile(files[i]);
+        if (parsed.type === "image") images.push(parsed.content);
+        else docs.push(parsed);
+      } catch { /* skip unsupported */ }
+    }
+    if (images.length > 0 || docs.length > 0) setDroppedFiles({ images, files: docs });
+  }, [isMobile]);
+
   // ── Suggest questions ──
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([]);
   const suggestRequestIdRef = useRef("");
@@ -179,7 +204,23 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
+    <div
+      className="flex flex-col h-full relative"
+      style={{ backgroundColor: "var(--background)" }}
+      onDragEnter={(e) => { e.preventDefault(); dragCountRef.current++; if (!isMobile) setIsDragging(true); }}
+      onDragOver={(e) => e.preventDefault()}
+      onDragLeave={(e) => { e.preventDefault(); dragCountRef.current--; if (dragCountRef.current <= 0) { dragCountRef.current = 0; setIsDragging(false); } }}
+      onDrop={handleDrop}
+    >
+      {/* Drop overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, var(--background) 92%)", border: "2px dashed var(--primary)", borderRadius: 12 }}>
+          <div className="flex flex-col items-center gap-1.5">
+            <Paperclip size={28} color="var(--primary)" />
+            <span className="text-sm font-medium" style={{ color: "var(--primary)" }}>{t("chat.dropFiles") || "Drop files here"}</span>
+          </div>
+        </div>
+      )}
       {branchBanner}
 
       {/* Messages */}
@@ -201,9 +242,9 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
             />
           ))}
 
-          {/* Suggest questions */}
+          {/* Suggest questions — aligned with AI bubble (avatar 36px + gap 12px = 48px offset) */}
           {suggestQuestions.length > 0 && !isGenerating && (
-            <div className="flex flex-wrap gap-1.5 px-4 pb-4 pt-1">
+            <div className="flex flex-wrap gap-1.5 pb-4 pt-1" style={{ paddingLeft: 52 }}>
               {suggestQuestions.map((q, i) => (
                 <button
                   key={i}
@@ -237,6 +278,8 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
         onStopAutoDiscuss={stopAutoDiscuss}
         autoDiscussRemaining={autoDiscussRemaining}
         autoDiscussTotalRounds={autoDiscussTotalRounds}
+        externalFiles={droppedFiles}
+        onExternalFilesConsumed={() => setDroppedFiles(null)}
       />
     </div>
   );

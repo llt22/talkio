@@ -28,6 +28,8 @@ interface ChatInputProps {
   onStopAutoDiscuss?: () => void;
   autoDiscussRemaining?: number;
   autoDiscussTotalRounds?: number;
+  externalFiles?: { images: string[]; files: ParsedFile[] } | null;
+  onExternalFilesConsumed?: () => void;
 }
 
 export const ChatInput = memo(function ChatInput({
@@ -45,6 +47,8 @@ export const ChatInput = memo(function ChatInput({
   onStopAutoDiscuss,
   autoDiscussRemaining = 0,
   autoDiscussTotalRounds = 0,
+  externalFiles,
+  onExternalFilesConsumed,
 }: ChatInputProps) {
   const { t } = useTranslation();
   const getModelById = useProviderStore((s) => s.getModelById);
@@ -54,8 +58,6 @@ export const ChatInput = memo(function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [attachedFiles, setAttachedFiles] = useState<ParsedFile[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragCountRef = useRef(0);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [showRoundPicker, setShowRoundPicker] = useState(false);
@@ -290,45 +292,20 @@ export const ChatInput = memo(function ChatInput({
     input.click();
   }, [isMobile]);
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    dragCountRef.current = 0;
-    setIsDragging(false);
-    if (isMobile) return;
-    const files = e.dataTransfer?.files;
-    if (!files) return;
-    for (let i = 0; i < Math.min(files.length, 4); i++) {
-      try {
-        const parsed = await parseFile(files[i]);
-        if (parsed.type === "image") {
-          setAttachedImages((prev) => [...prev, parsed.content].slice(0, 4));
-        } else {
-          setAttachedFiles((prev) => [...prev, parsed].slice(0, 4));
-        }
-      } catch (err) {
-        appAlert(err instanceof Error ? err.message : `Failed to parse: ${files[i].name}`);
-      }
+  // Merge external files from drag-drop in ChatView
+  useEffect(() => {
+    if (!externalFiles) return;
+    if (externalFiles.images.length > 0) {
+      setAttachedImages((prev) => [...prev, ...externalFiles.images].slice(0, 4));
     }
-  }, [isMobile]);
+    if (externalFiles.files.length > 0) {
+      setAttachedFiles((prev) => [...prev, ...externalFiles.files].slice(0, 4));
+    }
+    onExternalFilesConsumed?.();
+  }, [externalFiles, onExternalFilesConsumed]);
 
   return (
-    <div
-      className="flex-shrink-0 relative"
-      style={{ backgroundColor: "var(--background)", borderTop: "0.5px solid var(--border)" }}
-      onDragEnter={(e) => { e.preventDefault(); dragCountRef.current++; if (!isMobile) setIsDragging(true); }}
-      onDragOver={(e) => e.preventDefault()}
-      onDragLeave={(e) => { e.preventDefault(); dragCountRef.current--; if (dragCountRef.current <= 0) { dragCountRef.current = 0; setIsDragging(false); } }}
-      onDrop={handleDrop}
-    >
-      {/* Drop overlay */}
-      {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-t-xl" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background) 90%)", border: "2px dashed var(--primary)" }}>
-          <div className="flex flex-col items-center gap-1">
-            <Paperclip size={24} color="var(--primary)" />
-            <span className="text-sm font-medium" style={{ color: "var(--primary)" }}>{t("chat.dropFiles") || "Drop files here"}</span>
-          </div>
-        </div>
-      )}
+    <div className="flex-shrink-0" style={{ backgroundColor: "var(--background)", borderTop: "0.5px solid var(--border)" }}>
       {/* Auto-discuss round picker */}
       {showRoundPicker && !isAutoDiscussing && (
         <div className="px-4 py-3">
