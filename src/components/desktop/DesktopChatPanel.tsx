@@ -232,10 +232,21 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
           </div>
         )}
         {conv?.workspaceDir && (
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg max-w-[200px]" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)" }} title={conv.workspaceDir}>
-            <FolderOpen size={11} className="text-primary flex-shrink-0" />
-            <span className="text-[10px] text-primary font-medium truncate">{conv.workspaceDir.split(/[/\\]/).pop()}</span>
-          </div>
+          <button
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg max-w-[260px] hover:opacity-80 transition-opacity"
+            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)", border: "0.5px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}
+            title={conv.workspaceDir}
+            onClick={async () => {
+              if (!window.__TAURI_INTERNALS__) return;
+              try {
+                const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+                await revealItemInDir(conv.workspaceDir!);
+              } catch { /* fallback */ }
+            }}
+          >
+            <FolderOpen size={12} className="text-primary flex-shrink-0" />
+            <span className="text-[11px] text-primary font-medium truncate">{conv.workspaceDir.split(/[/\\]/).pop()}</span>
+          </button>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
