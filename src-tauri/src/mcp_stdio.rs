@@ -34,18 +34,41 @@ pub async fn mcp_stdio_start(
 ) -> Result<String, String> {
     let session_id = Uuid::new_v4().to_string();
 
-    let mut cmd = Command::new(&command);
-    cmd.args(&args);
+    // On Windows, commands like "npx" are actually "npx.cmd" — Command::new
+    // doesn't resolve .cmd/.bat extensions. Wrap with cmd.exe /C to fix this.
+    #[cfg(target_os = "windows")]
+    let mut cmd = {
+        let mut c = Command::new("cmd.exe");
+        c.arg("/C");
+        c.arg(&command);
+        c.args(&args);
+        c
+    };
+    #[cfg(not(target_os = "windows"))]
+    let mut cmd = {
+        let mut c = Command::new(&command);
+        c.args(&args);
+        c
+    };
     for (k, v) in &env {
         cmd.env(k, v);
     }
     cmd.stdin(std::process::Stdio::piped());
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
+    // Prevent console window from flashing on Windows
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
 
+    log::info!("[MCP stdio] Spawning: {} {:?} env={:?}", command, args, env);
     let mut child = cmd.spawn().map_err(|e| {
+        log::error!("[MCP stdio] Spawn failed: {}", e);
         format!("Failed to spawn MCP process '{}': {}", command, e)
     })?;
+    log::info!("[MCP stdio] Process spawned successfully, pid={:?}", child.id());
 
     let child_stdin = child.stdin.take().ok_or("Failed to get child stdin")?;
     let child_stdout = child.stdout.take().ok_or("Failed to get child stdout")?;
@@ -116,21 +139,50 @@ pub async fn mcp_stdio_send(
     };
     // Sessions lock released here
 
+    log::info!("[MCP stdio {}] send() called, message len={}", session_id, message.len());
+    log::debug!("[MCP stdio {}] message: {}", session_id, &message[..message.len().min(200)]);
+
+    // Lock the receiver and drain any buffered lines (startup text, etc.)
+    // that arrived before this send — they are not responses to our request.
+    let mut rx = stdout_rx.lock().await;
+    let mut drained = 0;
+    while let Ok(old) = rx.try_recv() {
+        drained += 1;
+        log::info!("[MCP stdio {}] Drained buffered line: {}", session_id, &old[..old.len().min(200)]);
+    }
+    if drained > 0 {
+        log::info!("[MCP stdio {}] Drained {} buffered lines", session_id, drained);
+    }
+
     // Send the message
+    log::info!("[MCP stdio {}] Sending to stdin...", session_id);
     stdin_tx
         .send(message)
         .await
-        .map_err(|e| format!("Failed to send message: {}", e))?;
+        .map_err(|e| {
+            log::error!("[MCP stdio {}] stdin send failed: {}", session_id, e);
+            format!("Failed to send message: {}", e)
+        })?;
+    log::info!("[MCP stdio {}] Sent to stdin, waiting for response...", session_id);
 
     // Wait for response on the channel (no polling, no memory leak)
-    let mut rx = stdout_rx.lock().await;
     match tokio::time::timeout(
         tokio::time::Duration::from_secs(60),
         rx.recv(),
     ).await {
-        Ok(Some(line)) => Ok(line),
-        Ok(None) => Err("MCP stdio process closed".to_string()),
-        Err(_) => Err("MCP stdio response timeout (60s)".to_string()),
+        Ok(Some(line)) => {
+            log::info!("[MCP stdio {}] Got response, len={}", session_id, line.len());
+            log::debug!("[MCP stdio {}] response: {}", session_id, &line[..line.len().min(300)]);
+            Ok(line)
+        }
+        Ok(None) => {
+            log::error!("[MCP stdio {}] Process closed (channel dropped)", session_id);
+            Err("MCP stdio process closed".to_string())
+        }
+        Err(_) => {
+            log::error!("[MCP stdio {}] Response timeout (60s)", session_id);
+            Err("MCP stdio response timeout (60s)".to_string())
+        }
     }
 }
 
