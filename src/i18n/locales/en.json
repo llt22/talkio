@@ -200,7 +200,10 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "mcpTools": "MCP Tools",
-    "appearance": "Appearance"
+    "appearance": "Appearance",
+    "chat": "Chat",
+    "contextCompression": "Context Compression",
+    "compressionThreshold": "Threshold"
   },
   "providerEdit": {
     "quickSelect": "Quick Select",

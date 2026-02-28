@@ -200,7 +200,10 @@
     "themeLight": "浅色",
     "themeDark": "深色",
     "mcpTools": "MCP 工具",
-    "appearance": "外观"
+    "appearance": "外观",
+    "chat": "对话",
+    "contextCompression": "上下文压缩",
+    "compressionThreshold": "触发阈值"
   },
   "providerEdit": {
     "quickSelect": "快速选择",

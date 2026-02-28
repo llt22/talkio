@@ -35,6 +35,8 @@ import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
 import { buildProviderHeaders } from "../services/provider-headers";
 import { appFetch } from "../lib/http";
 import { useBuiltInToolsStore } from "./built-in-tools-store";
+import { compressIfNeeded } from "../lib/context-compression";
+import { useSettingsStore } from "./settings-store";
 import i18n from "../i18n";
 
 const MAX_HISTORY = 200;
@@ -292,7 +294,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
       try {
         const allMessages = await getRecentMessages(cid, get().activeBranchId, MAX_HISTORY);
         const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === userMsg.id);
-        const apiMessages = buildApiMessagesForParticipant(filtered, participant, conversation);
+        let apiMessages = buildApiMessagesForParticipant(filtered, participant, conversation);
+
+        // Context compression: summarize old messages if over token threshold
+        const compressionSettings = useSettingsStore.getState().settings;
+        if (compressionSettings.contextCompressionEnabled) {
+          const result = await compressIfNeeded(apiMessages, {
+            maxTokens: compressionSettings.contextCompressionThreshold,
+            keepRecentCount: 6,
+            baseUrl,
+            headers,
+            model: model.modelId,
+            signal: abortController.signal,
+          });
+          apiMessages = result.messages;
+        }
 
         // Auto-detect reasoning models and send reasoning_effort
         const reasoningEffort = identity?.params?.reasoningEffort

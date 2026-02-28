@@ -13,6 +13,10 @@ export interface AppSettings {
   sttBaseUrl: string;
   sttApiKey: string;
   sttModel: string;
+  /** Enable automatic context compression when token count exceeds threshold */
+  contextCompressionEnabled: boolean;
+  /** Token threshold to trigger compression (default: 8000) */
+  contextCompressionThreshold: number;
 }
 
 interface SettingsState {
@@ -29,6 +33,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   sttBaseUrl: "https://api.groq.com/openai/v1",
   sttApiKey: "",
   sttModel: "whisper-large-v3-turbo",
+  contextCompressionEnabled: true,
+  contextCompressionThreshold: 8000,
 };
 
 const SETTINGS_KEY = "settings";

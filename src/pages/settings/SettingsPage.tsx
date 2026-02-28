@@ -175,7 +175,54 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
         />
       </div>
 
-      {/* ── Group 2: Appearance ── */}
+      {/* ── Group 2: Chat ── */}
+      <SectionHeader label={t("settings.chat")} />
+      <div>
+        <div
+          className="w-full flex items-center gap-4 px-4 py-3"
+          style={{ borderBottom: "0.5px solid var(--border)" }}
+        >
+          <IonIcon
+            d="M459.94 53.25a16.06 16.06 0 00-23.22-.56L424.35 65a8 8 0 000 11.31l11.34 11.32a8 8 0 0011.34 0l12.06-12.13a16 16 0 00.85-22.25zM399.34 90L218.82 270.5a9 9 0 00-2.31 3.93L208.16 299a3.91 3.91 0 004.86 4.86l24.55-8.35a9 9 0 003.93-2.31L422 112.66a9 9 0 000-12.66l-9.95-10a9 9 0 00-12.71 0zM386.34 193.66L264.45 315.79A41.08 41.08 0 01238 326.73L208 336l9.33-29.9a41.14 41.14 0 0110.93-26.37L350.34 157.66a8 8 0 0111.31 0l24.69 24.7a8 8 0 010 11.3zM416 224v192a48 48 0 01-48 48H144a48 48 0 01-48-48V192a48 48 0 0148-48h192"
+            color="#10b981"
+            bg="rgba(16,185,129,0.1)"
+          />
+          <span className="flex-1 text-[16px] font-medium text-foreground text-left">{t("settings.contextCompression")}</span>
+          <div
+            onClick={() => updateSettings({ contextCompressionEnabled: !settings.contextCompressionEnabled })}
+            className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors cursor-pointer"
+            style={{ backgroundColor: settings.contextCompressionEnabled ? "var(--primary)" : "var(--muted)" }}
+          >
+            <span
+              className="inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform"
+              style={{ transform: settings.contextCompressionEnabled ? "translateX(20px) translateY(2px)" : "translateX(2px) translateY(2px)" }}
+            />
+          </div>
+        </div>
+        {settings.contextCompressionEnabled && (
+          <div
+            className="w-full flex items-center gap-4 px-4 py-3"
+            style={{ borderBottom: "none" }}
+          >
+            <div className="h-10 w-10 flex-shrink-0" />
+            <span className="text-[14px] text-muted-foreground">{t("settings.compressionThreshold")}</span>
+            <select
+              value={settings.contextCompressionThreshold}
+              onChange={(e) => updateSettings({ contextCompressionThreshold: Number(e.target.value) })}
+              className="ml-auto rounded-lg px-3 py-1.5 text-sm text-foreground outline-none appearance-none cursor-pointer"
+              style={{ backgroundColor: "var(--secondary)" }}
+            >
+              <option value={4000}>4K tokens</option>
+              <option value={8000}>8K tokens</option>
+              <option value={16000}>16K tokens</option>
+              <option value={32000}>32K tokens</option>
+              <option value={64000}>64K tokens</option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* ── Group 3: Appearance ── */}
       <SectionHeader label={t("settings.appearance")} />
       <div>
         <SettingsRow
