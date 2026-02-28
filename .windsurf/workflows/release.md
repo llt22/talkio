@@ -69,9 +69,46 @@ git push origin vX.Y.Z
 
 ## 7. 编辑并发布 Release
 
-1. 编辑 Draft Release 的 body，补充 Release Notes（列出主要改动）
-2. 确认所有产物已上传（dmg、msi、AppImage、deb、apk）
-3. 取消 "Set as a draft" → 点击 "Publish release"
+### 7.1 生成 Release Notes
+
+运行以下命令获取上次 tag 以来的所有提交：
+
+```bash
+git log $(git describe --tags --abbrev=0 HEAD~1)..HEAD --oneline --no-merges
+```
+
+### 7.2 编写 Release Notes
+
+使用以下模板（根据实际改动填写，删除无关分类）：
+
+```markdown
+## What's New
+
+### ✨ New Features
+- 功能描述 1
+- 功能描述 2
+
+### 🐛 Bug Fixes
+- 修复描述 1
+
+### 🎨 Improvements
+- 改进描述 1
+
+### ⬇️ Downloads
+
+| Platform | File |
+|----------|------|
+| Windows | `Talkio_X.Y.Z_x64-setup.exe` |
+| macOS | `Talkio_X.Y.Z_universal.dmg` |
+| Linux | `Talkio_X.Y.Z_amd64.AppImage` / `.deb` |
+| Android | `Talkio-vX.Y.Z.apk` |
+```
+
+### 7.3 发布
+
+1. 在 GitHub Draft Release 页面粘贴 Release Notes
+2. 确认所有产物已上传（dmg、msi/exe、AppImage、deb、apk）
+3. 取消 "Set as a draft" → 点击 **Publish release**
 
 ## 8. 本地测试验证（可选）
 
