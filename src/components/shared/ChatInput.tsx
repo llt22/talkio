@@ -48,7 +48,7 @@ export const ChatInput = memo(function ChatInput({
   const { t } = useTranslation();
   const getModelById = useProviderStore((s) => s.getModelById);
   const basePlaceholder = placeholder ?? t("chat.message");
-  const resolvedPlaceholder = isMobile ? basePlaceholder : `${basePlaceholder}  (Enter)`;
+  const resolvedPlaceholder = isMobile ? basePlaceholder : `${basePlaceholder}  (Enter · Shift+Enter ${t("chat.newLine")})`;
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);

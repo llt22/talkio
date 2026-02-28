@@ -75,6 +75,7 @@
     "selectModel": "Select Model",
     "messageGroup": "Type message, use @ to mention...",
     "message": "Message...",
+    "newLine": "new line",
     "called": "Called: {{name}}",
     "modelCount": "{{count}} models",
     "noIdentity": "No role",

@@ -75,6 +75,7 @@
     "selectModel": "选择模型",
     "messageGroup": "输入消息，用 @ 提及模型...",
     "message": "发送消息...",
+    "newLine": "换行",
     "called": "调用：{{name}}",
     "modelCount": "{{count}} 个模型",
     "noIdentity": "未设置角色",
