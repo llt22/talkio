@@ -1,6 +1,6 @@
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { X, ArrowUp, Image, ArrowLeftRight, Square, Mic, MessagesSquare, AtSign, Loader2 } from "lucide-react";
+import { X, ArrowUp, Image, ArrowLeftRight, Square, Mic, MessagesSquare, AtSign, Loader2, FileText, Paperclip } from "lucide-react";
 import type { ConversationParticipant, Model } from "../../types";
 import { extractMentionedParticipantIds } from "../../lib/mention-parser";
 import { useProviderStore } from "../../stores/provider-store";
@@ -9,6 +9,7 @@ import { useSettingsStore } from "../../stores/settings-store";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { appFetch } from "../../lib/http";
 import { appAlert } from "../../components/shared/ConfirmDialogProvider";
+import { parseFile, buildFileContext, formatFileSize, type ParsedFile } from "../../lib/file-parser";
 
 // ── ChatInput — 1:1 port of RN src/components/chat/ChatInput.tsx ──
 
@@ -52,6 +53,7 @@ export const ChatInput = memo(function ChatInput({
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<ParsedFile[]>([]);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [showRoundPicker, setShowRoundPicker] = useState(false);
@@ -95,20 +97,28 @@ export const ChatInput = memo(function ChatInput({
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     const hasImages = attachedImages.length > 0;
-    if ((!trimmed && !hasImages) || isGenerating) return;
+    const hasFiles = attachedFiles.length > 0;
+    if ((!trimmed && !hasImages && !hasFiles) || isGenerating) return;
     let mentionedIds: string[] | undefined;
     if (isGroup) {
       const ids = extractMentionedParticipantIds(trimmed, participantNames);
       if (ids.length > 0) mentionedIds = ids;
     }
-    onSend(trimmed, mentionedIds, hasImages ? attachedImages : undefined);
+    // Prepend document text to the message
+    const fileContext = buildFileContext(attachedFiles);
+    const finalText = fileContext ? fileContext + trimmed : trimmed;
+    // Collect image data URIs from both attachedImages and attachedFiles
+    const fileImages = attachedFiles.filter((f) => f.type === "image").map((f) => f.content);
+    const allImages = [...attachedImages, ...fileImages];
+    onSend(finalText, mentionedIds, allImages.length > 0 ? allImages : undefined);
     setText("");
     setAttachedImages([]);
+    setAttachedFiles([]);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       if (!isMobile) textareaRef.current.focus();
     }
-  }, [text, attachedImages, isGenerating, onSend, isGroup, participantNames]);
+  }, [text, attachedImages, attachedFiles, isGenerating, onSend, isGroup, participantNames]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -255,22 +265,23 @@ export const ChatInput = memo(function ChatInput({
   const handleAttach = useCallback(() => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*";
+    input.accept = "image/*,.pdf,.txt,.md,.csv,.json,.xml,.html,.js,.ts,.jsx,.tsx,.py,.rb,.go,.rs,.java,.c,.cpp,.h,.cs,.swift,.sh,.yaml,.yml,.toml,.sql,.css,.scss,.svg,.log";
     input.multiple = true;
     input.onchange = async () => {
       const files = input.files;
       if (!files) return;
-      const newImages: string[] = [];
       for (let i = 0; i < Math.min(files.length, 4); i++) {
-        const file = files[i];
-        const reader = new FileReader();
-        const dataUri = await new Promise<string>((resolve) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
-        newImages.push(dataUri);
+        try {
+          const parsed = await parseFile(files[i]);
+          if (parsed.type === "image") {
+            setAttachedImages((prev) => [...prev, parsed.content].slice(0, 4));
+          } else {
+            setAttachedFiles((prev) => [...prev, parsed].slice(0, 4));
+          }
+        } catch {
+          appAlert(`Unsupported file: ${files[i].name}`);
+        }
       }
-      setAttachedImages((prev) => [...prev, ...newImages].slice(0, 4));
     };
     input.click();
   }, []);
@@ -381,6 +392,29 @@ export const ChatInput = memo(function ChatInput({
             </div>
           )}
 
+          {/* Attached document files preview */}
+          {attachedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-4 pt-2">
+              {attachedFiles.map((file, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
+                  style={{ backgroundColor: "var(--muted)", border: "0.5px solid var(--border)" }}
+                >
+                  <FileText size={14} color="var(--primary)" className="flex-shrink-0" />
+                  <span className="text-[12px] font-medium text-foreground truncate max-w-[120px]">{file.name}</span>
+                  <span className="text-[10px] text-muted-foreground">{formatFileSize(file.size)}</span>
+                  <button
+                    onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))}
+                    className="ml-0.5 rounded-full p-0.5 active:opacity-60"
+                  >
+                    <X size={12} color="var(--muted-foreground)" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Input area */}
           <div className="px-4 pt-2.5 pb-1.5">
             {isRecording ? (
@@ -420,11 +454,11 @@ export const ChatInput = memo(function ChatInput({
                 />
                 <button
                   onClick={handleSend}
-                  disabled={(!text.trim() && attachedImages.length === 0) || isGenerating}
+                  disabled={(!text.trim() && attachedImages.length === 0 && attachedFiles.length === 0) || isGenerating}
                   className="my-1.5 ml-1.5 h-9 w-9 flex items-center justify-center rounded-full flex-shrink-0 active:opacity-70 transition-opacity"
                   style={{
                     backgroundColor: "var(--primary)",
-                    opacity: (text.trim() || attachedImages.length > 0) && !isGenerating ? 1 : 0.3,
+                    opacity: (text.trim() || attachedImages.length > 0 || attachedFiles.length > 0) && !isGenerating ? 1 : 0.3,
                   }}
                 >
                   <ArrowUp size={18} color="white" />
