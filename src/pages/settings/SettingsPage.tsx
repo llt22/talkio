@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { IoChevronForward, IoChevronBack, IoAddCircleOutline, IoTrashOutline, IoAdd } from "../../icons";
+import { ArrowLeftRight, Wrench, Mic, Minimize2, Languages, Moon, Download, Upload, type LucideIcon } from "lucide-react";
 import i18n from "../../i18n";
 import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
@@ -13,37 +14,23 @@ import { McpPage, type McpPageHandle } from "./McpPage";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
 
-// ── Ionicons SVG helpers ──
-
-function IonIcon({ d, color, bg, filled }: { d: string; color: string; bg: string; filled?: boolean }) {
-  return (
-    <div className="h-10 w-10 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: bg }}>
-      <svg width="18" height="18" viewBox="0 0 512 512" fill={filled ? color : "none"} stroke={filled ? "none" : color} strokeWidth={filled ? undefined : 32} strokeLinecap="round" strokeLinejoin="round">
-        <path d={d} />
-      </svg>
-    </div>
-  );
-}
-
 // Internal sub-page stack
 export interface SubPage { id: string; title: string; component: React.ReactNode; headerRight?: React.ReactNode; }
 
-// ── Settings Row (1:1 RN SettingsRow) ──
+// ── Settings Row ──
 
 export function SettingsRow({
-  iconPath,
+  icon: Icon,
   iconColor,
   iconBg,
-  iconFilled,
   label,
   detail,
   onPress,
   isLast = false,
 }: {
-  iconPath: string;
+  icon: LucideIcon;
   iconColor: string;
   iconBg: string;
-  iconFilled?: boolean;
   label: string;
   detail?: string;
   onPress: () => void;
@@ -55,7 +42,9 @@ export function SettingsRow({
       className="w-full flex items-center gap-4 px-4 py-3 active:bg-black/5 transition-colors"
       style={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)" }}
     >
-      <IonIcon d={iconPath} color={iconColor} bg={iconBg} filled={iconFilled} />
+      <div className="h-10 w-10 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: iconBg }}>
+        <Icon size={18} color={iconColor} />
+      </div>
       <span className="flex-1 text-[16px] font-medium text-foreground text-left">{label}</span>
       <div className="flex items-center flex-shrink-0">
         {detail && <span className="mr-2 text-sm text-muted-foreground">{detail}</span>}
@@ -138,7 +127,7 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
       <SectionHeader label={t("settings.configuration")} />
       <div>
         <SettingsRow
-          iconPath="M464 256H48M304 350l96-94-96-94M208 162l-96 94 96 94"
+          icon={ArrowLeftRight}
           iconColor="#3b82f6"
           iconBg="rgba(59,130,246,0.1)"
           label={t("settings.providers")}
@@ -153,10 +142,9 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
           ), component: <ProvidersListPage onPush={push} onPop={pop} /> })}
         />
         <SettingsRow
-          iconPath="M277.42 247a24.68 24.68 0 00-4.08-5.34L223 191.28a23.76 23.76 0 00-5.34-4.08 24.06 24.06 0 00-33.66 33.66 23.76 23.76 0 004.08 5.34l50.38 50.38a24.68 24.68 0 005.34 4.08 24.06 24.06 0 0033.62-33.66zM289 100a24 24 0 00-33.94 0L230.42 124.6a24 24 0 000 33.94l23 23a24 24 0 0033.94 0L312 156.6a24 24 0 000-33.94zM412 280a24 24 0 00-33.94 0L352.6 305.42a24 24 0 000 33.94l23 23a24 24 0 0033.94 0L435 337a24 24 0 000-33.94z"
+          icon={Wrench}
           iconColor="#8b5cf6"
           iconBg="rgba(139,92,246,0.1)"
-          iconFilled
           label={t("settings.mcpTools")}
           onPress={() => push({ id: "mcp-tools", title: t("settings.mcpTools"), headerRight: (
             <button onClick={() => mcpRef.current?.triggerAdd()} className="p-2 active:opacity-60">
@@ -165,7 +153,7 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
           ), component: <McpPage ref={mcpRef} onPush={push} onPop={pop} /> })}
         />
         <SettingsRow
-          iconPath="M192 448h128V240a64 64 0 00-128 0zM384 240v-16a128 128 0 00-256 0v16M256 96V56M403.08 108.92l-28.28 28.28M108.92 108.92l28.28 28.28M48 240h32M432 240h32"
+          icon={Mic}
           iconColor="#f97316"
           iconBg="rgba(249,115,22,0.1)"
           label={t("settings.sttProvider")}
@@ -182,11 +170,9 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
           className="w-full flex items-center gap-4 px-4 py-3"
           style={{ borderBottom: "none" }}
         >
-          <IonIcon
-            d="M459.94 53.25a16.06 16.06 0 00-23.22-.56L424.35 65a8 8 0 000 11.31l11.34 11.32a8 8 0 0011.34 0l12.06-12.13a16 16 0 00.85-22.25zM399.34 90L218.82 270.5a9 9 0 00-2.31 3.93L208.16 299a3.91 3.91 0 004.86 4.86l24.55-8.35a9 9 0 003.93-2.31L422 112.66a9 9 0 000-12.66l-9.95-10a9 9 0 00-12.71 0zM386.34 193.66L264.45 315.79A41.08 41.08 0 01238 326.73L208 336l9.33-29.9a41.14 41.14 0 0110.93-26.37L350.34 157.66a8 8 0 0111.31 0l24.69 24.7a8 8 0 010 11.3zM416 224v192a48 48 0 01-48 48H144a48 48 0 01-48-48V192a48 48 0 0148-48h192"
-            color="#10b981"
-            bg="rgba(16,185,129,0.1)"
-          />
+          <div className="h-10 w-10 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: "rgba(16,185,129,0.1)" }}>
+            <Minimize2 size={18} color="#10b981" />
+          </div>
           <div className="flex-1 min-w-0">
             <span className="text-[16px] font-medium text-foreground">{t("settings.contextCompression")}</span>
           </div>
@@ -221,7 +207,7 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
       <SectionHeader label={t("settings.appearance")} />
       <div>
         <SettingsRow
-          iconPath="M363 176L246 464h-62L300 176zM96 288l30-60 30 60-30 60zm290 0l30-60 30 60-30 60z"
+          icon={Languages}
           iconColor="#6366f1"
           iconBg="rgba(99,102,241,0.1)"
           label={t("settings.language")}
@@ -236,10 +222,9 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
           }}
         />
         <SettingsRow
-          iconPath="M160 136c0-30.62 4.51-61.61 16-88C99.57 81.27 48 159.32 48 248c0 119.29 96.71 216 216 216 88.68 0 166.73-51.57 200-128-26.39 11.49-57.38 16-88 16-119.29 0-216-96.71-216-216z"
+          icon={Moon}
           iconColor="#64748b"
           iconBg="rgba(100,116,139,0.1)"
-          iconFilled
           label={t("settings.theme")}
           detail={themeLabel}
           onPress={() => {
@@ -255,14 +240,14 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
       <SectionHeader label={t("settings.dataManagement")} />
       <div>
         <SettingsRow
-          iconPath="M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40M256 48v288M160 192l96 96 96-96"
+          icon={Download}
           iconColor="#14b8a6"
           iconBg="rgba(20,184,166,0.1)"
           label={t("settings.exportBackup")}
           onPress={async () => { const data = createBackup(); const saved = await downloadBackup(data); if (saved) await appAlert(t("settings.exportSuccess")); }}
         />
         <SettingsRow
-          iconPath="M176 48v288M80 192l96-96 96 96M336 176h40a40 40 0 0140 40v208a40 40 0 01-40 40H136a40 40 0 01-40-40V216a40 40 0 0140-40h40"
+          icon={Upload}
           iconColor="#f59e0b"
           iconBg="rgba(245,158,11,0.1)"
           label={t("settings.importBackup")}
