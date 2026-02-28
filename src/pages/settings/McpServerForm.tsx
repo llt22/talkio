@@ -136,7 +136,6 @@ export function McpServerForm({
             placeholder={t("toolEdit.namePlaceholder")}
             className="w-full rounded-xl px-4 py-3 text-base text-foreground outline-none"
             style={{ backgroundColor: "var(--secondary)" }}
-            autoFocus
           />
         </div>
 
