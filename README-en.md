@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <code>Multi-AI Group Chat</code> · <code>Persona System</code> · <code>MCP Tool Calling</code> · <code>Local-First</code> · <code>Tauri 2 + React 19</code>
+  <code>Multi-AI Group Chat</code> · <code>Persona System</code> · <code>MCP Tool Calling</code> · <code>File Parsing</code> · <code>Local-First</code> · <code>Tauri 2 + React 19</code>
 </p>
 
 <p align="center">
@@ -94,7 +94,14 @@ Connect to remote tool servers via [Model Context Protocol](https://modelcontext
 - **Multi-Provider** — OpenAI / Anthropic / DeepSeek / Groq / Ollama and any OpenAI-compatible API
 - **Streaming Output** — Real-time rendering with Markdown / syntax highlighting / Mermaid diagrams / HTML preview
 - **Deep Reasoning** — Supports reasoning_content and `<think>` tags from DeepSeek, Qwen, etc.
+- **File Parsing** — PDF / Word / Excel / various text formats, drag & drop or Ctrl+V to paste images
+- **Voice Input** — Whisper-compatible STT (Groq / OpenAI), hold to record and auto-transcribe
+- **Context Compression** — Auto or manual compression of long conversation history to save tokens
+- **Smart Suggestions** — AI automatically suggests follow-up questions after each reply
+- **Token Usage** — Input/output token counts displayed per message
+- **Message Editing** — Edit sent user messages, AI re-generates the response
 - **Message Branching** — Regenerate replies with automatic branch history management
+- **Conversation Export** — Export as Markdown file
 - **Dark Mode** — Follows system theme, CSS variable driven
 - **Data Backup** — Export JSON, migrate across devices
 - **Bilingual** — 中文 / English

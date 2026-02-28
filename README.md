@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <code>多模型群聊</code> · <code>身份角色系统</code> · <code>MCP 工具调用</code> · <code>本地优先</code> · <code>Tauri 2 + React 19</code>
+  <code>多模型群聊</code> · <code>身份角色系统</code> · <code>MCP 工具调用</code> · <code>文件解析</code> · <code>本地优先</code> · <code>Tauri 2 + React 19</code>
 </p>
 
 <p align="center">
@@ -112,7 +112,14 @@ Talkio 不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉
 - **多 Provider** — OpenAI / Anthropic / DeepSeek / Groq / Ollama 等任何 OpenAI 兼容 API
 - **流式输出** — 实时渲染，支持 Markdown / 代码高亮 / Mermaid 图表 / HTML 预览
 - **深度推理** — 支持 DeepSeek、Qwen 等模型的 reasoning_content 和 `<think>` 标签
+- **文件解析** — 支持 PDF / Word / Excel / 多种文本格式，拖拽上传或 Ctrl+V 粘贴图片
+- **语音输入** — 接入 Whisper 兼容 STT 服务（Groq / OpenAI），按住录音自动转文字
+- **上下文压缩** — 长对话自动或手动压缩历史，节省 Token 开支
+- **智能建议** — AI 回复后自动推荐后续问题
+- **Token 用量** — 每条回复显示输入/输出 Token 数
+- **消息编辑** — 编辑已发送的用户消息，AI 重新回答
 - **消息分支** — 重新生成回复，自动管理分支历史
+- **对话导出** — 导出为 Markdown 文件
 - **暗色模式** — 跟随系统主题，CSS 变量驱动
 - **数据备份** — 导出 JSON，跨设备迁移
 - **双语** — 中文 / English
