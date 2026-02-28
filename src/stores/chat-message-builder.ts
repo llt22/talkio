@@ -6,6 +6,7 @@ import type { Message, Conversation, ConversationParticipant } from "../types";
 import { MessageStatus } from "../types";
 import { useProviderStore } from "./provider-store";
 import { useIdentityStore } from "./identity-store";
+import { useSettingsStore } from "./settings-store";
 
 /**
  * Determine which participants should respond to a message.
@@ -103,12 +104,18 @@ export function buildApiMessagesForParticipant(
   const isGroup = conv.type === "group";
   const apiMessages: Array<{ role: string; content: unknown }> = [];
 
+  // Build system prompt with optional workspace dir context
+  const workspaceDir = useSettingsStore.getState().settings.workspaceDir;
+  const workspaceHint = workspaceDir
+    ? `\n\nThe user has a workspace directory at: ${workspaceDir}\nWhen the user asks you to create or write files, wrap each file in <file path="relative/path.ext">content</file> tags. The path should be relative to the workspace directory. The system will automatically save them.`
+    : "";
+
   if (isGroup) {
     const roster = buildGroupRoster(conv, participant.id);
-    const groupPrompt = identity?.systemPrompt ? `${identity.systemPrompt}\n\n${roster}` : roster;
+    const groupPrompt = (identity?.systemPrompt ? `${identity.systemPrompt}\n\n${roster}` : roster) + workspaceHint;
     apiMessages.push({ role: "system", content: groupPrompt });
-  } else if (identity?.systemPrompt) {
-    apiMessages.push({ role: "system", content: identity.systemPrompt });
+  } else if (identity?.systemPrompt || workspaceHint) {
+    apiMessages.push({ role: "system", content: (identity?.systemPrompt || "") + workspaceHint });
   }
 
   for (const m of allMessages) {

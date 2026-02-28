@@ -211,7 +211,10 @@
     "appearance": "Appearance",
     "chat": "Chat",
     "contextCompression": "Context Compression",
-    "compressionThreshold": "Threshold"
+    "compressionThreshold": "Threshold",
+    "workspaceDir": "Workspace Directory",
+    "selectDir": "Select",
+    "changeDir": "Change"
   },
   "providerEdit": {
     "quickSelect": "Quick Select",

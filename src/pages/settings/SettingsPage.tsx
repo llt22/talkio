@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { IoChevronForward, IoChevronBack, IoAddCircleOutline, IoTrashOutline, IoAdd } from "../../icons";
-import { ArrowLeftRight, Wrench, Mic, Minimize2, Languages, Moon, Download, Upload, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Wrench, Mic, Minimize2, Languages, Moon, Download, Upload, FolderOpen, X as XIcon, type LucideIcon } from "lucide-react";
 import i18n from "../../i18n";
 import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
@@ -166,6 +166,45 @@ export function SettingsPage({ onSubPageChange }: { onSubPageChange?: (inSubPage
       {/* ── Group 2: Chat ── */}
       <SectionHeader label={t("settings.chat")} />
       <div>
+        {/* Workspace directory */}
+        <div
+          className="w-full flex items-center gap-4 px-4 py-3"
+          style={{ borderBottom: "0.5px solid var(--border)" }}
+        >
+          <div className="h-10 w-10 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: "rgba(234,88,12,0.1)" }}>
+            <FolderOpen size={18} color="#ea580c" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-[16px] font-medium text-foreground">{t("settings.workspaceDir")}</span>
+            {settings.workspaceDir && (
+              <p className="text-[12px] text-muted-foreground truncate mt-0.5">{settings.workspaceDir}</p>
+            )}
+          </div>
+          {settings.workspaceDir && (
+            <button
+              onClick={() => updateSettings({ workspaceDir: "" })}
+              className="p-1.5 rounded-full active:opacity-60 flex-shrink-0"
+              style={{ backgroundColor: "var(--secondary)" }}
+            >
+              <XIcon size={14} color="var(--muted-foreground)" />
+            </button>
+          )}
+          <button
+            onClick={async () => {
+              if (!window.__TAURI_INTERNALS__) return;
+              try {
+                const { open } = await import("@tauri-apps/plugin-dialog");
+                const dir = await open({ directory: true, multiple: false });
+                if (dir && typeof dir === "string") updateSettings({ workspaceDir: dir });
+              } catch { /* cancelled */ }
+            }}
+            className="px-3 py-1.5 rounded-lg text-[13px] font-medium active:opacity-60 flex-shrink-0"
+            style={{ backgroundColor: "var(--primary)", color: "white" }}
+          >
+            {settings.workspaceDir ? t("settings.changeDir") : t("settings.selectDir")}
+          </button>
+        </div>
+        {/* Context compression */}
         <div
           className="w-full flex items-center gap-4 px-4 py-3"
           style={{ borderBottom: "none" }}

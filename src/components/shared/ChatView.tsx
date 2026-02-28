@@ -4,7 +4,7 @@
 import { useRef, useEffect, useCallback, useMemo, useState, memo, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
 import { IoCopyOutline, IoRefreshOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
-import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown, Pencil, Check, X, FileText, Paperclip } from "lucide-react";
+import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown, Pencil, Check, X, FileText, Paperclip, FolderOpen, Save } from "lucide-react";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
@@ -17,6 +17,8 @@ import { parseFile, type ParsedFile } from "../../lib/file-parser";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useConfirm } from "./ConfirmDialogProvider";
 import { useStickToBottom } from "use-stick-to-bottom";
+import { useSettingsStore } from "../../stores/settings-store";
+import { parseFileBlocks, writeFilesToWorkspace, type WrittenFile } from "../../services/file-writer";
 
 export interface ChatViewHandle {
   scrollToBottom: () => void;
@@ -248,6 +250,28 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
       .catch(() => {});
   }, [isGenerating, displayMessages, isGroup, participants, getModelById, getProviderById, i18n.language]);
 
+  // ── Auto-write files from AI responses ──
+  const workspaceDir = useSettingsStore((s) => s.settings.workspaceDir);
+  const [writtenFilesMap, setWrittenFilesMap] = useState<Record<string, WrittenFile[]>>({});
+  const fileWriteProcessedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (isGenerating || !workspaceDir || !displayMessages.length) return;
+    const last = displayMessages[displayMessages.length - 1];
+    if (last.role !== "assistant" || !last.content || last.status === MessageStatus.STREAMING) return;
+    if (fileWriteProcessedRef.current.has(last.id)) return;
+
+    const blocks = parseFileBlocks(last.content);
+    if (blocks.length === 0) return;
+    fileWriteProcessedRef.current.add(last.id);
+
+    writeFilesToWorkspace(blocks, workspaceDir).then((written) => {
+      if (written.length > 0) {
+        setWrittenFilesMap((prev) => ({ ...prev, [last.id]: written }));
+      }
+    });
+  }, [isGenerating, displayMessages, workspaceDir]);
+
   const branchBanner = activeBranchId ? (
     <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))", borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
       <div className="flex items-center gap-2">
@@ -310,6 +334,7 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
               onDelete={handleDelete}
               onEdit={msg.role === "user" ? handleEdit : undefined}
               isGenerating={isGenerating}
+              writtenFiles={writtenFilesMap[msg.id]}
             />
           ))}
 
@@ -398,6 +423,7 @@ interface MessageRowProps {
   onDelete?: (messageId: string) => void;
   onEdit?: (messageId: string, newContent: string) => void;
   isGenerating?: boolean;
+  writtenFiles?: WrittenFile[];
 }
 
 // ── Assistant action bar: primary buttons + ··· overflow menu ──
@@ -480,7 +506,7 @@ function AssistantActionBar({ content, message, onCopy, onRegenerate, onBranch, 
   );
 }
 
-const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onBranch, onDelete, onEdit, isGenerating }: MessageRowProps) {
+const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onBranch, onDelete, onEdit, isGenerating, writtenFiles }: MessageRowProps) {
   const { t } = useTranslation();
   const isUser = message.role === "user";
   const isStreaming = message.status === MessageStatus.STREAMING;
@@ -717,6 +743,31 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Written files chips */}
+        {writtenFiles && writtenFiles.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-1" style={{ maxWidth: "min(90%, 720px)" }}>
+            {writtenFiles.map((wf, idx) => (
+              <button
+                key={idx}
+                onClick={async () => {
+                  if (!window.__TAURI_INTERNALS__) return;
+                  try {
+                    const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+                    await revealItemInDir(wf.fullPath);
+                  } catch { /* fallback: do nothing */ }
+                }}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 active:opacity-70 transition-opacity"
+                style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--muted))", border: "0.5px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}
+                title={wf.fullPath}
+              >
+                <Save size={13} color="var(--primary)" className="flex-shrink-0" />
+                <span className="text-[12px] font-medium truncate max-w-[200px]" style={{ color: "var(--primary)" }}>{wf.path}</span>
+                <FolderOpen size={12} color="var(--muted-foreground)" className="flex-shrink-0" />
+              </button>
+            ))}
           </div>
         )}
 

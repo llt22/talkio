@@ -211,7 +211,10 @@
     "appearance": "外观",
     "chat": "对话",
     "contextCompression": "上下文压缩",
-    "compressionThreshold": "触发阈值"
+    "compressionThreshold": "触发阈值",
+    "workspaceDir": "工作目录",
+    "selectDir": "选择",
+    "changeDir": "更改"
   },
   "providerEdit": {
     "quickSelect": "快速选择",
