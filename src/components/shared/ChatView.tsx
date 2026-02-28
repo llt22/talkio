@@ -9,7 +9,9 @@ import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
 import { useMessages } from "../../hooks/useDatabase";
+import { useProviderStore } from "../../stores/provider-store";
 import type { Message, ConversationParticipant } from "../../types";
+import { generateSuggestQuestions } from "../../services/suggest-questions";
 import { MessageStatus } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useConfirm } from "./ConfirmDialogProvider";
@@ -120,6 +122,35 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
 
   const hasMessages = displayMessages.length > 0;
 
+  // ── Suggest questions ──
+  const [suggestQuestions, setSuggestQuestions] = useState<string[]>([]);
+  const suggestRequestIdRef = useRef("");
+  const getProviderById = useProviderStore((s) => s.getProviderById);
+  const getModelById = useProviderStore((s) => s.getModelById);
+
+  useEffect(() => {
+    if (isGenerating || isGroup || !displayMessages.length) return;
+    const last = displayMessages[displayMessages.length - 1];
+    if (last.role !== "assistant" || !last.content || last.status === MessageStatus.STREAMING) return;
+    // Only generate once per message
+    if (suggestRequestIdRef.current === last.id) return;
+    suggestRequestIdRef.current = last.id;
+    setSuggestQuestions([]);
+
+    // Find the participant's provider + model
+    const participant = participants[0];
+    if (!participant) return;
+    const model = getModelById(participant.modelId);
+    if (!model) return;
+    const provider = getProviderById(model.providerId);
+    if (!provider) return;
+
+    const context = displayMessages.slice(-6).map((m) => ({ role: m.role, content: m.content || "" }));
+    generateSuggestQuestions(context, provider, model.modelId)
+      .then((qs) => { if (qs.length > 0) setSuggestQuestions(qs); })
+      .catch(() => {});
+  }, [isGenerating, displayMessages, isGroup, participants, getModelById, getProviderById]);
+
   const branchBanner = activeBranchId ? (
     <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))", borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
       <div className="flex items-center gap-2">
@@ -168,6 +199,25 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
               isGenerating={isGenerating}
             />
           ))}
+
+          {/* Suggest questions */}
+          {suggestQuestions.length > 0 && !isGenerating && (
+            <div className="flex flex-wrap gap-1.5 px-4 pb-4 pt-1">
+              {suggestQuestions.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setSuggestQuestions([]);
+                    handleSend(q);
+                  }}
+                  className="rounded-xl px-3 py-1.5 text-[13px] active:opacity-70 transition-opacity text-left"
+                  style={{ backgroundColor: "var(--muted)", color: "var(--foreground)", border: "0.5px solid var(--border)" }}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
