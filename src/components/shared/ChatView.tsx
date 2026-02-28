@@ -146,7 +146,8 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
     if (!provider) return;
 
     const context = displayMessages.slice(-6).map((m) => ({ role: m.role, content: m.content || "" }));
-    generateSuggestQuestions(context, provider, model.modelId)
+    const lang = (document.documentElement.lang || navigator.language || "en").slice(0, 2);
+    generateSuggestQuestions(context, provider, model.modelId, lang)
       .then((qs) => { if (qs.length > 0) setSuggestQuestions(qs); })
       .catch(() => {});
   }, [isGenerating, displayMessages, isGroup, participants, getModelById, getProviderById]);
