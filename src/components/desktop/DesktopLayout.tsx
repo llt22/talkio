@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { MessageSquare, Bot, Compass, Settings, Plus, MoreHorizontal, Trash2, Eraser, UserPlus, Share2, ChevronDown, ChevronUp, User, Users, Pencil, Search, ArrowDown, ArrowUpDown, Shuffle, GripVertical } from "lucide-react";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -57,27 +59,12 @@ export function DesktopLayout() {
   const isResizing = useRef(false);
 
   // Keyboard shortcuts
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      const meta = e.metaKey || e.ctrlKey;
-      if (meta && e.key === "n") {
-        e.preventDefault();
-        setActiveSection("chats");
-        // Trigger new chat via DOM click on the + button
-        document.querySelector<HTMLButtonElement>("[data-new-chat]")?.click();
-      }
-      if (meta && e.shiftKey && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        setActiveSection("settings");
-      }
-      if (meta && e.key === ",") {
-        e.preventDefault();
-        setActiveSection("settings");
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  useHotkeys("mod+n", () => {
+    setActiveSection("chats");
+    document.querySelector<HTMLButtonElement>("[data-new-chat]")?.click();
+  }, { preventDefault: true });
+  useHotkeys("mod+shift+s", () => setActiveSection("settings"), { preventDefault: true });
+  useHotkeys("mod+,", () => setActiveSection("settings"), { preventDefault: true });
 
   const sidebarWidthRef = useRef(sidebarWidth);
   useEffect(() => { sidebarWidthRef.current = sidebarWidth; }, [sidebarWidth]);
@@ -210,6 +197,7 @@ function DesktopConversationList() {
   const models = useProviderStore((s) => s.models);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [animateRef] = useAutoAnimate();
 
   const enabledModels = models.filter((m) => m.enabled);
 
@@ -275,7 +263,7 @@ function DesktopConversationList() {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto py-1">
+      <div ref={animateRef} className="flex-1 overflow-y-auto py-1">
         {filteredConversations.length === 0 ? (
           <div className="px-4 py-8 text-center">
             <p className="text-xs text-muted-foreground">{searchQuery ? t("chats.noResults") : t("chats.noConversations")}</p>

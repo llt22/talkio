@@ -1,8 +1,9 @@
-import { memo, useState, useCallback } from "react";
+import { memo, useState, useCallback, useEffect } from "react";
 import { Copy, Check } from "lucide-react";
 import { IoCodeSlashOutline } from "../../icons";
 import { MermaidRenderer } from "./MermaidRenderer";
 import { HtmlPreview } from "./HtmlPreview";
+import { highlightCode } from "../../lib/shiki";
 
 interface CodeBlockProps {
   className?: string;
@@ -86,26 +87,7 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
       );
     }
 
-    return (
-      <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
-        <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
-          <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--muted-foreground)" }}>{lang}</span>
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] active:opacity-60"
-            style={{ color: "var(--muted-foreground)" }}
-          >
-            {copied ? <Check size={10} style={{ color: "var(--primary)" }} /> : <Copy size={10} />}
-            {copied ? "Copied" : "Copy"}
-          </button>
-        </div>
-        <div className="overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
-          <pre className="px-3 py-2 text-[13px] font-mono leading-relaxed m-0" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}>
-            <code className={className} {...props}>{children}</code>
-          </pre>
-        </div>
-      </div>
-    );
+    return <HighlightedCodeBlock lang={lang} code={codeString} copied={copied} onCopy={handleCopy} />;
   }
 
   // Inline code
@@ -115,3 +97,44 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
     </code>
   );
 });
+
+function HighlightedCodeBlock({ lang, code, copied, onCopy }: { lang: string; code: string; copied: boolean; onCopy: () => void }) {
+  const [html, setHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const isDark = document.documentElement.classList.contains("dark");
+    highlightCode(code, lang, isDark ? "github-dark" : "github-light").then((result) => {
+      if (!cancelled) setHtml(result);
+    });
+    return () => { cancelled = true; };
+  }, [code, lang]);
+
+  return (
+    <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
+      <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
+        <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--muted-foreground)" }}>{lang}</span>
+        <button
+          onClick={onCopy}
+          className="flex items-center gap-1 px-2 py-1 rounded text-[10px] active:opacity-60"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          {copied ? <Check size={10} style={{ color: "var(--primary)" }} /> : <Copy size={10} />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <div className="overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+        {html ? (
+          <div
+            className="shiki-code text-[13px] leading-relaxed [&_pre]:m-0 [&_pre]:px-3 [&_pre]:py-2 [&_pre]:bg-transparent [&_code]:bg-transparent"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        ) : (
+          <pre className="px-3 py-2 text-[13px] font-mono leading-relaxed m-0" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}>
+            <code>{code}</code>
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+}

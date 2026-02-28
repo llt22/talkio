@@ -244,6 +244,14 @@ html, body, #root {
   background: var(--scrollbar-thumb-hover);
 }
 
+/* Shiki syntax highlighting */
+.shiki-code pre {
+  background-color: var(--secondary) !important;
+}
+.shiki-code code {
+  background-color: transparent !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
