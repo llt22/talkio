@@ -61,6 +61,7 @@
     "branch": "分支",
     "backToMain": "← 主线",
     "branchFromHere": "从此处分支",
+    "dropFiles": "拖放文件到此处",
     "readAloud": "朗读",
     "continue": "继续",
     "conversationNotFound": "对话不存在",

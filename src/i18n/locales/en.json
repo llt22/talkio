@@ -61,6 +61,7 @@
     "branch": "Branch",
     "backToMain": "← Main",
     "branchFromHere": "Branch from here",
+    "dropFiles": "Drop files here",
     "readAloud": "Read Aloud",
     "continue": "Continue",
     "conversationNotFound": "Conversation not found",

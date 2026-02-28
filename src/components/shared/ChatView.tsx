@@ -288,7 +288,7 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
         <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, var(--background) 92%)", border: "2px dashed var(--primary)", borderRadius: 12 }}>
           <div className="flex flex-col items-center gap-1.5">
             <Paperclip size={28} color="var(--primary)" />
-            <span className="text-sm font-medium" style={{ color: "var(--primary)" }}>{t("chat.dropFiles") || "Drop files here"}</span>
+            <span className="text-sm font-medium" style={{ color: "var(--primary)" }}>{t("chat.dropFiles")}</span>
           </div>
         </div>
       )}
