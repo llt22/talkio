@@ -1,6 +1,7 @@
-import { useState, useCallback, useImperativeHandle, forwardRef } from "react";
+import { useState, useCallback, useImperativeHandle, forwardRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { IoAddCircleOutline, IoTrashOutline, IoChevronBack, IoFlashOutline } from "../../icons";
+import { isStdioAvailable } from "../../services/mcp/stdio-transport";
 import { useMcpStore, type McpServerConfig, type McpTool } from "../../stores/mcp-store";
 import { useConfirm, appAlert } from "../../components/shared/ConfirmDialogProvider";
 import { getAvatarProps } from "../../lib/avatar-utils";
@@ -49,13 +50,18 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
       return;
     }
 
-    let toImport: Array<{ name: string; url: string; headers?: CustomHeader[] }> = [];
+    const stdioOk = isStdioAvailable();
+    let toImport: Array<{
+      name: string; type?: "http" | "stdio"; url: string;
+      headers?: CustomHeader[]; command?: string; args?: string[];
+      env?: Record<string, string>;
+    }> = [];
 
     if (parsed?.mcpServers && typeof parsed.mcpServers === "object") {
       for (const [key, val] of Object.entries(parsed.mcpServers)) {
         const v = val as Record<string, unknown>;
         const url = String((v.url ?? v.endpoint ?? "") as string);
-        const hasCommand = !!(v.command || v.args);
+        const hasCommand = !!(v.command);
 
         let hdrs: CustomHeader[] | undefined;
         if (v.headers && typeof v.headers === "object") {
@@ -64,16 +70,20 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
             .filter((h) => h.name && h.value);
         }
 
-        if (url) {
+        if (hasCommand && stdioOk) {
+          const args = Array.isArray(v.args) ? (v.args as string[]).map(String) : [];
+          const env = v.env && typeof v.env === "object"
+            ? Object.fromEntries(Object.entries(v.env as Record<string, unknown>).map(([ek, ev]) => [ek, String(ev)]))
+            : undefined;
+          toImport.push({ name: String(key), type: "stdio", url: "", command: String(v.command), args, env });
+        } else if (url) {
           toImport.push({ name: String(key), url, headers: hdrs });
-        } else if (hasCommand) {
-          // Desktop command-based config, skip
         }
       }
 
       if (toImport.length === 0) {
         const isCommandConfig = Object.values(parsed.mcpServers).some((v: any) => v?.command || v?.args);
-        appAlert(`${t("common.error")}: ${isCommandConfig ? t("personas.importCommandNotSupported") : t("personas.importNoTools")}`);
+        appAlert(`${t("common.error")}: ${isCommandConfig && !stdioOk ? t("personas.importCommandNotSupported") : t("personas.importNoTools")}`);
         return;
       }
     } else if (Array.isArray(parsed)) {
@@ -98,8 +108,12 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
       for (const srv of toImport) {
         addServer({
           name: srv.name || "MCP Server",
+          type: srv.type,
           url: srv.url,
           customHeaders: srv.headers,
+          command: srv.command,
+          args: srv.args,
+          env: srv.env,
           enabled: false,
         });
         addedNames.push(srv.name || "MCP Server");
@@ -395,11 +409,19 @@ export function McpServerForm({
   const deleteServer = useMcpStore((s) => s.deleteServer);
 
   const isNew = !server;
+  const stdioAvailable = useMemo(() => isStdioAvailable(), []);
 
+  const [serverType, setServerType] = useState<"http" | "stdio">(server?.type ?? "http");
   const [name, setName] = useState(server?.name ?? "");
   const [url, setUrl] = useState(server?.url ?? "");
   const [enabled, setEnabled] = useState(server?.enabled ?? true);
   const [headers, setHeaders] = useState<CustomHeader[]>(server?.customHeaders ?? []);
+  // Stdio fields
+  const [command, setCommand] = useState(server?.command ?? "");
+  const [argsStr, setArgsStr] = useState((server?.args ?? []).join(" "));
+  const [envPairs, setEnvPairs] = useState<{ key: string; value: string }[]>(
+    Object.entries(server?.env ?? {}).map(([key, value]) => ({ key, value })),
+  );
   const [testing, setTesting] = useState(false);
 
   const handleSave = useCallback(async () => {
@@ -407,17 +429,31 @@ export function McpServerForm({
       appAlert(`${t("common.error")}: ${t("toolEdit.nameRequired")}`);
       return;
     }
-    if (!url.trim()) {
+    if (serverType === "http" && !url.trim()) {
       appAlert(`${t("common.error")}: ${t("toolEdit.endpointRequired")}`);
+      return;
+    }
+    if (serverType === "stdio" && !command.trim()) {
+      appAlert(`${t("common.error")}: Command is required for Stdio mode`);
       return;
     }
 
     const validHeaders = headers.filter((h) => h.name.trim() && h.value.trim());
+    const parsedArgs = argsStr.trim() ? argsStr.trim().split(/\s+/) : [];
+    const parsedEnv: Record<string, string> = {};
+    for (const p of envPairs) {
+      if (p.key.trim() && p.value.trim()) parsedEnv[p.key.trim()] = p.value.trim();
+    }
+
     const payload: Omit<McpServerConfig, "id" | "createdAt"> = {
       name: name.trim(),
-      url: url.trim(),
+      type: serverType,
+      url: serverType === "http" ? url.trim() : "",
       enabled,
-      customHeaders: validHeaders.length > 0 ? validHeaders : undefined,
+      customHeaders: serverType === "http" && validHeaders.length > 0 ? validHeaders : undefined,
+      command: serverType === "stdio" ? command.trim() : undefined,
+      args: serverType === "stdio" && parsedArgs.length > 0 ? parsedArgs : undefined,
+      env: serverType === "stdio" && Object.keys(parsedEnv).length > 0 ? parsedEnv : undefined,
     };
 
     if (isNew) {
@@ -429,21 +465,35 @@ export function McpServerForm({
     }
 
     onClose();
-  }, [addServer, enabled, headers, isNew, name, onClose, server?.id, t, updateServer, url]);
+  }, [addServer, argsStr, command, enabled, envPairs, headers, isNew, name, onClose, server?.id, serverType, t, updateServer, url]);
 
   const handleTest = useCallback(async () => {
-    if (!url.trim()) {
+    if (serverType === "http" && !url.trim()) {
       appAlert(`${t("common.error")}: ${t("toolEdit.endpointRequired")}`);
+      return;
+    }
+    if (serverType === "stdio" && !command.trim()) {
+      appAlert(`${t("common.error")}: Command is required`);
       return;
     }
 
     setTesting(true);
     const validHeaders = headers.filter((h) => h.name.trim() && h.value.trim());
+    const parsedArgs = argsStr.trim() ? argsStr.trim().split(/\s+/) : [];
+    const parsedEnv: Record<string, string> = {};
+    for (const p of envPairs) {
+      if (p.key.trim() && p.value.trim()) parsedEnv[p.key.trim()] = p.value.trim();
+    }
+
     const tempServer: Omit<McpServerConfig, "createdAt"> = {
       id: `test-${Date.now()}`,
       name: name.trim() || "Test",
-      url: url.trim(),
-      customHeaders: validHeaders.length > 0 ? validHeaders : undefined,
+      type: serverType,
+      url: serverType === "http" ? url.trim() : "",
+      customHeaders: serverType === "http" && validHeaders.length > 0 ? validHeaders : undefined,
+      command: serverType === "stdio" ? command.trim() : undefined,
+      args: serverType === "stdio" && parsedArgs.length > 0 ? parsedArgs : undefined,
+      env: serverType === "stdio" && Object.keys(parsedEnv).length > 0 ? parsedEnv : undefined,
       enabled: true,
     };
 
@@ -460,7 +510,7 @@ export function McpServerForm({
     } finally {
       setTesting(false);
     }
-  }, [headers, name, t, url]);
+  }, [argsStr, command, envPairs, headers, name, serverType, t, url]);
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: "var(--background)" }}>
@@ -478,65 +528,173 @@ export function McpServerForm({
           />
         </div>
 
-        {/* URL */}
-        <div className="px-4 pt-4">
-          <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.endpointUrl")}</p>
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="http://localhost:3000/mcp"
-            className="w-full rounded-xl px-4 py-3 text-sm text-foreground outline-none"
-            style={{ backgroundColor: "var(--secondary)" }}
-          />
-        </div>
-
-        {/* Custom Headers */}
-        <div className="px-4 pt-4">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-medium text-muted-foreground">{t("toolEdit.headers")}</p>
-            <button
-              onClick={() => setHeaders([...headers, { name: "", value: "" }])}
-              className="active:opacity-60"
-            >
-              <IoAddCircleOutline size={22} color="var(--primary)" />
-            </button>
-          </div>
-          {headers.map((h, i) => (
-            <div key={i} className="mb-2 flex items-center gap-2">
-              <input
-                value={h.name}
-                onChange={(e) => {
-                  const next = [...headers];
-                  next[i] = { ...next[i], name: e.target.value };
-                  setHeaders(next);
-                }}
-                placeholder="Header"
-                className="flex-1 rounded-lg px-3 py-2 text-sm text-foreground outline-none"
-                style={{ backgroundColor: "var(--secondary)" }}
-              />
-              <input
-                value={h.value}
-                onChange={(e) => {
-                  const next = [...headers];
-                  next[i] = { ...next[i], value: e.target.value };
-                  setHeaders(next);
-                }}
-                placeholder="Value"
-                className="flex-[2] rounded-lg px-3 py-2 text-sm text-foreground outline-none"
-                style={{ backgroundColor: "var(--secondary)" }}
-              />
+        {/* Type Selector (only show on desktop) */}
+        {stdioAvailable && (
+          <div className="px-4 pt-4">
+            <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.type")}</p>
+            <div className="flex gap-2">
               <button
-                onClick={() => setHeaders(headers.filter((_, j) => j !== i))}
-                className="active:opacity-60"
+                onClick={() => setServerType("http")}
+                className="flex-1 rounded-xl py-2.5 text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: serverType === "http" ? "var(--primary)" : "var(--secondary)",
+                  color: serverType === "http" ? "white" : "var(--foreground)",
+                }}
               >
-                <IoTrashOutline size={18} color="var(--destructive)" />
+                HTTP
+              </button>
+              <button
+                onClick={() => setServerType("stdio")}
+                className="flex-1 rounded-xl py-2.5 text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: serverType === "stdio" ? "var(--primary)" : "var(--secondary)",
+                  color: serverType === "stdio" ? "white" : "var(--foreground)",
+                }}
+              >
+                Stdio
               </button>
             </div>
-          ))}
-          {headers.length === 0 && (
-            <p className="text-xs text-muted-foreground">{t("toolEdit.headersHint")}</p>
-          )}
-        </div>
+          </div>
+        )}
+
+        {serverType === "http" ? (
+          <>
+            {/* URL */}
+            <div className="px-4 pt-4">
+              <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.endpointUrl")}</p>
+              <input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="http://localhost:3000/mcp"
+                className="w-full rounded-xl px-4 py-3 text-sm text-foreground outline-none"
+                style={{ backgroundColor: "var(--secondary)" }}
+              />
+            </div>
+
+            {/* Custom Headers */}
+            <div className="px-4 pt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">{t("toolEdit.headers")}</p>
+                <button
+                  onClick={() => setHeaders([...headers, { name: "", value: "" }])}
+                  className="active:opacity-60"
+                >
+                  <IoAddCircleOutline size={22} color="var(--primary)" />
+                </button>
+              </div>
+              {headers.map((h, i) => (
+                <div key={i} className="mb-2 flex items-center gap-2">
+                  <input
+                    value={h.name}
+                    onChange={(e) => {
+                      const next = [...headers];
+                      next[i] = { ...next[i], name: e.target.value };
+                      setHeaders(next);
+                    }}
+                    placeholder="Header"
+                    className="flex-1 rounded-lg px-3 py-2 text-sm text-foreground outline-none"
+                    style={{ backgroundColor: "var(--secondary)" }}
+                  />
+                  <input
+                    value={h.value}
+                    onChange={(e) => {
+                      const next = [...headers];
+                      next[i] = { ...next[i], value: e.target.value };
+                      setHeaders(next);
+                    }}
+                    placeholder="Value"
+                    className="flex-[2] rounded-lg px-3 py-2 text-sm text-foreground outline-none"
+                    style={{ backgroundColor: "var(--secondary)" }}
+                  />
+                  <button
+                    onClick={() => setHeaders(headers.filter((_, j) => j !== i))}
+                    className="active:opacity-60"
+                  >
+                    <IoTrashOutline size={18} color="var(--destructive)" />
+                  </button>
+                </div>
+              ))}
+              {headers.length === 0 && (
+                <p className="text-xs text-muted-foreground">{t("toolEdit.headersHint")}</p>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Command */}
+            <div className="px-4 pt-4">
+              <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.command")}</p>
+              <input
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                placeholder="npx"
+                className="w-full rounded-xl px-4 py-3 text-sm font-mono text-foreground outline-none"
+                style={{ backgroundColor: "var(--secondary)" }}
+              />
+            </div>
+
+            {/* Args */}
+            <div className="px-4 pt-4">
+              <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.args")}</p>
+              <input
+                value={argsStr}
+                onChange={(e) => setArgsStr(e.target.value)}
+                placeholder="-y @modelcontextprotocol/server-filesystem /path/to/dir"
+                className="w-full rounded-xl px-4 py-3 text-sm font-mono text-foreground outline-none"
+                style={{ backgroundColor: "var(--secondary)" }}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">{t("toolEdit.argsHint")}</p>
+            </div>
+
+            {/* Environment Variables */}
+            <div className="px-4 pt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">{t("toolEdit.envVars")}</p>
+                <button
+                  onClick={() => setEnvPairs([...envPairs, { key: "", value: "" }])}
+                  className="active:opacity-60"
+                >
+                  <IoAddCircleOutline size={22} color="var(--primary)" />
+                </button>
+              </div>
+              {envPairs.map((p, i) => (
+                <div key={i} className="mb-2 flex items-center gap-2">
+                  <input
+                    value={p.key}
+                    onChange={(e) => {
+                      const next = [...envPairs];
+                      next[i] = { ...next[i], key: e.target.value };
+                      setEnvPairs(next);
+                    }}
+                    placeholder="KEY"
+                    className="flex-1 rounded-lg px-3 py-2 text-sm font-mono text-foreground outline-none"
+                    style={{ backgroundColor: "var(--secondary)" }}
+                  />
+                  <input
+                    value={p.value}
+                    onChange={(e) => {
+                      const next = [...envPairs];
+                      next[i] = { ...next[i], value: e.target.value };
+                      setEnvPairs(next);
+                    }}
+                    placeholder="value"
+                    className="flex-[2] rounded-lg px-3 py-2 text-sm font-mono text-foreground outline-none"
+                    style={{ backgroundColor: "var(--secondary)" }}
+                  />
+                  <button
+                    onClick={() => setEnvPairs(envPairs.filter((_, j) => j !== i))}
+                    className="active:opacity-60"
+                  >
+                    <IoTrashOutline size={18} color="var(--destructive)" />
+                  </button>
+                </div>
+              ))}
+              {envPairs.length === 0 && (
+                <p className="text-xs text-muted-foreground">{t("toolEdit.envVarsHint")}</p>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Enabled toggle */}
         <div className="mx-4 mt-4 flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: "var(--secondary)" }}>
@@ -576,7 +734,7 @@ export function McpServerForm({
         <div className="px-4 pb-8 pt-6">
           <button
             onClick={handleSave}
-            disabled={!name.trim() || !url.trim()}
+            disabled={!name.trim() || (serverType === "http" ? !url.trim() : !command.trim())}
             className="w-full rounded-2xl py-4 text-base font-semibold text-white active:opacity-80 disabled:opacity-40"
             style={{ backgroundColor: "var(--primary)" }}
           >

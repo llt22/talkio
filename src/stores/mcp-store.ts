@@ -12,8 +12,16 @@ const MCP_SERVERS_KEY = "mcp_servers";
 export interface McpServerConfig {
   id: string;
   name: string;
+  /** Connection type: "http" (default) or "stdio" (desktop only) */
+  type?: "http" | "stdio";
   url: string;
   customHeaders?: CustomHeader[];
+  /** Stdio mode: executable command */
+  command?: string;
+  /** Stdio mode: command arguments */
+  args?: string[];
+  /** Stdio mode: environment variables */
+  env?: Record<string, string>;
   enabled: boolean;
   createdAt: string;
 }

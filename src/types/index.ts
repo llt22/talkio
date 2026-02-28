@@ -65,8 +65,17 @@ export interface Identity {
 export interface McpServer {
   id: string;
   name: string;
+  /** Connection type: "http" (default) or "stdio" (desktop only) */
+  type?: "http" | "stdio";
+  /** HTTP mode: server URL */
   url: string;
   customHeaders?: CustomHeader[];
+  /** Stdio mode: executable command (e.g. "npx", "node") */
+  command?: string;
+  /** Stdio mode: command arguments */
+  args?: string[];
+  /** Stdio mode: environment variables */
+  env?: Record<string, string>;
   enabled: boolean;
   /** Tool names disabled on this server — filtered out before sending to AI */
   disabledTools?: string[];

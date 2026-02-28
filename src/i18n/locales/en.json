@@ -310,7 +310,13 @@
     "testing": "Testing...",
     "testSuccess": "Connection successful! {{count}} tools discovered.",
     "testFailed": "Connection failed",
-    "autoDisabled": "Server has been disabled. Fix the URL or headers and try again."
+    "autoDisabled": "Server has been disabled. Fix the URL or headers and try again.",
+    "type": "Connection Type",
+    "command": "Command",
+    "args": "Arguments",
+    "argsHint": "Space-separated, e.g. -y @modelcontextprotocol/server-filesystem /path",
+    "envVars": "Environment Variables",
+    "envVarsHint": "Add environment variables (e.g. GITHUB_TOKEN)"
   },
   "privacy": {
     "privacyFirst": "Privacy First",

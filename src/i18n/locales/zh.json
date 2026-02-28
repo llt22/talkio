@@ -310,7 +310,13 @@
     "testing": "测试中...",
     "testSuccess": "连接成功！发现 {{count}} 个工具。",
     "testFailed": "连接失败",
-    "autoDisabled": "服务器已自动禁用，请检查地址或请求头后重试。"
+    "autoDisabled": "服务器已自动禁用，请检查地址或请求头后重试。",
+    "type": "连接类型",
+    "command": "命令",
+    "args": "参数",
+    "argsHint": "空格分隔，例如：-y @modelcontextprotocol/server-filesystem /path",
+    "envVars": "环境变量",
+    "envVarsHint": "添加环境变量（如 GITHUB_TOKEN）"
   },
   "privacy": {
     "privacyFirst": "隐私优先",

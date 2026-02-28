@@ -8,8 +8,12 @@ function toSharedServer(server: McpServerConfig): McpServer {
   return {
     id: server.id,
     name: server.name,
+    type: server.type,
     url: server.url,
     customHeaders: server.customHeaders,
+    command: server.command,
+    args: server.args,
+    env: server.env,
     enabled: server.enabled,
   };
 }

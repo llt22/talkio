@@ -2,6 +2,9 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
 
+#[cfg(not(target_os = "android"))]
+mod mcp_stdio;
+
 #[tauri::command]
 fn check_pending_import(app: tauri::AppHandle) -> Option<String> {
   let mut candidates: Vec<PathBuf> = Vec::new();
@@ -37,14 +40,32 @@ fn check_pending_import(app: tauri::AppHandle) -> Option<String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
+  let builder = tauri::Builder::default()
     .plugin(tauri_plugin_sql::Builder::default().build())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_http::init())
-    .invoke_handler(tauri::generate_handler![check_pending_import])
+    .plugin(tauri_plugin_http::init());
+
+  // Desktop: register MCP stdio commands + managed state
+  #[cfg(not(target_os = "android"))]
+  let builder = builder
+    .manage(mcp_stdio::Sessions::default())
+    .invoke_handler(tauri::generate_handler![
+      check_pending_import,
+      mcp_stdio::mcp_stdio_start,
+      mcp_stdio::mcp_stdio_send,
+      mcp_stdio::mcp_stdio_stop,
+      mcp_stdio::mcp_stdio_list,
+    ]);
+
+  // Mobile: only register base commands
+  #[cfg(target_os = "android")]
+  let builder = builder
+    .invoke_handler(tauri::generate_handler![check_pending_import]);
+
+  builder
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

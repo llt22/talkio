@@ -1,6 +1,8 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { CustomHeader, DiscoveredTool, McpServer } from "../../types";
 import { StreamableHTTPClientTransport } from "./streamable-http-transport";
+import { TauriStdioTransport } from "./stdio-transport";
 
 export type McpConnectionStatus = "idle" | "connecting" | "connected" | "error";
 export type McpErrorCode = "NETWORK" | "AUTH" | "TIMEOUT" | "SERVER_ERROR" | "UNKNOWN";
@@ -62,9 +64,18 @@ class McpConnectionManager {
   }
 
   private async connect(conn: ManagedConnection): Promise<void> {
-    const transport = new StreamableHTTPClientTransport(conn.server.url, {
-      requestInit: buildRequestInit(conn.server.customHeaders),
-    });
+    let transport: Transport;
+    if (conn.server.type === "stdio" && conn.server.command) {
+      transport = new TauriStdioTransport(
+        conn.server.command,
+        conn.server.args ?? [],
+        conn.server.env,
+      );
+    } else {
+      transport = new StreamableHTTPClientTransport(conn.server.url, {
+        requestInit: buildRequestInit(conn.server.customHeaders),
+      });
+    }
     const client = new Client({ name: "talkio-web", version: "2.0.0" }, { capabilities: {} });
     await client.connect(transport);
 
