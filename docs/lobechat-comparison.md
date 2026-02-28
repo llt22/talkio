@@ -26,7 +26,7 @@
 | 话题管理 | ✅ 按话题分组 | ❌ | **缺失** |
 | 消息翻译 | ✅ 内置 | ❌ | **缺失** |
 | TTS 朗读 | ✅ 多引擎 | ❌ | **缺失**（计划中） |
-| 消息编辑 | ✅ | ❌ | **缺失** |
+| 消息编辑 | ✅ | ✅ 内联编辑+重新生成 | 持平 |
 | 图片生成 | ✅ DALL-E / SD | ❌ | 不同定位 |
 | 文件上传/解析 | ✅ PDF/Word/Excel | ✅ 仅图片 | **差距** |
 | @ 提及模型 | ❌ | ✅ | **Talkio 优势** |
@@ -46,7 +46,7 @@
 | 功能 | LobeChat | Talkio | 差距分析 |
 |------|----------|--------|----------|
 | HTTP MCP | ✅ StreamableHTTP | ✅ 自定义 Transport + Tauri fetch | 持平 |
-| **Stdio MCP** | ✅ Node.js child_process | ❌ | **核心差距** |
+| **Stdio MCP** | ✅ Node.js child_process | ✅ Tauri async channel | 持平 |
 | OAuth 认证 | ✅ Bearer + OAuth 2.1 | ❌ | **缺失** |
 | 工具调用超时 | ✅ 可配置 | ❌ | **缺失** |
 | 结构化错误 | ✅ MCPError | ❌ 仅字符串错误 | **缺失** |
@@ -130,8 +130,8 @@
 ## 五、改进优先级建议
 
 ### P0 — 核心竞争力增强
-- [ ] MCP Stdio 支持（解锁主流 MCP 生态）
-- [ ] 消息编辑功能
+- [x] MCP Stdio 支持（解锁主流 MCP 生态）
+- [x] 消息编辑功能
 - [ ] 文件上传增强（PDF/文档解析）
 
 ### P1 — 用户体验
