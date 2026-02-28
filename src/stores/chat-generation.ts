@@ -482,7 +482,17 @@ export async function generateForParticipant(
     // Build API messages with compression
     const allMessages = await getRecentMessages(ctx.cid, ctx.activeBranchId, MAX_HISTORY);
     const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === ctx.userMsg.id);
-    let apiMessages = buildApiMessagesForParticipant(filtered, participant, ctx.conversation);
+
+    // Read workspace tree if workspace dir is set
+    let workspaceTree: string | undefined;
+    if (ctx.conversation.workspaceDir) {
+      try {
+        const { readWorkspaceTree } = await import("../services/file-writer");
+        workspaceTree = await readWorkspaceTree(ctx.conversation.workspaceDir) || undefined;
+      } catch { /* ignore */ }
+    }
+
+    let apiMessages = buildApiMessagesForParticipant(filtered, participant, ctx.conversation, { workspaceTree });
     apiMessages = await applyCompression(apiMessages, ctx, baseUrl, headers, model.modelId);
 
     const reasoningEffort = identity?.params?.reasoningEffort

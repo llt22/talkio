@@ -99,3 +99,66 @@ export async function writeFilesToWorkspace(
 export function stripFileBlocks(text: string): string {
   return text.replace(/<file\s+path=["'][^"']+["']\s*>[\s\S]*?<\/file>/g, "").trim();
 }
+
+/**
+ * Read the workspace directory tree (up to 2 levels deep, max 200 entries).
+ * Returns a compact text listing of files and directories.
+ */
+export async function readWorkspaceTree(workspaceDir: string): Promise<string> {
+  if (!window.__TAURI_INTERNALS__ || !workspaceDir) return "";
+
+  const { readDir } = await import("@tauri-apps/plugin-fs");
+  const lines: string[] = [];
+  const MAX_ENTRIES = 200;
+
+  try {
+    const entries = await readDir(workspaceDir);
+    for (const entry of entries) {
+      if (lines.length >= MAX_ENTRIES) break;
+      if (entry.name?.startsWith(".")) continue; // skip hidden
+      if (entry.isDirectory) {
+        lines.push(`📁 ${entry.name}/`);
+        try {
+          const sep = workspaceDir.includes("\\") ? "\\" : "/";
+          const subEntries = await readDir(workspaceDir + sep + entry.name);
+          for (const sub of subEntries) {
+            if (lines.length >= MAX_ENTRIES) break;
+            if (sub.name?.startsWith(".")) continue;
+            lines.push(`  ${sub.isDirectory ? "📁" : "📄"} ${entry.name}/${sub.name}${sub.isDirectory ? "/" : ""}`);
+          }
+        } catch { /* permission denied or not readable */ }
+      } else {
+        lines.push(`📄 ${entry.name}`);
+      }
+    }
+  } catch (err) {
+    console.error("[file-writer] Failed to read workspace tree:", err);
+    return "";
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Read a file from the workspace directory. Returns content or null.
+ * Path is sanitized to prevent directory traversal.
+ */
+export async function readWorkspaceFile(
+  relativePath: string,
+  workspaceDir: string,
+): Promise<string | null> {
+  if (!window.__TAURI_INTERNALS__ || !workspaceDir) return null;
+
+  const safePath = sanitizePath(relativePath);
+  if (!safePath) return null;
+
+  const { readTextFile } = await import("@tauri-apps/plugin-fs");
+  const sep = workspaceDir.includes("\\") ? "\\" : "/";
+  const fullPath = workspaceDir.replace(/[/\\]+$/, "") + sep + safePath.replace(/\//g, sep);
+
+  try {
+    return await readTextFile(fullPath);
+  } catch {
+    return null;
+  }
+}

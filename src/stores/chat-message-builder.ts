@@ -6,8 +6,6 @@ import type { Message, Conversation, ConversationParticipant } from "../types";
 import { MessageStatus } from "../types";
 import { useProviderStore } from "./provider-store";
 import { useIdentityStore } from "./identity-store";
-import { useSettingsStore } from "./settings-store";
-
 /**
  * Determine which participants should respond to a message.
  */
@@ -96,6 +94,7 @@ export function buildApiMessagesForParticipant(
   allMessages: Message[],
   participant: ConversationParticipant,
   conv: Conversation,
+  options?: { workspaceTree?: string },
 ): Array<{ role: string; content: unknown; tool_calls?: unknown; tool_call_id?: string }> {
   const identity = participant.identityId
     ? useIdentityStore.getState().getIdentityById(participant.identityId)
@@ -105,10 +104,15 @@ export function buildApiMessagesForParticipant(
   const apiMessages: Array<{ role: string; content: unknown }> = [];
 
   // Build system prompt with optional workspace dir context
-  const workspaceDir = useSettingsStore.getState().settings.workspaceDir;
-  const workspaceHint = workspaceDir
-    ? `\n\nThe user has a workspace directory at: ${workspaceDir}\nWhen the user asks you to create or write files, wrap each file in <file path="relative/path.ext">content</file> tags. The path should be relative to the workspace directory. The system will automatically save them.`
-    : "";
+  const workspaceDir = conv.workspaceDir;
+  let workspaceHint = "";
+  if (workspaceDir) {
+    workspaceHint = `\n\nThe user has a workspace directory at: ${workspaceDir}\nWhen the user asks you to create or write files, wrap each file in <file path="relative/path.ext">content</file> tags. The path should be relative to the workspace directory. The system will automatically save them.`;
+    if (options?.workspaceTree) {
+      workspaceHint += `\n\nCurrent workspace files:\n${options.workspaceTree}`;
+    }
+    workspaceHint += `\nIf the user asks to read or modify an existing file, you can reference files by their relative path.`;
+  }
 
   if (isGroup) {
     const roster = buildGroupRoster(conv, participant.id);

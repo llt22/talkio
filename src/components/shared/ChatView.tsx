@@ -8,7 +8,7 @@ import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown, Pencil, Check, X,
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
-import { useMessages } from "../../hooks/useDatabase";
+import { useMessages, useConversation } from "../../hooks/useDatabase";
 import { useProviderStore } from "../../stores/provider-store";
 import type { Message, ConversationParticipant } from "../../types";
 import { MessageStatus } from "../../types";
@@ -17,7 +17,6 @@ import { parseFile, type ParsedFile } from "../../lib/file-parser";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useConfirm } from "./ConfirmDialogProvider";
 import { useStickToBottom } from "use-stick-to-bottom";
-import { useSettingsStore } from "../../stores/settings-store";
 import { parseFileBlocks, writeFilesToWorkspace, type WrittenFile } from "../../services/file-writer";
 
 export interface ChatViewHandle {
@@ -251,7 +250,8 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
   }, [isGenerating, displayMessages, isGroup, participants, getModelById, getProviderById, i18n.language]);
 
   // ── Auto-write files from AI responses ──
-  const workspaceDir = useSettingsStore((s) => s.settings.workspaceDir);
+  const conversation = useConversation(conversationId);
+  const workspaceDir = conversation?.workspaceDir || "";
   const [writtenFilesMap, setWrittenFilesMap] = useState<Record<string, WrittenFile[]>>({});
   const fileWriteProcessedRef = useRef<Set<string>>(new Set());
 

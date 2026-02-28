@@ -182,6 +182,7 @@ function rowToConversation(row: any): Conversation {
     pinned: row.pinned === 1,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    workspaceDir: row.workspaceDir ?? undefined,
   };
 }
 
@@ -244,6 +245,8 @@ export async function initDatabase(): Promise<void> {
   `);
   // Migration: add speakingOrder column for databases created before this field existed
   try { await db.execute(`ALTER TABLE conversations ADD COLUMN speakingOrder TEXT`); } catch { /* column already exists */ }
+  // Migration: add workspaceDir column
+  try { await db.execute(`ALTER TABLE conversations ADD COLUMN workspaceDir TEXT`); } catch { /* column already exists */ }
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS messages (
@@ -295,11 +298,11 @@ export async function initDatabase(): Promise<void> {
 export async function insertConversation(conv: Conversation): Promise<void> {
   const db = await getDb();
   await db.execute(
-    `INSERT INTO conversations (id, type, title, participants, speakingOrder, lastMessage, lastMessageAt, pinned, createdAt, updatedAt)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    `INSERT INTO conversations (id, type, title, participants, speakingOrder, lastMessage, lastMessageAt, pinned, createdAt, updatedAt, workspaceDir)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [conv.id, conv.type, conv.title, JSON.stringify(conv.participants),
      conv.speakingOrder ?? null, conv.lastMessage, conv.lastMessageAt, conv.pinned ? 1 : 0,
-     conv.createdAt, conv.updatedAt]
+     conv.createdAt, conv.updatedAt, conv.workspaceDir ?? null]
   );
 }
 
@@ -316,6 +319,7 @@ export async function updateConversation(id: string, updates: Partial<Conversati
   if (updates.lastMessageAt !== undefined) { sets.push(`lastMessageAt = $${idx}`); params.push(updates.lastMessageAt); idx++; }
   if (updates.pinned !== undefined) { sets.push(`pinned = $${idx}`); params.push(updates.pinned ? 1 : 0); idx++; }
   if (updates.speakingOrder !== undefined) { sets.push(`speakingOrder = $${idx}`); params.push(updates.speakingOrder); idx++; }
+  if (updates.workspaceDir !== undefined) { sets.push(`workspaceDir = $${idx}`); params.push(updates.workspaceDir || null); idx++; }
 
   params.push(id);
   await db.execute(`UPDATE conversations SET ${sets.join(", ")} WHERE id = $${idx}`, params);

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { MoreHorizontal, Trash2, UserPlus, Share2, ChevronDown, ChevronUp, User, Users, Pencil, ArrowDown, ArrowUpDown, Shuffle, GripVertical, Plus, Minimize2 } from "lucide-react";
+import { MoreHorizontal, Trash2, UserPlus, Share2, ChevronDown, ChevronUp, User, Users, Pencil, ArrowDown, ArrowUpDown, Shuffle, GripVertical, Plus, Minimize2, FolderOpen } from "lucide-react";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -23,6 +23,8 @@ import {
 import type { ConversationParticipant, Identity } from "../../types";
 import { exportConversationAsMarkdown } from "../../services/export";
 import { useConfirm } from "../shared/ConfirmDialogProvider";
+import { updateConversation } from "../../storage/database";
+import { notifyDbChange } from "../../hooks/useDatabase";
 
 // ── Drag-sortable participant row ──
 
@@ -229,6 +231,12 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
             <span className="text-[10px] text-primary font-medium">{t("chat.compressed")}</span>
           </div>
         )}
+        {conv?.workspaceDir && (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg max-w-[200px]" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)" }} title={conv.workspaceDir}>
+            <FolderOpen size={11} className="text-primary flex-shrink-0" />
+            <span className="text-[10px] text-primary font-medium truncate">{conv.workspaceDir.split(/[/\\]/).pop()}</span>
+          </div>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -248,6 +256,23 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
               <Minimize2 size={14} className="mr-2" />
               {isCompressing ? t("chat.compressing") : hasManualSummary ? t("chat.recompress") : t("chat.compressContext")}
             </DropdownMenuItem>
+            {window.__TAURI_INTERNALS__ && (
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    const { open } = await import("@tauri-apps/plugin-dialog");
+                    const dir = await open({ directory: true, multiple: false });
+                    if (dir && typeof dir === "string") {
+                      await updateConversation(conversationId, { workspaceDir: dir });
+                      notifyDbChange("conversations");
+                    }
+                  } catch { /* cancelled */ }
+                }}
+              >
+                <FolderOpen size={14} className="mr-2" />
+                {conv?.workspaceDir ? t("settings.changeDir") : t("settings.workspaceDir")}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={async () => {

@@ -17,8 +17,6 @@ export interface AppSettings {
   contextCompressionEnabled: boolean;
   /** Token threshold to trigger compression (default: 8000) */
   contextCompressionThreshold: number;
-  /** Workspace directory for AI file output */
-  workspaceDir: string;
 }
 
 interface SettingsState {
@@ -37,7 +35,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   sttModel: "whisper-large-v3-turbo",
   contextCompressionEnabled: false,
   contextCompressionThreshold: 16000,
-  workspaceDir: "",
 };
 
 const SETTINGS_KEY = "settings";

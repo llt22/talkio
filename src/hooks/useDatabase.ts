@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getAllConversations,
+  getConversation,
   getRecentMessages,
   getBlocksByMessageId,
 } from "../storage/database";
@@ -44,6 +45,31 @@ export function useConversations(): Conversation[] {
   }, [load]);
 
   return convs;
+}
+
+export function useConversation(conversationId: string | null): Conversation | null {
+  const [conv, setConv] = useState<Conversation | null>(null);
+
+  const load = useCallback(async () => {
+    if (!conversationId) { setConv(null); return; }
+    try {
+      const data = await getConversation(conversationId);
+      setConv(data);
+    } catch {
+      // DB not ready
+    }
+  }, [conversationId]);
+
+  useEffect(() => {
+    load();
+    const listener: Listener = (e) => {
+      if (e.channel === "all" || e.channel === "conversations") load();
+    };
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+  }, [load]);
+
+  return conv;
 }
 
 export function useMessages(conversationId: string | null, branchId?: string | null): Message[] {

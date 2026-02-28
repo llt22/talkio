@@ -133,6 +133,8 @@ export interface Conversation {
   pinned: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Per-conversation workspace directory for AI file I/O (desktop only) */
+  workspaceDir?: string;
 }
 
 export interface ToolCall {
