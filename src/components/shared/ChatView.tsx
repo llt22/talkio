@@ -35,7 +35,7 @@ interface ChatViewProps {
 }
 
 export function ChatView({ conversationId, isMobile = false, onAtBottomChange, handleRef, modelName, onSwitchModel, isGroup = false, participants = [] }: ChatViewProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { confirm } = useConfirm();
   const activeBranchId = useChatStore((s: ChatState) => s.activeBranchId);
   const messages = useMessages(conversationId, activeBranchId);
@@ -202,8 +202,7 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
     if (!provider) return;
 
     const context = displayMessages.slice(-6).map((m) => ({ role: m.role, content: m.content || "" }));
-    const lang = (document.documentElement.lang || navigator.language || "en").slice(0, 2);
-    generateSuggestQuestions(context, provider, model.modelId, lang)
+    generateSuggestQuestions(context, provider, model.modelId, i18n.language)
       .then((qs) => { if (qs.length > 0) setSuggestQuestions(qs); })
       .catch(() => {});
   }, [isGenerating, displayMessages, isGroup, participants, getModelById, getProviderById]);
