@@ -191,132 +191,50 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
               </div>
             )}
 
-            {/* Server list */}
+            {/* Server cards */}
             {servers.length > 0 ? (
-              <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
-                {servers.map((server, idx) => {
-                  const status = connectionStatus[server.id] ?? "disconnected";
-                  const serverTools = tools.filter((t) => t.serverId === server.id);
-                  const isConnected = status === "connected";
-                  const isError = status === "error";
-                  const { color: avatarColor, initials } = getAvatarProps(server.name);
-                  return (
-                    <div
-                      key={server.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => pushServerForm(server.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") pushServerForm(server.id);
-                      }}
-                      className="w-full flex items-center gap-4 px-4 py-3 text-left active:bg-black/5 transition-colors"
-                      style={{ borderBottom: "0.5px solid var(--border)" }}
-                    >
-                      <div className="relative flex-shrink-0">
-                        <div
-                          className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-semibold"
-                          style={{ backgroundColor: avatarColor }}
-                        >
-                          {initials}
-                        </div>
-                        <div
-                          className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 ${status === "connecting" ? "animate-pulse" : ""}`}
-                          style={{
-                            borderColor: "var(--background)",
-                            backgroundColor: isConnected ? "var(--success)" : isError ? "var(--destructive)" : "var(--border)",
-                          }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[16px] font-medium text-foreground">{server.name}</p>
-                        <p className={`text-[13px] truncate ${isError ? "text-destructive" : "text-muted-foreground"}`}>
-                          {status === "connecting"
-                            ? t("toolEdit.testing")
-                            : isError
-                              ? t("toolEdit.testFailed")
-                              : `${serverTools.length} ${t("personas.mcpTools").toLowerCase()}`}
-                        </p>
-                      </div>
-                      <div
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (status === "connecting") return;
-                          const newEnabled = !server.enabled;
-                          updateServer(server.id, { enabled: newEnabled });
-                          if (newEnabled) {
-                            // Attempt connection; auto-disable on failure
-                            useMcpStore.getState().setConnectionStatus(server.id, "connecting");
-                            try {
-                              await refreshMcpConnections();
-                              const finalStatus = useMcpStore.getState().connectionStatus[server.id];
-                              if (finalStatus === "error") {
-                                updateServer(server.id, { enabled: false });
-                              }
-                            } catch {
-                              updateServer(server.id, { enabled: false });
-                              useMcpStore.getState().setConnectionStatus(server.id, "error");
-                            }
-                          } else {
-                            mcpConnectionManager.reset(server.id);
-                            useMcpStore.getState().setTools(server.id, []);
-                            useMcpStore.getState().setConnectionStatus(server.id, "disconnected");
-                          }
-                        }}
-                        className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors ${status === "connecting" ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
-                        style={{ backgroundColor: server.enabled ? "var(--primary)" : "var(--muted)" }}
-                      >
-                        <span
-                          className={`inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform ${status === "connecting" ? "animate-pulse" : ""}`}
-                          style={{ transform: server.enabled ? "translateX(20px) translateY(2px)" : "translateX(2px) translateY(2px)" }}
-                        />
-                      </div>
-                      <div
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
-                          if (ok) {
-                            deleteServer(server.id);
-                            mcpConnectionManager.reset(server.id);
-                          }
-                        }}
-                        className="p-1.5 active:opacity-60"
-                      >
-                        <IoTrashOutline size={16} color="var(--destructive)" />
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="px-4 pt-2 flex flex-col gap-3">
+                {servers.map((server) => (
+                  <McpServerCard
+                    key={server.id}
+                    server={server}
+                    status={connectionStatus[server.id] ?? "disconnected"}
+                    serverTools={tools.filter((t) => t.serverId === server.id)}
+                    onEdit={() => pushServerForm(server.id)}
+                    onToggle={async () => {
+                      const status = connectionStatus[server.id] ?? "disconnected";
+                      if (status === "connecting") return;
+                      const newEnabled = !server.enabled;
+                      updateServer(server.id, { enabled: newEnabled });
+                      if (newEnabled) {
+                        useMcpStore.getState().setConnectionStatus(server.id, "connecting");
+                        try {
+                          await refreshMcpConnections();
+                          const finalStatus = useMcpStore.getState().connectionStatus[server.id];
+                          if (finalStatus === "error") updateServer(server.id, { enabled: false });
+                        } catch {
+                          updateServer(server.id, { enabled: false });
+                          useMcpStore.getState().setConnectionStatus(server.id, "error");
+                        }
+                      } else {
+                        mcpConnectionManager.reset(server.id);
+                        useMcpStore.getState().setTools(server.id, []);
+                        useMcpStore.getState().setConnectionStatus(server.id, "disconnected");
+                      }
+                    }}
+                    onDelete={async () => {
+                      const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
+                      if (ok) {
+                        deleteServer(server.id);
+                        mcpConnectionManager.reset(server.id);
+                      }
+                    }}
+                  />
+                ))}
               </div>
             ) : (
               <p className="px-4 pt-4 text-[13px] text-muted-foreground">{t("personas.noCustomTools")}</p>
             )}
-
-            {/* Tools summary — grouped by server */}
-            {tools.length > 0 && servers.filter((s) => s.enabled).map((srv) => {
-              const serverTools = tools.filter((t) => t.serverId === srv.id);
-              if (serverTools.length === 0) return null;
-              return (
-                <div key={srv.id}>
-                  <div className="px-5 py-1.5" style={{ backgroundColor: "var(--secondary)" }}>
-                    <p className="text-[13px] font-semibold text-muted-foreground">
-                      {srv.name} ({serverTools.length})
-                    </p>
-                  </div>
-                  <div style={{ borderBottom: "0.5px solid var(--border)" }}>
-                    {serverTools.map((tool, idx) => (
-                      <div
-                        key={`${tool.serverId}-${tool.name}`}
-                        className="px-4 py-2.5"
-                        style={{ borderBottom: idx < serverTools.length - 1 ? "0.5px solid var(--border)" : "none" }}
-                      >
-                        <p className="text-[13px] font-medium text-foreground">{tool.name}</p>
-                        <p className="text-[11px] text-muted-foreground line-clamp-1">{tool.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
           </>
         )}
 
@@ -396,6 +314,125 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
     </div>
   );
 });
+
+// ── MCP Server Card ──
+
+function McpServerCard({
+  server,
+  status,
+  serverTools,
+  onEdit,
+  onToggle,
+  onDelete,
+}: {
+  server: McpServerConfig;
+  status: "disconnected" | "connecting" | "connected" | "error";
+  serverTools: McpTool[];
+  onEdit: () => void;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  const { t } = useTranslation();
+  const isConnected = status === "connected";
+  const isError = status === "error";
+  const isConnecting = status === "connecting";
+  const serverType = server.type ?? "http";
+
+  const statusColor = isConnected
+    ? "var(--success)"
+    : isError
+      ? "var(--destructive)"
+      : isConnecting
+        ? "var(--primary)"
+        : "var(--border)";
+
+  const statusText = isConnecting
+    ? t("toolEdit.testing")
+    : isError
+      ? t("toolEdit.testFailed")
+      : isConnected
+        ? `${serverTools.length} ${t("personas.mcpTools").toLowerCase()}`
+        : t("common.disabled");
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
+    >
+      {/* Header row */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onEdit}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
+        className="flex items-center gap-3 px-4 py-3 active:bg-black/5 transition-colors cursor-pointer"
+      >
+        {/* Status dot */}
+        <div
+          className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${isConnecting ? "animate-pulse" : ""}`}
+          style={{ backgroundColor: statusColor }}
+        />
+
+        {/* Name + info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-[15px] font-semibold text-foreground truncate">{server.name}</p>
+            <span
+              className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded"
+              style={{ backgroundColor: "var(--secondary)", color: "var(--muted-foreground)" }}
+            >
+              {serverType}
+            </span>
+          </div>
+          <p className={`text-[12px] truncate ${isError ? "text-destructive" : "text-muted-foreground"}`}>
+            {serverType === "stdio" ? (server.command ?? "") : server.url}
+          </p>
+        </div>
+
+        {/* Toggle */}
+        <div
+          onClick={(e) => { e.stopPropagation(); onToggle(); }}
+          className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors ${isConnecting ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
+          style={{ backgroundColor: server.enabled ? "var(--primary)" : "var(--muted)" }}
+        >
+          <span
+            className={`inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform ${isConnecting ? "animate-pulse" : ""}`}
+            style={{ transform: server.enabled ? "translateX(20px) translateY(2px)" : "translateX(2px) translateY(2px)" }}
+          />
+        </div>
+
+        {/* Delete */}
+        <div
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-1 active:opacity-60 cursor-pointer"
+        >
+          <IoTrashOutline size={15} color="var(--destructive)" />
+        </div>
+      </div>
+
+      {/* Status bar */}
+      <div className="px-4 py-1.5 flex items-center gap-2" style={{ backgroundColor: "var(--secondary)", borderTop: "0.5px solid var(--border)" }}>
+        <span className="text-[11px] text-muted-foreground">{statusText}</span>
+      </div>
+
+      {/* Tool list (only when connected and has tools) */}
+      {isConnected && serverTools.length > 0 && (
+        <div style={{ borderTop: "0.5px solid var(--border)" }}>
+          {serverTools.map((tool, idx) => (
+            <div
+              key={tool.name}
+              className="px-4 py-2"
+              style={{ borderTop: idx > 0 ? "0.5px solid var(--border)" : "none" }}
+            >
+              <p className="text-[12px] font-medium text-foreground">{tool.name}</p>
+              <p className="text-[11px] text-muted-foreground line-clamp-1">{tool.description}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── MCP Server Form (full-screen, 1:1 RN tool-edit.tsx) ──
 
