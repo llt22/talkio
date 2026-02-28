@@ -418,15 +418,17 @@ export const ChatInput = memo(function ChatInput({
                   rows={1}
                   className={`flex-1 resize-none bg-transparent text-foreground outline-none placeholder:text-muted-foreground/50 ${isMobile ? 'min-h-[44px] max-h-24 text-[16px] py-2.5' : 'min-h-[36px] max-h-32 text-[14px] py-2'}`}
                 />
-                {(text.trim() || attachedImages.length > 0) && !isGenerating && (
-                  <button
-                    onClick={handleSend}
-                    className="my-1.5 ml-1.5 h-9 w-9 flex items-center justify-center rounded-full flex-shrink-0 active:opacity-70"
-                    style={{ backgroundColor: "var(--primary)" }}
-                  >
-                    <ArrowUp size={18} color="white" />
-                  </button>
-                )}
+                <button
+                  onClick={handleSend}
+                  disabled={(!text.trim() && attachedImages.length === 0) || isGenerating}
+                  className="my-1.5 ml-1.5 h-9 w-9 flex items-center justify-center rounded-full flex-shrink-0 active:opacity-70 transition-opacity"
+                  style={{
+                    backgroundColor: "var(--primary)",
+                    opacity: (text.trim() || attachedImages.length > 0) && !isGenerating ? 1 : 0.3,
+                  }}
+                >
+                  <ArrowUp size={18} color="white" />
+                </button>
               </div>
             )}
           </div>
