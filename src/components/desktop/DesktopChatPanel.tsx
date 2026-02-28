@@ -231,6 +231,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
             <span className="text-[10px] text-primary font-medium">{t("chat.compressed")}</span>
           </div>
         )}
+        {/* TODO: workspace dir badge — hidden until file reading is implemented
         {conv?.workspaceDir && (
           <button
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg max-w-[260px] hover:opacity-80 transition-opacity"
@@ -241,13 +242,14 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
               try {
                 const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
                 await revealItemInDir(conv.workspaceDir!);
-              } catch { /* fallback */ }
+              } catch {}
             }}
           >
             <FolderOpen size={12} className="text-primary flex-shrink-0" />
             <span className="text-[11px] text-primary font-medium truncate">{conv.workspaceDir.split(/[/\\]/).pop()}</span>
           </button>
         )}
+        */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -267,6 +269,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
               <Minimize2 size={14} className="mr-2" />
               {isCompressing ? t("chat.compressing") : hasManualSummary ? t("chat.recompress") : t("chat.compressContext")}
             </DropdownMenuItem>
+            {/* TODO: workspace dir menu item — hidden until file reading is implemented
             {window.__TAURI_INTERNALS__ && (
               <DropdownMenuItem
                 onClick={async () => {
@@ -277,13 +280,14 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
                       await updateConversation(conversationId, { workspaceDir: dir });
                       notifyDbChange("conversations");
                     }
-                  } catch { /* cancelled */ }
+                  } catch {}
                 }}
               >
                 <FolderOpen size={14} className="mr-2" />
                 {conv?.workspaceDir ? t("settings.changeDir") : t("settings.workspaceDir")}
               </DropdownMenuItem>
             )}
+            */}
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onClick={async () => {
