@@ -48,12 +48,18 @@ export function isSupportedFile(filename: string): boolean {
 }
 
 async function readAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsText(file);
-  });
+  const buffer = await file.arrayBuffer();
+  // Try UTF-8 first
+  const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+  // If UTF-8 produces replacement characters (U+FFFD), try GBK
+  if (utf8.includes("\uFFFD")) {
+    try {
+      return new TextDecoder("gbk").decode(buffer);
+    } catch {
+      // GBK decoder not available, return UTF-8 result
+    }
+  }
+  return utf8;
 }
 
 async function readAsDataUrl(file: File): Promise<string> {
