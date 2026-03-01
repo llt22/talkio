@@ -190,6 +190,12 @@ export const ChatInput = memo(function ChatInput({
       }
       setIsRecording(false);
     } else {
+      // Check STT configuration before starting recording
+      const { sttApiKey } = useSettingsStore.getState().settings;
+      if (!sttApiKey) {
+        appAlert(t("chat.noSttProvider"));
+        return;
+      }
       // Start recording
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -219,10 +225,6 @@ export const ChatInput = memo(function ChatInput({
           setIsTranscribing(true);
           try {
             const { sttBaseUrl, sttApiKey, sttModel } = useSettingsStore.getState().settings;
-            if (!sttApiKey) {
-              appAlert(t("chat.noSttProvider"));
-              return;
-            }
 
             const ext = mimeType.includes("webm") ? "webm" : "mp4";
             const formData = new FormData();
