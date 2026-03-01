@@ -585,31 +585,39 @@ export const ChatInput = memo(function ChatInput({
                   rows={1}
                   className={`text-foreground placeholder:text-muted-foreground/50 flex-1 resize-none bg-transparent outline-none ${isMobile ? "max-h-24 min-h-[44px] py-2.5 text-[16px]" : "max-h-32 min-h-[36px] py-2 text-[14px]"}`}
                 />
-                <button
-                  onClick={handleSend}
-                  disabled={
-                    (!text.trim() && attachedImages.length === 0 && attachedFiles.length === 0) ||
-                    isGenerating
-                  }
-                  className="my-1.5 ml-1.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-opacity active:opacity-70"
-                  style={{
-                    backgroundColor: "var(--primary)",
-                    opacity:
-                      (text.trim() || attachedImages.length > 0 || attachedFiles.length > 0) &&
-                      !isGenerating
-                        ? 1
-                        : 0.3,
-                  }}
-                >
-                  <ArrowUp size={18} color="white" />
-                </button>
+                {isGenerating ? (
+                  <button
+                    onClick={onStop}
+                    className="my-1.5 ml-1.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full active:opacity-70"
+                    style={{ backgroundColor: "var(--destructive)" }}
+                  >
+                    <Square size={14} color="white" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSend}
+                    disabled={
+                      !text.trim() && attachedImages.length === 0 && attachedFiles.length === 0
+                    }
+                    className="my-1.5 ml-1.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-opacity active:opacity-70"
+                    style={{
+                      backgroundColor: "var(--primary)",
+                      opacity:
+                        text.trim() || attachedImages.length > 0 || attachedFiles.length > 0
+                          ? 1
+                          : 0.3,
+                    }}
+                  >
+                    <ArrowUp size={18} color="white" />
+                  </button>
+                )}
               </div>
             )}
           </div>
 
           {/* Action bar */}
           <div
-            className="flex items-center gap-0.5 px-3"
+            className="flex items-center gap-0.5 pl-3 pr-7"
             style={{
               paddingBottom: isMobile ? "max(4px, env(safe-area-inset-bottom, 4px))" : "4px",
             }}
@@ -695,15 +703,7 @@ export const ChatInput = memo(function ChatInput({
 
             <div className="flex-1" />
 
-            {isGenerating ? (
-              <button
-                onClick={onStop}
-                className={`flex items-center justify-center rounded-full active:opacity-70 ${isMobile ? "h-10 w-10" : "h-8 w-8"}`}
-                style={{ backgroundColor: "var(--destructive)" }}
-              >
-                <Square size={14} color="white" />
-              </button>
-            ) : isTranscribing ? (
+            {isTranscribing ? (
               <div
                 className={`flex items-center justify-center ${isMobile ? "h-10 w-10" : "h-8 w-8"}`}
               >
