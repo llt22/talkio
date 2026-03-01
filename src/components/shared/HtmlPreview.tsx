@@ -91,7 +91,7 @@ export const HtmlPreview = memo(function HtmlPreview({ code, language = "html" }
 
       {/* Fullscreen modal */}
       {fullscreen && (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "var(--background)" }}>
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "var(--background)", paddingTop: "env(safe-area-inset-top, 0px)" }}>
           <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
             <span className="text-base font-semibold" style={{ color: "var(--foreground)" }}>{t("htmlPreview.fullscreen", { defaultValue: "HTML Preview" })}</span>
             <button onClick={() => setFullscreen(false)} className="p-1 active:opacity-60">
