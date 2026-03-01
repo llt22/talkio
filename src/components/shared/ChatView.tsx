@@ -746,7 +746,7 @@ const MessageRow = memo(function MessageRow({
     return (
       <div className="group mb-6 flex flex-col items-end gap-1 px-4">
         {/* Label */}
-        <div className="mr-1 flex items-center gap-2">
+        <div className="mr-1 flex items-baseline gap-2">
           <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
             {t("chat.you")}
           </span>
@@ -875,7 +875,7 @@ const MessageRow = memo(function MessageRow({
   return (
     <div className="group mb-6 flex flex-col gap-1 px-4">
       {/* Label */}
-      <div className="ml-1 flex items-center gap-2">
+      <div className="ml-1 flex items-baseline gap-2">
         <span
           className="max-w-[200px] truncate text-[11px] font-semibold tracking-wider uppercase"
           style={{ color: senderColor }}
