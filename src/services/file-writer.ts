@@ -23,7 +23,7 @@ export function parseFileBlocks(text: string): { path: string; content: string }
   while ((match = regex.exec(text)) !== null) {
     const path = match[1].trim();
     const content = match[2];
-    if (path && content) {
+    if (path) {
       blocks.push({ path, content });
     }
   }

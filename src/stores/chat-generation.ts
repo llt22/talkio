@@ -528,7 +528,7 @@ export async function generateForParticipant(
 
   const baseUrl = provider.baseUrl.replace(/\/+$/, "");
   const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
-  await refreshMcpConnections().catch(() => {});
+  await refreshMcpConnections().catch((err) => console.warn("[chat-generation] MCP refresh failed:", err));
 
   // Resolve tool definitions
   const builtInToolDefs = (() => {

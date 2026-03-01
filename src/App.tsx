@@ -78,7 +78,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    refreshMcpConnections().catch(() => {});
+    refreshMcpConnections().catch((err) => console.warn("[App] MCP refresh failed:", err));
   }, [mcpServers]);
 
   return (

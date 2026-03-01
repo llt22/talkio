@@ -40,9 +40,8 @@ src-tauri/target/
 *.mobileprovision
 
 # Local drafts
-docs/forum-post.md
-docs/release-*.md
-docs/review*.md
+docs/*.md
+!docs/README.md
 plans/
 
 # Environment

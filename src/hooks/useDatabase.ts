@@ -30,8 +30,8 @@ export function useConversations(): Conversation[] {
     try {
       const data = await getAllConversations();
       setConvs(data);
-    } catch {
-      // DB not ready yet
+    } catch (err) {
+      console.warn("[useConversations] DB query failed:", err);
     }
   }, []);
 
@@ -60,8 +60,8 @@ export function useConversation(conversationId: string | null): Conversation | n
     try {
       const data = await getConversation(conversationId);
       setConv(data);
-    } catch {
-      // DB not ready
+    } catch (err) {
+      console.warn("[useConversation] DB query failed:", err);
     }
   }, [conversationId]);
 
@@ -90,8 +90,8 @@ export function useMessages(conversationId: string | null, branchId?: string | n
     try {
       const data = await getRecentMessages(conversationId, branchId, DEFAULT_MESSAGE_LIMIT);
       setMsgs(data);
-    } catch {
-      // DB not ready
+    } catch (err) {
+      console.warn("[useMessages] DB query failed:", err);
     }
   }, [conversationId, branchId]);
 
@@ -121,8 +121,8 @@ export function useMessageBlocks(messageId: string | null): MessageBlock[] {
     try {
       const data = await getBlocksByMessageId(messageId);
       setBlocks(data);
-    } catch {
-      // DB not ready
+    } catch (err) {
+      console.warn("[useMessageBlocks] DB query failed:", err);
     }
   }, [messageId]);
 

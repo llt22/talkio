@@ -4,7 +4,7 @@
 // Strategy:
 // - Mobile (iOS/Android): always use Tauri fetch (native fetch blocked by CORS)
 // - Desktop: try Tauri fetch first; on ANY error, fall back to native fetch
-//   (CSP connect-src * in tauri.conf.json allows native fetch to reach all URLs)
+//   (CSP connect-src * http: https: in tauri.conf.json allows native fetch to reach all URLs)
 import { isTauri, isMobile as _isMobile } from "./platform";
 
 let _tauriFetch: typeof globalThis.fetch | null = null;
