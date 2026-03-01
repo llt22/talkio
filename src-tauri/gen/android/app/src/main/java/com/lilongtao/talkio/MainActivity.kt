@@ -26,14 +26,12 @@ class MainActivity : TauriActivity() {
             "(function(){ if(window.__stackflowBack) return window.__stackflowBack(); return false; })()"
           ) { result ->
             if (result == "false" || result == "null") {
-              // stackflow is at root, allow default behavior (exit app)
-              isEnabled = false
-              onBackPressedDispatcher.onBackPressed()
+              // stackflow is at root, minimize to background instead of exiting
+              moveTaskToBack(true)
             }
           }
         } else {
-          isEnabled = false
-          onBackPressedDispatcher.onBackPressed()
+          moveTaskToBack(true)
         }
       }
     })

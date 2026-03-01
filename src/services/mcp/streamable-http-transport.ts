@@ -12,7 +12,6 @@ let tauriFetchPromise: Promise<typeof globalThis.fetch | null> | null = null;
 
 function getTauriFetch(): Promise<typeof globalThis.fetch | null> {
   if (tauriFetchPromise) return tauriFetchPromise;
-  // Use centralized platform detection
   if (isTauri) {
     tauriFetchPromise = import("@tauri-apps/plugin-http")
       .then((mod) => {
@@ -41,7 +40,8 @@ class EventSourceParser {
   parse(chunk: string): { event?: string; data: string; id?: string }[] {
     this.buffer += chunk;
     const events: { event?: string; data: string; id?: string }[] = [];
-    const lines = this.buffer.split("\n");
+    // Normalize \r\n and lone \r to \n before splitting (SSE spec allows all three)
+    const lines = this.buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
     this.buffer = lines.pop() || "";
 
     let currentEvent: { event?: string; data: string; id?: string } = { data: "" };
@@ -130,35 +130,56 @@ export class StreamableHTTPClientTransport implements Transport {
   }
 
   private async handleSseResponse(response: Response): Promise<void> {
-    if (!response.body) return;
+    // Try streaming via ReadableStream first; if unavailable (e.g. Tauri on Android),
+    // fall back to reading the full response text and parsing it.
+    if (response.body && typeof response.body.getReader === "function") {
+      try {
+        const parser = new EventSourceParser();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
 
-    const parser = new EventSourceParser();
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
 
-    try {
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            const events = parser.parse(chunk);
 
-        const chunk = decoder.decode(value, { stream: true });
-        const events = parser.parse(chunk);
-
-        for (const event of events) {
-          if (!event.event || event.event === "message") {
-            try {
-              const message = JSONRPCMessageSchema.parse(JSON.parse(event.data));
-              this.onmessage?.(message);
-            } catch (error) {
-              this.handleError(error as Error);
+            for (const event of events) {
+              if (!event.event || event.event === "message") {
+                try {
+                  const message = JSONRPCMessageSchema.parse(JSON.parse(event.data));
+                  this.onmessage?.(message);
+                } catch (error) {
+                  this.handleError(error as Error);
+                }
+              }
             }
           }
+          return;
+        } finally {
+          reader.releaseLock();
+        }
+      } catch {
+        // ReadableStream failed (common on Tauri Android), fall through to text fallback
+      }
+    }
+
+    // Fallback: read full response text and parse SSE events
+    const text = await response.text();
+    if (!text.trim()) return;
+    const parser = new EventSourceParser();
+    const events = parser.parse(text + "\n");
+    for (const event of events) {
+      if (!event.event || event.event === "message") {
+        try {
+          const message = JSONRPCMessageSchema.parse(JSON.parse(event.data));
+          this.onmessage?.(message);
+        } catch (error) {
+          this.handleError(error as Error);
         }
       }
-    } catch (error) {
-      this.handleError(error as Error);
-    } finally {
-      reader.releaseLock();
     }
   }
 

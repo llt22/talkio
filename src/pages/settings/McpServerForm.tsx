@@ -134,9 +134,14 @@ export function McpServerForm({
       appAlert(t("toolEdit.testSuccess", { count: tools.length }));
       mcpConnectionManager.disconnect(tempServer.id);
     } catch (err) {
-      appAlert(
-        `${t("toolEdit.testFailed")}: ${err instanceof Error ? err.message : "Unknown error"}`,
-      );
+      let errMsg = err instanceof Error ? err.message : "Unknown error";
+      // Detect SSL/certificate errors (Tauri rustls dumps sha256 fingerprints)
+      if (errMsg.includes("sha256") || errMsg.includes("certificate") || errMsg.includes("Certificate")) {
+        errMsg = "SSL certificate verification failed. This server may not be supported on mobile.";
+      } else if (errMsg.length > 200) {
+        errMsg = errMsg.slice(0, 200) + "…";
+      }
+      appAlert(`${t("toolEdit.testFailed")}: ${errMsg}`);
       mcpConnectionManager.disconnect(tempServer.id);
     } finally {
       setTesting(false);
