@@ -162,7 +162,7 @@ export class StreamableHTTPClientTransport implements Transport {
           reader.releaseLock();
         }
       } catch {
-        // ReadableStream failed (common on Tauri Android), fall through to text fallback
+        // ReadableStream failed, fall through to text fallback
       }
     }
 
@@ -217,14 +217,27 @@ export class StreamableHTTPClientTransport implements Transport {
         return;
       }
 
-      const contentType = response.headers.get("content-type") ?? "";
-      if (contentType.includes("text/event-stream")) {
-        await this.handleSseResponse(response);
-        return;
-      }
-
+      // Read full response text (avoids ReadableStream hanging in Tauri)
       const text = await response.text();
       if (!text.trim()) return;
+
+      const contentType = response.headers.get("content-type") ?? "";
+
+      if (contentType.includes("text/event-stream")) {
+        const parser = new EventSourceParser();
+        const events = parser.parse(text + "\n");
+        for (const event of events) {
+          if (!event.event || event.event === "message") {
+            try {
+              const msg = JSONRPCMessageSchema.parse(JSON.parse(event.data));
+              this.onmessage?.(msg);
+            } catch (error) {
+              this.handleError(error as Error);
+            }
+          }
+        }
+        return;
+      }
 
       if (contentType.includes("application/json")) {
         const data = JSON.parse(text);
