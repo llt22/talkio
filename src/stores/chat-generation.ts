@@ -545,7 +545,10 @@ export async function generateForParticipant(
     // Build API messages with compression
     const allMessages = await getRecentMessages(ctx.cid, ctx.activeBranchId, MAX_HISTORY);
     const filtered = allMessages.filter(
-      (m) => m.status === MessageStatus.SUCCESS || m.id === ctx.userMsg.id,
+      (m) =>
+        m.status === MessageStatus.SUCCESS ||
+        m.status === MessageStatus.PAUSED ||
+        m.id === ctx.userMsg.id,
     );
 
     // Read workspace tree if workspace dir is set
@@ -652,7 +655,7 @@ export async function generateForParticipant(
           content: sm.content,
           reasoningContent: sm.reasoning || null,
           isStreaming: false,
-          status: MessageStatus.SUCCESS,
+          status: MessageStatus.PAUSED,
         });
         notifyDbChange("messages", ctx.cid);
       }
