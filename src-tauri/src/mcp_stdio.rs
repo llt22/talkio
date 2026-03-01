@@ -99,7 +99,7 @@ pub async fn mcp_stdio_start(
 
         let merged = paths.join(":");
         cmd.env("PATH", &merged);
-        log::info!("[MCP stdio] PATH set to: {}", merged);
+        log::debug!("[MCP stdio] PATH set to: {}", merged);
     }
 
     cmd.stdin(std::process::Stdio::piped());
@@ -111,7 +111,8 @@ pub async fn mcp_stdio_start(
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
 
-    log::info!("[MCP stdio] Spawning: {} {:?} env={:?}", command, args, env);
+    log::info!("[MCP stdio] Spawning: {} {:?}", command, args);
+    log::debug!("[MCP stdio] env={:?}", env);
     let mut child = cmd.spawn().map_err(|e| {
         log::error!("[MCP stdio] Spawn failed: {}", e);
         format!("Failed to spawn MCP process '{}': {}", command, e)
