@@ -12,7 +12,7 @@ const IDENTITIES_KEY = "identities";
 const PRESET_VERSION_KEY = "preset_identities_version";
 
 const DEFAULT_IDENTITY_PARAMS = { temperature: 0.7, topP: 0.9 };
-const PRESET_IDENTITIES_VERSION = 2;
+const PRESET_IDENTITIES_VERSION = 3;
 const PRESET_IDENTITIES = [
   { nameKey: "presets.socrates.name", icon: "research", promptKey: "presets.socrates.prompt" },
   { nameKey: "presets.blunt.name", icon: "security", promptKey: "presets.blunt.prompt" },
@@ -25,6 +25,16 @@ const PRESET_IDENTITIES = [
   { nameKey: "presets.divergent.name", icon: "design", promptKey: "presets.divergent.prompt" },
   { nameKey: "presets.roast.name", icon: "finance", promptKey: "presets.roast.prompt" },
   { nameKey: "presets.humor.name", icon: "marketing", promptKey: "presets.humor.prompt" },
+  { nameKey: "presets.debate.name", icon: "translate", promptKey: "presets.debate.prompt" },
+  { nameKey: "presets.eli5.name", icon: "writing", promptKey: "presets.eli5.prompt" },
+  { nameKey: "presets.detective.name", icon: "security", promptKey: "presets.detective.prompt" },
+  { nameKey: "presets.motivator.name", icon: "general", promptKey: "presets.motivator.prompt" },
+  {
+    nameKey: "presets.timeTraveler.name",
+    icon: "research",
+    promptKey: "presets.timeTraveler.prompt",
+  },
+  { nameKey: "presets.nonsense.name", icon: "finance", promptKey: "presets.nonsense.prompt" },
 ];
 
 interface IdentityState {

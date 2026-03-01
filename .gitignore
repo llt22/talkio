@@ -42,6 +42,8 @@ src-tauri/target/
 # Local drafts
 docs/forum-post.md
 docs/release-*.md
+docs/review*.md
+plans/
 
 # Environment
 .env
