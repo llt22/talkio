@@ -11,6 +11,7 @@ export interface BackupData {
   models: any[];
   identities: any[];
   mcpServers: any[];
+  settings?: any;
 }
 
 export function createBackup(): BackupData {
@@ -21,6 +22,7 @@ export function createBackup(): BackupData {
     models: kvStore.getObject("models") ?? [],
     identities: kvStore.getObject("identities") ?? [],
     mcpServers: kvStore.getObject("mcp_servers") ?? [],
+    settings: kvStore.getObject("settings") ?? null,
   };
 }
 
@@ -30,11 +32,12 @@ export async function downloadBackup(data: BackupData): Promise<boolean> {
 
   if ((window as any).__TAURI_INTERNALS__) {
     // Mobile (Android/iOS): share file via native bridge
+    // Return false so caller skips the "export success" alert — the share sheet itself is feedback enough.
     const nativeShare = (window as any).NativeShare;
     if (nativeShare) {
       try {
         nativeShare.shareFile(defaultName, json, "application/json");
-        return true;
+        return false;
       } catch {
         // fall through to save dialog
       }
@@ -69,7 +72,7 @@ export interface ImportResult {
   success: boolean;
   errorCode?: "UNSUPPORTED_VERSION" | "PARSE_ERROR";
   errorDetail?: string;
-  counts?: { providers: number; models: number; identities: number; mcpServers: number };
+  counts?: { providers: number; models: number; identities: number; mcpServers: number; settings: boolean };
 }
 
 export function importBackupFromString(text: string): ImportResult {
@@ -84,6 +87,7 @@ export function importBackupFromString(text: string): ImportResult {
     if (data.models) kvStore.setObject("models", data.models);
     if (data.identities) kvStore.setObject("identities", data.identities);
     if (data.mcpServers) kvStore.setObject("mcp_servers", data.mcpServers);
+    if (data.settings) kvStore.setObject("settings", data.settings);
 
     return {
       success: true,
@@ -92,6 +96,7 @@ export function importBackupFromString(text: string): ImportResult {
         models: data.models?.length ?? 0,
         identities: data.identities?.length ?? 0,
         mcpServers: data.mcpServers?.length ?? 0,
+        settings: !!data.settings,
       },
     };
   } catch (err) {
