@@ -1,9 +1,4 @@
-import type {
-  ChatApiRequest,
-  ChatApiResponse,
-  Provider,
-  ProviderType,
-} from "../types";
+import type { ChatApiRequest, ChatApiResponse, Provider, ProviderType } from "../types";
 import { appFetch } from "../lib/http";
 
 export class ApiClient {
@@ -97,7 +92,8 @@ export class ApiClient {
           if (part.type === "image_url") {
             const url = part.image_url?.url ?? "";
             const m = url.match(/^data:([^;]+);base64,(.+)$/);
-            if (m) return { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } };
+            if (m)
+              return { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } };
             return { type: "image", source: { type: "url", url } };
           }
           return part;
@@ -106,7 +102,8 @@ export class ApiClient {
       // Merge consecutive same-role messages (Anthropic requirement)
       if (messages.length > 0 && messages[messages.length - 1].role === msg.role) {
         const prev = messages[messages.length - 1];
-        const toArr = (c: unknown) => typeof c === "string" ? [{ type: "text", text: c }] : (c as unknown[]);
+        const toArr = (c: unknown) =>
+          typeof c === "string" ? [{ type: "text", text: c }] : (c as unknown[]);
         prev.content = [...toArr(prev.content), ...toArr(content)];
       } else {
         messages.push({ role: msg.role, content });
@@ -136,19 +133,45 @@ export class ApiClient {
   private fromAnthropicResponse(data: any): ChatApiResponse {
     let content = "";
     let reasoningContent: string | null = null;
-    const toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }> = [];
+    const toolCalls: Array<{
+      id: string;
+      type: "function";
+      function: { name: string; arguments: string };
+    }> = [];
     for (const block of data.content ?? []) {
       if (block.type === "text") content += block.text;
-      else if (block.type === "thinking") reasoningContent = (reasoningContent ?? "") + block.thinking;
+      else if (block.type === "thinking")
+        reasoningContent = (reasoningContent ?? "") + block.thinking;
       else if (block.type === "tool_use") {
-        toolCalls.push({ id: block.id, type: "function", function: { name: block.name, arguments: JSON.stringify(block.input) } });
+        toolCalls.push({
+          id: block.id,
+          type: "function",
+          function: { name: block.name, arguments: JSON.stringify(block.input) },
+        });
       }
     }
     return {
       id: data.id,
-      choices: [{ index: 0, message: { role: "assistant", content, reasoning_content: reasoningContent, tool_calls: toolCalls.length > 0 ? toolCalls : undefined }, finish_reason: data.stop_reason === "end_turn" ? "stop" : (data.stop_reason ?? "stop") }],
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content,
+            reasoning_content: reasoningContent,
+            tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+          },
+          finish_reason: data.stop_reason === "end_turn" ? "stop" : (data.stop_reason ?? "stop"),
+        },
+      ],
       model: data.model,
-      usage: data.usage ? { prompt_tokens: data.usage.input_tokens ?? 0, completion_tokens: data.usage.output_tokens ?? 0, total_tokens: (data.usage.input_tokens ?? 0) + (data.usage.output_tokens ?? 0) } : undefined,
+      usage: data.usage
+        ? {
+            prompt_tokens: data.usage.input_tokens ?? 0,
+            completion_tokens: data.usage.output_tokens ?? 0,
+            total_tokens: (data.usage.input_tokens ?? 0) + (data.usage.output_tokens ?? 0),
+          }
+        : undefined,
     };
   }
 
@@ -156,7 +179,9 @@ export class ApiClient {
 
   private async listModelsGemini(): Promise<Array<{ id: string; object: string }>> {
     const url = `${this.baseUrl}/models?key=${this.apiKey}`;
-    const response = await this.fetchWithRetry(url, { headers: { ...this.customHeaders, "x-goog-api-key": this.apiKey } });
+    const response = await this.fetchWithRetry(url, {
+      headers: { ...this.customHeaders, "x-goog-api-key": this.apiKey },
+    });
     if (!response.ok) throw new Error(`Failed to list models: ${response.status}`);
     const data = await response.json();
     return (data.models ?? []).map((m: any) => ({
@@ -170,7 +195,11 @@ export class ApiClient {
     const url = `${this.baseUrl}/models/${request.model}:generateContent?key=${this.apiKey}`;
     const response = await this.fetchWithRetry(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...this.customHeaders, "x-goog-api-key": this.apiKey },
+      headers: {
+        "Content-Type": "application/json",
+        ...this.customHeaders,
+        "x-goog-api-key": this.apiKey,
+      },
       body: JSON.stringify(body),
     });
     if (!response.ok) {
@@ -187,7 +216,9 @@ export class ApiClient {
 
     for (const msg of request.messages) {
       if (msg.role === "system") {
-        systemInstruction = { parts: [{ text: typeof msg.content === "string" ? msg.content : "" }] };
+        systemInstruction = {
+          parts: [{ text: typeof msg.content === "string" ? msg.content : "" }],
+        };
         continue;
       }
       const role = msg.role === "assistant" ? "model" : "user";
@@ -221,11 +252,21 @@ export class ApiClient {
     // Map reasoning_effort to Gemini's thinkingConfig
     if ((request as any).reasoning_effort) {
       const budgetMap: Record<string, number> = { low: 1024, medium: 8192, high: 24576 };
-      genConfig.thinkingConfig = { thinkingBudget: budgetMap[(request as any).reasoning_effort] ?? 8192 };
+      genConfig.thinkingConfig = {
+        thinkingBudget: budgetMap[(request as any).reasoning_effort] ?? 8192,
+      };
     }
     if (Object.keys(genConfig).length > 0) body.generationConfig = genConfig;
     if (request.tools) {
-      body.tools = [{ functionDeclarations: request.tools.map((t) => ({ name: t.function.name, description: t.function.description, parameters: t.function.parameters })) }];
+      body.tools = [
+        {
+          functionDeclarations: request.tools.map((t) => ({
+            name: t.function.name,
+            description: t.function.description,
+            parameters: t.function.parameters,
+          })),
+        },
+      ];
     }
     return body;
   }
@@ -234,20 +275,50 @@ export class ApiClient {
     const candidate = data.candidates?.[0];
     let content = "";
     let reasoningContent: string | null = null;
-    const toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }> = [];
+    const toolCalls: Array<{
+      id: string;
+      type: "function";
+      function: { name: string; arguments: string };
+    }> = [];
     for (const part of candidate?.content?.parts ?? []) {
       if (part.thought === true && part.text !== undefined) {
         reasoningContent = (reasoningContent ?? "") + part.text;
       } else if (part.text !== undefined) {
         content += part.text;
       }
-      if (part.functionCall) toolCalls.push({ id: part.functionCall.name, type: "function", function: { name: part.functionCall.name, arguments: JSON.stringify(part.functionCall.args ?? {}) } });
+      if (part.functionCall)
+        toolCalls.push({
+          id: part.functionCall.name,
+          type: "function",
+          function: {
+            name: part.functionCall.name,
+            arguments: JSON.stringify(part.functionCall.args ?? {}),
+          },
+        });
     }
     return {
       id: data.id ?? "gemini",
-      choices: [{ index: 0, message: { role: "assistant", content, reasoning_content: reasoningContent, tool_calls: toolCalls.length > 0 ? toolCalls : undefined }, finish_reason: candidate?.finishReason === "STOP" ? "stop" : (candidate?.finishReason ?? "stop") }],
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content,
+            reasoning_content: reasoningContent,
+            tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+          },
+          finish_reason:
+            candidate?.finishReason === "STOP" ? "stop" : (candidate?.finishReason ?? "stop"),
+        },
+      ],
       model: data.modelVersion ?? "gemini",
-      usage: data.usageMetadata ? { prompt_tokens: data.usageMetadata.promptTokenCount ?? 0, completion_tokens: data.usageMetadata.candidatesTokenCount ?? 0, total_tokens: data.usageMetadata.totalTokenCount ?? 0 } : undefined,
+      usage: data.usageMetadata
+        ? {
+            prompt_tokens: data.usageMetadata.promptTokenCount ?? 0,
+            completion_tokens: data.usageMetadata.candidatesTokenCount ?? 0,
+            total_tokens: data.usageMetadata.totalTokenCount ?? 0,
+          }
+        : undefined,
     };
   }
 
@@ -269,9 +340,7 @@ export class ApiClient {
       name: `recording.${ext}`,
       type: mimeMap[ext] ?? "audio/mp4",
     } as unknown as Blob);
-    const defaultModel = this.baseUrl.includes("groq.com")
-      ? "whisper-large-v3-turbo"
-      : "whisper-1";
+    const defaultModel = this.baseUrl.includes("groq.com") ? "whisper-large-v3-turbo" : "whisper-1";
     formData.append("model", sttModel || defaultModel);
     if (language) formData.append("language", language);
 

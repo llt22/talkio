@@ -9,13 +9,19 @@ import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { JSONRPCMessageSchema } from "@modelcontextprotocol/sdk/types.js";
 import { isTauri, isDesktop } from "../../lib/platform";
 
-let invokePromise: Promise<((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null> | null = null;
+let invokePromise: Promise<
+  ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null
+> | null = null;
 
-function getTauriInvoke(): Promise<((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null> {
+function getTauriInvoke(): Promise<
+  ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null
+> {
   if (invokePromise) return invokePromise;
   if (isTauri) {
     invokePromise = import("@tauri-apps/api/core")
-      .then((mod) => mod.invoke as (cmd: string, args?: Record<string, unknown>) => Promise<unknown>)
+      .then(
+        (mod) => mod.invoke as (cmd: string, args?: Record<string, unknown>) => Promise<unknown>,
+      )
       .catch(() => null);
   } else {
     invokePromise = Promise.resolve(null);
@@ -52,11 +58,11 @@ export class TauriStdioTransport implements Transport {
     }
 
     try {
-      this.sessionId = await this.invoke("mcp_stdio_start", {
+      this.sessionId = (await this.invoke("mcp_stdio_start", {
         command: this.command,
         args: this.args,
         env: this.env ?? {},
-      }) as string;
+      })) as string;
       this._started = true;
       console.log("[MCP Stdio] Session started:", this.sessionId);
     } catch (err) {
@@ -72,10 +78,10 @@ export class TauriStdioTransport implements Transport {
     }
 
     try {
-      const responseStr = await this.invoke("mcp_stdio_send", {
+      const responseStr = (await this.invoke("mcp_stdio_send", {
         sessionId: this.sessionId,
         message: JSON.stringify(message),
-      }) as string;
+      })) as string;
 
       if (responseStr && responseStr.trim()) {
         try {

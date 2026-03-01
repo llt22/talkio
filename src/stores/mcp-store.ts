@@ -42,7 +42,10 @@ interface McpState {
   addServer: (data: Omit<McpServerConfig, "id" | "createdAt">) => McpServerConfig;
   updateServer: (id: string, updates: Partial<McpServerConfig>) => void;
   deleteServer: (id: string) => void;
-  setConnectionStatus: (serverId: string, status: "disconnected" | "connecting" | "connected" | "error") => void;
+  setConnectionStatus: (
+    serverId: string,
+    status: "disconnected" | "connecting" | "connected" | "error",
+  ) => void;
   setTools: (serverId: string, tools: McpTool[]) => void;
   getToolsByServer: (serverId: string) => McpTool[];
   getAllEnabledTools: () => McpTool[];
@@ -110,7 +113,11 @@ export const useMcpStore = create<McpState>((set, get) => ({
 
   getToolsByServer: (serverId) => get().tools.filter((t) => t.serverId === serverId),
   getAllEnabledTools: () => {
-    const enabledServerIds = new Set(get().servers.filter((s) => s.enabled).map((s) => s.id));
+    const enabledServerIds = new Set(
+      get()
+        .servers.filter((s) => s.enabled)
+        .map((s) => s.id),
+    );
     return get().tools.filter((t) => enabledServerIds.has(t.serverId));
   },
 }));

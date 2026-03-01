@@ -1,7 +1,19 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
-import { MessageSquare, Bot, Compass, Settings, Plus, Trash2, Eraser, Search, MoreHorizontal, Users, Pencil } from "lucide-react";
+import {
+  MessageSquare,
+  Bot,
+  Compass,
+  Settings,
+  Plus,
+  Trash2,
+  Eraser,
+  Search,
+  MoreHorizontal,
+  Users,
+  Pencil,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ModelPicker } from "../shared/ModelPicker";
 import { AddMemberPicker, type SelectedMember } from "../shared/AddMemberPicker";
@@ -24,11 +36,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "../ui/context-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "../ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import type { Conversation, ConversationParticipant } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useConfirm } from "../shared/ConfirmDialogProvider";
@@ -54,15 +62,21 @@ export function DesktopLayout() {
   const isResizing = useRef(false);
 
   // Keyboard shortcuts
-  useHotkeys("mod+n", () => {
-    setActiveSection("chats");
-    document.querySelector<HTMLButtonElement>("[data-new-chat]")?.click();
-  }, { preventDefault: true });
+  useHotkeys(
+    "mod+n",
+    () => {
+      setActiveSection("chats");
+      document.querySelector<HTMLButtonElement>("[data-new-chat]")?.click();
+    },
+    { preventDefault: true },
+  );
   useHotkeys("mod+shift+s", () => setActiveSection("settings"), { preventDefault: true });
   useHotkeys("mod+,", () => setActiveSection("settings"), { preventDefault: true });
 
   const sidebarWidthRef = useRef(sidebarWidth);
-  useEffect(() => { sidebarWidthRef.current = sidebarWidth; }, [sidebarWidth]);
+  useEffect(() => {
+    sidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -93,17 +107,17 @@ export function DesktopLayout() {
   return (
     <div className="flex h-full">
       {/* Icon Navigation Bar (WeChat-style) */}
-      <div className="flex-shrink-0 w-14 bg-sidebar border-r border-sidebar-border flex flex-col items-center py-4 gap-1">
-        {([
+      <div className="bg-sidebar border-sidebar-border flex w-14 flex-shrink-0 flex-col items-center gap-1 border-r py-4">
+        {[
           { id: "chats" as DesktopSection, icon: MessageSquare, label: t("tabs.chats") },
           { id: "experts" as DesktopSection, icon: Bot, label: t("tabs.models") },
           { id: "discover" as DesktopSection, icon: Compass, label: t("tabs.personas") },
-        ]).map(({ id, icon: Icon, label }) => (
+        ].map(({ id, icon: Icon, label }) => (
           <Tooltip key={id}>
             <TooltipTrigger asChild>
               <button
                 onClick={() => setActiveSection(id)}
-                className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${
+                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
                   activeSection === id
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -122,7 +136,7 @@ export function DesktopLayout() {
           <TooltipTrigger asChild>
             <button
               onClick={() => setActiveSection("settings")}
-              className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${
+              className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
                 activeSection === "settings"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -137,26 +151,32 @@ export function DesktopLayout() {
 
       {/* Middle Panel — only shown for chats section */}
       {activeSection === "chats" && (
-        <div className="flex-shrink-0 bg-sidebar border-r border-sidebar-border overflow-y-auto relative" style={{ width: sidebarWidth }}>
+        <div
+          className="bg-sidebar border-sidebar-border relative flex-shrink-0 overflow-y-auto border-r"
+          style={{ width: sidebarWidth }}
+        >
           <DesktopConversationList />
 
           {/* Resize handle */}
           <div
-            className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 active:bg-primary/30 transition-colors z-10"
+            className="hover:bg-primary/20 active:bg-primary/30 absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize transition-colors"
             onMouseDown={handleResizeStart}
           />
         </div>
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 min-w-0 bg-background">
+      <div className="bg-background min-w-0 flex-1">
         {activeSection === "settings" ? (
           <SettingsPage />
         ) : activeSection === "discover" ? (
           <DiscoverPage />
         ) : activeSection === "experts" ? (
           <ModelsPage
-            onNavigateToChat={(convId) => { setCurrentConversation(convId); setActiveSection("chats"); }}
+            onNavigateToChat={(convId) => {
+              setCurrentConversation(convId);
+              setActiveSection("chats");
+            }}
             onCreateGroup={() => setShowCreateGroupPicker(true)}
           />
         ) : activeSection === "chats" && currentConversationId ? (
@@ -199,8 +219,8 @@ function DesktopConversationList() {
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return conversations;
     const q = searchQuery.toLowerCase();
-    return conversations.filter((c) =>
-      c.title.toLowerCase().includes(q) || (c.lastMessage ?? "").toLowerCase().includes(q)
+    return conversations.filter(
+      (c) => c.title.toLowerCase().includes(q) || (c.lastMessage ?? "").toLowerCase().includes(q),
     );
   }, [conversations, searchQuery]);
 
@@ -218,19 +238,28 @@ function DesktopConversationList() {
     setShowModelPicker(true);
   }, [enabledModels, createConversation, setCurrentConversation]);
 
-  const handleModelSelect = useCallback(async (modelId: string) => {
-    const conv = await createConversation(modelId);
-    setCurrentConversation(conv.id);
-  }, [createConversation, setCurrentConversation]);
+  const handleModelSelect = useCallback(
+    async (modelId: string) => {
+      const conv = await createConversation(modelId);
+      setCurrentConversation(conv.id);
+    },
+    [createConversation, setCurrentConversation],
+  );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-sidebar-border">
-        <h2 className="text-sm font-semibold text-sidebar-foreground">{t("tabs.chats")}</h2>
+      <div className="border-sidebar-border flex flex-shrink-0 items-center justify-between border-b px-4 py-3">
+        <h2 className="text-sidebar-foreground text-sm font-semibold">{t("tabs.chats")}</h2>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" data-new-chat onClick={handleNew}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-md"
+              data-new-chat
+              onClick={handleNew}
+            >
               <Plus size={16} />
             </Button>
           </TooltipTrigger>
@@ -246,13 +275,16 @@ function DesktopConversationList() {
 
       {/* Search */}
       <div className="px-3 pb-2">
-        <div className="flex items-center gap-2 rounded-xl px-2.5 py-1.5" style={{ backgroundColor: "var(--secondary)" }}>
+        <div
+          className="flex items-center gap-2 rounded-xl px-2.5 py-1.5"
+          style={{ backgroundColor: "var(--secondary)" }}
+        >
           <Search size={14} className="text-muted-foreground flex-shrink-0" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("chats.searchChats")}
-            className="flex-1 text-[13px] bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
+            className="text-foreground placeholder:text-muted-foreground/50 flex-1 bg-transparent text-[13px] outline-none"
           />
         </div>
       </div>
@@ -261,7 +293,9 @@ function DesktopConversationList() {
       <div ref={animateRef} className="flex-1 overflow-y-auto py-1">
         {filteredConversations.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <p className="text-xs text-muted-foreground">{searchQuery ? t("chats.noResults") : t("chats.noConversations")}</p>
+            <p className="text-muted-foreground text-xs">
+              {searchQuery ? t("chats.noResults") : t("chats.noConversations")}
+            </p>
           </div>
         ) : (
           filteredConversations.map((conv) => (
@@ -305,41 +339,50 @@ function DesktopConversationItem({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
-          className={`group relative flex items-center gap-2.5 px-3 py-2.5 mx-1 rounded-lg cursor-pointer transition-colors ${
+          className={`group relative mx-1 flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors ${
             isActive ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
           }`}
           onClick={onSelect}
         >
           {conversation.type === "group" ? (
-            <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-primary/15">
+            <div className="bg-primary/15 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full">
               <Users size={15} className="text-primary" />
             </div>
           ) : (
             <div
-              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
               style={{ backgroundColor: getAvatarProps(conversation.title).color }}
             >
               {getAvatarProps(conversation.title).initials}
             </div>
           )}
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             {isRenaming ? (
               <input
                 autoFocus
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
-                onBlur={() => { onRename(renameValue); setIsRenaming(false); }}
-                onKeyDown={(e) => { if (e.key === "Enter") { onRename(renameValue); setIsRenaming(false); } if (e.key === "Escape") setIsRenaming(false); }}
+                onBlur={() => {
+                  onRename(renameValue);
+                  setIsRenaming(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    onRename(renameValue);
+                    setIsRenaming(false);
+                  }
+                  if (e.key === "Escape") setIsRenaming(false);
+                }}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[13px] font-medium text-sidebar-foreground bg-transparent border-b border-primary outline-none w-full"
+                className="text-sidebar-foreground border-primary w-full border-b bg-transparent text-[13px] font-medium outline-none"
               />
             ) : (
-              <p className="text-[13px] font-medium text-sidebar-foreground truncate">
+              <p className="text-sidebar-foreground truncate text-[13px] font-medium">
                 {conversation.title}
               </p>
             )}
             {conversation.lastMessage && (
-              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+              <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
                 {conversation.lastMessage}
               </p>
             )}
@@ -349,7 +392,7 @@ function DesktopConversationItem({
           <DropdownMenu open={showMenu} onOpenChange={setShowMenu}>
             <DropdownMenuTrigger asChild>
               <button
-                className={`flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md transition-opacity ${
+                className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md transition-opacity ${
                   showMenu ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                 } hover:bg-sidebar-accent`}
                 onClick={(e) => e.stopPropagation()}
@@ -360,14 +403,20 @@ function DesktopConversationItem({
             <DropdownMenuContent align="end" className="w-36">
               <DropdownMenuItem
                 className="text-xs"
-                onClick={(e) => { e.stopPropagation(); onClear(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClear();
+                }}
               >
                 <Eraser size={14} className="mr-2" />
                 {t("chat.clearHistory")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive text-xs"
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
               >
                 <Trash2 size={14} className="mr-2" />
                 {t("common.delete")}
@@ -377,7 +426,13 @@ function DesktopConversationItem({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-40">
-        <ContextMenuItem className="text-xs" onClick={() => { setRenameValue(conversation.title); setIsRenaming(true); }}>
+        <ContextMenuItem
+          className="text-xs"
+          onClick={() => {
+            setRenameValue(conversation.title);
+            setIsRenaming(true);
+          }}
+        >
           <Pencil size={14} className="mr-2" />
           {t("chat.rename")}
         </ContextMenuItem>
@@ -385,7 +440,10 @@ function DesktopConversationItem({
           <Eraser size={14} className="mr-2" />
           {t("chat.clearHistory")}
         </ContextMenuItem>
-        <ContextMenuItem className="text-destructive focus:text-destructive text-xs" onClick={onDelete}>
+        <ContextMenuItem
+          className="text-destructive focus:text-destructive text-xs"
+          onClick={onDelete}
+        >
           <Trash2 size={14} className="mr-2" />
           {t("common.delete")}
         </ContextMenuItem>
@@ -397,12 +455,10 @@ function DesktopConversationItem({
 function DesktopEmptyState({ section }: { section: DesktopSection }) {
   const { t } = useTranslation();
   return (
-    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-      <img src="/logo.png" alt="Talkio" className="h-32 w-32 mb-4 object-contain" />
+    <div className="text-muted-foreground flex h-full flex-col items-center justify-center">
+      <img src="/logo.png" alt="Talkio" className="mb-4 h-32 w-32 object-contain" />
       <p className="text-lg font-medium">Talkio</p>
-      <p className="text-sm mt-1 text-muted-foreground/60">
-        {t("chats.startConversation")}
-      </p>
+      <p className="text-muted-foreground/60 mt-1 text-sm">{t("chats.startConversation")}</p>
     </div>
   );
 }

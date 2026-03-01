@@ -16,7 +16,7 @@ const LinkComponent = ({ href, children, ...props }: any) => (
     href={href}
     target="_blank"
     rel="noopener noreferrer"
-    className="text-primary underline underline-offset-2 hover:text-primary/80"
+    className="text-primary hover:text-primary/80 underline underline-offset-2"
     {...props}
   >
     {children}
@@ -51,7 +51,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   );
 
   return (
-    <div className="prose prose-sm max-w-none text-foreground overflow-hidden">
+    <div className="prose prose-sm text-foreground max-w-none overflow-hidden">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}

@@ -3,11 +3,28 @@ import { createHighlighter, type Highlighter } from "shiki";
 let highlighterPromise: Promise<Highlighter> | null = null;
 
 const PRELOADED_LANGS = [
-  "javascript", "typescript", "jsx", "tsx",
-  "python", "rust", "go", "java", "c", "cpp",
-  "html", "css", "json", "yaml", "toml",
-  "bash", "shell", "sql", "markdown",
-  "swift", "kotlin", "dart",
+  "javascript",
+  "typescript",
+  "jsx",
+  "tsx",
+  "python",
+  "rust",
+  "go",
+  "java",
+  "c",
+  "cpp",
+  "html",
+  "css",
+  "json",
+  "yaml",
+  "toml",
+  "bash",
+  "shell",
+  "sql",
+  "markdown",
+  "swift",
+  "kotlin",
+  "dart",
 ];
 
 export function getHighlighter(): Promise<Highlighter> {

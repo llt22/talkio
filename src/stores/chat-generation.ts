@@ -21,7 +21,11 @@ import {
 } from "../storage/database";
 import { notifyDbChange } from "../hooks/useDatabase";
 import { getBuiltInToolDefs, executeBuiltInTool } from "../services/built-in-tools";
-import { executeMcpToolByName, getMcpToolDefsForIdentity, refreshMcpConnections } from "../services/mcp";
+import {
+  executeMcpToolByName,
+  getMcpToolDefsForIdentity,
+  refreshMcpConnections,
+} from "../services/mcp";
 import { generateId } from "../lib/id";
 import { consumeOpenAIChatCompletionsSse } from "../services/openai-chat-sse";
 import { buildProviderHeaders } from "../services/provider-headers";
@@ -147,10 +151,12 @@ async function executeOneTool(
   allowedServerIds: string[] | undefined,
 ): Promise<{ toolCallId?: string; content: string }> {
   const builtInGloballyEnabled = builtInEnabledByName[name] !== false;
-  const builtInEnabledForIdentity = !!identity && allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(name);
-  const builtIn = (builtInGloballyEnabled || builtInEnabledForIdentity)
-    ? await executeBuiltInTool(name, args)
-    : null;
+  const builtInEnabledForIdentity =
+    !!identity && allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(name);
+  const builtIn =
+    builtInGloballyEnabled || builtInEnabledForIdentity
+      ? await executeBuiltInTool(name, args)
+      : null;
   if (builtIn) return { content: builtIn.success ? builtIn.content : `Error: ${builtIn.error}` };
 
   const remote = await executeMcpToolByName(name, args, allowedServerIds);
@@ -161,7 +167,11 @@ async function executeOneTool(
 
 /** Parse tool call arguments safely */
 function parseToolArgs(argsStr: string): Record<string, unknown> {
-  try { return JSON.parse(argsStr); } catch { return {}; }
+  try {
+    return JSON.parse(argsStr);
+  } catch {
+    return {};
+  }
 }
 
 /** Build the request body for chat completions */
@@ -177,7 +187,9 @@ function buildRequestBody(
     messages: apiMessages,
     stream: true,
     stream_options: { include_usage: true },
-    ...(identity?.params?.temperature !== undefined ? { temperature: identity.params.temperature } : {}),
+    ...(identity?.params?.temperature !== undefined
+      ? { temperature: identity.params.temperature }
+      : {}),
     ...(identity?.params?.topP !== undefined ? { top_p: identity.params.topP } : {}),
     ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
     ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
@@ -271,8 +283,12 @@ async function runToolCallLoop(
   const toolResults: { toolCallId: string; content: string }[] = [];
   for (const tc of acc.pendingToolCalls) {
     const result = await executeOneTool(
-      tc.name, parseToolArgs(tc.arguments),
-      builtInEnabledByName, identity, allowedBuiltInToolNames, allowedServerIds,
+      tc.name,
+      parseToolArgs(tc.arguments),
+      builtInEnabledByName,
+      identity,
+      allowedBuiltInToolNames,
+      allowedServerIds,
     );
     toolResults.push({ toolCallId: tc.id, content: result.content });
   }
@@ -291,25 +307,40 @@ async function runToolCallLoop(
         role: "assistant" as const,
         content: accumulatedContent || null,
         tool_calls: currentToolCalls.map((tc) => ({
-          id: tc.id, type: "function" as const,
+          id: tc.id,
+          type: "function" as const,
           function: { name: tc.name, arguments: tc.arguments },
         })),
       },
       ...currentToolResults.map((tr) => ({
-        role: "tool" as const, tool_call_id: tr.toolCallId, content: tr.content,
+        role: "tool" as const,
+        tool_call_id: tr.toolCallId,
+        content: tr.content,
       })),
     ];
 
     // Stream follow-up
-    ctx.streamingMessages.set(ctx.cid, { messageId: assistantMsgId, content: accumulatedContent, reasoning: fullReasoning });
+    ctx.streamingMessages.set(ctx.cid, {
+      messageId: assistantMsgId,
+      content: accumulatedContent,
+      reasoning: fullReasoning,
+    });
     if (ctx.cid === ctx.getCurrentConversationId()) {
-      ctx.setStoreState({ streamingMessage: { messageId: assistantMsgId, content: accumulatedContent, reasoning: fullReasoning } });
+      ctx.setStoreState({
+        streamingMessage: {
+          messageId: assistantMsgId,
+          content: accumulatedContent,
+          reasoning: fullReasoning,
+        },
+      });
     }
 
     const response = await appFetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers,
-      body: JSON.stringify(buildRequestBody(modelId, toolMessages, identity, reasoningEffort, toolDefs)),
+      body: JSON.stringify(
+        buildRequestBody(modelId, toolMessages, identity, reasoningEffort, toolDefs),
+      ),
       signal: ctx.abortController.signal,
     });
     if (!response.ok) throw new Error(`API Error ${response.status}: ${await response.text()}`);
@@ -318,10 +349,18 @@ async function runToolCallLoop(
 
     let toolContent = accumulatedContent;
     const newToolCalls: { id: string; name: string; arguments: string }[] = [];
-    const flusher = createStreamFlusher(ctx, assistantMsgId, () => toolContent, () => fullReasoning);
+    const flusher = createStreamFlusher(
+      ctx,
+      assistantMsgId,
+      () => toolContent,
+      () => fullReasoning,
+    );
 
     const sseUsage = await consumeOpenAIChatCompletionsSse(reader, (delta) => {
-      if (delta?.content) { toolContent += delta.content; flusher.schedule(); }
+      if (delta?.content) {
+        toolContent += delta.content;
+        flusher.schedule();
+      }
       if (delta?.tool_calls) {
         for (const tc of delta.tool_calls) {
           const idx = tc.index ?? 0;
@@ -332,21 +371,32 @@ async function runToolCallLoop(
         }
       }
     });
-    if (sseUsage) currentTokenUsage = { inputTokens: sseUsage.prompt_tokens, outputTokens: sseUsage.completion_tokens };
+    if (sseUsage)
+      currentTokenUsage = {
+        inputTokens: sseUsage.prompt_tokens,
+        outputTokens: sseUsage.completion_tokens,
+      };
     flusher.flush();
     accumulatedContent = toolContent;
 
     if (newToolCalls.length === 0) break;
 
     // Execute new tool calls
-    await updateMessage(assistantMsgId, { content: accumulatedContent, toolCalls: [...currentToolCalls, ...newToolCalls] });
+    await updateMessage(assistantMsgId, {
+      content: accumulatedContent,
+      toolCalls: [...currentToolCalls, ...newToolCalls],
+    });
     notifyDbChange("messages", ctx.cid);
 
     const newResults: { toolCallId: string; content: string }[] = [];
     for (const tc of newToolCalls) {
       const result = await executeOneTool(
-        tc.name, parseToolArgs(tc.arguments),
-        builtInEnabledByName, identity, allowedBuiltInToolNames, allowedServerIds,
+        tc.name,
+        parseToolArgs(tc.arguments),
+        builtInEnabledByName,
+        identity,
+        allowedBuiltInToolNames,
+        allowedServerIds,
       );
       newResults.push({ toolCallId: tc.id, content: result.content });
     }
@@ -355,13 +405,19 @@ async function runToolCallLoop(
 
     apiMessages.push(
       {
-        role: "assistant" as const, content: accumulatedContent || null,
+        role: "assistant" as const,
+        content: accumulatedContent || null,
         tool_calls: newToolCalls.map((tc) => ({
-          id: tc.id, type: "function" as const,
+          id: tc.id,
+          type: "function" as const,
           function: { name: tc.name, arguments: tc.arguments },
         })),
       },
-      ...newResults.map((tr) => ({ role: "tool" as const, tool_call_id: tr.toolCallId, content: tr.content })),
+      ...newResults.map((tr) => ({
+        role: "tool" as const,
+        tool_call_id: tr.toolCallId,
+        content: tr.content,
+      })),
     );
     currentToolCalls = newToolCalls;
     currentToolResults = newResults;
@@ -450,8 +506,13 @@ export async function generateForParticipant(
   // Create assistant message skeleton
   const assistantMsgId = generateId();
   const assistantMsg = createAssistantMessage(
-    assistantMsgId, ctx.cid, model.id, senderName,
-    participant.id, participant.identityId, ctx.activeBranchId,
+    assistantMsgId,
+    ctx.cid,
+    model.id,
+    senderName,
+    participant.id,
+    participant.identityId,
+    ctx.activeBranchId,
     new Date(Date.parse(ctx.userMsg.createdAt) + 1 + index).toISOString(),
   );
   await insertMessage(assistantMsg);
@@ -460,7 +521,9 @@ export async function generateForParticipant(
   // Init streaming state
   ctx.streamingMessages.set(ctx.cid, { messageId: assistantMsgId, content: "", reasoning: "" });
   if (ctx.cid === ctx.getCurrentConversationId()) {
-    ctx.setStoreState({ streamingMessage: { messageId: assistantMsgId, content: "", reasoning: "" } });
+    ctx.setStoreState({
+      streamingMessage: { messageId: assistantMsgId, content: "", reasoning: "" },
+    });
   }
 
   const baseUrl = provider.baseUrl.replace(/\/+$/, "");
@@ -481,37 +544,55 @@ export async function generateForParticipant(
   try {
     // Build API messages with compression
     const allMessages = await getRecentMessages(ctx.cid, ctx.activeBranchId, MAX_HISTORY);
-    const filtered = allMessages.filter((m) => m.status === MessageStatus.SUCCESS || m.id === ctx.userMsg.id);
+    const filtered = allMessages.filter(
+      (m) => m.status === MessageStatus.SUCCESS || m.id === ctx.userMsg.id,
+    );
 
     // Read workspace tree if workspace dir is set
     let workspaceTree: string | undefined;
     if (ctx.conversation.workspaceDir) {
       try {
         const { readWorkspaceTree } = await import("../services/file-writer");
-        workspaceTree = await readWorkspaceTree(ctx.conversation.workspaceDir) || undefined;
-      } catch { /* ignore */ }
+        workspaceTree = (await readWorkspaceTree(ctx.conversation.workspaceDir)) || undefined;
+      } catch {
+        /* ignore */
+      }
     }
 
-    let apiMessages = buildApiMessagesForParticipant(filtered, participant, ctx.conversation, { workspaceTree });
+    let apiMessages = buildApiMessagesForParticipant(filtered, participant, ctx.conversation, {
+      workspaceTree,
+    });
     apiMessages = await applyCompression(apiMessages, ctx, baseUrl, headers, model.modelId);
 
-    const reasoningEffort = identity?.params?.reasoningEffort
-      || (model.capabilities?.reasoning ? "medium" : undefined);
+    const reasoningEffort =
+      identity?.params?.reasoningEffort || (model.capabilities?.reasoning ? "medium" : undefined);
 
     // Initial SSE stream
     const response = await appFetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers,
-      body: JSON.stringify(buildRequestBody(model.modelId, apiMessages, identity, reasoningEffort, toolDefs)),
+      body: JSON.stringify(
+        buildRequestBody(model.modelId, apiMessages, identity, reasoningEffort, toolDefs),
+      ),
       signal: ctx.abortController.signal,
     });
     if (!response.ok) throw new Error(`API Error ${response.status}: ${await response.text()}`);
     const reader = response.body?.getReader();
     if (!reader) throw new Error("No response body");
 
-    const acc: ContentAccumulator = { fullContent: "", fullReasoning: "", inThinkTag: false, pendingToolCalls: [] };
+    const acc: ContentAccumulator = {
+      fullContent: "",
+      fullReasoning: "",
+      inThinkTag: false,
+      pendingToolCalls: [],
+    };
     const startTime = Date.now();
-    const flusher = createStreamFlusher(ctx, assistantMsgId, () => acc.fullContent, () => acc.fullReasoning);
+    const flusher = createStreamFlusher(
+      ctx,
+      assistantMsgId,
+      () => acc.fullContent,
+      () => acc.fullReasoning,
+    );
 
     const sseUsage = await consumeOpenAIChatCompletionsSse(reader, (delta) => {
       processSseDelta(acc, delta);
@@ -520,16 +601,29 @@ export async function generateForParticipant(
     flusher.flush();
 
     const duration = (Date.now() - startTime) / 1000;
-    let tokenUsage = sseUsage ? { inputTokens: sseUsage.prompt_tokens, outputTokens: sseUsage.completion_tokens } : null;
+    let tokenUsage = sseUsage
+      ? { inputTokens: sseUsage.prompt_tokens, outputTokens: sseUsage.completion_tokens }
+      : null;
     let lastContent = acc.fullContent;
 
     // Tool calls → multi-round loop
     if (acc.pendingToolCalls.length > 0) {
       const result = await runToolCallLoop(
-        ctx, assistantMsgId, acc, acc.fullReasoning,
-        apiMessages, baseUrl, headers, model.modelId,
-        identity, reasoningEffort, toolDefs,
-        builtInEnabledByName, allowedBuiltInToolNames, allowedServerIds, tokenUsage,
+        ctx,
+        assistantMsgId,
+        acc,
+        acc.fullReasoning,
+        apiMessages,
+        baseUrl,
+        headers,
+        model.modelId,
+        identity,
+        reasoningEffort,
+        toolDefs,
+        builtInEnabledByName,
+        allowedBuiltInToolNames,
+        allowedServerIds,
+        tokenUsage,
       );
       lastContent = result.content;
     } else {
@@ -564,7 +658,8 @@ export async function generateForParticipant(
       }
     } else {
       console.error("[chat-generation] error:", err);
-      const errMsg = err?.message || (typeof err === "string" ? err : JSON.stringify(err)) || "Unknown error";
+      const errMsg =
+        err?.message || (typeof err === "string" ? err : JSON.stringify(err)) || "Unknown error";
       await updateMessage(assistantMsgId, {
         isStreaming: false,
         status: MessageStatus.ERROR,

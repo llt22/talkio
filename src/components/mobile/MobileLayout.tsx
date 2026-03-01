@@ -1,7 +1,19 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useMobileNav } from "../../contexts/MobileNavContext";
-import { IoChatbubbles, IoCube, IoPersonCircle, IoSettings, IoSearchOutline, IoCloseCircle, IoSparkles, IoChatbubbleOutline, IoAddCircleOutline, IoTrashOutline, IoPeopleOutline } from "../../icons";
+import {
+  IoChatbubbles,
+  IoCube,
+  IoPersonCircle,
+  IoSettings,
+  IoSearchOutline,
+  IoCloseCircle,
+  IoSparkles,
+  IoChatbubbleOutline,
+  IoAddCircleOutline,
+  IoTrashOutline,
+  IoPeopleOutline,
+} from "../../icons";
 import { ModelPicker } from "../shared/ModelPicker";
 import { MobileStack } from "./MobileStack";
 import { SettingsMainContent } from "./SettingsMainContent";
@@ -62,32 +74,54 @@ export function MobileTabLayout() {
   const { t } = useTranslation();
   const [activeTab, setActiveTabState] = useState<MobileTab>(() => loadInitialMobileTab());
   const setActiveTab = useCallback((tab: MobileTab) => {
-    try { sessionStorage.setItem(MOBILE_ACTIVE_TAB_KEY, tab); } catch { /* ignore */ }
+    try {
+      sessionStorage.setItem(MOBILE_ACTIVE_TAB_KEY, tab);
+    } catch {
+      /* ignore */
+    }
     setActiveTabState(tab);
   }, []);
   const tabBg = "var(--background)";
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: tabBg, paddingTop: "env(safe-area-inset-top, 0px)" }}>
+    <div
+      className="flex h-full flex-col"
+      style={{ backgroundColor: tabBg, paddingTop: "env(safe-area-inset-top, 0px)" }}
+    >
       {/* Tab Content — keep all tabs mounted, hide inactive with display:none to preserve state */}
-      <div className="flex-1 min-h-0 overflow-hidden relative">
-        <div className="absolute inset-0" style={{ display: activeTab === "chats" ? undefined : "none" }}>
-          <MobileConversationList onNavigateToExperts={() => setActiveTab("experts")} onNavigateToSettings={() => setActiveTab("settings")} />
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{ display: activeTab === "chats" ? undefined : "none" }}
+        >
+          <MobileConversationList
+            onNavigateToExperts={() => setActiveTab("experts")}
+            onNavigateToSettings={() => setActiveTab("settings")}
+          />
         </div>
-        <div className="absolute inset-0" style={{ display: activeTab === "experts" ? undefined : "none" }}>
+        <div
+          className="absolute inset-0"
+          style={{ display: activeTab === "experts" ? undefined : "none" }}
+        >
           <ModelsPage isMobile />
         </div>
-        <div className="absolute inset-0" style={{ display: activeTab === "discover" ? undefined : "none" }}>
+        <div
+          className="absolute inset-0"
+          style={{ display: activeTab === "discover" ? undefined : "none" }}
+        >
           <DiscoverPage />
         </div>
-        <div className="absolute inset-0" style={{ display: activeTab === "settings" ? undefined : "none" }}>
+        <div
+          className="absolute inset-0"
+          style={{ display: activeTab === "settings" ? undefined : "none" }}
+        >
           <SettingsMainContent />
         </div>
       </div>
 
       {/* Bottom Tab Bar — iOS native style */}
       <div
-        className="flex-shrink-0 flex items-center justify-around px-2 pt-1.5"
+        className="flex flex-shrink-0 items-center justify-around px-2 pt-1.5"
         style={{
           paddingBottom: "max(6px, env(safe-area-inset-bottom, 6px))",
           borderTop: "0.5px solid var(--border)",
@@ -100,11 +134,11 @@ export function MobileTabLayout() {
           <button
             key={id}
             onClick={() => setActiveTab(id)}
-            className="flex flex-col items-center gap-[1px] py-0.5 min-w-[64px]"
+            className="flex min-w-[64px] flex-col items-center gap-[1px] py-0.5"
             style={{ color: activeTab === id ? "var(--primary)" : "var(--muted-foreground)" }}
           >
             <Icon />
-            <span className="text-[10px] font-medium leading-tight">{t(labelKey)}</span>
+            <span className="text-[10px] leading-tight font-medium">{t(labelKey)}</span>
           </button>
         ))}
       </div>
@@ -119,7 +153,13 @@ export { MobileChatDetail } from "./MobileChatDetail";
 
 type FilterType = "all" | "single" | "group";
 
-function MobileConversationList({ onNavigateToExperts, onNavigateToSettings }: { onNavigateToExperts: () => void; onNavigateToSettings: () => void }) {
+function MobileConversationList({
+  onNavigateToExperts,
+  onNavigateToSettings,
+}: {
+  onNavigateToExperts: () => void;
+  onNavigateToSettings: () => void;
+}) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const mobileNav = useMobileNav();
@@ -131,29 +171,37 @@ function MobileConversationList({ onNavigateToExperts, onNavigateToSettings }: {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
 
-  const hasProviders = providers.some((p) => (p.status as string) === "active" || p.status === "connected");
+  const hasProviders = providers.some(
+    (p) => (p.status as string) === "active" || p.status === "connected",
+  );
 
-  const filtered = useMemo(() => conversations.filter((c: Conversation) => {
-    if (filter === "single" && c.type !== "single") return false;
-    if (filter === "group" && c.type !== "group") return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const matchTitle = c.title.toLowerCase().includes(q);
-      const matchLastMsg = c.lastMessage?.toLowerCase().includes(q);
-      if (!matchTitle && !matchLastMsg) return false;
-    }
-    return true;
-  }), [conversations, filter, searchQuery]);
+  const filtered = useMemo(
+    () =>
+      conversations.filter((c: Conversation) => {
+        if (filter === "single" && c.type !== "single") return false;
+        if (filter === "group" && c.type !== "group") return false;
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          const matchTitle = c.title.toLowerCase().includes(q);
+          const matchLastMsg = c.lastMessage?.toLowerCase().includes(q);
+          if (!matchTitle && !matchLastMsg) return false;
+        }
+        return true;
+      }),
+    [conversations, filter, searchQuery],
+  );
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
+    <div className="flex h-full flex-col" style={{ backgroundColor: "var(--background)" }}>
       {/* iOS Large Title Header */}
       <div className="flex-shrink-0 px-4 pt-2 pb-1">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="text-[20px] font-bold text-foreground tracking-tight">{t("tabs.chats")}</h1>
+        <div className="mb-1 flex items-center justify-between">
+          <h1 className="text-foreground text-[20px] font-bold tracking-tight">
+            {t("tabs.chats")}
+          </h1>
           <button
             onClick={() => setShowSearch((v) => !v)}
-            className="h-9 w-9 flex items-center justify-center rounded-full active:opacity-60"
+            className="flex h-9 w-9 items-center justify-center rounded-full active:opacity-60"
           >
             <IoSearchOutline size={22} color="var(--primary)" />
           </button>
@@ -163,10 +211,13 @@ function MobileConversationList({ onNavigateToExperts, onNavigateToSettings }: {
       {/* Search Bar */}
       {showSearch && (
         <div className="px-4 pb-2">
-          <div className="flex items-center rounded-xl px-3 py-2" style={{ backgroundColor: "var(--secondary)" }}>
+          <div
+            className="flex items-center rounded-xl px-3 py-2"
+            style={{ backgroundColor: "var(--secondary)" }}
+          >
             <IoSearchOutline size={18} color="var(--muted-foreground)" />
             <input
-              className="ml-2 flex-1 text-[15px] text-foreground bg-transparent outline-none"
+              className="text-foreground ml-2 flex-1 bg-transparent text-[15px] outline-none"
               placeholder={t("chats.searchChats")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -188,25 +239,31 @@ function MobileConversationList({ onNavigateToExperts, onNavigateToSettings }: {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-full px-4 py-1.5 text-xs font-semibold active:opacity-70 transition-colors ${
-                filter === f
-                  ? "text-white"
-                  : "text-foreground"
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors active:opacity-70 ${
+                filter === f ? "text-white" : "text-foreground"
               }`}
               style={{
                 backgroundColor: filter === f ? "var(--primary)" : "var(--secondary)",
               }}
             >
-              {f === "all" ? t("chats.filterAll") : f === "single" ? t("chats.filterSingle") : t("chats.filterGroups")}
+              {f === "all"
+                ? t("chats.filterAll")
+                : f === "single"
+                  ? t("chats.filterSingle")
+                  : t("chats.filterGroups")}
             </button>
           ))}
         </div>
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto flex flex-col">
+      <div className="flex flex-1 flex-col overflow-y-auto">
         {filtered.length === 0 ? (
-          <OnboardingOrEmpty hasProviders={hasProviders} onNew={onNavigateToExperts} onNavigateToSettings={onNavigateToSettings} />
+          <OnboardingOrEmpty
+            hasProviders={hasProviders}
+            onNew={onNavigateToExperts}
+            onNavigateToSettings={onNavigateToSettings}
+          />
         ) : (
           filtered.map((conv) => (
             <ConversationItem
@@ -231,19 +288,27 @@ function MobileConversationList({ onNavigateToExperts, onNavigateToSettings }: {
 
 // ── Onboarding / Empty State (1:1 RN original) ──
 
-function OnboardingOrEmpty({ hasProviders, onNew, onNavigateToSettings }: { hasProviders: boolean; onNew: () => void; onNavigateToSettings: () => void }) {
+function OnboardingOrEmpty({
+  hasProviders,
+  onNew,
+  onNavigateToSettings,
+}: {
+  hasProviders: boolean;
+  onNew: () => void;
+  onNavigateToSettings: () => void;
+}) {
   const { t } = useTranslation();
   if (!hasProviders) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center px-8">
+      <div className="flex flex-1 flex-col items-center justify-center px-8">
         <img src="/logo.png" alt="Talkio" className="mb-6 h-20 w-20 object-contain" />
-        <p className="text-center text-xl font-bold text-foreground">{t("settings.appName")}</p>
-        <p className="mt-3 text-center text-sm leading-5 text-muted-foreground">
+        <p className="text-foreground text-center text-xl font-bold">{t("settings.appName")}</p>
+        <p className="text-muted-foreground mt-3 text-center text-sm leading-5">
           {t("models.configureHint")}
         </p>
         <button
           onClick={onNavigateToSettings}
-          className="mt-6 rounded-xl px-8 py-3 active:opacity-80 text-base font-semibold text-white"
+          className="mt-6 rounded-xl px-8 py-3 text-base font-semibold text-white active:opacity-80"
           style={{ backgroundColor: "var(--primary)" }}
         >
           {t("models.configureProvider")}
@@ -253,12 +318,12 @@ function OnboardingOrEmpty({ hasProviders, onNew, onNavigateToSettings }: { hasP
   }
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-8">
+    <div className="flex flex-1 flex-col items-center justify-center px-8">
       <img src="/logo.png" alt="Talkio" className="h-14 w-14 object-contain opacity-40" />
-      <p className="mt-3 text-center text-sm text-muted-foreground">{t("chats.noConversations")}</p>
+      <p className="text-muted-foreground mt-3 text-center text-sm">{t("chats.noConversations")}</p>
       <button
         onClick={onNew}
-        className="mt-4 rounded-full px-6 py-2.5 active:opacity-80 text-sm font-medium text-white"
+        className="mt-4 rounded-full px-6 py-2.5 text-sm font-medium text-white active:opacity-80"
         style={{ backgroundColor: "var(--primary)" }}
       >
         {t("chats.startConversation")}
@@ -295,7 +360,9 @@ function ConversationItem({
     : null;
   const isGroup = conversation.type === "group";
 
-  const timeStr = formatDate(conversation.lastMessageAt ?? conversation.updatedAt ?? conversation.createdAt ?? "");
+  const timeStr = formatDate(
+    conversation.lastMessageAt ?? conversation.updatedAt ?? conversation.createdAt ?? "",
+  );
   const { color: avatarColor, initials } = getAvatarProps(modelName);
 
   const handleTouchStart = useCallback(() => {
@@ -324,22 +391,25 @@ function ConversationItem({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
-      onContextMenu={(e) => { e.preventDefault(); onDelete(); }}
-      className="w-full flex items-center gap-4 px-4 py-3 text-left active:opacity-80 transition-colors"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onDelete();
+      }}
+      className="flex w-full items-center gap-4 px-4 py-3 text-left transition-colors active:opacity-80"
       style={{ borderBottom: "0.5px solid var(--border)" }}
     >
       {/* Avatar with status dot (1:1 RN) */}
       <div className="relative flex-shrink-0">
         {isGroup ? (
           <div
-            className="h-12 w-12 rounded-full flex items-center justify-center"
+            className="flex h-12 w-12 items-center justify-center rounded-full"
             style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }}
           >
             <IoPeopleOutline size={22} color="var(--primary)" />
           </div>
         ) : (
           <div
-            className="h-12 w-12 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+            className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white"
             style={{ backgroundColor: avatarColor }}
           >
             {initials}
@@ -347,7 +417,7 @@ function ConversationItem({
         )}
         {!isGroup && firstModel && (
           <div
-            className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2"
+            className="absolute right-0.5 bottom-0.5 h-3.5 w-3.5 rounded-full border-2"
             style={{
               borderColor: "var(--background)",
               backgroundColor: isConnected ? "var(--success)" : "var(--border)",
@@ -357,14 +427,14 @@ function ConversationItem({
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[16px] font-semibold text-foreground truncate flex-1">
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 flex items-center justify-between">
+          <span className="text-foreground flex-1 truncate text-[16px] font-semibold">
             {isGroup ? conversation.title : modelName}
           </span>
-          <span className="ml-2 text-xs text-muted-foreground flex-shrink-0">{timeStr}</span>
+          <span className="text-muted-foreground ml-2 flex-shrink-0 text-xs">{timeStr}</span>
         </div>
-        <p className="text-sm text-muted-foreground truncate">
+        <p className="text-muted-foreground truncate text-sm">
           {identity ? `${identity.name}: ` : ""}
           {conversation.lastMessage ?? t("chats.startConversation")}
         </p>
@@ -385,4 +455,3 @@ function formatDate(iso: string): string {
   if (diffDays < 7) return d.toLocaleDateString([], { weekday: "short" });
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
-

@@ -72,7 +72,13 @@ export interface ImportResult {
   success: boolean;
   errorCode?: "UNSUPPORTED_VERSION" | "PARSE_ERROR";
   errorDetail?: string;
-  counts?: { providers: number; models: number; identities: number; mcpServers: number; settings: boolean };
+  counts?: {
+    providers: number;
+    models: number;
+    identities: number;
+    mcpServers: number;
+    settings: boolean;
+  };
 }
 
 export function importBackupFromString(text: string): ImportResult {
@@ -100,7 +106,11 @@ export function importBackupFromString(text: string): ImportResult {
       },
     };
   } catch (err) {
-    return { success: false, errorCode: "PARSE_ERROR", errorDetail: err instanceof Error ? err.message : undefined };
+    return {
+      success: false,
+      errorCode: "PARSE_ERROR",
+      errorDetail: err instanceof Error ? err.message : undefined,
+    };
   }
 }
 
@@ -132,7 +142,10 @@ export async function pickAndImportBackup(): Promise<ImportResult | null> {
     input.accept = ".json";
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) { resolve(null); return; }
+      if (!file) {
+        resolve(null);
+        return;
+      }
       resolve(await importBackup(file));
     };
     input.click();

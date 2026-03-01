@@ -106,7 +106,9 @@ export async function executeMcpToolByName(
     enabledServerIds = new Set([...enabledServerIds].filter((id) => allowed.has(id)));
   }
 
-  const tool = store.tools.find((t: McpTool) => t.name === toolName && enabledServerIds.has(t.serverId));
+  const tool = store.tools.find(
+    (t: McpTool) => t.name === toolName && enabledServerIds.has(t.serverId),
+  );
   if (!tool) return null;
 
   const serverCfg = store.servers.find((s: McpServerConfig) => s.id === tool.serverId);

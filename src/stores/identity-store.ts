@@ -17,7 +17,11 @@ const PRESET_IDENTITIES = [
   { nameKey: "presets.socrates.name", icon: "research", promptKey: "presets.socrates.prompt" },
   { nameKey: "presets.blunt.name", icon: "security", promptKey: "presets.blunt.prompt" },
   { nameKey: "presets.warm.name", icon: "general", promptKey: "presets.warm.prompt" },
-  { nameKey: "presets.minimalist.name", icon: "architecture", promptKey: "presets.minimalist.prompt" },
+  {
+    nameKey: "presets.minimalist.name",
+    icon: "architecture",
+    promptKey: "presets.minimalist.prompt",
+  },
   { nameKey: "presets.divergent.name", icon: "design", promptKey: "presets.divergent.prompt" },
   { nameKey: "presets.roast.name", icon: "finance", promptKey: "presets.roast.prompt" },
   { nameKey: "presets.humor.name", icon: "marketing", promptKey: "presets.humor.prompt" },
@@ -41,16 +45,19 @@ function loadInitialIdentities(): Identity[] {
   const saved = kvStore.getObject<Identity[]>(IDENTITIES_KEY) ?? [];
   if (saved.length > 0) return saved;
   // Seed presets if empty
-  const seeded = PRESET_IDENTITIES.map((preset) => ({
-    id: generateId(),
-    name: i18n.t(preset.nameKey),
-    icon: preset.icon,
-    systemPrompt: i18n.t(preset.promptKey),
-    params: { ...DEFAULT_IDENTITY_PARAMS },
-    mcpToolIds: [],
-    mcpServerIds: [],
-    createdAt: new Date().toISOString(),
-  } as Identity));
+  const seeded = PRESET_IDENTITIES.map(
+    (preset) =>
+      ({
+        id: generateId(),
+        name: i18n.t(preset.nameKey),
+        icon: preset.icon,
+        systemPrompt: i18n.t(preset.promptKey),
+        params: { ...DEFAULT_IDENTITY_PARAMS },
+        mcpToolIds: [],
+        mcpServerIds: [],
+        createdAt: new Date().toISOString(),
+      }) as Identity,
+  );
   kvStore.setObject(IDENTITIES_KEY, seeded);
   kvStore.setObject(PRESET_VERSION_KEY, PRESET_IDENTITIES_VERSION);
   return seeded;

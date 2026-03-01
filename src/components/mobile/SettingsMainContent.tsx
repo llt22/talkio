@@ -5,7 +5,16 @@ import { useSettingsStore, type AppSettings } from "../../stores/settings-store"
 import { SettingsRow, SectionHeader } from "../../pages/settings/SettingsPage";
 import { createBackup, downloadBackup, pickAndImportBackup } from "../../services/backup";
 import { appAlert } from "../../components/shared/ConfirmDialogProvider";
-import { ArrowLeftRight, Wrench, Mic, Minimize2, Languages, Moon, Download, Upload } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Wrench,
+  Mic,
+  Minimize2,
+  Languages,
+  Moon,
+  Download,
+  Upload,
+} from "lucide-react";
 import i18n from "../../i18n";
 
 export function SettingsMainContent() {
@@ -15,14 +24,26 @@ export function SettingsMainContent() {
   const settings = useSettingsStore((s) => s.settings);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
 
-  const themeLabel = settings.theme === "dark" ? t("settings.themeDark") : settings.theme === "light" ? t("settings.themeLight") : t("settings.themeSystem");
-  const langLabel = settings.language === "zh" ? t("settings.langZh") : settings.language === "en" ? t("settings.langEn") : t("settings.langSystem");
+  const themeLabel =
+    settings.theme === "dark"
+      ? t("settings.themeDark")
+      : settings.theme === "light"
+        ? t("settings.themeLight")
+        : t("settings.themeSystem");
+  const langLabel =
+    settings.language === "zh"
+      ? t("settings.langZh")
+      : settings.language === "en"
+        ? t("settings.langEn")
+        : t("settings.langSystem");
 
   return (
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
       {/* iOS Large Title */}
       <div className="px-4 pt-2 pb-2">
-        <h1 className="text-[20px] font-bold text-foreground tracking-tight">{t("settings.title")}</h1>
+        <h1 className="text-foreground text-[20px] font-bold tracking-tight">
+          {t("settings.title")}
+        </h1>
       </div>
 
       {/* Configuration */}
@@ -57,18 +78,25 @@ export function SettingsMainContent() {
       {/* Chat */}
       <SectionHeader label={t("settings.chat")} />
       <div>
-        <div className="w-full flex items-center gap-4 px-4 py-3">
-          <div className="h-10 w-10 flex items-center justify-center rounded-full flex-shrink-0" style={{ backgroundColor: "rgba(16,185,129,0.1)" }}>
+        <div className="flex w-full items-center gap-4 px-4 py-3">
+          <div
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundColor: "rgba(16,185,129,0.1)" }}
+          >
             <Minimize2 size={18} color="#10b981" />
           </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-[16px] font-medium text-foreground">{t("settings.contextCompression")}</span>
+          <div className="min-w-0 flex-1">
+            <span className="text-foreground text-[16px] font-medium">
+              {t("settings.contextCompression")}
+            </span>
           </div>
           {settings.contextCompressionEnabled && (
             <select
               value={settings.contextCompressionThreshold}
-              onChange={(e) => updateSettings({ contextCompressionThreshold: Number(e.target.value) })}
-              className="rounded-lg px-2 py-1 text-[13px] text-muted-foreground outline-none appearance-none cursor-pointer flex-shrink-0"
+              onChange={(e) =>
+                updateSettings({ contextCompressionThreshold: Number(e.target.value) })
+              }
+              className="text-muted-foreground flex-shrink-0 cursor-pointer appearance-none rounded-lg px-2 py-1 text-[13px] outline-none"
               style={{ backgroundColor: "var(--secondary)" }}
             >
               <option value={8000}>8K</option>
@@ -79,13 +107,23 @@ export function SettingsMainContent() {
             </select>
           )}
           <div
-            onClick={() => updateSettings({ contextCompressionEnabled: !settings.contextCompressionEnabled })}
-            className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors cursor-pointer"
-            style={{ backgroundColor: settings.contextCompressionEnabled ? "var(--primary)" : "var(--muted)" }}
+            onClick={() =>
+              updateSettings({ contextCompressionEnabled: !settings.contextCompressionEnabled })
+            }
+            className="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors"
+            style={{
+              backgroundColor: settings.contextCompressionEnabled
+                ? "var(--primary)"
+                : "var(--muted)",
+            }}
           >
             <span
-              className="inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform"
-              style={{ transform: settings.contextCompressionEnabled ? "translateX(20px) translateY(2px)" : "translateX(2px) translateY(2px)" }}
+              className="inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform"
+              style={{
+                transform: settings.contextCompressionEnabled
+                  ? "translateX(20px) translateY(2px)"
+                  : "translateX(2px) translateY(2px)",
+              }}
             />
           </div>
         </div>
@@ -132,7 +170,11 @@ export function SettingsMainContent() {
           iconColor="#14b8a6"
           iconBg="rgba(20,184,166,0.1)"
           label={t("settings.exportBackup")}
-          onPress={async () => { const data = createBackup(); const saved = await downloadBackup(data); if (saved) await appAlert(t("settings.exportSuccess")); }}
+          onPress={async () => {
+            const data = createBackup();
+            const saved = await downloadBackup(data);
+            if (saved) await appAlert(t("settings.exportSuccess"));
+          }}
         />
         <SettingsRow
           icon={Upload}
@@ -148,9 +190,10 @@ export function SettingsMainContent() {
               await appAlert(t("settings.importSuccess", result.counts!));
               window.location.reload();
             } else {
-              const msg = result.errorCode === "UNSUPPORTED_VERSION"
-                ? t("settings.importUnsupportedVersion", { version: result.errorDetail })
-                : t("settings.importParseError");
+              const msg =
+                result.errorCode === "UNSUPPORTED_VERSION"
+                  ? t("settings.importUnsupportedVersion", { version: result.errorDetail })
+                  : t("settings.importParseError");
               await appAlert(`${t("settings.importFailed")}: ${msg}`);
             }
           }}
@@ -159,15 +202,23 @@ export function SettingsMainContent() {
       </div>
 
       {/* Privacy & Version */}
-      <div className="px-8 mt-4">
-        <div className="rounded-xl p-4 mb-6" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 5%, transparent)", border: "1px solid color-mix(in srgb, var(--primary) 10%, transparent)" }}>
-          <p className="text-center text-xs leading-relaxed text-muted-foreground">
+      <div className="mt-4 px-8">
+        <div
+          className="mb-6 rounded-xl p-4"
+          style={{
+            backgroundColor: "color-mix(in srgb, var(--primary) 5%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--primary) 10%, transparent)",
+          }}
+        >
+          <p className="text-muted-foreground text-center text-xs leading-relaxed">
             {t("settings.securityTip")}
           </p>
         </div>
-        <div className="text-center pb-6">
-          <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Talkio</p>
-          <p className="mt-1 text-xs text-muted-foreground">v{__APP_VERSION__}</p>
+        <div className="pb-6 text-center">
+          <p className="text-muted-foreground text-[10px] font-medium tracking-widest uppercase">
+            Talkio
+          </p>
+          <p className="text-muted-foreground mt-1 text-xs">v{__APP_VERSION__}</p>
         </div>
       </div>
     </div>

@@ -4,10 +4,46 @@
  */
 
 const TEXT_EXTENSIONS = new Set([
-  "txt", "md", "csv", "json", "xml", "html", "htm", "js", "ts", "jsx", "tsx",
-  "py", "rb", "go", "rs", "java", "c", "cpp", "h", "hpp", "cs", "swift",
-  "kt", "sh", "bash", "zsh", "yaml", "yml", "toml", "ini", "cfg", "conf",
-  "log", "sql", "graphql", "css", "scss", "less", "svg", "env",
+  "txt",
+  "md",
+  "csv",
+  "json",
+  "xml",
+  "html",
+  "htm",
+  "js",
+  "ts",
+  "jsx",
+  "tsx",
+  "py",
+  "rb",
+  "go",
+  "rs",
+  "java",
+  "c",
+  "cpp",
+  "h",
+  "hpp",
+  "cs",
+  "swift",
+  "kt",
+  "sh",
+  "bash",
+  "zsh",
+  "yaml",
+  "yml",
+  "toml",
+  "ini",
+  "cfg",
+  "conf",
+  "log",
+  "sql",
+  "graphql",
+  "css",
+  "scss",
+  "less",
+  "svg",
+  "env",
 ]);
 
 export interface ParsedFile {
@@ -122,13 +158,15 @@ function sheetToMarkdownTable(jsonData: Record<string, any>[]): string {
   if (headers.length === 0) return "*Sheet has no data.*";
   const headerRow = `| ${headers.join(" | ")} |`;
   const separator = `| ${headers.map(() => "---").join(" | ")} |`;
-  const dataRows = jsonData.map((row) => {
-    const cells = headers.map((h) => {
-      const v = row[h];
-      return v == null ? "" : String(v).replace(/\|/g, "\\|").trim();
-    });
-    return `| ${cells.join(" | ")} |`;
-  }).join("\n");
+  const dataRows = jsonData
+    .map((row) => {
+      const cells = headers.map((h) => {
+        const v = row[h];
+        return v == null ? "" : String(v).replace(/\|/g, "\\|").trim();
+      });
+      return `| ${cells.join(" | ")} |`;
+    })
+    .join("\n");
   return `${headerRow}\n${separator}\n${dataRows}`;
 }
 
@@ -198,7 +236,5 @@ export function formatFileSize(bytes: number): string {
 export function buildFileContext(files: ParsedFile[]): string {
   const docs = files.filter((f) => f.type !== "image");
   if (docs.length === 0) return "";
-  return docs
-    .map((f) => `<file name="${f.name}">\n${f.content}\n</file>`)
-    .join("\n\n") + "\n\n";
+  return docs.map((f) => `<file name="${f.name}">\n${f.content}\n</file>`).join("\n\n") + "\n\n";
 }

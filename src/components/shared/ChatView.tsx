@@ -1,10 +1,38 @@
 /**
  * ChatView — shared chat message list + input (1:1 RN original).
  */
-import { useRef, useEffect, useCallback, useMemo, useState, memo, useImperativeHandle } from "react";
+import {
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  useState,
+  memo,
+  useImperativeHandle,
+} from "react";
 import { useTranslation } from "react-i18next";
-import { IoCopyOutline, IoRefreshOutline, IoShareOutline, IoTrashOutline, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
-import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown, Pencil, Check, X, FileText, Paperclip, FolderOpen, Save } from "lucide-react";
+import {
+  IoCopyOutline,
+  IoRefreshOutline,
+  IoShareOutline,
+  IoTrashOutline,
+  IoAnalyticsOutline,
+  IoChatbubbleOutline,
+} from "../../icons";
+import {
+  GitBranch,
+  Wrench,
+  Hourglass,
+  ChevronUp,
+  ChevronDown,
+  Pencil,
+  Check,
+  X,
+  FileText,
+  Paperclip,
+  FolderOpen,
+  Save,
+} from "lucide-react";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
@@ -17,7 +45,11 @@ import { parseFile, type ParsedFile } from "../../lib/file-parser";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useConfirm } from "./ConfirmDialogProvider";
 import { useStickToBottom } from "use-stick-to-bottom";
-import { parseFileBlocks, writeFilesToWorkspace, type WrittenFile } from "../../services/file-writer";
+import {
+  parseFileBlocks,
+  writeFilesToWorkspace,
+  type WrittenFile,
+} from "../../services/file-writer";
 
 export interface ChatViewHandle {
   scrollToBottom: () => void;
@@ -35,7 +67,16 @@ interface ChatViewProps {
   participants?: ConversationParticipant[];
 }
 
-export function ChatView({ conversationId, isMobile = false, onAtBottomChange, handleRef, modelName, onSwitchModel, isGroup = false, participants = [] }: ChatViewProps) {
+export function ChatView({
+  conversationId,
+  isMobile = false,
+  onAtBottomChange,
+  handleRef,
+  modelName,
+  onSwitchModel,
+  isGroup = false,
+  participants = [],
+}: ChatViewProps) {
   const { t, i18n } = useTranslation();
   const { confirm } = useConfirm();
   const activeBranchId = useChatStore((s: ChatState) => s.activeBranchId);
@@ -55,12 +96,18 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
   const deleteMessageById = useChatStore((s: ChatState) => s.deleteMessageById);
   const editMessage = useChatStore((s: ChatState) => s.editMessage);
 
-  const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({ resize: "instant" });
+  const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({
+    resize: "instant",
+  });
 
-  useImperativeHandle(handleRef, () => ({
-    scrollToBottom: () => scrollToBottom(),
-    getScrollElement: () => scrollRef.current,
-  }), [scrollToBottom]);
+  useImperativeHandle(
+    handleRef,
+    () => ({
+      scrollToBottom: () => scrollToBottom(),
+      getScrollElement: () => scrollRef.current,
+    }),
+    [scrollToBottom],
+  );
 
   const prevIsAtBottom = useRef(isAtBottom);
   useEffect(() => {
@@ -142,83 +189,112 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
     navigator.clipboard.writeText(content);
   }, []);
 
-  const handleRegenerate = useCallback((messageId: string) => {
-    regenerateMessage(messageId);
-  }, [regenerateMessage]);
+  const handleRegenerate = useCallback(
+    (messageId: string) => {
+      regenerateMessage(messageId);
+    },
+    [regenerateMessage],
+  );
 
-  const handleBranch = useCallback(async (messageId: string) => {
-    await branchFromMessage(messageId, displayMessages);
-  }, [branchFromMessage, displayMessages]);
+  const handleBranch = useCallback(
+    async (messageId: string) => {
+      await branchFromMessage(messageId, displayMessages);
+    },
+    [branchFromMessage, displayMessages],
+  );
 
-  const handleDelete = useCallback(async (messageId: string) => {
-    const ok = await confirm({
-      title: t("common.areYouSure"),
-      description: t("chat.deleteMessageConfirm"),
-      destructive: true,
-    });
-    if (ok) deleteMessageById(messageId);
-  }, [confirm, deleteMessageById, t]);
+  const handleDelete = useCallback(
+    async (messageId: string) => {
+      const ok = await confirm({
+        title: t("common.areYouSure"),
+        description: t("chat.deleteMessageConfirm"),
+        destructive: true,
+      });
+      if (ok) deleteMessageById(messageId);
+    },
+    [confirm, deleteMessageById, t],
+  );
 
-  const handleEdit = useCallback((messageId: string, newContent: string) => {
-    editMessage(messageId, newContent);
-  }, [editMessage]);
+  const handleEdit = useCallback(
+    (messageId: string, newContent: string) => {
+      editMessage(messageId, newContent);
+    },
+    [editMessage],
+  );
 
   const hasMessages = displayMessages.length > 0;
 
   // ── Drag & drop zone (whole chat area) ──
   const [isDragging, setIsDragging] = useState(false);
   const dragCountRef = useRef(0);
-  const [droppedFiles, setDroppedFiles] = useState<{ images: string[]; files: ParsedFile[] } | null>(null);
+  const [droppedFiles, setDroppedFiles] = useState<{
+    images: string[];
+    files: ParsedFile[];
+  } | null>(null);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    if (isMobile) return;
-    if (!e.dataTransfer?.types.includes("Files")) return;
-    e.preventDefault();
-  }, [isMobile]);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (isMobile) return;
+      if (!e.dataTransfer?.types.includes("Files")) return;
+      e.preventDefault();
+    },
+    [isMobile],
+  );
 
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    if (isMobile) return;
-    if (!e.dataTransfer?.types.includes("Files")) return;
-    dragCountRef.current++;
-    setIsDragging(true);
-  }, [isMobile]);
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      if (isMobile) return;
+      if (!e.dataTransfer?.types.includes("Files")) return;
+      dragCountRef.current++;
+      setIsDragging(true);
+    },
+    [isMobile],
+  );
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     dragCountRef.current--;
-    if (dragCountRef.current <= 0) { dragCountRef.current = 0; setIsDragging(false); }
+    if (dragCountRef.current <= 0) {
+      dragCountRef.current = 0;
+      setIsDragging(false);
+    }
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    dragCountRef.current = 0;
-    setIsDragging(false);
-    if (isMobile) return;
-    if (!e.dataTransfer?.items || e.dataTransfer.items.length === 0) return;
-    if (!e.dataTransfer.types.includes("Files")) return;
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      dragCountRef.current = 0;
+      setIsDragging(false);
+      if (isMobile) return;
+      if (!e.dataTransfer?.items || e.dataTransfer.items.length === 0) return;
+      if (!e.dataTransfer.types.includes("Files")) return;
 
-    // Extract files from DataTransferItems (LobeChat pattern)
-    const fileList: File[] = [];
-    for (const item of Array.from(e.dataTransfer.items)) {
-      if (item.kind === "file") {
-        const f = item.getAsFile();
-        if (f) fileList.push(f);
+      // Extract files from DataTransferItems (LobeChat pattern)
+      const fileList: File[] = [];
+      for (const item of Array.from(e.dataTransfer.items)) {
+        if (item.kind === "file") {
+          const f = item.getAsFile();
+          if (f) fileList.push(f);
+        }
       }
-    }
-    if (fileList.length === 0) return;
+      if (fileList.length === 0) return;
 
-    const images: string[] = [];
-    const docs: ParsedFile[] = [];
-    for (let i = 0; i < Math.min(fileList.length, 4); i++) {
-      try {
-        const parsed = await parseFile(fileList[i]);
-        if (parsed.type === "image") images.push(parsed.content);
-        else docs.push(parsed);
-      } catch { /* skip unsupported */ }
-    }
-    if (images.length > 0 || docs.length > 0) setDroppedFiles({ images, files: docs });
-  }, [isMobile]);
+      const images: string[] = [];
+      const docs: ParsedFile[] = [];
+      for (let i = 0; i < Math.min(fileList.length, 4); i++) {
+        try {
+          const parsed = await parseFile(fileList[i]);
+          if (parsed.type === "image") images.push(parsed.content);
+          else docs.push(parsed);
+        } catch {
+          /* skip unsupported */
+        }
+      }
+      if (images.length > 0 || docs.length > 0) setDroppedFiles({ images, files: docs });
+    },
+    [isMobile],
+  );
 
   // ── Suggest questions ──
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([]);
@@ -229,7 +305,8 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
   useEffect(() => {
     if (isGenerating || isGroup || !displayMessages.length) return;
     const last = displayMessages[displayMessages.length - 1];
-    if (last.role !== "assistant" || !last.content || last.status === MessageStatus.STREAMING) return;
+    if (last.role !== "assistant" || !last.content || last.status === MessageStatus.STREAMING)
+      return;
     // Only generate once per message
     if (suggestRequestIdRef.current === last.id) return;
     suggestRequestIdRef.current = last.id;
@@ -243,11 +320,23 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
     const provider = getProviderById(model.providerId);
     if (!provider) return;
 
-    const context = displayMessages.slice(-6).map((m) => ({ role: m.role, content: m.content || "" }));
+    const context = displayMessages
+      .slice(-6)
+      .map((m) => ({ role: m.role, content: m.content || "" }));
     generateSuggestQuestions(context, provider, model.modelId, i18n.language)
-      .then((qs) => { if (qs.length > 0) setSuggestQuestions(qs); })
+      .then((qs) => {
+        if (qs.length > 0) setSuggestQuestions(qs);
+      })
       .catch(() => {});
-  }, [isGenerating, displayMessages, isGroup, participants, getModelById, getProviderById, i18n.language]);
+  }, [
+    isGenerating,
+    displayMessages,
+    isGroup,
+    participants,
+    getModelById,
+    getProviderById,
+    i18n.language,
+  ]);
 
   // ── Auto-write files from AI responses ──
   const conversation = useConversation(conversationId);
@@ -258,7 +347,8 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
   useEffect(() => {
     if (isGenerating || !workspaceDir || !displayMessages.length) return;
     const last = displayMessages[displayMessages.length - 1];
-    if (last.role !== "assistant" || !last.content || last.status === MessageStatus.STREAMING) return;
+    if (last.role !== "assistant" || !last.content || last.status === MessageStatus.STREAMING)
+      return;
     if (fileWriteProcessedRef.current.has(last.id)) return;
 
     const blocks = parseFileBlocks(last.content);
@@ -273,12 +363,27 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
   }, [isGenerating, displayMessages, workspaceDir]);
 
   const branchBanner = activeBranchId ? (
-    <div className="flex items-center justify-between px-4 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))", borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
+    <div
+      className="flex items-center justify-between px-4 py-2"
+      style={{
+        backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))",
+        borderBottom: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
+      }}
+    >
       <div className="flex items-center gap-2">
         <GitBranch size={14} color="var(--primary)" />
-        <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>{t("chat.branch")}</span>
+        <span className="text-xs font-medium" style={{ color: "var(--primary)" }}>
+          {t("chat.branch")}
+        </span>
       </div>
-      <button onClick={() => switchBranch(null)} className="text-xs font-medium px-2.5 py-1 rounded-md active:opacity-70" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
+      <button
+        onClick={() => switchBranch(null)}
+        className="rounded-md px-2.5 py-1 text-xs font-medium active:opacity-70"
+        style={{
+          backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)",
+          color: "var(--primary)",
+        }}
+      >
         {t("chat.backToMain")}
       </button>
     </div>
@@ -286,21 +391,37 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
 
   if (!hasMessages && !isGenerating) {
     return (
-      <div className="flex flex-col h-full" style={{ backgroundColor: "var(--background)" }}>
+      <div className="flex h-full flex-col" style={{ backgroundColor: "var(--background)" }}>
         {branchBanner}
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
+        <div className="flex flex-1 flex-col items-center justify-center px-6">
           <IoChatbubbleOutline size={48} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
-          <p className="mt-4 text-lg font-medium text-muted-foreground">{t("chats.startConversation")}</p>
-          <p className="text-sm text-muted-foreground/60 mt-1 text-center">{t("chat.message")}</p>
+          <p className="text-muted-foreground mt-4 text-lg font-medium">
+            {t("chats.startConversation")}
+          </p>
+          <p className="text-muted-foreground/60 mt-1 text-center text-sm">{t("chat.message")}</p>
         </div>
-        <ChatInput onSend={handleSend} isGenerating={isGenerating} onStop={stopGeneration} isMobile={isMobile} modelName={modelName} onSwitchModel={onSwitchModel} isGroup={isGroup} participants={participants} hasMessages={false} onStartAutoDiscuss={startAutoDiscuss} onStopAutoDiscuss={stopAutoDiscuss} autoDiscussRemaining={autoDiscussRemaining} autoDiscussTotalRounds={autoDiscussTotalRounds} />
+        <ChatInput
+          onSend={handleSend}
+          isGenerating={isGenerating}
+          onStop={stopGeneration}
+          isMobile={isMobile}
+          modelName={modelName}
+          onSwitchModel={onSwitchModel}
+          isGroup={isGroup}
+          participants={participants}
+          hasMessages={false}
+          onStartAutoDiscuss={startAutoDiscuss}
+          onStopAutoDiscuss={stopAutoDiscuss}
+          autoDiscussRemaining={autoDiscussRemaining}
+          autoDiscussTotalRounds={autoDiscussTotalRounds}
+        />
       </div>
     );
   }
 
   return (
     <div
-      className="flex flex-col h-full relative"
+      className="relative flex h-full flex-col"
       style={{ backgroundColor: "var(--background)" }}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -309,20 +430,26 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
     >
       {/* Drop overlay */}
       {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, var(--background) 92%)", border: "2px dashed var(--primary)", borderRadius: 12 }}>
+        <div
+          className="absolute inset-0 z-50 flex items-center justify-center"
+          style={{
+            backgroundColor: "color-mix(in srgb, var(--primary) 8%, var(--background) 92%)",
+            border: "2px dashed var(--primary)",
+            borderRadius: 12,
+          }}
+        >
           <div className="flex flex-col items-center gap-1.5">
             <Paperclip size={28} color="var(--primary)" />
-            <span className="text-sm font-medium" style={{ color: "var(--primary)" }}>{t("chat.dropFiles")}</span>
+            <span className="text-sm font-medium" style={{ color: "var(--primary)" }}>
+              {t("chat.dropFiles")}
+            </span>
           </div>
         </div>
       )}
       {branchBanner}
 
       {/* Messages */}
-      <div
-        ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto pt-3 pb-2"
-      >
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pt-3 pb-2">
         <div ref={contentRef}>
           {displayMessages.map((msg) => (
             <MessageRow
@@ -340,7 +467,7 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
 
           {/* Suggest questions — aligned with AI bubble */}
           {suggestQuestions.length > 0 && !isGenerating && (
-            <div className="flex flex-wrap gap-1.5 pb-4 pt-1 px-4">
+            <div className="flex flex-wrap gap-1.5 px-4 pt-1 pb-4">
               {suggestQuestions.map((q, i) => (
                 <button
                   key={i}
@@ -348,8 +475,12 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
                     setSuggestQuestions([]);
                     handleSend(q);
                   }}
-                  className="rounded-xl px-3 py-1.5 text-[13px] active:opacity-70 transition-opacity text-left"
-                  style={{ backgroundColor: "var(--muted)", color: "var(--foreground)", border: "0.5px solid var(--border)" }}
+                  className="rounded-xl px-3 py-1.5 text-left text-[13px] transition-opacity active:opacity-70"
+                  style={{
+                    backgroundColor: "var(--muted)",
+                    color: "var(--foreground)",
+                    border: "0.5px solid var(--border)",
+                  }}
                 >
                   {q}
                 </button>
@@ -390,7 +521,15 @@ const ICON_MAP: Record<string, React.FC<{ size: number; color?: string }>> = {
   "trash-outline": IoTrashOutline,
 };
 
-function ActionBtn({ icon, onClick, color }: { icon: string; onClick: () => void; color?: string }) {
+function ActionBtn({
+  icon,
+  onClick,
+  color,
+}: {
+  icon: string;
+  onClick: () => void;
+  color?: string;
+}) {
   const IconComp = ICON_MAP[icon];
   if (!IconComp) return null;
   return (
@@ -428,7 +567,15 @@ interface MessageRowProps {
 
 // ── Assistant action bar: primary buttons + ··· overflow menu ──
 
-function AssistantActionBar({ content, message, onCopy, onRegenerate, onBranch, onDelete, t }: {
+function AssistantActionBar({
+  content,
+  message,
+  onCopy,
+  onRegenerate,
+  onBranch,
+  onDelete,
+  t,
+}: {
   content: string;
   message: Message;
   onCopy?: (c: string) => void;
@@ -442,41 +589,63 @@ function AssistantActionBar({ content, message, onCopy, onRegenerate, onBranch, 
   return (
     <div className="ml-1 flex items-center gap-0.5">
       {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
-      {onRegenerate && <ActionBtn icon="refresh-outline" onClick={() => onRegenerate(message.id)} />}
+      {onRegenerate && (
+        <ActionBtn icon="refresh-outline" onClick={() => onRegenerate(message.id)} />
+      )}
       {message.tokenUsage && (
-        <div className="ml-1 flex items-center gap-1 rounded px-1.5 py-0.5" style={{ backgroundColor: "var(--muted)" }}>
+        <div
+          className="ml-1 flex items-center gap-1 rounded px-1.5 py-0.5"
+          style={{ backgroundColor: "var(--muted)" }}
+        >
           <IoAnalyticsOutline size={11} color="var(--muted-foreground)" />
-          <span className="text-[10px] font-mono text-muted-foreground">
-            {formatTokens(message.tokenUsage.inputTokens)}→{formatTokens(message.tokenUsage.outputTokens)}
+          <span className="text-muted-foreground font-mono text-[10px]">
+            {formatTokens(message.tokenUsage.inputTokens)}→
+            {formatTokens(message.tokenUsage.outputTokens)}
           </span>
         </div>
       )}
 
       {/* ··· overflow menu */}
       <div className="relative">
-        <button onClick={() => setShowMenu((v) => !v)} className="rounded-md p-1.5 active:opacity-60">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted-foreground)" strokeWidth="2" strokeLinecap="round">
-            <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+        <button
+          onClick={() => setShowMenu((v) => !v)}
+          className="rounded-md p-1.5 active:opacity-60"
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--muted-foreground)"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <circle cx="5" cy="12" r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="19" cy="12" r="1.5" />
           </svg>
         </button>
         {showMenu && (
           <>
             <div className="fixed inset-0 z-20" onClick={() => setShowMenu(false)} />
             <div
-              className="absolute left-0 bottom-full mb-1 z-30 min-w-[150px] rounded-xl py-1 shadow-lg"
+              className="absolute bottom-full left-0 z-30 mb-1 min-w-[150px] rounded-xl py-1 shadow-lg"
               style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
             >
               {onBranch && (
                 <button
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 active:opacity-60"
-                  onClick={() => { setShowMenu(false); onBranch(message.id); }}
+                  className="flex w-full items-center gap-3 px-3.5 py-2.5 active:opacity-60"
+                  onClick={() => {
+                    setShowMenu(false);
+                    onBranch(message.id);
+                  }}
                 >
                   <GitBranch size={15} color="var(--foreground)" />
-                  <span className="text-[13px] text-foreground">{t("chat.branchFromHere")}</span>
+                  <span className="text-foreground text-[13px]">{t("chat.branchFromHere")}</span>
                 </button>
               )}
               <button
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 active:opacity-60"
+                className="flex w-full items-center gap-3 px-3.5 py-2.5 active:opacity-60"
                 onClick={() => {
                   setShowMenu(false);
                   if (navigator.share) navigator.share({ text: content }).catch(() => {});
@@ -484,17 +653,28 @@ function AssistantActionBar({ content, message, onCopy, onRegenerate, onBranch, 
                 }}
               >
                 <IoShareOutline size={15} color="var(--foreground)" />
-                <span className="text-[13px] text-foreground">{t("chat.export")}</span>
+                <span className="text-foreground text-[13px]">{t("chat.export")}</span>
               </button>
               {onDelete && (
                 <>
-                  <div style={{ height: "0.5px", backgroundColor: "var(--border)", margin: "2px 12px" }} />
+                  <div
+                    style={{
+                      height: "0.5px",
+                      backgroundColor: "var(--border)",
+                      margin: "2px 12px",
+                    }}
+                  />
                   <button
-                    className="w-full flex items-center gap-3 px-3.5 py-2.5 active:opacity-60"
-                    onClick={() => { setShowMenu(false); onDelete(message.id); }}
+                    className="flex w-full items-center gap-3 px-3.5 py-2.5 active:opacity-60"
+                    onClick={() => {
+                      setShowMenu(false);
+                      onDelete(message.id);
+                    }}
                   >
                     <IoTrashOutline size={15} color="var(--destructive)" />
-                    <span className="text-[13px]" style={{ color: "var(--destructive)" }}>{t("common.delete")}</span>
+                    <span className="text-[13px]" style={{ color: "var(--destructive)" }}>
+                      {t("common.delete")}
+                    </span>
                   </button>
                 </>
               )}
@@ -506,7 +686,16 @@ function AssistantActionBar({ content, message, onCopy, onRegenerate, onBranch, 
   );
 }
 
-const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onBranch, onDelete, onEdit, isGenerating, writtenFiles }: MessageRowProps) {
+const MessageRow = memo(function MessageRow({
+  message,
+  onCopy,
+  onRegenerate,
+  onBranch,
+  onDelete,
+  onEdit,
+  isGenerating,
+  writtenFiles,
+}: MessageRowProps) {
   const { t } = useTranslation();
   const isUser = message.role === "user";
   const isStreaming = message.status === MessageStatus.STREAMING;
@@ -516,10 +705,13 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
   const { displayText: content, fileNames } = useMemo(() => {
     const names: string[] = [];
     // Match <file name="...">...</file> blocks
-    const cleaned = rawContent.replace(/<file\s+name="([^"]+)">[\s\S]*?<\/file>\s*/g, (_m, name) => {
-      names.push(name);
-      return "";
-    });
+    const cleaned = rawContent.replace(
+      /<file\s+name="([^"]+)">[\s\S]*?<\/file>\s*/g,
+      (_m, name) => {
+        names.push(name);
+        return "";
+      },
+    );
     return { displayText: cleaned.trimStart(), fileNames: names };
   }, [rawContent]);
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
@@ -555,13 +747,17 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
       <div className="group mb-6 flex flex-col items-end gap-1 px-4">
         {/* Label */}
         <div className="mr-1 flex items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("chat.you")}</span>
-          <span className="text-[10px] text-muted-foreground/60">{formatTime(message.createdAt)}</span>
+          <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
+            {t("chat.you")}
+          </span>
+          <span className="text-muted-foreground/60 text-[10px]">
+            {formatTime(message.createdAt)}
+          </span>
         </div>
 
         {/* User images */}
         {message.images && message.images.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 max-w-[80%]">
+          <div className="flex max-w-[80%] flex-wrap gap-1.5">
             {message.images.map((uri: string, idx: number) => (
               <img key={idx} src={uri} className="h-32 w-32 rounded-lg object-cover" />
             ))}
@@ -570,15 +766,20 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
 
         {/* Attached file chips */}
         {fileNames.length > 0 && !isEditing && (
-          <div className="flex flex-wrap gap-1 max-w-[80%]" style={{ maxWidth: "min(80%, 640px)" }}>
+          <div className="flex max-w-[80%] flex-wrap gap-1" style={{ maxWidth: "min(80%, 640px)" }}>
             {fileNames.map((name, idx) => (
               <div
                 key={idx}
                 className="flex items-center gap-1 rounded-lg px-2 py-1"
-                style={{ backgroundColor: "color-mix(in srgb, var(--primary) 80%, white)", opacity: 0.9 }}
+                style={{
+                  backgroundColor: "color-mix(in srgb, var(--primary) 80%, white)",
+                  opacity: 0.9,
+                }}
               >
                 <FileText size={12} color="white" className="flex-shrink-0" />
-                <span className="text-[11px] font-medium text-white truncate max-w-[140px]">{name}</span>
+                <span className="max-w-[140px] truncate text-[11px] font-medium text-white">
+                  {name}
+                </span>
               </div>
             ))}
           </div>
@@ -587,21 +788,27 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
         {/* Bubble or Edit textarea */}
         {isEditing ? (
           <div className="w-full max-w-[80%]" style={{ maxWidth: "min(80%, 640px)" }}>
-            <div className="rounded-2xl px-3" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--primary)" }}>
+            <div
+              className="rounded-2xl px-3"
+              style={{ backgroundColor: "var(--muted)", border: "1px solid var(--primary)" }}
+            >
               <textarea
                 ref={editRef}
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Escape") cancelEditing();
-                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); confirmEdit(); }
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    confirmEdit();
+                  }
                 }}
-                className="w-full bg-transparent py-3 text-[15px] leading-relaxed text-foreground outline-none resize-none"
+                className="text-foreground w-full resize-none bg-transparent py-3 text-[15px] leading-relaxed outline-none"
                 style={{ minHeight: "60px" }}
                 rows={Math.max(2, editText.split("\n").length)}
               />
             </div>
-            <div className="flex justify-end gap-2 mt-2">
+            <div className="mt-2 flex justify-end gap-2">
               <button
                 onClick={cancelEditing}
                 className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-medium active:opacity-70"
@@ -623,9 +830,13 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
         ) : (
           <div
             className="max-w-[80%] rounded-2xl px-4 py-3"
-            style={{ backgroundColor: "var(--primary)", maxWidth: "min(80%, 640px)", borderTopRightRadius: 0 }}
+            style={{
+              backgroundColor: "var(--primary)",
+              maxWidth: "min(80%, 640px)",
+              borderTopRightRadius: 0,
+            }}
           >
-            <p className="text-[15px] leading-relaxed text-white whitespace-pre-wrap break-words">
+            <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap text-white">
               {content || (message.images?.length ? "📷" : "")}
             </p>
           </div>
@@ -635,12 +846,22 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
         {!isEditing && (
           <div className="mr-1 flex items-center gap-0.5">
             {onEdit && !isGenerating && (
-              <button onClick={startEditing} className="rounded-md p-1.5 active:opacity-60" title={t("common.edit")}>
+              <button
+                onClick={startEditing}
+                className="rounded-md p-1.5 active:opacity-60"
+                title={t("common.edit")}
+              >
                 <Pencil size={14} color="var(--muted-foreground)" />
               </button>
             )}
             {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
-            {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
+            {onDelete && (
+              <ActionBtn
+                icon="trash-outline"
+                onClick={() => onDelete(message.id)}
+                color="var(--destructive)"
+              />
+            )}
           </div>
         )}
       </div>
@@ -655,8 +876,15 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
     <div className="group mb-6 flex flex-col gap-1 px-4">
       {/* Label */}
       <div className="ml-1 flex items-center gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wider truncate max-w-[200px]" style={{ color: senderColor }}>{senderName}</span>
-        <span className="text-[10px] text-muted-foreground/60">{formatTime(message.createdAt)}</span>
+        <span
+          className="max-w-[200px] truncate text-[11px] font-semibold tracking-wider uppercase"
+          style={{ color: senderColor }}
+        >
+          {senderName}
+        </span>
+        <span className="text-muted-foreground/60 text-[10px]">
+          {formatTime(message.createdAt)}
+        </span>
       </div>
 
       {/* Main bubble — hide when only toolCalls with no content */}
@@ -671,9 +899,15 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
         >
           {isStreaming && !content && !message.reasoningContent ? (
             <div className="flex items-center gap-1.5 py-1">
-              <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" />
-              <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.15s" }} />
-              <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.3s" }} />
+              <span className="bg-muted-foreground/40 inline-block h-[7px] w-[7px] animate-pulse rounded-full" />
+              <span
+                className="bg-muted-foreground/40 inline-block h-[7px] w-[7px] animate-pulse rounded-full"
+                style={{ animationDelay: "0.15s" }}
+              />
+              <span
+                className="bg-muted-foreground/40 inline-block h-[7px] w-[7px] animate-pulse rounded-full"
+                style={{ animationDelay: "0.3s" }}
+              />
             </div>
           ) : (
             <MessageContent message={message} isStreaming={isStreaming} />
@@ -699,28 +933,41 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
                       return next;
                     });
                   }}
-                  className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 ${isPending ? "cursor-default" : "active:opacity-70"}`}
+                  className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 ${isPending ? "cursor-default" : "active:opacity-70"}`}
                   style={{ backgroundColor: "color-mix(in srgb, var(--muted) 70%, transparent)" }}
                 >
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                    {isPending
-                      ? <Hourglass size={13} color="#d97706" className="animate-spin flex-shrink-0" style={{ animationDuration: "2s" }} />
-                      : <Wrench size={13} color="var(--muted-foreground)" className="flex-shrink-0" />
-                    }
-                    <span className={`text-[12px] font-medium truncate ${isPending ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                    {isPending ? (
+                      <Hourglass
+                        size={13}
+                        color="#d97706"
+                        className="flex-shrink-0 animate-spin"
+                        style={{ animationDuration: "2s" }}
+                      />
+                    ) : (
+                      <Wrench size={13} color="var(--muted-foreground)" className="flex-shrink-0" />
+                    )}
+                    <span
+                      className={`truncate text-[12px] font-medium ${isPending ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+                    >
                       {isPending ? `${tc.name}…` : tc.name}
                     </span>
                   </div>
-                  {!isPending && (
-                    isExpanded
-                      ? <ChevronUp size={14} color="var(--muted-foreground)" />
-                      : <ChevronDown size={14} color="var(--muted-foreground)" />
-                  )}
+                  {!isPending &&
+                    (isExpanded ? (
+                      <ChevronUp size={14} color="var(--muted-foreground)" />
+                    ) : (
+                      <ChevronDown size={14} color="var(--muted-foreground)" />
+                    ))}
                 </button>
                 {isExpanded && result && (
-                  <div className="rounded-lg px-2.5 py-2 mt-0.5" style={{ backgroundColor: "var(--muted)" }}>
-                    <p className="text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap break-all">
-                      {result.content.slice(0, 1000)}{result.content.length > 1000 ? " …" : ""}
+                  <div
+                    className="mt-0.5 rounded-lg px-2.5 py-2"
+                    style={{ backgroundColor: "var(--muted)" }}
+                  >
+                    <p className="text-muted-foreground text-[11px] leading-relaxed break-all whitespace-pre-wrap">
+                      {result.content.slice(0, 1000)}
+                      {result.content.length > 1000 ? " …" : ""}
                     </p>
                   </div>
                 )}
@@ -732,7 +979,7 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
 
       {/* Written files chips */}
       {writtenFiles && writtenFiles.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-1" style={{ maxWidth: 720 }}>
+        <div className="mt-1 flex flex-wrap gap-1.5" style={{ maxWidth: 720 }}>
           {writtenFiles.map((wf, idx) => (
             <button
               key={idx}
@@ -741,14 +988,24 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
                 try {
                   const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
                   await revealItemInDir(wf.fullPath);
-                } catch { /* fallback: do nothing */ }
+                } catch {
+                  /* fallback: do nothing */
+                }
               }}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 active:opacity-70 transition-opacity"
-              style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--muted))", border: "0.5px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-opacity active:opacity-70"
+              style={{
+                backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--muted))",
+                border: "0.5px solid color-mix(in srgb, var(--primary) 20%, transparent)",
+              }}
               title={wf.fullPath}
             >
               <Save size={13} color="var(--primary)" className="flex-shrink-0" />
-              <span className="text-[12px] font-medium truncate max-w-[200px]" style={{ color: "var(--primary)" }}>{wf.path}</span>
+              <span
+                className="max-w-[200px] truncate text-[12px] font-medium"
+                style={{ color: "var(--primary)" }}
+              >
+                {wf.path}
+              </span>
               <FolderOpen size={12} color="var(--muted-foreground)" className="flex-shrink-0" />
             </button>
           ))}

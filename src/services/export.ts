@@ -14,8 +14,11 @@ export function buildConversationMarkdown(args: {
   let md = `# ${title}\n\n> ${date}\n\n---\n\n`;
 
   for (const msg of messages) {
-    const name = msg.role === "user" ? youLabel : msg.senderName ?? "AI";
-    const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const name = msg.role === "user" ? youLabel : (msg.senderName ?? "AI");
+    const time = new Date(msg.createdAt).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     md += `### ${name}  \`${time}\`\n\n`;
     if (msg.reasoningContent) {
       md += `<details>\n<summary>${thoughtProcessLabel}</summary>\n\n${msg.reasoningContent}\n\n</details>\n\n`;

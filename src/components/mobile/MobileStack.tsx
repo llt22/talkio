@@ -42,20 +42,27 @@ const Home: ActivityComponentType = () => {
       }
       return false;
     };
-    return () => { delete window.__stackflowBack; };
+    return () => {
+      delete window.__stackflowBack;
+    };
   }, [pop]);
 
-  const nav: MobileNavFunctions = useMemo(() => ({
-    pushChat: (conversationId: string) => push("ChatDetail", { conversationId }),
-    pushAddMember: (conversationId?: string) => push("AddMember", { conversationId: conversationId ?? "" }),
-    pushIdentityNew: () => push("IdentityNew", {}),
-    pushIdentityEdit: (id: string) => push("IdentityEdit", { identityId: id }),
-    pushSettingsProviders: () => push("ProvidersList", {}),
-    pushSettingsProviderEdit: (editId?: string) => push("ProviderEdit", { editId: editId ?? "" }),
-    pushSettingsMcpTools: () => push("McpTools", {}),
-    pushSettingsMcpServerEdit: (serverId?: string) => push("McpServerEdit", { serverId: serverId ?? "" }),
-    pushSettingsStt: () => push("SttSettings", {}),
-  }), [push]);
+  const nav: MobileNavFunctions = useMemo(
+    () => ({
+      pushChat: (conversationId: string) => push("ChatDetail", { conversationId }),
+      pushAddMember: (conversationId?: string) =>
+        push("AddMember", { conversationId: conversationId ?? "" }),
+      pushIdentityNew: () => push("IdentityNew", {}),
+      pushIdentityEdit: (id: string) => push("IdentityEdit", { identityId: id }),
+      pushSettingsProviders: () => push("ProvidersList", {}),
+      pushSettingsProviderEdit: (editId?: string) => push("ProviderEdit", { editId: editId ?? "" }),
+      pushSettingsMcpTools: () => push("McpTools", {}),
+      pushSettingsMcpServerEdit: (serverId?: string) =>
+        push("McpServerEdit", { serverId: serverId ?? "" }),
+      pushSettingsStt: () => push("SttSettings", {}),
+    }),
+    [push],
+  );
 
   return (
     <AppScreen>
@@ -73,23 +80,33 @@ const ChatDetail: ActivityComponentType<{ conversationId: string }> = ({ params 
   const { pop, push } = _useFlow();
   const setCurrentConversation = useChatStore((s) => s.setCurrentConversation);
 
-  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
   useEffect(() => {
     if (params.conversationId) setCurrentConversation(params.conversationId);
     return () => setCurrentConversation(null);
   }, [params.conversationId, setCurrentConversation]);
 
-  const nav: MobileNavFunctions = useMemo(() => ({
-    pushChat: (conversationId: string) => push("ChatDetail", { conversationId }),
-    pushAddMember: (conversationId?: string) => push("AddMember", { conversationId: conversationId ?? "" }),
-    pushIdentityNew: () => push("IdentityNew", {}),
-    pushIdentityEdit: (id: string) => push("IdentityEdit", { identityId: id }),
-    pushSettingsProviders: () => push("ProvidersList", {}),
-    pushSettingsProviderEdit: (editId?: string) => push("ProviderEdit", { editId: editId ?? "" }),
-    pushSettingsMcpTools: () => push("McpTools", {}),
-    pushSettingsMcpServerEdit: (serverId?: string) => push("McpServerEdit", { serverId: serverId ?? "" }),
-    pushSettingsStt: () => push("SttSettings", {}),
-  }), [push]);
+  const nav: MobileNavFunctions = useMemo(
+    () => ({
+      pushChat: (conversationId: string) => push("ChatDetail", { conversationId }),
+      pushAddMember: (conversationId?: string) =>
+        push("AddMember", { conversationId: conversationId ?? "" }),
+      pushIdentityNew: () => push("IdentityNew", {}),
+      pushIdentityEdit: (id: string) => push("IdentityEdit", { identityId: id }),
+      pushSettingsProviders: () => push("ProvidersList", {}),
+      pushSettingsProviderEdit: (editId?: string) => push("ProviderEdit", { editId: editId ?? "" }),
+      pushSettingsMcpTools: () => push("McpTools", {}),
+      pushSettingsMcpServerEdit: (serverId?: string) =>
+        push("McpServerEdit", { serverId: serverId ?? "" }),
+      pushSettingsStt: () => push("SttSettings", {}),
+    }),
+    [push],
+  );
 
   return (
     <AppScreen>
@@ -108,7 +125,12 @@ const AddMember: ActivityComponentType<{ conversationId: string }> = ({ params }
   const { pop, push } = _useFlow();
   const createConversation = useChatStore((s) => s.createConversation);
   const addParticipants = useChatStore((s) => s.addParticipants);
-  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
 
   const isCreateMode = !params.conversationId;
 
@@ -124,12 +146,22 @@ const AddMember: ActivityComponentType<{ conversationId: string }> = ({ params }
   };
 
   return (
-    <AppScreen appBar={{ title: isCreateMode ? t("models.createGroup", { count: 0 }).replace(" (0)", "") : t("chat.addMember") }}>
-      <div className="h-full flex flex-col" style={{ backgroundColor: "var(--background)" }}>
+    <AppScreen
+      appBar={{
+        title: isCreateMode
+          ? t("models.createGroup", { count: 0 }).replace(" (0)", "")
+          : t("chat.addMember"),
+      }}
+    >
+      <div className="flex h-full flex-col" style={{ backgroundColor: "var(--background)" }}>
         <AddMemberContent
           onConfirm={handleConfirm}
           minMembers={isCreateMode ? 2 : 1}
-          confirmLabel={isCreateMode ? t("models.createGroup", { count: 0 }).replace("(0)", "").trim() : undefined}
+          confirmLabel={
+            isCreateMode
+              ? t("models.createGroup", { count: 0 }).replace("(0)", "").trim()
+              : undefined
+          }
         />
       </div>
     </AppScreen>
@@ -141,7 +173,12 @@ const AddMember: ActivityComponentType<{ conversationId: string }> = ({ params }
 // ══════════════════════════════════════════
 const IdentityNew: ActivityComponentType = () => {
   const { pop } = _useFlow();
-  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
 
   return (
     <AppScreen>
@@ -155,7 +192,12 @@ const IdentityNew: ActivityComponentType = () => {
 // ══════════════════════════════════════════
 const IdentityEdit: ActivityComponentType<{ identityId: string }> = ({ params }) => {
   const { pop } = _useFlow();
-  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
 
   return (
     <AppScreen>
@@ -172,7 +214,12 @@ const ProvidersList: ActivityComponentType = () => {
   const { push, pop } = _useFlow();
   const providers = useProviderStore((s) => s.providers);
   const models = useProviderStore((s) => s.models);
-  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
 
   return (
     <AppScreen
@@ -194,45 +241,83 @@ const ProvidersList: ActivityComponentType = () => {
               subtitle={t("models.configureHint")}
             />
           ) : (
-            <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
-              {providers.map((provider: { id: string; name: string; status: string; baseUrl: string; type: string; enabled?: boolean }, idx: number) => {
-                const providerModels = models.filter((m: { providerId: string; enabled: boolean }) => m.providerId === provider.id);
-                const activeModels = providerModels.filter((m: { enabled: boolean }) => m.enabled);
-                const isConnected = provider.status === "active" || provider.status === "connected";
-                const isError = provider.status === "error";
-                const isDisabled = provider.enabled === false;
-                return (
-                  <button
-                    key={provider.id}
-                    onClick={() => push("ProviderEdit", { editId: provider.id })}
-                    className={`w-full flex items-center gap-4 px-4 py-3 text-left active:bg-black/5 transition-colors ${isDisabled ? "opacity-50" : ""}`}
-                    style={{ borderBottom: idx < providers.length - 1 ? "0.5px solid var(--border)" : "none" }}
-                  >
-                    <div className="relative flex-shrink-0">
-                      <div
-                        className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-semibold"
-                        style={{ backgroundColor: getAvatarProps(provider.name).color }}
-                      >
-                        {getAvatarProps(provider.name).initials}
+            <div
+              style={{
+                borderTop: "0.5px solid var(--border)",
+                borderBottom: "0.5px solid var(--border)",
+              }}
+            >
+              {providers.map(
+                (
+                  provider: {
+                    id: string;
+                    name: string;
+                    status: string;
+                    baseUrl: string;
+                    type: string;
+                    enabled?: boolean;
+                  },
+                  idx: number,
+                ) => {
+                  const providerModels = models.filter(
+                    (m: { providerId: string; enabled: boolean }) => m.providerId === provider.id,
+                  );
+                  const activeModels = providerModels.filter(
+                    (m: { enabled: boolean }) => m.enabled,
+                  );
+                  const isConnected =
+                    provider.status === "active" || provider.status === "connected";
+                  const isError = provider.status === "error";
+                  const isDisabled = provider.enabled === false;
+                  return (
+                    <button
+                      key={provider.id}
+                      onClick={() => push("ProviderEdit", { editId: provider.id })}
+                      className={`flex w-full items-center gap-4 px-4 py-3 text-left transition-colors active:bg-black/5 ${isDisabled ? "opacity-50" : ""}`}
+                      style={{
+                        borderBottom:
+                          idx < providers.length - 1 ? "0.5px solid var(--border)" : "none",
+                      }}
+                    >
+                      <div className="relative flex-shrink-0">
+                        <div
+                          className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white"
+                          style={{ backgroundColor: getAvatarProps(provider.name).color }}
+                        >
+                          {getAvatarProps(provider.name).initials}
+                        </div>
+                        <div
+                          className="absolute right-0 bottom-0 h-3 w-3 rounded-full border-2"
+                          style={{
+                            borderColor: "var(--background)",
+                            backgroundColor: isConnected
+                              ? "var(--success)"
+                              : isError
+                                ? "var(--destructive)"
+                                : "var(--border)",
+                          }}
+                        />
                       </div>
-                      <div
-                        className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2"
-                        style={{
-                          borderColor: "var(--background)",
-                          backgroundColor: isConnected ? "var(--success)" : isError ? "var(--destructive)" : "var(--border)",
-                        }}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-foreground truncate text-[16px] font-medium">
+                          {provider.name}
+                        </p>
+                        <p className="text-muted-foreground truncate text-[13px]">
+                          {t("providers.modelsCount", {
+                            total: providerModels.length,
+                            active: activeModels.length,
+                          })}
+                        </p>
+                      </div>
+                      <IoChevronForward
+                        size={18}
+                        color="var(--muted-foreground)"
+                        style={{ opacity: 0.3 }}
                       />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[16px] font-medium text-foreground truncate">{provider.name}</p>
-                      <p className="text-[13px] text-muted-foreground truncate">
-                        {t("providers.modelsCount", { total: providerModels.length, active: activeModels.length })}
-                      </p>
-                    </div>
-                    <IoChevronForward size={18} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                },
+              )}
             </div>
           )}
         </div>
@@ -249,30 +334,39 @@ const ProviderEdit: ActivityComponentType<{ editId?: string }> = ({ params }) =>
   const { pop } = _useFlow();
   const { confirm } = useConfirm();
   const deleteProvider = useProviderStore((s) => s.deleteProvider);
-  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
 
   return (
     <AppScreen
       appBar={{
-        title: params.editId ? t("settings.editProvider", { defaultValue: "Edit Provider" }) : t("settings.addProvider"),
-        renderRight: params.editId ? () => (
-          <button
-            onClick={async () => {
-              const ok = await confirm({
-                title: t("common.areYouSure"),
-                description: t("providers.deleteConfirm", { name: "" }),
-                destructive: true,
-              });
-              if (ok) {
-                deleteProvider(params.editId!);
-                pop();
-              }
-            }}
-            className="p-2 active:opacity-60"
-          >
-            <IoTrashOutline size={18} color="var(--destructive)" />
-          </button>
-        ) : undefined,
+        title: params.editId
+          ? t("settings.editProvider", { defaultValue: "Edit Provider" })
+          : t("settings.addProvider"),
+        renderRight: params.editId
+          ? () => (
+              <button
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: t("common.areYouSure"),
+                    description: t("providers.deleteConfirm", { name: "" }),
+                    destructive: true,
+                  });
+                  if (ok) {
+                    deleteProvider(params.editId!);
+                    pop();
+                  }
+                }}
+                className="p-2 active:opacity-60"
+              >
+                <IoTrashOutline size={18} color="var(--destructive)" />
+              </button>
+            )
+          : undefined,
       }}
     >
       <div className="h-full overflow-y-auto">
@@ -288,7 +382,12 @@ const ProviderEdit: ActivityComponentType<{ editId?: string }> = ({ params }) =>
 const McpTools: ActivityComponentType = () => {
   const { t } = useTranslation();
   const { push, pop } = _useFlow();
-  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
 
   const onPush = (page: { id: string }) => {
     const match = page.id.match(/^mcp-edit-(.+)$/);
@@ -313,7 +412,12 @@ const McpServerEdit: ActivityComponentType<{ serverId?: string }> = ({ params })
   const { t } = useTranslation();
   const { pop } = _useFlow();
   const servers = useMcpStore((s) => s.servers) as McpServerConfig[];
-  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
 
   const server = params.serverId ? servers.find((s) => s.id === params.serverId) : undefined;
 
@@ -329,7 +433,12 @@ const McpServerEdit: ActivityComponentType<{ serverId?: string }> = ({ params })
 // ══════════════════════════════════════════
 const SttSettings: ActivityComponentType = () => {
   const { t } = useTranslation();
-  useEffect(() => { _stackDepth++; return () => { _stackDepth--; }; }, []);
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
 
   return (
     <AppScreen appBar={{ title: t("settings.sttProvider") }}>

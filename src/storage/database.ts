@@ -31,7 +31,8 @@ function createInMemoryDb() {
   };
 
   function parseWhere(sql: string, params: any[]): { table: string; conditions: [string, any][] } {
-    const tableMatch = sql.match(/FROM\s+(\w+)/i) || sql.match(/(?:INTO|UPDATE|DELETE FROM)\s+(\w+)/i);
+    const tableMatch =
+      sql.match(/FROM\s+(\w+)/i) || sql.match(/(?:INTO|UPDATE|DELETE FROM)\s+(\w+)/i);
     const table = tableMatch?.[1] ?? "";
     const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER|\s+LIMIT|\s*$)/is);
     const conditions: [string, any][] = [];
@@ -76,7 +77,9 @@ function createInMemoryDb() {
         const colMatch = sql.match(/\(([^)]+)\)\s*VALUES/i);
         const cols = colMatch?.[1].split(",").map((c) => c.trim()) ?? [];
         const row: Record<string, any> = {};
-        cols.forEach((c, i) => { row[c] = params[i] ?? null; });
+        cols.forEach((c, i) => {
+          row[c] = params[i] ?? null;
+        });
         const id = row.id ?? String(Date.now() + Math.random());
         row.id = id;
         tables[tbl].set(id, row);
@@ -101,7 +104,9 @@ function createInMemoryDb() {
         tables[tbl].forEach((row, key) => {
           if (matchRow(row, conditions)) {
             const updated = { ...row };
-            setOps.forEach(([col, idx]) => { updated[col] = params[idx]; });
+            setOps.forEach(([col, idx]) => {
+              updated[col] = params[idx];
+            });
             tables[tbl].set(key, updated);
             count++;
           }
@@ -121,7 +126,10 @@ function createInMemoryDb() {
         }
         let count = 0;
         tables[tbl].forEach((row, key) => {
-          if (matchRow(row, conditions)) { tables[tbl].delete(key); count++; }
+          if (matchRow(row, conditions)) {
+            tables[tbl].delete(key);
+            count++;
+          }
         });
         return { rowsAffected: count };
       }
@@ -138,10 +146,13 @@ function createInMemoryDb() {
 
       const orderMatch = sql.match(/ORDER BY\s+(.+?)(?:\s+LIMIT|\s*$)/i);
       if (orderMatch) {
-        const orderCols = orderMatch[1].split(",").map((part) => {
-          const m = part.trim().match(/(\w+)\s*(ASC|DESC)?/i);
-          return m ? { col: m[1], desc: (m[2] ?? "ASC").toUpperCase() === "DESC" } : null;
-        }).filter(Boolean) as { col: string; desc: boolean }[];
+        const orderCols = orderMatch[1]
+          .split(",")
+          .map((part) => {
+            const m = part.trim().match(/(\w+)\s*(ASC|DESC)?/i);
+            return m ? { col: m[1], desc: (m[2] ?? "ASC").toUpperCase() === "DESC" } : null;
+          })
+          .filter(Boolean) as { col: string; desc: boolean }[];
         rows.sort((a, b) => {
           for (const { col, desc } of orderCols) {
             const av = a[col] ?? "";
@@ -167,7 +178,11 @@ function safeJsonParse<T>(value: unknown, fallback: T): T {
   if (typeof value !== "string") return value as T; // already parsed object
   if (!value) return fallback;
   if (value === "[]") return [] as unknown as T;
-  try { return JSON.parse(value) as T; } catch { return fallback; }
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 function rowToConversation(row: any): Conversation {
@@ -244,9 +259,17 @@ export async function initDatabase(): Promise<void> {
     )
   `);
   // Migration: add speakingOrder column for databases created before this field existed
-  try { await db.execute(`ALTER TABLE conversations ADD COLUMN speakingOrder TEXT`); } catch { /* column already exists */ }
+  try {
+    await db.execute(`ALTER TABLE conversations ADD COLUMN speakingOrder TEXT`);
+  } catch {
+    /* column already exists */
+  }
   // Migration: add workspaceDir column
-  try { await db.execute(`ALTER TABLE conversations ADD COLUMN workspaceDir TEXT`); } catch { /* column already exists */ }
+  try {
+    await db.execute(`ALTER TABLE conversations ADD COLUMN workspaceDir TEXT`);
+  } catch {
+    /* column already exists */
+  }
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS messages (
@@ -274,9 +297,13 @@ export async function initDatabase(): Promise<void> {
       FOREIGN KEY (conversationId) REFERENCES conversations(id) ON DELETE CASCADE
     )
   `);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversationId)`);
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversationId)`,
+  );
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_messages_branch ON messages(branchId)`);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_messages_conv_branch_created ON messages(conversationId, branchId, createdAt)`);
+  await db.execute(
+    `CREATE INDEX IF NOT EXISTS idx_messages_conv_branch_created ON messages(conversationId, branchId, createdAt)`,
+  );
   await db.execute(`
     CREATE TABLE IF NOT EXISTS message_blocks (
       id TEXT PRIMARY KEY,
@@ -300,26 +327,71 @@ export async function insertConversation(conv: Conversation): Promise<void> {
   await db.execute(
     `INSERT INTO conversations (id, type, title, participants, speakingOrder, lastMessage, lastMessageAt, pinned, createdAt, updatedAt, workspaceDir)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-    [conv.id, conv.type, conv.title, JSON.stringify(conv.participants),
-     conv.speakingOrder ?? null, conv.lastMessage, conv.lastMessageAt, conv.pinned ? 1 : 0,
-     conv.createdAt, conv.updatedAt, conv.workspaceDir ?? null]
+    [
+      conv.id,
+      conv.type,
+      conv.title,
+      JSON.stringify(conv.participants),
+      conv.speakingOrder ?? null,
+      conv.lastMessage,
+      conv.lastMessageAt,
+      conv.pinned ? 1 : 0,
+      conv.createdAt,
+      conv.updatedAt,
+      conv.workspaceDir ?? null,
+    ],
   );
 }
 
-export async function updateConversation(id: string, updates: Partial<Conversation>): Promise<void> {
+export async function updateConversation(
+  id: string,
+  updates: Partial<Conversation>,
+): Promise<void> {
   const db = await getDb();
   const sets: string[] = ["updatedAt = $1"];
   const params: any[] = [new Date().toISOString()];
   let idx = 2;
 
-  if (updates.type !== undefined) { sets.push(`type = $${idx}`); params.push(updates.type); idx++; }
-  if (updates.title !== undefined) { sets.push(`title = $${idx}`); params.push(updates.title); idx++; }
-  if (updates.participants !== undefined) { sets.push(`participants = $${idx}`); params.push(JSON.stringify(updates.participants)); idx++; }
-  if (updates.lastMessage !== undefined) { sets.push(`lastMessage = $${idx}`); params.push(updates.lastMessage); idx++; }
-  if (updates.lastMessageAt !== undefined) { sets.push(`lastMessageAt = $${idx}`); params.push(updates.lastMessageAt); idx++; }
-  if (updates.pinned !== undefined) { sets.push(`pinned = $${idx}`); params.push(updates.pinned ? 1 : 0); idx++; }
-  if (updates.speakingOrder !== undefined) { sets.push(`speakingOrder = $${idx}`); params.push(updates.speakingOrder); idx++; }
-  if (updates.workspaceDir !== undefined) { sets.push(`workspaceDir = $${idx}`); params.push(updates.workspaceDir || null); idx++; }
+  if (updates.type !== undefined) {
+    sets.push(`type = $${idx}`);
+    params.push(updates.type);
+    idx++;
+  }
+  if (updates.title !== undefined) {
+    sets.push(`title = $${idx}`);
+    params.push(updates.title);
+    idx++;
+  }
+  if (updates.participants !== undefined) {
+    sets.push(`participants = $${idx}`);
+    params.push(JSON.stringify(updates.participants));
+    idx++;
+  }
+  if (updates.lastMessage !== undefined) {
+    sets.push(`lastMessage = $${idx}`);
+    params.push(updates.lastMessage);
+    idx++;
+  }
+  if (updates.lastMessageAt !== undefined) {
+    sets.push(`lastMessageAt = $${idx}`);
+    params.push(updates.lastMessageAt);
+    idx++;
+  }
+  if (updates.pinned !== undefined) {
+    sets.push(`pinned = $${idx}`);
+    params.push(updates.pinned ? 1 : 0);
+    idx++;
+  }
+  if (updates.speakingOrder !== undefined) {
+    sets.push(`speakingOrder = $${idx}`);
+    params.push(updates.speakingOrder);
+    idx++;
+  }
+  if (updates.workspaceDir !== undefined) {
+    sets.push(`workspaceDir = $${idx}`);
+    params.push(updates.workspaceDir || null);
+    idx++;
+  }
 
   params.push(id);
   await db.execute(`UPDATE conversations SET ${sets.join(", ")} WHERE id = $${idx}`, params);
@@ -351,14 +423,29 @@ export async function insertMessage(msg: Message): Promise<void> {
      content, images, generatedImages, reasoningContent, reasoningDuration,
      toolCalls, toolResults, branchId, parentMessageId, isStreaming, status, errorMessage, tokenUsage, createdAt)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
-    [msg.id, msg.conversationId, msg.role, msg.senderModelId, msg.senderName,
-     msg.identityId, msg.participantId, msg.content,
-     JSON.stringify(msg.images ?? []), JSON.stringify(msg.generatedImages ?? []),
-     msg.reasoningContent, msg.reasoningDuration,
-     JSON.stringify(msg.toolCalls), JSON.stringify(msg.toolResults),
-     msg.branchId, msg.parentMessageId, msg.isStreaming ? 1 : 0,
-     msg.status ?? MessageStatus.SUCCESS, msg.errorMessage ?? null,
-     msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null, msg.createdAt]
+    [
+      msg.id,
+      msg.conversationId,
+      msg.role,
+      msg.senderModelId,
+      msg.senderName,
+      msg.identityId,
+      msg.participantId,
+      msg.content,
+      JSON.stringify(msg.images ?? []),
+      JSON.stringify(msg.generatedImages ?? []),
+      msg.reasoningContent,
+      msg.reasoningDuration,
+      JSON.stringify(msg.toolCalls),
+      JSON.stringify(msg.toolResults),
+      msg.branchId,
+      msg.parentMessageId,
+      msg.isStreaming ? 1 : 0,
+      msg.status ?? MessageStatus.SUCCESS,
+      msg.errorMessage ?? null,
+      msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
+      msg.createdAt,
+    ],
   );
 }
 
@@ -368,70 +455,132 @@ export async function updateMessage(id: string, updates: Partial<Message>): Prom
   const params: any[] = [];
   let idx = 1;
 
-  if (updates.content !== undefined) { sets.push(`content = $${idx}`); params.push(updates.content); idx++; }
-  if (updates.images !== undefined) { sets.push(`images = $${idx}`); params.push(JSON.stringify(updates.images)); idx++; }
-  if (updates.generatedImages !== undefined) { sets.push(`generatedImages = $${idx}`); params.push(JSON.stringify(updates.generatedImages)); idx++; }
-  if (updates.reasoningContent !== undefined) { sets.push(`reasoningContent = $${idx}`); params.push(updates.reasoningContent); idx++; }
-  if (updates.reasoningDuration !== undefined) { sets.push(`reasoningDuration = $${idx}`); params.push(updates.reasoningDuration); idx++; }
-  if (updates.toolCalls !== undefined) { sets.push(`toolCalls = $${idx}`); params.push(JSON.stringify(updates.toolCalls)); idx++; }
-  if (updates.toolResults !== undefined) { sets.push(`toolResults = $${idx}`); params.push(JSON.stringify(updates.toolResults)); idx++; }
-  if (updates.isStreaming !== undefined) { sets.push(`isStreaming = $${idx}`); params.push(updates.isStreaming ? 1 : 0); idx++; }
-  if (updates.status !== undefined) { sets.push(`status = $${idx}`); params.push(updates.status); idx++; }
-  if (updates.errorMessage !== undefined) { sets.push(`errorMessage = $${idx}`); params.push(updates.errorMessage); idx++; }
-  if (updates.tokenUsage !== undefined) { sets.push(`tokenUsage = $${idx}`); params.push(updates.tokenUsage ? JSON.stringify(updates.tokenUsage) : null); idx++; }
-  if (updates.participantId !== undefined) { sets.push(`participantId = $${idx}`); params.push(updates.participantId); idx++; }
+  if (updates.content !== undefined) {
+    sets.push(`content = $${idx}`);
+    params.push(updates.content);
+    idx++;
+  }
+  if (updates.images !== undefined) {
+    sets.push(`images = $${idx}`);
+    params.push(JSON.stringify(updates.images));
+    idx++;
+  }
+  if (updates.generatedImages !== undefined) {
+    sets.push(`generatedImages = $${idx}`);
+    params.push(JSON.stringify(updates.generatedImages));
+    idx++;
+  }
+  if (updates.reasoningContent !== undefined) {
+    sets.push(`reasoningContent = $${idx}`);
+    params.push(updates.reasoningContent);
+    idx++;
+  }
+  if (updates.reasoningDuration !== undefined) {
+    sets.push(`reasoningDuration = $${idx}`);
+    params.push(updates.reasoningDuration);
+    idx++;
+  }
+  if (updates.toolCalls !== undefined) {
+    sets.push(`toolCalls = $${idx}`);
+    params.push(JSON.stringify(updates.toolCalls));
+    idx++;
+  }
+  if (updates.toolResults !== undefined) {
+    sets.push(`toolResults = $${idx}`);
+    params.push(JSON.stringify(updates.toolResults));
+    idx++;
+  }
+  if (updates.isStreaming !== undefined) {
+    sets.push(`isStreaming = $${idx}`);
+    params.push(updates.isStreaming ? 1 : 0);
+    idx++;
+  }
+  if (updates.status !== undefined) {
+    sets.push(`status = $${idx}`);
+    params.push(updates.status);
+    idx++;
+  }
+  if (updates.errorMessage !== undefined) {
+    sets.push(`errorMessage = $${idx}`);
+    params.push(updates.errorMessage);
+    idx++;
+  }
+  if (updates.tokenUsage !== undefined) {
+    sets.push(`tokenUsage = $${idx}`);
+    params.push(updates.tokenUsage ? JSON.stringify(updates.tokenUsage) : null);
+    idx++;
+  }
+  if (updates.participantId !== undefined) {
+    sets.push(`participantId = $${idx}`);
+    params.push(updates.participantId);
+    idx++;
+  }
 
   if (sets.length === 0) return;
   params.push(id);
   await db.execute(`UPDATE messages SET ${sets.join(", ")} WHERE id = $${idx}`, params);
 }
 
-export async function getMessages(conversationId: string, branchId?: string | null, limit = 100, offset = 0): Promise<Message[]> {
+export async function getMessages(
+  conversationId: string,
+  branchId?: string | null,
+  limit = 100,
+  offset = 0,
+): Promise<Message[]> {
   const db = await getDb();
   let rows: any[];
   if (branchId) {
     rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId = $2 ORDER BY createdAt ASC LIMIT $3 OFFSET $4`,
-      [conversationId, branchId, limit, offset]
+      [conversationId, branchId, limit, offset],
     );
   } else {
     rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId IS NULL ORDER BY createdAt ASC LIMIT $2 OFFSET $3`,
-      [conversationId, limit, offset]
+      [conversationId, limit, offset],
     );
   }
   return rows.map(rowToMessage);
 }
 
-export async function getRecentMessages(conversationId: string, branchId?: string | null, limit = 40): Promise<Message[]> {
+export async function getRecentMessages(
+  conversationId: string,
+  branchId?: string | null,
+  limit = 40,
+): Promise<Message[]> {
   const db = await getDb();
   let rows: any[];
   if (branchId) {
     rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId = $2 ORDER BY createdAt DESC LIMIT $3`,
-      [conversationId, branchId, limit]
+      [conversationId, branchId, limit],
     );
   } else {
     rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId IS NULL ORDER BY createdAt DESC LIMIT $2`,
-      [conversationId, limit]
+      [conversationId, limit],
     );
   }
   return rows.map(rowToMessage).reverse();
 }
 
-export async function getMessagesBefore(conversationId: string, branchId: string | null | undefined, before: string, limit = 40): Promise<Message[]> {
+export async function getMessagesBefore(
+  conversationId: string,
+  branchId: string | null | undefined,
+  before: string,
+  limit = 40,
+): Promise<Message[]> {
   const db = await getDb();
   let rows: any[];
   if (branchId) {
     rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId = $2 AND createdAt < $3 ORDER BY createdAt DESC LIMIT $4`,
-      [conversationId, branchId, before, limit]
+      [conversationId, branchId, before, limit],
     );
   } else {
     rows = await db.select(
       `SELECT * FROM messages WHERE conversationId = $1 AND branchId IS NULL AND createdAt < $2 ORDER BY createdAt DESC LIMIT $3`,
-      [conversationId, before, limit]
+      [conversationId, before, limit],
     );
   }
   return rows.map(rowToMessage).reverse();
@@ -441,7 +590,7 @@ export async function searchMessages(query: string): Promise<Message[]> {
   const db = await getDb();
   const rows = await db.select(
     `SELECT * FROM messages WHERE content LIKE $1 ORDER BY createdAt DESC LIMIT 50`,
-    [`%${query}%`]
+    [`%${query}%`],
   );
   return rows.map(rowToMessage);
 }
@@ -456,7 +605,7 @@ export async function getAllMessagesForConversation(conversationId: string): Pro
   const db = await getDb();
   const rows = await db.select(
     `SELECT * FROM messages WHERE conversationId = $1 ORDER BY createdAt ASC`,
-    [conversationId]
+    [conversationId],
   );
   return rows.map(rowToMessage);
 }
@@ -469,14 +618,22 @@ export async function clearMessages(conversationId: string): Promise<void> {
 export async function insertMessages(msgs: Message[]): Promise<void> {
   if (msgs.length === 0) return;
   const db = await getDb();
-  try { await db.execute("BEGIN TRANSACTION"); } catch { /* in-memory fallback doesn't support transactions */ }
+  try {
+    await db.execute("BEGIN TRANSACTION");
+  } catch {
+    /* in-memory fallback doesn't support transactions */
+  }
   try {
     for (const msg of msgs) {
       await insertMessage(msg);
     }
-    try { await db.execute("COMMIT"); } catch {}
+    try {
+      await db.execute("COMMIT");
+    } catch {}
   } catch (err) {
-    try { await db.execute("ROLLBACK"); } catch {}
+    try {
+      await db.execute("ROLLBACK");
+    } catch {}
     throw err;
   }
 }
@@ -487,9 +644,17 @@ export async function insertBlock(block: MessageBlock): Promise<void> {
   await db.execute(
     `INSERT INTO message_blocks (id, messageId, type, content, status, metadata, sortOrder, createdAt, updatedAt)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-    [block.id, block.messageId, block.type, block.content, block.status,
-     block.metadata ? JSON.stringify(block.metadata) : null,
-     block.sortOrder, block.createdAt, block.updatedAt]
+    [
+      block.id,
+      block.messageId,
+      block.type,
+      block.content,
+      block.status,
+      block.metadata ? JSON.stringify(block.metadata) : null,
+      block.sortOrder,
+      block.createdAt,
+      block.updatedAt,
+    ],
   );
 }
 
@@ -499,11 +664,31 @@ export async function updateBlock(id: string, updates: Partial<MessageBlock>): P
   const params: any[] = [new Date().toISOString()];
   let idx = 2;
 
-  if (updates.content !== undefined) { sets.push(`content = $${idx}`); params.push(updates.content); idx++; }
-  if (updates.status !== undefined) { sets.push(`status = $${idx}`); params.push(updates.status); idx++; }
-  if (updates.type !== undefined) { sets.push(`type = $${idx}`); params.push(updates.type); idx++; }
-  if (updates.metadata !== undefined) { sets.push(`metadata = $${idx}`); params.push(updates.metadata ? JSON.stringify(updates.metadata) : null); idx++; }
-  if (updates.sortOrder !== undefined) { sets.push(`sortOrder = $${idx}`); params.push(updates.sortOrder); idx++; }
+  if (updates.content !== undefined) {
+    sets.push(`content = $${idx}`);
+    params.push(updates.content);
+    idx++;
+  }
+  if (updates.status !== undefined) {
+    sets.push(`status = $${idx}`);
+    params.push(updates.status);
+    idx++;
+  }
+  if (updates.type !== undefined) {
+    sets.push(`type = $${idx}`);
+    params.push(updates.type);
+    idx++;
+  }
+  if (updates.metadata !== undefined) {
+    sets.push(`metadata = $${idx}`);
+    params.push(updates.metadata ? JSON.stringify(updates.metadata) : null);
+    idx++;
+  }
+  if (updates.sortOrder !== undefined) {
+    sets.push(`sortOrder = $${idx}`);
+    params.push(updates.sortOrder);
+    idx++;
+  }
 
   if (sets.length <= 1) return;
   params.push(id);
@@ -513,7 +698,8 @@ export async function updateBlock(id: string, updates: Partial<MessageBlock>): P
 export async function getBlocksByMessageId(messageId: string): Promise<MessageBlock[]> {
   const db = await getDb();
   const rows = await db.select(
-    `SELECT * FROM message_blocks WHERE messageId = $1 ORDER BY sortOrder ASC`, [messageId]
+    `SELECT * FROM message_blocks WHERE messageId = $1 ORDER BY sortOrder ASC`,
+    [messageId],
   );
   return rows.map(rowToBlock);
 }

@@ -286,11 +286,26 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
         body: JSON.stringify({
           model: model.modelId,
           max_tokens: 1,
-          messages: [{ role: "user", content: [{ type: "text", text: "hi" }, { type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" } }] }],
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "hi" },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+                  },
+                },
+              ],
+            },
+          ],
         }),
       });
       caps.vision = visionRes.ok;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     // Probe tool call
     try {
@@ -302,11 +317,22 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
           model: model.modelId,
           max_tokens: 1,
           messages: [{ role: "user", content: "hi" }],
-          tools: [{ type: "function", function: { name: "test", description: "test", parameters: { type: "object", properties: {} } } }],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "test",
+                description: "test",
+                parameters: { type: "object", properties: {} },
+              },
+            },
+          ],
         }),
       });
       caps.toolCall = toolRes.ok;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     get().updateModelCapabilities(modelId, caps);
   },

@@ -31,19 +31,15 @@ export const ReasoningBlock = memo(function ReasoningBlock({
     <div className="mb-2">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors"
       >
         {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        <Brain size={14} className={isStreaming ? "animate-pulse text-primary" : ""} />
-        <span className="font-medium">
-          {isStreaming ? "Thinking..." : "Reasoning"}
-        </span>
-        {durationText && (
-          <span className="text-muted-foreground/60">({durationText})</span>
-        )}
+        <Brain size={14} className={isStreaming ? "text-primary animate-pulse" : ""} />
+        <span className="font-medium">{isStreaming ? "Thinking..." : "Reasoning"}</span>
+        {durationText && <span className="text-muted-foreground/60">({durationText})</span>}
       </button>
       {expanded && (
-        <div className="mt-1.5 ml-5 pl-3 border-l-2 border-primary/20 text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+        <div className="border-primary/20 text-muted-foreground mt-1.5 ml-5 border-l-2 pl-3 text-xs leading-relaxed whitespace-pre-wrap">
           {content}
         </div>
       )}

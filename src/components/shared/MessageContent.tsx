@@ -47,19 +47,17 @@ export const MessageContent = memo(function MessageContent({
         />
       )}
 
-      {message.content && (
-        <MarkdownRenderer content={message.content} isStreaming={streaming} />
-      )}
+      {message.content && <MarkdownRenderer content={message.content} isStreaming={streaming} />}
 
       {hasError && message.errorMessage && (
-        <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-destructive/10 text-destructive text-xs">
-          <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+        <div className="bg-destructive/10 text-destructive mt-2 flex items-start gap-2 rounded-lg p-2.5 text-xs">
+          <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
           <span>{message.errorMessage}</span>
         </div>
       )}
 
       {streaming && !message.content && !message.reasoningContent && (
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="text-muted-foreground flex items-center gap-2">
           <Loader2 size={14} className="animate-spin" />
           <span className="text-xs">Generating...</span>
         </div>
@@ -71,25 +69,20 @@ export const MessageContent = memo(function MessageContent({
 function BlockRenderer({ block, isStreaming }: { block: MessageBlock; isStreaming: boolean }) {
   switch (block.type) {
     case MessageBlockType.THINKING:
-      return (
-        <ReasoningBlock
-          content={block.content}
-          isStreaming={isStreaming}
-        />
-      );
+      return <ReasoningBlock content={block.content} isStreaming={isStreaming} />;
     case MessageBlockType.MAIN_TEXT:
       return <MarkdownRenderer content={block.content} isStreaming={isStreaming} />;
     case MessageBlockType.TOOL:
       return (
-        <div className="my-1 p-2 rounded-md bg-muted border border-border text-xs">
-          <div className="font-medium text-muted-foreground mb-1">Tool Call</div>
-          <pre className="text-[11px] overflow-x-auto whitespace-pre-wrap">{block.content}</pre>
+        <div className="bg-muted border-border my-1 rounded-md border p-2 text-xs">
+          <div className="text-muted-foreground mb-1 font-medium">Tool Call</div>
+          <pre className="overflow-x-auto text-[11px] whitespace-pre-wrap">{block.content}</pre>
         </div>
       );
     case MessageBlockType.ERROR:
       return (
-        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-destructive/10 text-destructive text-xs">
-          <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+        <div className="bg-destructive/10 text-destructive flex items-start gap-2 rounded-lg p-2.5 text-xs">
+          <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
           <span>{block.content}</span>
         </div>
       );
@@ -98,7 +91,7 @@ function BlockRenderer({ block, isStreaming }: { block: MessageBlock; isStreamin
         <img
           src={block.content}
           alt="Generated"
-          className="rounded-lg max-w-full max-h-80 object-contain"
+          className="max-h-80 max-w-full rounded-lg object-contain"
         />
       );
     default:

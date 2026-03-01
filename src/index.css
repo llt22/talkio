@@ -13,43 +13,45 @@
   /* Talkio Design Tokens — iOS-style, matching RN original */
   --radius: 0.625rem;
   --background: #ffffff;
-  --foreground: #1C1C1E;
+  --foreground: #1c1c1e;
   --card: #ffffff;
-  --card-foreground: #1C1C1E;
+  --card-foreground: #1c1c1e;
   --popover: #ffffff;
-  --popover-foreground: #1C1C1E;
-  --primary: #007AFF;
+  --popover-foreground: #1c1c1e;
+  --primary: #007aff;
   --primary-foreground: #ffffff;
-  --secondary: #F2F2F7;
-  --secondary-foreground: #3C3C43;
-  --muted: #F2F2F7;
-  --muted-foreground: #8E8E93;
-  --accent: #F2F2F7;
-  --accent-foreground: #3C3C43;
-  --destructive: #FF3B30;
-  --success: #34C759;
+  --secondary: #f2f2f7;
+  --secondary-foreground: #3c3c43;
+  --muted: #f2f2f7;
+  --muted-foreground: #8e8e93;
+  --accent: #f2f2f7;
+  --accent-foreground: #3c3c43;
+  --destructive: #ff3b30;
+  --success: #34c759;
   --border: #efefef;
   --input: #efefef;
-  --ring: #007AFF;
+  --ring: #007aff;
   --chart-1: oklch(0.588 0.158 241.966);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: #f9f9f9;
-  --sidebar-foreground: #1C1C1E;
-  --sidebar-primary: #007AFF;
+  --sidebar-foreground: #1c1c1e;
+  --sidebar-primary: #007aff;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #F2F2F7;
-  --sidebar-accent-foreground: #3C3C43;
+  --sidebar-accent: #f2f2f7;
+  --sidebar-accent-foreground: #3c3c43;
   --sidebar-border: #e2e8f0;
-  --sidebar-ring: #007AFF;
+  --sidebar-ring: #007aff;
 
   --scrollbar-thumb: #d1d5db;
   --scrollbar-thumb-hover: #9ca3af;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100dvh;
   height: 100%;
   margin: 0;
@@ -57,12 +59,15 @@ html, body, #root {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* Support dvh where available (mobile keyboards) */
 @supports (height: 100dvh) {
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100dvh;
   }
 }
@@ -122,7 +127,8 @@ html, body, #root {
   margin: 0.375rem 0;
 }
 
-.prose ul, .prose ol {
+.prose ul,
+.prose ol {
   margin: 0.375rem 0;
   padding-left: 1.25rem;
 }
@@ -135,7 +141,8 @@ html, body, #root {
   max-width: 100%;
 }
 
-.prose th, .prose td {
+.prose th,
+.prose td {
   border: 1px solid #e5e7eb;
   padding: 0.375rem 0.75rem;
 }
@@ -188,37 +195,37 @@ html, body, #root {
 
 .dark {
   --background: #000000;
-  --foreground: #F5F5F7;
-  --card: #1C1C1E;
-  --card-foreground: #F5F5F7;
-  --popover: #1C1C1E;
-  --popover-foreground: #F5F5F7;
-  --primary: #0A84FF;
+  --foreground: #f5f5f7;
+  --card: #1c1c1e;
+  --card-foreground: #f5f5f7;
+  --popover: #1c1c1e;
+  --popover-foreground: #f5f5f7;
+  --primary: #0a84ff;
   --primary-foreground: #ffffff;
-  --secondary: #1C1C1E;
-  --secondary-foreground: #F5F5F7;
-  --muted: #1C1C1E;
-  --muted-foreground: #8E8E93;
-  --accent: #2C2C2E;
-  --accent-foreground: #F5F5F7;
-  --destructive: #FF453A;
-  --success: #30D158;
-  --border: #38383A;
-  --input: #2C2C2E;
-  --ring: #0A84FF;
-  --chart-1: #0A84FF;
-  --chart-2: #30D158;
-  --chart-3: #FF9F0A;
-  --chart-4: #BF5AF2;
-  --chart-5: #FF453A;
-  --sidebar: #1C1C1E;
-  --sidebar-foreground: #F5F5F7;
-  --sidebar-primary: #0A84FF;
+  --secondary: #1c1c1e;
+  --secondary-foreground: #f5f5f7;
+  --muted: #1c1c1e;
+  --muted-foreground: #8e8e93;
+  --accent: #2c2c2e;
+  --accent-foreground: #f5f5f7;
+  --destructive: #ff453a;
+  --success: #30d158;
+  --border: #38383a;
+  --input: #2c2c2e;
+  --ring: #0a84ff;
+  --chart-1: #0a84ff;
+  --chart-2: #30d158;
+  --chart-3: #ff9f0a;
+  --chart-4: #bf5af2;
+  --chart-5: #ff453a;
+  --sidebar: #1c1c1e;
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-primary: #0a84ff;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2C2C2E;
-  --sidebar-accent-foreground: #F5F5F7;
-  --sidebar-border: #38383A;
-  --sidebar-ring: #0A84FF;
+  --sidebar-accent: #2c2c2e;
+  --sidebar-accent-foreground: #f5f5f7;
+  --sidebar-border: #38383a;
+  --sidebar-ring: #0a84ff;
 
   --scrollbar-thumb: #4b5563;
   --scrollbar-thumb-hover: #6b7280;
@@ -226,16 +233,17 @@ html, body, #root {
 
 /* Dark mode prose overrides */
 .dark .prose pre {
-  background: #2C2C2E;
+  background: #2c2c2e;
 }
 .dark .prose code {
-  background: #2C2C2E;
+  background: #2c2c2e;
 }
 .dark .prose th {
-  background: #2C2C2E;
+  background: #2c2c2e;
 }
-.dark .prose th, .dark .prose td {
-  border-color: #38383A;
+.dark .prose th,
+.dark .prose td {
+  border-color: #38383a;
 }
 .dark ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);

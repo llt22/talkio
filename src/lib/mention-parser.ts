@@ -7,10 +7,7 @@ export interface MentionMatch {
 
 const MENTION_REGEX = /@(\S+)/g;
 
-export function parseMentions(
-  text: string,
-  participantNames: Map<string, string>,
-): MentionMatch[] {
+export function parseMentions(text: string, participantNames: Map<string, string>): MentionMatch[] {
   const matches: MentionMatch[] = [];
   let match: RegExpExecArray | null;
 

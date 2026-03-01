@@ -7,9 +7,9 @@
  */
 
 export interface WrittenFile {
-  path: string;       // relative path within workspace
-  fullPath: string;   // absolute path on disk
-  size: number;       // bytes written
+  path: string; // relative path within workspace
+  fullPath: string; // absolute path on disk
+  size: number; // bytes written
 }
 
 /**
@@ -72,7 +72,11 @@ export async function writeFilesToWorkspace(
     const sep = workspaceDir.includes("\\") ? "\\" : "/";
     const parentDir = fullPath.substring(0, fullPath.lastIndexOf(sep));
     if (parentDir && parentDir !== workspaceDir) {
-      try { await mkdir(parentDir, { recursive: true }); } catch { /* exists */ }
+      try {
+        await mkdir(parentDir, { recursive: true });
+      } catch {
+        /* exists */
+      }
     }
 
     try {
@@ -110,9 +114,13 @@ export async function readWorkspaceTree(workspaceDir: string): Promise<string> {
           for (const sub of subEntries) {
             if (lines.length >= MAX) break;
             if (sub.name?.startsWith(".")) continue;
-            lines.push(`  ${sub.isDirectory ? "📁" : "📄"} ${entry.name}/${sub.name}${sub.isDirectory ? "/" : ""}`);
+            lines.push(
+              `  ${sub.isDirectory ? "📁" : "📄"} ${entry.name}/${sub.name}${sub.isDirectory ? "/" : ""}`,
+            );
           }
-        } catch { /* not readable */ }
+        } catch {
+          /* not readable */
+        }
       } else {
         lines.push(`📄 ${entry.name}`);
       }

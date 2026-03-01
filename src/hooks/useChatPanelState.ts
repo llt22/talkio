@@ -77,28 +77,39 @@ export function useChatPanelState(conversationId: string): {
 
   const isGroup = conv?.type === "group";
   const currentParticipant = conv?.participants[0] ?? null;
-  const model = currentParticipant ? getModelById(currentParticipant.modelId) ?? null : null;
-  const activeIdentity = currentParticipant?.identityId ? getIdentityById(currentParticipant.identityId) ?? null : null;
+  const model = currentParticipant ? (getModelById(currentParticipant.modelId) ?? null) : null;
+  const activeIdentity = currentParticipant?.identityId
+    ? (getIdentityById(currentParticipant.identityId) ?? null)
+    : null;
 
-  const handleModelPickerSelect = useCallback((modelId: string) => {
-    setShowModelPicker(false);
-    if (modelPickerMode === "switch" && currentParticipant) {
-      updateParticipantModel(conversationId, currentParticipant.id, modelId);
-    } else {
-      addParticipant(conversationId, modelId);
-    }
-  }, [addParticipant, conversationId, currentParticipant, modelPickerMode, updateParticipantModel]);
+  const handleModelPickerSelect = useCallback(
+    (modelId: string) => {
+      setShowModelPicker(false);
+      if (modelPickerMode === "switch" && currentParticipant) {
+        updateParticipantModel(conversationId, currentParticipant.id, modelId);
+      } else {
+        addParticipant(conversationId, modelId);
+      }
+    },
+    [addParticipant, conversationId, currentParticipant, modelPickerMode, updateParticipantModel],
+  );
 
-  const handleMultiModelSelect = useCallback((modelIds: string[]) => {
-    setShowModelPicker(false);
-    for (const modelId of modelIds) {
-      addParticipant(conversationId, modelId);
-    }
-  }, [addParticipant, conversationId]);
+  const handleMultiModelSelect = useCallback(
+    (modelIds: string[]) => {
+      setShowModelPicker(false);
+      for (const modelId of modelIds) {
+        addParticipant(conversationId, modelId);
+      }
+    },
+    [addParticipant, conversationId],
+  );
 
-  const handleAddMembers = useCallback((members: SelectedMember[]) => {
-    addParticipants(conversationId, members);
-  }, [addParticipants, conversationId]);
+  const handleAddMembers = useCallback(
+    (members: SelectedMember[]) => {
+      addParticipants(conversationId, members);
+    },
+    [addParticipants, conversationId],
+  );
 
   return {
     conversations,

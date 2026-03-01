@@ -9,10 +9,25 @@ export type McpErrorCode = "NETWORK" | "AUTH" | "TIMEOUT" | "SERVER_ERROR" | "UN
 
 function classifyError(err: unknown): McpErrorCode {
   const msg = err instanceof Error ? err.message : String(err);
-  if (msg.includes("401") || msg.includes("403") || msg.includes("Unauthorized") || msg.includes("Forbidden")) return "AUTH";
-  if (msg.includes("timeout") || msg.includes("Timeout") || msg.includes("ETIMEDOUT")) return "TIMEOUT";
-  if (msg.includes("500") || msg.includes("502") || msg.includes("503") || msg.includes("504")) return "SERVER_ERROR";
-  if (msg.includes("Network") || msg.includes("network") || msg.includes("fetch") || msg.includes("ECONNREFUSED") || msg.includes("ENOTFOUND")) return "NETWORK";
+  if (
+    msg.includes("401") ||
+    msg.includes("403") ||
+    msg.includes("Unauthorized") ||
+    msg.includes("Forbidden")
+  )
+    return "AUTH";
+  if (msg.includes("timeout") || msg.includes("Timeout") || msg.includes("ETIMEDOUT"))
+    return "TIMEOUT";
+  if (msg.includes("500") || msg.includes("502") || msg.includes("503") || msg.includes("504"))
+    return "SERVER_ERROR";
+  if (
+    msg.includes("Network") ||
+    msg.includes("network") ||
+    msg.includes("fetch") ||
+    msg.includes("ECONNREFUSED") ||
+    msg.includes("ENOTFOUND")
+  )
+    return "NETWORK";
   return "UNKNOWN";
 }
 
@@ -104,7 +119,10 @@ class McpConnectionManager {
           serverName: conn.server.name,
           name: t.name,
           description: t.description ?? "",
-          inputSchema: (t.inputSchema ?? { type: "object", properties: {} }) as Record<string, unknown>,
+          inputSchema: (t.inputSchema ?? { type: "object", properties: {} }) as Record<
+            string,
+            unknown
+          >,
         }));
         conn.toolsDiscoveredAt = Date.now();
       } catch {
@@ -144,7 +162,12 @@ class McpConnectionManager {
         .join("\n");
 
       if (result.isError) {
-        return { success: false, content: "", error: textParts || "Tool execution failed", errorCode: "SERVER_ERROR" };
+        return {
+          success: false,
+          content: "",
+          error: textParts || "Tool execution failed",
+          errorCode: "SERVER_ERROR",
+        };
       }
       return { success: true, content: textParts || JSON.stringify(result) };
     } catch (err) {

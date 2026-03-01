@@ -25,7 +25,11 @@ export const kvStore = {
   getObject<T>(key: string): T | null {
     const val = localStorage.getItem(PREFIX + key);
     if (!val) return null;
-    try { return JSON.parse(val); } catch { return null; }
+    try {
+      return JSON.parse(val);
+    } catch {
+      return null;
+    }
   },
   setObject(key: string, value: unknown): void {
     localStorage.setItem(PREFIX + key, JSON.stringify(value));

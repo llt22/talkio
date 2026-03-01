@@ -77,7 +77,22 @@ export function McpServerForm({
     }
 
     onClose();
-  }, [addServer, argsStr, command, enabled, envPairs, headers, isNew, name, onClose, server?.id, serverType, t, updateServer, url]);
+  }, [
+    addServer,
+    argsStr,
+    command,
+    enabled,
+    envPairs,
+    headers,
+    isNew,
+    name,
+    onClose,
+    server?.id,
+    serverType,
+    t,
+    updateServer,
+    url,
+  ]);
 
   const handleTest = useCallback(async () => {
     if (serverType === "http" && !url.trim()) {
@@ -112,12 +127,16 @@ export function McpServerForm({
     try {
       const tools = await Promise.race([
         mcpConnectionManager.discoverTools(tempServer),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Connection timeout (10s)")), 10000)),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Connection timeout (10s)")), 10000),
+        ),
       ]);
       appAlert(t("toolEdit.testSuccess", { count: tools.length }));
       mcpConnectionManager.disconnect(tempServer.id);
     } catch (err) {
-      appAlert(`${t("toolEdit.testFailed")}: ${err instanceof Error ? err.message : "Unknown error"}`);
+      appAlert(
+        `${t("toolEdit.testFailed")}: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
       mcpConnectionManager.disconnect(tempServer.id);
     } finally {
       setTesting(false);
@@ -125,16 +144,16 @@ export function McpServerForm({
   }, [argsStr, command, envPairs, headers, name, serverType, t, url]);
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--background)" }}>
+    <div className="flex h-full flex-col" style={{ backgroundColor: "var(--background)" }}>
       <div className="flex-1 overflow-y-auto">
         {/* Name */}
         <div className="px-4 pt-4">
-          <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.name")}</p>
+          <p className="text-muted-foreground mb-1 text-sm font-medium">{t("toolEdit.name")}</p>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("toolEdit.namePlaceholder")}
-            className="w-full rounded-xl px-4 py-3 text-base text-foreground outline-none"
+            className="text-foreground w-full rounded-xl px-4 py-3 text-base outline-none"
             style={{ backgroundColor: "var(--secondary)" }}
           />
         </div>
@@ -142,7 +161,7 @@ export function McpServerForm({
         {/* Type Selector (only show on desktop) */}
         {stdioAvailable && (
           <div className="px-4 pt-4">
-            <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.type")}</p>
+            <p className="text-muted-foreground mb-1 text-sm font-medium">{t("toolEdit.type")}</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setServerType("http")}
@@ -172,12 +191,14 @@ export function McpServerForm({
           <>
             {/* URL */}
             <div className="px-4 pt-4">
-              <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.endpointUrl")}</p>
+              <p className="text-muted-foreground mb-1 text-sm font-medium">
+                {t("toolEdit.endpointUrl")}
+              </p>
               <input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="http://localhost:3000/mcp"
-                className="w-full rounded-xl px-4 py-3 text-sm text-foreground outline-none"
+                className="text-foreground w-full rounded-xl px-4 py-3 text-sm outline-none"
                 style={{ backgroundColor: "var(--secondary)" }}
               />
             </div>
@@ -185,7 +206,7 @@ export function McpServerForm({
             {/* Custom Headers */}
             <div className="px-4 pt-4">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-medium text-muted-foreground">{t("toolEdit.headers")}</p>
+                <p className="text-muted-foreground text-sm font-medium">{t("toolEdit.headers")}</p>
                 <button
                   onClick={() => setHeaders([...headers, { name: "", value: "" }])}
                   className="active:opacity-60"
@@ -203,7 +224,7 @@ export function McpServerForm({
                       setHeaders(next);
                     }}
                     placeholder="Header"
-                    className="flex-1 rounded-lg px-3 py-2 text-sm text-foreground outline-none"
+                    className="text-foreground flex-1 rounded-lg px-3 py-2 text-sm outline-none"
                     style={{ backgroundColor: "var(--secondary)" }}
                   />
                   <input
@@ -214,7 +235,7 @@ export function McpServerForm({
                       setHeaders(next);
                     }}
                     placeholder="Value"
-                    className="flex-[2] rounded-lg px-3 py-2 text-sm text-foreground outline-none"
+                    className="text-foreground flex-[2] rounded-lg px-3 py-2 text-sm outline-none"
                     style={{ backgroundColor: "var(--secondary)" }}
                   />
                   <button
@@ -226,7 +247,7 @@ export function McpServerForm({
                 </div>
               ))}
               {headers.length === 0 && (
-                <p className="text-xs text-muted-foreground">{t("toolEdit.headersHint")}</p>
+                <p className="text-muted-foreground text-xs">{t("toolEdit.headersHint")}</p>
               )}
             </div>
           </>
@@ -234,33 +255,35 @@ export function McpServerForm({
           <>
             {/* Command */}
             <div className="px-4 pt-4">
-              <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.command")}</p>
+              <p className="text-muted-foreground mb-1 text-sm font-medium">
+                {t("toolEdit.command")}
+              </p>
               <input
                 value={command}
                 onChange={(e) => setCommand(e.target.value)}
                 placeholder="npx"
-                className="w-full rounded-xl px-4 py-3 text-sm font-mono text-foreground outline-none"
+                className="text-foreground w-full rounded-xl px-4 py-3 font-mono text-sm outline-none"
                 style={{ backgroundColor: "var(--secondary)" }}
               />
             </div>
 
             {/* Args */}
             <div className="px-4 pt-4">
-              <p className="mb-1 text-sm font-medium text-muted-foreground">{t("toolEdit.args")}</p>
+              <p className="text-muted-foreground mb-1 text-sm font-medium">{t("toolEdit.args")}</p>
               <input
                 value={argsStr}
                 onChange={(e) => setArgsStr(e.target.value)}
                 placeholder="-y @modelcontextprotocol/server-filesystem /path/to/dir"
-                className="w-full rounded-xl px-4 py-3 text-sm font-mono text-foreground outline-none"
+                className="text-foreground w-full rounded-xl px-4 py-3 font-mono text-sm outline-none"
                 style={{ backgroundColor: "var(--secondary)" }}
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">{t("toolEdit.argsHint")}</p>
+              <p className="text-muted-foreground mt-1 text-[11px]">{t("toolEdit.argsHint")}</p>
             </div>
 
             {/* Environment Variables */}
             <div className="px-4 pt-4">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-medium text-muted-foreground">{t("toolEdit.envVars")}</p>
+                <p className="text-muted-foreground text-sm font-medium">{t("toolEdit.envVars")}</p>
                 <button
                   onClick={() => setEnvPairs([...envPairs, { key: "", value: "" }])}
                   className="active:opacity-60"
@@ -278,7 +301,7 @@ export function McpServerForm({
                       setEnvPairs(next);
                     }}
                     placeholder="KEY"
-                    className="flex-1 rounded-lg px-3 py-2 text-sm font-mono text-foreground outline-none"
+                    className="text-foreground flex-1 rounded-lg px-3 py-2 font-mono text-sm outline-none"
                     style={{ backgroundColor: "var(--secondary)" }}
                   />
                   <input
@@ -289,7 +312,7 @@ export function McpServerForm({
                       setEnvPairs(next);
                     }}
                     placeholder="value"
-                    className="flex-[2] rounded-lg px-3 py-2 text-sm font-mono text-foreground outline-none"
+                    className="text-foreground flex-[2] rounded-lg px-3 py-2 font-mono text-sm outline-none"
                     style={{ backgroundColor: "var(--secondary)" }}
                   />
                   <button
@@ -301,23 +324,30 @@ export function McpServerForm({
                 </div>
               ))}
               {envPairs.length === 0 && (
-                <p className="text-xs text-muted-foreground">{t("toolEdit.envVarsHint")}</p>
+                <p className="text-muted-foreground text-xs">{t("toolEdit.envVarsHint")}</p>
               )}
             </div>
           </>
         )}
 
         {/* Enabled toggle */}
-        <div className="mx-4 mt-4 flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: "var(--secondary)" }}>
-          <p className="text-sm text-foreground">{t("toolEdit.enabled")}</p>
+        <div
+          className="mx-4 mt-4 flex items-center justify-between rounded-xl px-4 py-3"
+          style={{ backgroundColor: "var(--secondary)" }}
+        >
+          <p className="text-foreground text-sm">{t("toolEdit.enabled")}</p>
           <button
             onClick={() => setEnabled((v) => !v)}
             className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors"
             style={{ backgroundColor: enabled ? "var(--primary)" : "var(--muted)" }}
           >
             <span
-              className="inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform"
-              style={{ transform: enabled ? "translateX(20px) translateY(2px)" : "translateX(2px) translateY(2px)" }}
+              className="inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform"
+              style={{
+                transform: enabled
+                  ? "translateX(20px) translateY(2px)"
+                  : "translateX(2px) translateY(2px)",
+              }}
             />
           </button>
         </div>
@@ -327,22 +357,32 @@ export function McpServerForm({
           <button
             onClick={handleTest}
             disabled={testing}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border py-3 active:opacity-70 disabled:opacity-40"
-            style={{ borderColor: "rgba(124, 58, 237, 0.3)", backgroundColor: "rgba(124, 58, 237, 0.06)" }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border py-3 active:opacity-70 disabled:opacity-40"
+            style={{
+              borderColor: "rgba(124, 58, 237, 0.3)",
+              backgroundColor: "rgba(124, 58, 237, 0.06)",
+            }}
           >
             {testing ? (
-              <span className="text-sm font-medium animate-pulse" style={{ color: "var(--primary)" }}>{t("toolEdit.testing")}</span>
+              <span
+                className="animate-pulse text-sm font-medium"
+                style={{ color: "var(--primary)" }}
+              >
+                {t("toolEdit.testing")}
+              </span>
             ) : (
               <>
                 <IoFlashOutline size={18} color="var(--primary)" />
-                <span className="text-sm font-medium" style={{ color: "var(--primary)" }}>{t("toolEdit.testConnection")}</span>
+                <span className="text-sm font-medium" style={{ color: "var(--primary)" }}>
+                  {t("toolEdit.testConnection")}
+                </span>
               </>
             )}
           </button>
         </div>
 
         {/* Save + Delete */}
-        <div className="px-4 pb-8 pt-6">
+        <div className="px-4 pt-6 pb-8">
           <button
             onClick={handleSave}
             disabled={!name.trim() || (serverType === "http" ? !url.trim() : !command.trim())}
@@ -364,7 +404,9 @@ export function McpServerForm({
               className="mt-3 w-full py-2 text-sm active:opacity-70"
               style={{ color: "var(--destructive)" }}
             >
-              <span className="text-sm" style={{ color: "var(--destructive)" }}>{t("common.delete")}</span>
+              <span className="text-sm" style={{ color: "var(--destructive)" }}>
+                {t("common.delete")}
+              </span>
             </button>
           )}
         </div>

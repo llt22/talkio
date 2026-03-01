@@ -41,7 +41,9 @@ export function useConversations(): Conversation[] {
       if (e.channel === "all" || e.channel === "conversations") load();
     };
     listeners.add(listener);
-    return () => { listeners.delete(listener); };
+    return () => {
+      listeners.delete(listener);
+    };
   }, [load]);
 
   return convs;
@@ -51,7 +53,10 @@ export function useConversation(conversationId: string | null): Conversation | n
   const [conv, setConv] = useState<Conversation | null>(null);
 
   const load = useCallback(async () => {
-    if (!conversationId) { setConv(null); return; }
+    if (!conversationId) {
+      setConv(null);
+      return;
+    }
     try {
       const data = await getConversation(conversationId);
       setConv(data);
@@ -66,7 +71,9 @@ export function useConversation(conversationId: string | null): Conversation | n
       if (e.channel === "all" || e.channel === "conversations") load();
     };
     listeners.add(listener);
-    return () => { listeners.delete(listener); };
+    return () => {
+      listeners.delete(listener);
+    };
   }, [load]);
 
   return conv;
@@ -76,7 +83,10 @@ export function useMessages(conversationId: string | null, branchId?: string | n
   const [msgs, setMsgs] = useState<Message[]>([]);
 
   const load = useCallback(async () => {
-    if (!conversationId) { setMsgs([]); return; }
+    if (!conversationId) {
+      setMsgs([]);
+      return;
+    }
     try {
       const data = await getRecentMessages(conversationId, branchId, DEFAULT_MESSAGE_LIMIT);
       setMsgs(data);
@@ -92,7 +102,9 @@ export function useMessages(conversationId: string | null, branchId?: string | n
       if (e.channel === "messages" && conversationId && e.id === conversationId) return load();
     };
     listeners.add(listener);
-    return () => { listeners.delete(listener); };
+    return () => {
+      listeners.delete(listener);
+    };
   }, [load]);
 
   return msgs;
@@ -102,7 +114,10 @@ export function useMessageBlocks(messageId: string | null): MessageBlock[] {
   const [blocks, setBlocks] = useState<MessageBlock[]>([]);
 
   const load = useCallback(async () => {
-    if (!messageId) { setBlocks([]); return; }
+    if (!messageId) {
+      setBlocks([]);
+      return;
+    }
     try {
       const data = await getBlocksByMessageId(messageId);
       setBlocks(data);
@@ -118,7 +133,9 @@ export function useMessageBlocks(messageId: string | null): MessageBlock[] {
       if (e.channel === "blocks" && messageId && e.id === messageId) return load();
     };
     listeners.add(listener);
-    return () => { listeners.delete(listener); };
+    return () => {
+      listeners.delete(listener);
+    };
   }, [load]);
 
   return blocks;

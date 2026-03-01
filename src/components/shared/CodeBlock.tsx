@@ -11,7 +11,12 @@ interface CodeBlockProps {
   isStreaming?: boolean;
 }
 
-export const CodeBlock = memo(function CodeBlock({ className, children, isStreaming, ...props }: CodeBlockProps) {
+export const CodeBlock = memo(function CodeBlock({
+  className,
+  children,
+  isStreaming,
+  ...props
+}: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const match = /language-(\w+)/.exec(className || "");
   const lang = match?.[1]?.toLowerCase() || "";
@@ -27,16 +32,38 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
   if (lang === "mermaid") {
     if (isStreaming) {
       return (
-        <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
-          <div className="flex items-center px-3 py-1.5" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
-            <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--primary)" }}>mermaid · rendering after completion</span>
+        <div
+          className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl"
+          style={{ border: "0.5px solid var(--border)" }}
+        >
+          <div
+            className="flex items-center px-3 py-1.5"
+            style={{
+              backgroundColor: "var(--secondary)",
+              borderBottom: "0.5px solid var(--border)",
+            }}
+          >
+            <span
+              className="font-mono text-[10px] font-bold uppercase"
+              style={{ color: "var(--primary)" }}
+            >
+              mermaid · rendering after completion
+            </span>
           </div>
-          <pre className="px-3 py-2 text-[13px] font-mono leading-relaxed overflow-x-auto m-0" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}><code>{codeString}</code></pre>
+          <pre
+            className="m-0 overflow-x-auto px-3 py-2 font-mono text-[13px] leading-relaxed"
+            style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}
+          >
+            <code>{codeString}</code>
+          </pre>
         </div>
       );
     }
     return (
-      <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+      <div
+        className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl"
+        style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
+      >
         <MermaidRenderer chart={codeString} />
       </div>
     );
@@ -47,14 +74,25 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
     if (isStreaming) {
       const lineCount = codeString.split("\n").length;
       return (
-        <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}>
+        <div
+          className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl"
+          style={{ border: "0.5px solid var(--border)", backgroundColor: "var(--card)" }}
+        >
           <div className="flex items-center gap-3 px-4 py-4">
-            <IoCodeSlashOutline size={18} color="var(--muted-foreground)" className="animate-spin flex-shrink-0" style={{ animationDuration: "1.5s" }} />
-            <div className="flex-1 min-w-0">
+            <IoCodeSlashOutline
+              size={18}
+              color="var(--muted-foreground)"
+              className="flex-shrink-0 animate-spin"
+              style={{ animationDuration: "1.5s" }}
+            />
+            <div className="min-w-0 flex-1">
               <span className="text-sm font-medium" style={{ color: "var(--muted-foreground)" }}>
                 {lang.toUpperCase()} ...
               </span>
-              <p className="mt-0.5 text-[11px]" style={{ color: "color-mix(in srgb, var(--muted-foreground) 60%, transparent)" }}>
+              <p
+                className="mt-0.5 text-[11px]"
+                style={{ color: "color-mix(in srgb, var(--muted-foreground) 60%, transparent)" }}
+              >
                 {lineCount} lines
               </p>
             </div>
@@ -62,7 +100,11 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
         </div>
       );
     }
-    return <div className="mt-1 w-full max-w-full min-w-0"><HtmlPreview code={codeString} language={lang} /></div>;
+    return (
+      <div className="mt-1 w-full max-w-full min-w-0">
+        <HtmlPreview code={codeString} language={lang} />
+      </div>
+    );
   }
 
   // Regular code block with language — full-bleed, matches RN MarkdownCodeBlock
@@ -71,14 +113,26 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
     if (isStreaming) {
       const lineCount = codeString.split("\n").length;
       return (
-        <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
-          <div className="flex items-center justify-between px-3 py-2.5" style={{ backgroundColor: "var(--secondary)" }}>
+        <div
+          className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl"
+          style={{ border: "0.5px solid var(--border)" }}
+        >
+          <div
+            className="flex items-center justify-between px-3 py-2.5"
+            style={{ backgroundColor: "var(--secondary)" }}
+          >
             <div className="flex items-center gap-2">
-              <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: "var(--primary)" }} />
-              <span className="text-[11px] font-mono font-semibold" style={{ color: "var(--primary)" }}>
+              <span
+                className="inline-block h-1.5 w-1.5 animate-pulse rounded-full"
+                style={{ backgroundColor: "var(--primary)" }}
+              />
+              <span
+                className="font-mono text-[11px] font-semibold"
+                style={{ color: "var(--primary)" }}
+              >
                 {lang.toUpperCase()}
               </span>
-              <span className="text-[11px] font-mono" style={{ color: "var(--muted-foreground)" }}>
+              <span className="font-mono text-[11px]" style={{ color: "var(--muted-foreground)" }}>
                 · coding… {lineCount} lines
               </span>
             </div>
@@ -87,18 +141,34 @@ export const CodeBlock = memo(function CodeBlock({ className, children, isStream
       );
     }
 
-    return <HighlightedCodeBlock lang={lang} code={codeString} copied={copied} onCopy={handleCopy} />;
+    return (
+      <HighlightedCodeBlock lang={lang} code={codeString} copied={copied} onCopy={handleCopy} />
+    );
   }
 
   // Inline code
   return (
-    <code className="px-1.5 py-0.5 rounded text-[13px] font-mono" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }} {...props}>
+    <code
+      className="rounded px-1.5 py-0.5 font-mono text-[13px]"
+      style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}
+      {...props}
+    >
       {children}
     </code>
   );
 });
 
-function HighlightedCodeBlock({ lang, code, copied, onCopy }: { lang: string; code: string; copied: boolean; onCopy: () => void }) {
+function HighlightedCodeBlock({
+  lang,
+  code,
+  copied,
+  onCopy,
+}: {
+  lang: string;
+  code: string;
+  copied: boolean;
+  onCopy: () => void;
+}) {
   const [html, setHtml] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,16 +177,29 @@ function HighlightedCodeBlock({ lang, code, copied, onCopy }: { lang: string; co
     highlightCode(code, lang, isDark ? "github-dark" : "github-light").then((result) => {
       if (!cancelled) setHtml(result);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [code, lang]);
 
   return (
-    <div className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl" style={{ border: "0.5px solid var(--border)" }}>
-      <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}>
-        <span className="text-[10px] font-mono font-bold uppercase" style={{ color: "var(--muted-foreground)" }}>{lang}</span>
+    <div
+      className="mt-1 w-full max-w-full min-w-0 overflow-hidden rounded-xl"
+      style={{ border: "0.5px solid var(--border)" }}
+    >
+      <div
+        className="flex items-center justify-between px-3 py-2"
+        style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}
+      >
+        <span
+          className="font-mono text-[10px] font-bold uppercase"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          {lang}
+        </span>
         <button
           onClick={onCopy}
-          className="flex items-center gap-1 px-2 py-1 rounded text-[10px] active:opacity-60"
+          className="flex items-center gap-1 rounded px-2 py-1 text-[10px] active:opacity-60"
           style={{ color: "var(--muted-foreground)" }}
         >
           {copied ? <Check size={10} style={{ color: "var(--primary)" }} /> : <Copy size={10} />}
@@ -126,11 +209,14 @@ function HighlightedCodeBlock({ lang, code, copied, onCopy }: { lang: string; co
       <div className="overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
         {html ? (
           <div
-            className="shiki-code text-[13px] leading-relaxed [&_pre]:m-0 [&_pre]:px-3 [&_pre]:py-2 [&_pre]:bg-transparent [&_code]:bg-transparent"
+            className="shiki-code text-[13px] leading-relaxed [&_code]:bg-transparent [&_pre]:m-0 [&_pre]:bg-transparent [&_pre]:px-3 [&_pre]:py-2"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
-          <pre className="px-3 py-2 text-[13px] font-mono leading-relaxed m-0" style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}>
+          <pre
+            className="m-0 px-3 py-2 font-mono text-[13px] leading-relaxed"
+            style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}
+          >
             <code>{code}</code>
           </pre>
         )}

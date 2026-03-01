@@ -22,9 +22,7 @@ function useIsMobile() {
 
   useEffect(() => {
     const check = () => {
-      setIsMobile(
-        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768
-      );
+      setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768);
     };
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -64,13 +62,16 @@ export default function App() {
               useMcpStore.getState().loadFromStorage();
               appAlert(i18n.t("settings.importSuccess", result.counts!));
             } else {
-              const msg = result.errorCode === "UNSUPPORTED_VERSION"
-                ? i18n.t("settings.importUnsupportedVersion", { version: result.errorDetail })
-                : i18n.t("settings.importParseError");
+              const msg =
+                result.errorCode === "UNSUPPORTED_VERSION"
+                  ? i18n.t("settings.importUnsupportedVersion", { version: result.errorDetail })
+                  : i18n.t("settings.importParseError");
               appAlert(msg);
             }
           }
-        } catch { /* not in Tauri or no pending import */ }
+        } catch {
+          /* not in Tauri or no pending import */
+        }
       }
     }
     init().catch(console.error);
@@ -84,15 +85,17 @@ export default function App() {
     <BrowserRouter>
       <ConfirmDialogProvider>
         <TooltipProvider>
-          <div
-            className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground antialiased"
-          >
-            <div className="flex-1 min-h-0 relative">
+          <div className="bg-background text-foreground flex h-screen w-screen flex-col overflow-hidden antialiased">
+            <div className="relative min-h-0 flex-1">
               {ready ? (
-                isMobile ? <MobileLayout /> : <DesktopLayout />
+                isMobile ? (
+                  <MobileLayout />
+                ) : (
+                  <DesktopLayout />
+                )
               ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-sm text-muted-foreground">Loading...</div>
+                <div className="flex h-full items-center justify-center">
+                  <div className="text-muted-foreground text-sm">Loading...</div>
                 </div>
               )}
             </div>

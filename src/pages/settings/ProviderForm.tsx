@@ -121,14 +121,16 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-base font-semibold text-foreground">
+      <h3 className="text-foreground text-base font-semibold">
         {provider ? t("settings.editProvider") : t("settings.addProvider")}
       </h3>
 
       <div className="space-y-3">
         {/* Type */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("providerEdit.type", { defaultValue: "Type" })}</label>
+          <label className="text-muted-foreground mb-1 block text-xs font-medium">
+            {t("providerEdit.type", { defaultValue: "Type" })}
+          </label>
           <Select value={type} onValueChange={handleTypeChange}>
             <SelectTrigger className="h-10">
               <SelectValue />
@@ -141,7 +143,9 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
 
         {/* Name */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("providerEdit.name", { defaultValue: "Name" })}</label>
+          <label className="text-muted-foreground mb-1 block text-xs font-medium">
+            {t("providerEdit.name", { defaultValue: "Name" })}
+          </label>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -152,7 +156,9 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
 
         {/* Base URL */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("settings.baseUrl")}</label>
+          <label className="text-muted-foreground mb-1 block text-xs font-medium">
+            {t("settings.baseUrl")}
+          </label>
           <Input
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
@@ -163,7 +169,9 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
 
         {/* API Key */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("settings.apiKey")}</label>
+          <label className="text-muted-foreground mb-1 block text-xs font-medium">
+            {t("settings.apiKey")}
+          </label>
           <div className="relative">
             <Input
               type={showKey ? "text" : "password"}
@@ -175,7 +183,7 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
             <button
               type="button"
               onClick={() => setShowKey(!showKey)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 p-1"
             >
               {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -185,17 +193,25 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
 
       {/* Test / Fetch result */}
       {testResult && (
-        <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
-          testResult === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-        }`}>
+        <div
+          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
+            testResult === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+          }`}
+        >
           {testResult === "success" ? <Check size={14} /> : <X size={14} />}
-          {testResult === "success" ? t("providerEdit.connectionSuccess", { defaultValue: "Connection successful" }) : t("providerEdit.connectionFailed", { defaultValue: "Connection failed" })}
+          {testResult === "success"
+            ? t("providerEdit.connectionSuccess", { defaultValue: "Connection successful" })
+            : t("providerEdit.connectionFailed", { defaultValue: "Connection failed" })}
         </div>
       )}
       {fetchResult && (
-        <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
-          fetchResult.startsWith("Error") ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
-        }`}>
+        <div
+          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
+            fetchResult.startsWith("Error")
+              ? "bg-red-50 text-red-700"
+              : "bg-green-50 text-green-700"
+          }`}
+        >
           {fetchResult.startsWith("Error") ? <X size={14} /> : <Check size={14} />}
           {fetchResult}
         </div>
@@ -203,16 +219,30 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-2">
-        <Button variant="outline" onClick={handleTest} disabled={testing || fetchingModels || !baseUrl || !apiKey} className="flex-1">
-          {testing ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
+        <Button
+          variant="outline"
+          onClick={handleTest}
+          disabled={testing || fetchingModels || !baseUrl || !apiKey}
+          className="flex-1"
+        >
+          {testing ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : null}
           {t("providerEdit.testConnection", { defaultValue: "Test" })}
         </Button>
-        <Button onClick={handleSaveAndFetch} disabled={fetchingModels || !name.trim() || !baseUrl.trim() || !apiKey.trim()} className="flex-1">
-          {fetchingModels ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
+        <Button
+          onClick={handleSaveAndFetch}
+          disabled={fetchingModels || !name.trim() || !baseUrl.trim() || !apiKey.trim()}
+          className="flex-1"
+        >
+          {fetchingModels ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : null}
           {t("providerEdit.saveAndFetch", { defaultValue: "Save & Fetch" })}
         </Button>
       </div>
-      <Button variant="ghost" onClick={onClose} className="w-full text-muted-foreground" disabled={fetchingModels}>
+      <Button
+        variant="ghost"
+        onClick={onClose}
+        className="text-muted-foreground w-full"
+        disabled={fetchingModels}
+      >
         {t("common.cancel")}
       </Button>
     </div>

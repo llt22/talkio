@@ -44,7 +44,9 @@ export function getParticipantLabel(
   const identityStore = useIdentityStore.getState();
   const model = providerStore.getModelById(participant.modelId);
   const modelName = model?.displayName ?? participant.modelId;
-  const identity = participant.identityId ? identityStore.getIdentityById(participant.identityId) : null;
+  const identity = participant.identityId
+    ? identityStore.getIdentityById(participant.identityId)
+    : null;
 
   if (identity?.name) {
     return `${modelName}（${identity.name}）`;
@@ -62,10 +64,7 @@ export function getParticipantLabel(
 /**
  * Build a group chat roster string that explains the participants to each AI.
  */
-export function buildGroupRoster(
-  conv: Conversation,
-  selfParticipantId: string | null,
-): string {
+export function buildGroupRoster(conv: Conversation, selfParticipantId: string | null): string {
   const lines = conv.participants.map((p) => {
     const label = getParticipantLabel(p, conv.participants);
     const isSelf = p.id === selfParticipantId;
@@ -116,7 +115,8 @@ export function buildApiMessagesForParticipant(
 
   if (isGroup) {
     const roster = buildGroupRoster(conv, participant.id);
-    const groupPrompt = (identity?.systemPrompt ? `${identity.systemPrompt}\n\n${roster}` : roster) + workspaceHint;
+    const groupPrompt =
+      (identity?.systemPrompt ? `${identity.systemPrompt}\n\n${roster}` : roster) + workspaceHint;
     apiMessages.push({ role: "system", content: groupPrompt });
   } else if (identity?.systemPrompt || workspaceHint) {
     apiMessages.push({ role: "system", content: (identity?.systemPrompt || "") + workspaceHint });

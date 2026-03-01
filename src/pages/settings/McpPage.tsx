@@ -15,16 +15,26 @@ import { McpServerForm } from "./McpServerForm";
 
 // ── MCP Tools Page (1:1 RN native style) ──
 
-interface SubPage { id: string; title: string; component: React.ReactNode; headerRight?: React.ReactNode; }
+interface SubPage {
+  id: string;
+  title: string;
+  component: React.ReactNode;
+  headerRight?: React.ReactNode;
+}
 
 export interface McpPageProps {
   onPush?: (page: SubPage) => void;
   onPop?: () => void;
 }
 
-export interface McpPageHandle { triggerAdd: () => void; }
+export interface McpPageHandle {
+  triggerAdd: () => void;
+}
 
-export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage({ onPush, onPop }, ref) {
+export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
+  { onPush, onPop },
+  ref,
+) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const builtInEnabledByName = useBuiltInToolsStore((s) => s.enabledByName);
@@ -53,8 +63,12 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
 
     const stdioOk = isStdioAvailable();
     let toImport: Array<{
-      name: string; type?: "http" | "stdio"; url: string;
-      headers?: CustomHeader[]; command?: string; args?: string[];
+      name: string;
+      type?: "http" | "stdio";
+      url: string;
+      headers?: CustomHeader[];
+      command?: string;
+      args?: string[];
       env?: Record<string, string>;
     }> = [];
 
@@ -62,7 +76,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
       for (const [key, val] of Object.entries(parsed.mcpServers)) {
         const v = val as Record<string, unknown>;
         const url = String((v.url ?? v.endpoint ?? "") as string);
-        const hasCommand = !!(v.command);
+        const hasCommand = !!v.command;
 
         let hdrs: CustomHeader[] | undefined;
         if (v.headers && typeof v.headers === "object") {
@@ -73,18 +87,35 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
 
         if (hasCommand && stdioOk) {
           const args = Array.isArray(v.args) ? (v.args as string[]).map(String) : [];
-          const env = v.env && typeof v.env === "object"
-            ? Object.fromEntries(Object.entries(v.env as Record<string, unknown>).map(([ek, ev]) => [ek, String(ev)]))
-            : undefined;
-          toImport.push({ name: String(key), type: "stdio", url: "", command: String(v.command), args, env });
+          const env =
+            v.env && typeof v.env === "object"
+              ? Object.fromEntries(
+                  Object.entries(v.env as Record<string, unknown>).map(([ek, ev]) => [
+                    ek,
+                    String(ev),
+                  ]),
+                )
+              : undefined;
+          toImport.push({
+            name: String(key),
+            type: "stdio",
+            url: "",
+            command: String(v.command),
+            args,
+            env,
+          });
         } else if (url) {
           toImport.push({ name: String(key), url, headers: hdrs });
         }
       }
 
       if (toImport.length === 0) {
-        const isCommandConfig = Object.values(parsed.mcpServers).some((v: any) => v?.command || v?.args);
-        appAlert(`${t("common.error")}: ${isCommandConfig && !stdioOk ? t("personas.importCommandNotSupported") : t("personas.importNoTools")}`);
+        const isCommandConfig = Object.values(parsed.mcpServers).some(
+          (v: any) => v?.command || v?.args,
+        );
+        appAlert(
+          `${t("common.error")}: ${isCommandConfig && !stdioOk ? t("personas.importCommandNotSupported") : t("personas.importNoTools")}`,
+        );
         return;
       }
     } else if (Array.isArray(parsed)) {
@@ -95,7 +126,9 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
         }))
         .filter((s: any) => s.url);
     } else if (parsed?.url || parsed?.endpoint) {
-      toImport = [{ name: String(parsed?.name ?? "MCP Server"), url: String(parsed.url ?? parsed.endpoint) }];
+      toImport = [
+        { name: String(parsed?.name ?? "MCP Server"), url: String(parsed.url ?? parsed.endpoint) },
+      ];
     }
 
     if (toImport.length === 0) {
@@ -126,22 +159,27 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
         `${t("common.success")}: ${t("personas.importSuccess", { count: addedNames.length })}\n\n${addedNames.join("\n")}`,
       );
     } catch (err) {
-      appAlert(`${t("common.error")}: ${err instanceof Error ? err.message : t("settings.importFailed")}`);
+      appAlert(
+        `${t("common.error")}: ${err instanceof Error ? err.message : t("settings.importFailed")}`,
+      );
     } finally {
       setIsImporting(false);
     }
   }, [addServer, importJson, t]);
 
-  const pushServerForm = useCallback((serverId?: string) => {
-    if (!onPush || !onPop) return;
-    const server = serverId ? servers.find((s) => s.id === serverId) : undefined;
-    const title = server ? server.name : t("personas.addTool");
-    onPush({
-      id: serverId ? `mcp-edit-${serverId}` : "mcp-add",
-      title,
-      component: <McpServerForm server={server} onClose={onPop} />,
-    });
-  }, [onPush, onPop, servers, t]);
+  const pushServerForm = useCallback(
+    (serverId?: string) => {
+      if (!onPush || !onPop) return;
+      const server = serverId ? servers.find((s) => s.id === serverId) : undefined;
+      const title = server ? server.name : t("personas.addTool");
+      onPush({
+        id: serverId ? `mcp-edit-${serverId}` : "mcp-add",
+        title,
+        component: <McpServerForm server={server} onClose={onPop} />,
+      });
+    },
+    [onPush, onPop, servers, t],
+  );
 
   useImperativeHandle(ref, () => ({ triggerAdd: () => pushServerForm() }), [pushServerForm]);
 
@@ -158,9 +196,14 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
           <>
             {/* Built-in Tools (global enable/disable) */}
             {BUILT_IN_TOOLS.length > 0 && (
-              <div style={{ borderTop: "0.5px solid var(--border)", borderBottom: "0.5px solid var(--border)" }}>
+              <div
+                style={{
+                  borderTop: "0.5px solid var(--border)",
+                  borderBottom: "0.5px solid var(--border)",
+                }}
+              >
                 <div className="px-5 py-1.5" style={{ backgroundColor: "var(--secondary)" }}>
-                  <p className="text-[13px] font-semibold text-muted-foreground">
+                  <p className="text-muted-foreground text-[13px] font-semibold">
                     {t("personas.builtInTools")}
                   </p>
                 </div>
@@ -170,20 +213,29 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
                     <div
                       key={tool.name}
                       className="flex items-center gap-4 px-4 py-3"
-                      style={{ borderBottom: idx < BUILT_IN_TOOLS.length - 1 ? "0.5px solid var(--border)" : "none" }}
+                      style={{
+                        borderBottom:
+                          idx < BUILT_IN_TOOLS.length - 1 ? "0.5px solid var(--border)" : "none",
+                      }}
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-foreground">{tool.name}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">{tool.description}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-foreground text-[13px] font-medium">{tool.name}</p>
+                        <p className="text-muted-foreground truncate text-[11px]">
+                          {tool.description}
+                        </p>
                       </div>
                       <div
                         onClick={() => setBuiltInToolEnabled(tool.name, !enabled)}
-                        className="relative inline-flex h-7 w-12 flex-shrink-0 rounded-full transition-colors cursor-pointer"
+                        className="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors"
                         style={{ backgroundColor: enabled ? "var(--primary)" : "var(--muted)" }}
                       >
                         <span
-                          className="inline-block h-6 w-6 rounded-full bg-white shadow transform transition-transform"
-                          style={{ transform: enabled ? "translateX(20px) translateY(2px)" : "translateX(2px) translateY(2px)" }}
+                          className="inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform"
+                          style={{
+                            transform: enabled
+                              ? "translateX(20px) translateY(2px)"
+                              : "translateX(2px) translateY(2px)",
+                          }}
                         />
                       </div>
                     </div>
@@ -197,48 +249,54 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
               const stdioOk = isStdioAvailable();
               const visibleServers = stdioOk ? servers : servers.filter((s) => s.type !== "stdio");
               return visibleServers.length > 0 ? (
-              <div className="px-4 pt-2 flex flex-col gap-3">
-                {visibleServers.map((server) => (
-                  <McpServerCard
-                    key={server.id}
-                    server={server}
-                    status={connectionStatus[server.id] ?? "disconnected"}
-                    serverTools={tools.filter((t) => t.serverId === server.id)}
-                    onEdit={() => pushServerForm(server.id)}
-                    onToggle={async () => {
-                      const status = connectionStatus[server.id] ?? "disconnected";
-                      if (status === "connecting") return;
-                      const newEnabled = !server.enabled;
-                      updateServer(server.id, { enabled: newEnabled });
-                      if (newEnabled) {
-                        useMcpStore.getState().setConnectionStatus(server.id, "connecting");
-                        try {
-                          await refreshMcpConnections();
-                          const finalStatus = useMcpStore.getState().connectionStatus[server.id];
-                          if (finalStatus === "error") updateServer(server.id, { enabled: false });
-                        } catch {
-                          updateServer(server.id, { enabled: false });
-                          useMcpStore.getState().setConnectionStatus(server.id, "error");
+                <div className="flex flex-col gap-3 px-4 pt-2">
+                  {visibleServers.map((server) => (
+                    <McpServerCard
+                      key={server.id}
+                      server={server}
+                      status={connectionStatus[server.id] ?? "disconnected"}
+                      serverTools={tools.filter((t) => t.serverId === server.id)}
+                      onEdit={() => pushServerForm(server.id)}
+                      onToggle={async () => {
+                        const status = connectionStatus[server.id] ?? "disconnected";
+                        if (status === "connecting") return;
+                        const newEnabled = !server.enabled;
+                        updateServer(server.id, { enabled: newEnabled });
+                        if (newEnabled) {
+                          useMcpStore.getState().setConnectionStatus(server.id, "connecting");
+                          try {
+                            await refreshMcpConnections();
+                            const finalStatus = useMcpStore.getState().connectionStatus[server.id];
+                            if (finalStatus === "error")
+                              updateServer(server.id, { enabled: false });
+                          } catch {
+                            updateServer(server.id, { enabled: false });
+                            useMcpStore.getState().setConnectionStatus(server.id, "error");
+                          }
+                        } else {
+                          mcpConnectionManager.reset(server.id);
+                          useMcpStore.getState().setTools(server.id, []);
+                          useMcpStore.getState().setConnectionStatus(server.id, "disconnected");
                         }
-                      } else {
-                        mcpConnectionManager.reset(server.id);
-                        useMcpStore.getState().setTools(server.id, []);
-                        useMcpStore.getState().setConnectionStatus(server.id, "disconnected");
-                      }
-                    }}
-                    onDelete={async () => {
-                      const ok = await confirm({ title: t("common.areYouSure"), destructive: true });
-                      if (ok) {
-                        deleteServer(server.id);
-                        mcpConnectionManager.reset(server.id);
-                      }
-                    }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="px-4 pt-4 text-[13px] text-muted-foreground">{t("personas.noCustomTools")}</p>
-            );
+                      }}
+                      onDelete={async () => {
+                        const ok = await confirm({
+                          title: t("common.areYouSure"),
+                          destructive: true,
+                        });
+                        if (ok) {
+                          deleteServer(server.id);
+                          mcpConnectionManager.reset(server.id);
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground px-4 pt-4 text-[13px]">
+                  {t("personas.noCustomTools")}
+                </p>
+              );
             })()}
           </>
         )}
@@ -269,30 +327,41 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
         <div className="fixed inset-0 z-50">
           <button
             className="absolute inset-0 bg-black/30"
-            onClick={() => { if (!isImporting) setShowImportModal(false); }}
+            onClick={() => {
+              if (!isImporting) setShowImportModal(false);
+            }}
             aria-label="Close"
           />
           <div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-lg rounded-2xl overflow-hidden shadow-xl"
+            className="absolute top-1/2 left-1/2 w-[90%] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl shadow-xl"
             style={{ backgroundColor: "var(--background)" }}
           >
-            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "0.5px solid var(--border)" }}>
-              <span className="text-[16px] font-semibold text-foreground">{t("personas.importJson")}</span>
+            <div
+              className="flex items-center justify-between px-4 py-3"
+              style={{ borderBottom: "0.5px solid var(--border)" }}
+            >
+              <span className="text-foreground text-[16px] font-semibold">
+                {t("personas.importJson")}
+              </span>
               <button
-                onClick={() => { if (!isImporting) setShowImportModal(false); }}
+                onClick={() => {
+                  if (!isImporting) setShowImportModal(false);
+                }}
                 className="active:opacity-60"
               >
                 <IoChevronBack size={20} color="var(--muted-foreground)" />
               </button>
             </div>
             <div className="px-4 pt-4 pb-5">
-              <p className="text-[13px] text-muted-foreground mb-2">{t("personas.importHint")}</p>
+              <p className="text-muted-foreground mb-2 text-[13px]">{t("personas.importHint")}</p>
               <textarea
                 value={importJson}
                 onChange={(e) => setImportJson(e.target.value)}
-                className="w-full rounded-xl px-3 py-2 text-[13px] font-mono text-foreground outline-none resize-none"
+                className="text-foreground w-full resize-none rounded-xl px-3 py-2 font-mono text-[13px] outline-none"
                 style={{ backgroundColor: "var(--secondary)", minHeight: 180 }}
-                placeholder={'{\n  "mcpServers": {\n    "weather": { "url": "https://..." },\n    "filesystem": {\n      "command": "npx",\n      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]\n    }\n  }\n}'}
+                placeholder={
+                  '{\n  "mcpServers": {\n    "weather": { "url": "https://..." },\n    "filesystem": {\n      "command": "npx",\n      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]\n    }\n  }\n}'
+                }
               />
               <div className="mt-4 flex items-center gap-3">
                 <button
@@ -301,7 +370,9 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
                   className="flex-1 rounded-xl py-3 active:opacity-70 disabled:opacity-50"
                   style={{ backgroundColor: "var(--secondary)" }}
                 >
-                  <span className="text-[14px] font-semibold text-foreground">{t("common.cancel")}</span>
+                  <span className="text-foreground text-[14px] font-semibold">
+                    {t("common.cancel")}
+                  </span>
                 </button>
                 <button
                   onClick={handleImportJson}
@@ -319,4 +390,3 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
     </div>
   );
 });
-

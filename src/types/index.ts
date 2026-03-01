@@ -213,7 +213,6 @@ export interface Message {
   createdAt: string;
 }
 
-
 export interface ChatApiToolCall {
   id: string;
   type: "function";

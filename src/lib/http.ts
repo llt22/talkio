@@ -17,7 +17,9 @@ async function resolve(): Promise<void> {
     try {
       const mod = await import("@tauri-apps/plugin-http");
       _tauriFetch = mod.fetch as unknown as typeof globalThis.fetch;
-    } catch { /* plugin not available */ }
+    } catch {
+      /* plugin not available */
+    }
   }
 }
 

@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import {
@@ -58,47 +67,55 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
     resolve?.(result);
   }, []);
 
-  const confirm = useCallback(async (options: ConfirmOptions) => {
-    if (resolverRef.current) {
-      const prev = resolverRef.current;
-      resolverRef.current = null;
-      prev(false);
-    }
+  const confirm = useCallback(
+    async (options: ConfirmOptions) => {
+      if (resolverRef.current) {
+        const prev = resolverRef.current;
+        resolverRef.current = null;
+        prev(false);
+      }
 
-    setAlertMode(false);
-    setTitle(options.title);
-    setDescription(options.description);
-    setConfirmText(options.confirmText ?? t("common.confirm"));
-    setCancelText(options.cancelText ?? t("common.cancel"));
-    setDestructive(!!options.destructive);
-    setOpen(true);
+      setAlertMode(false);
+      setTitle(options.title);
+      setDescription(options.description);
+      setConfirmText(options.confirmText ?? t("common.confirm"));
+      setCancelText(options.cancelText ?? t("common.cancel"));
+      setDestructive(!!options.destructive);
+      setOpen(true);
 
-    return new Promise<boolean>((resolve) => {
-      resolverRef.current = resolve;
-    });
-  }, [t]);
+      return new Promise<boolean>((resolve) => {
+        resolverRef.current = resolve;
+      });
+    },
+    [t],
+  );
 
-  const alert = useCallback(async (msg: string) => {
-    if (resolverRef.current) {
-      const prev = resolverRef.current;
-      resolverRef.current = null;
-      prev(false);
-    }
+  const alert = useCallback(
+    async (msg: string) => {
+      if (resolverRef.current) {
+        const prev = resolverRef.current;
+        resolverRef.current = null;
+        prev(false);
+      }
 
-    setAlertMode(true);
-    setTitle(msg);
-    setDescription(undefined);
-    setConfirmText(t("common.confirm"));
-    setOpen(true);
+      setAlertMode(true);
+      setTitle(msg);
+      setDescription(undefined);
+      setConfirmText(t("common.confirm"));
+      setOpen(true);
 
-    return new Promise<void>((resolve) => {
-      resolverRef.current = () => resolve();
-    });
-  }, [t]);
+      return new Promise<void>((resolve) => {
+        resolverRef.current = () => resolve();
+      });
+    },
+    [t],
+  );
 
   useEffect(() => {
     _globalAlert = alert;
-    return () => { _globalAlert = null; };
+    return () => {
+      _globalAlert = null;
+    };
   }, [alert]);
 
   const api = useMemo<ConfirmApi>(() => ({ confirm }), [confirm]);
@@ -123,7 +140,10 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                 {cancelText}
               </Button>
             )}
-            <Button variant={destructive && !alertMode ? "destructive" : "default"} onClick={() => close(true)}>
+            <Button
+              variant={destructive && !alertMode ? "destructive" : "default"}
+              onClick={() => close(true)}
+            >
               {confirmText}
             </Button>
           </DialogFooter>

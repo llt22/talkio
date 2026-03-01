@@ -176,7 +176,11 @@ export async function compressIfNeeded(
       `[ContextCompression] ${toCompress.length} messages: ${originalTokens} → ${compressedTokens} tokens (${Math.round((1 - compressedTokens / originalTokens) * 100)}% reduction)`,
     );
     return {
-      messages: [...systemMsgs, { role: "user", content: `[Previous conversation summary]\n${summary}` }, ...toKeep],
+      messages: [
+        ...systemMsgs,
+        { role: "user", content: `[Previous conversation summary]\n${summary}` },
+        ...toKeep,
+      ],
       compressed: true,
     };
   } catch (err) {
@@ -214,7 +218,13 @@ export async function manualCompress(
   const { toCompress } = splitMessages(messages, options.keepRecentCount ?? 4);
   if (toCompress.length <= 1) throw new Error("Not enough messages to compress");
 
-  const summary = await callCompressionApi(toCompress, options.baseUrl, options.headers, options.model, options.signal);
+  const summary = await callCompressionApi(
+    toCompress,
+    options.baseUrl,
+    options.headers,
+    options.model,
+    options.signal,
+  );
   const originalTokens = estimateMessagesTokens(toCompress);
   const compressedTokens = estimateTokens(summary);
   return { summary, originalTokens, compressedTokens };

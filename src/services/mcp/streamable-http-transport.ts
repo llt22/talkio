@@ -1,6 +1,9 @@
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import { isInitializedNotification, JSONRPCMessageSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  isInitializedNotification,
+  JSONRPCMessageSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { isTauri } from "../../lib/platform";
 
 // Use Tauri's native HTTP fetch (bypasses browser CORS) when available.

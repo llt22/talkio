@@ -48,10 +48,18 @@ export interface ChatState {
   // In-memory streaming state — not persisted, used for rAF updates
   streamingMessage: StreamingState | null;
 
-  createConversation: (modelId: string, extraModelIds?: string[], membersWithIdentity?: { modelId: string; identityId: string | null }[]) => Promise<Conversation>;
+  createConversation: (
+    modelId: string,
+    extraModelIds?: string[],
+    membersWithIdentity?: { modelId: string; identityId: string | null }[],
+  ) => Promise<Conversation>;
   deleteConversation: (id: string) => Promise<void>;
   setCurrentConversation: (id: string | null) => void;
-  sendMessage: (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] }) => Promise<void>;
+  sendMessage: (
+    text: string,
+    images?: string[],
+    options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] },
+  ) => Promise<void>;
   stopGeneration: () => void;
   startAutoDiscuss: (rounds: number, topicText?: string) => Promise<void>;
   stopAutoDiscuss: () => void;
@@ -62,10 +70,25 @@ export interface ChatState {
   deleteMessageById: (messageId: string) => Promise<void>;
   clearConversationMessages: (conversationId: string) => Promise<void>;
   searchAllMessages: (query: string) => Promise<Message[]>;
-  updateParticipantIdentity: (conversationId: string, participantId: string, identityId: string | null) => Promise<void>;
-  updateParticipantModel: (conversationId: string, participantId: string, modelId: string) => Promise<void>;
-  addParticipant: (conversationId: string, modelId: string, identityId?: string | null) => Promise<void>;
-  addParticipants: (conversationId: string, members: { modelId: string; identityId: string | null }[]) => Promise<void>;
+  updateParticipantIdentity: (
+    conversationId: string,
+    participantId: string,
+    identityId: string | null,
+  ) => Promise<void>;
+  updateParticipantModel: (
+    conversationId: string,
+    participantId: string,
+    modelId: string,
+  ) => Promise<void>;
+  addParticipant: (
+    conversationId: string,
+    modelId: string,
+    identityId?: string | null,
+  ) => Promise<void>;
+  addParticipants: (
+    conversationId: string,
+    members: { modelId: string; identityId: string | null }[],
+  ) => Promise<void>;
   removeParticipant: (conversationId: string, participantId: string) => Promise<void>;
   renameConversation: (conversationId: string, title: string) => Promise<void>;
   updateSpeakingOrder: (conversationId: string, order: SpeakingOrder) => Promise<void>;
@@ -73,8 +96,13 @@ export interface ChatState {
 }
 
 /** Generate an auto-title from participant model names */
-function autoTitle(participants: ConversationParticipant[], providerStore: ReturnType<typeof useProviderStore.getState>): string {
-  const names = participants.map((p) => providerStore.getModelById(p.modelId)?.displayName ?? p.modelId);
+function autoTitle(
+  participants: ConversationParticipant[],
+  providerStore: ReturnType<typeof useProviderStore.getState>,
+): string {
+  const names = participants.map(
+    (p) => providerStore.getModelById(p.modelId)?.displayName ?? p.modelId,
+  );
   if (names.length <= 1) return names[0] ?? "";
   return names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")}...`;
 }
@@ -115,7 +143,9 @@ async function preComputeCompression(
   if (!result.compressed) return null;
 
   const summaryMsg = result.messages.find(
-    (m) => typeof m.content === "string" && (m.content as string).startsWith("[Previous conversation summary]"),
+    (m) =>
+      typeof m.content === "string" &&
+      (m.content as string).startsWith("[Previous conversation summary]"),
   );
   return summaryMsg ? (summaryMsg.content as string) : null;
 }
@@ -128,7 +158,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   autoDiscussTotalRounds: 0,
   streamingMessage: null,
 
-  createConversation: async (modelId: string, extraModelIds?: string[], membersWithIdentity?: { modelId: string; identityId: string | null }[]) => {
+  createConversation: async (
+    modelId: string,
+    extraModelIds?: string[],
+    membersWithIdentity?: { modelId: string; identityId: string | null }[],
+  ) => {
     const providerStore = useProviderStore.getState();
     const model = providerStore.getModelById(modelId);
     let participants: ConversationParticipant[];
@@ -150,7 +184,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const conv: Conversation = {
       id: generateId(),
       type: isGroup ? "group" : "single",
-      title: isGroup ? autoTitle(participants, providerStore) : (model?.displayName ?? i18n.t("chats.newChat", { defaultValue: "New Chat" })),
+      title: isGroup
+        ? autoTitle(participants, providerStore)
+        : (model?.displayName ?? i18n.t("chats.newChat", { defaultValue: "New Chat" })),
       participants,
       lastMessage: null,
       lastMessageAt: null,
@@ -177,12 +213,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({
         currentConversationId: id,
         isGenerating: id ? _abortControllers.has(id) : false,
-        streamingMessage: id ? _streamingMessages.get(id) ?? null : null,
+        streamingMessage: id ? (_streamingMessages.get(id) ?? null) : null,
       });
     }
   },
 
-  sendMessage: async (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] }) => {
+  sendMessage: async (
+    text: string,
+    images?: string[],
+    options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] },
+  ) => {
     const convId = get().currentConversationId;
     if (!convId) return;
     const conv = await getConversation(convId);
@@ -199,7 +239,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } else {
       userMsg = createUserMessage(generateId(), cid, text, images ?? [], get().activeBranchId);
       await insertMessage(userMsg);
-      updateConversation(cid, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(() => {});
+      updateConversation(cid, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(
+        () => {},
+      );
       notifyDbChange("messages", cid);
       notifyDbChange("conversations");
     }
@@ -211,7 +253,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const targets = resolveTargetParticipants(conv, options?.mentionedParticipantIds);
 
     // Pre-compute compression summary once for group chats
-    const cachedCompressionSummary = await preComputeCompression(cid, conv, targets, userMsg, abortController, get().activeBranchId);
+    const cachedCompressionSummary = await preComputeCompression(
+      cid,
+      conv,
+      targets,
+      userMsg,
+      abortController,
+      get().activeBranchId,
+    );
     const compressionSettings = useSettingsStore.getState().settings;
 
     // Build generation context
@@ -302,7 +351,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Find the user message before this assistant message
     const msgIndex = messages.findIndex((m) => m.id === messageId);
-    const prevUserMsg = messages.slice(0, msgIndex).reverse().find((m) => m.role === "user");
+    const prevUserMsg = messages
+      .slice(0, msgIndex)
+      .reverse()
+      .find((m) => m.role === "user");
     if (!prevUserMsg) return;
 
     // Delete the old assistant message
@@ -310,7 +362,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     notifyDbChange("messages", convId);
 
     // Re-generate assistant response without creating a duplicate user message
-    await get().sendMessage(prevUserMsg.content, prevUserMsg.images, { reuseUserMessageId: prevUserMsg.id });
+    await get().sendMessage(prevUserMsg.content, prevUserMsg.images, {
+      reuseUserMessageId: prevUserMsg.id,
+    });
   },
 
   editMessage: async (messageId: string, newContent: string) => {
@@ -350,23 +404,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
     notifyDbChange("conversations");
   },
 
-  updateParticipantIdentity: async (conversationId: string, participantId: string, identityId: string | null) => {
+  updateParticipantIdentity: async (
+    conversationId: string,
+    participantId: string,
+    identityId: string | null,
+  ) => {
     const conv = await getConversation(conversationId);
     if (!conv) return;
     const participants = conv.participants.map((p) =>
-      p.id === participantId ? { ...p, identityId } : p
+      p.id === participantId ? { ...p, identityId } : p,
     );
     await updateConversation(conversationId, { participants });
     notifyDbChange("conversations");
   },
 
-  updateParticipantModel: async (conversationId: string, participantId: string, modelId: string) => {
+  updateParticipantModel: async (
+    conversationId: string,
+    participantId: string,
+    modelId: string,
+  ) => {
     const conv = await getConversation(conversationId);
     if (!conv) return;
     const providerStore = useProviderStore.getState();
     const model = providerStore.getModelById(modelId);
     const participants = conv.participants.map((p) =>
-      p.id === participantId ? { ...p, modelId } : p
+      p.id === participantId ? { ...p, modelId } : p,
     );
     await updateConversation(conversationId, {
       participants,
@@ -397,7 +459,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     notifyDbChange("conversations");
   },
 
-  addParticipants: async (conversationId: string, members: { modelId: string; identityId: string | null }[]) => {
+  addParticipants: async (
+    conversationId: string,
+    members: { modelId: string; identityId: string | null }[],
+  ) => {
     const conv = await getConversation(conversationId);
     if (!conv || members.length === 0) return;
     const newParticipants: ConversationParticipant[] = members.map((m) => ({
@@ -450,7 +515,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const conv = await getConversation(conversationId);
     if (!conv) return;
     const idxMap = new Map(participantIds.map((id, i) => [id, i]));
-    const sorted = [...conv.participants].sort((a, b) => (idxMap.get(a.id) ?? 0) - (idxMap.get(b.id) ?? 0));
+    const sorted = [...conv.participants].sort(
+      (a, b) => (idxMap.get(a.id) ?? 0) - (idxMap.get(b.id) ?? 0),
+    );
     await updateConversation(conversationId, { participants: sorted });
     notifyDbChange("conversations");
   },
