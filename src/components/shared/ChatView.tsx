@@ -3,7 +3,7 @@
  */
 import { useRef, useEffect, useCallback, useMemo, useState, memo, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
-import { IoCopyOutline, IoRefreshOutline, IoShareOutline, IoTrashOutline, IoPerson, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
+import { IoCopyOutline, IoRefreshOutline, IoShareOutline, IoTrashOutline, IoAnalyticsOutline, IoChatbubbleOutline } from "../../icons";
 import { GitBranch, Wrench, Hourglass, ChevronUp, ChevronDown, Pencil, Check, X, FileText, Paperclip, FolderOpen, Save } from "lucide-react";
 import { MessageContent } from "./MessageContent";
 import { ChatInput } from "./ChatInput";
@@ -338,9 +338,9 @@ export function ChatView({ conversationId, isMobile = false, onAtBottomChange, h
             />
           ))}
 
-          {/* Suggest questions — aligned with AI bubble (avatar 36px + gap 12px = 48px offset) */}
+          {/* Suggest questions — aligned with AI bubble */}
           {suggestQuestions.length > 0 && !isGenerating && (
-            <div className="flex flex-wrap gap-1.5 pb-4 pt-1" style={{ paddingLeft: 52 }}>
+            <div className="flex flex-wrap gap-1.5 pb-4 pt-1 px-4">
               {suggestQuestions.map((q, i) => (
                 <button
                   key={i}
@@ -552,238 +552,221 @@ const MessageRow = memo(function MessageRow({ message, onCopy, onRegenerate, onB
 
   if (isUser) {
     return (
-      <div className="group mb-6 flex flex-row-reverse items-start gap-3 px-4">
-        {/* User Avatar */}
-        <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--primary)" }}>
-          <IoPerson size={20} color="white" />
-        </div>
-
-        <div className="flex-1 min-w-0 flex flex-col items-end gap-1">
-          {/* Label */}
-          <div className="mr-1 flex items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("chat.you")}</span>
-            <span className="text-[10px] text-muted-foreground/60">{formatTime(message.createdAt)}</span>
-          </div>
-
-          {/* User images */}
-          {message.images && message.images.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 max-w-[80%]">
-              {message.images.map((uri: string, idx: number) => (
-                <img key={idx} src={uri} className="h-32 w-32 rounded-lg object-cover" />
-              ))}
-            </div>
-          )}
-
-          {/* Attached file chips */}
-          {fileNames.length > 0 && !isEditing && (
-            <div className="flex flex-wrap gap-1 max-w-[80%]" style={{ maxWidth: "min(80%, 640px)" }}>
-              {fileNames.map((name, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1"
-                  style={{ backgroundColor: "color-mix(in srgb, var(--primary) 80%, white)", opacity: 0.9 }}
-                >
-                  <FileText size={12} color="white" className="flex-shrink-0" />
-                  <span className="text-[11px] font-medium text-white truncate max-w-[140px]">{name}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Bubble or Edit textarea */}
-          {isEditing ? (
-            <div className="w-full max-w-[80%]" style={{ maxWidth: "min(80%, 640px)" }}>
-              <div className="rounded-2xl px-3" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--primary)" }}>
-                <textarea
-                  ref={editRef}
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") cancelEditing();
-                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); confirmEdit(); }
-                  }}
-                  className="w-full bg-transparent py-3 text-[15px] leading-relaxed text-foreground outline-none resize-none"
-                  style={{ minHeight: "60px" }}
-                  rows={Math.max(2, editText.split("\n").length)}
-                />
-              </div>
-              <div className="flex justify-end gap-2 mt-2">
-                <button
-                  onClick={cancelEditing}
-                  className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-medium active:opacity-70"
-                  style={{ backgroundColor: "var(--secondary)", color: "var(--muted-foreground)" }}
-                >
-                  <X size={14} />
-                  {t("common.cancel")}
-                </button>
-                <button
-                  onClick={confirmEdit}
-                  className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-medium text-white active:opacity-70"
-                  style={{ backgroundColor: "var(--primary)" }}
-                >
-                  <Check size={14} />
-                  {t("common.save")}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              className="max-w-[80%] rounded-2xl px-4 py-3"
-              style={{ backgroundColor: "var(--primary)", maxWidth: "min(80%, 640px)", borderTopRightRadius: 0 }}
-            >
-              <p className="text-[15px] leading-relaxed text-white whitespace-pre-wrap break-words">
-                {content || (message.images?.length ? "📷" : "")}
-              </p>
-            </div>
-          )}
-
-          {/* User action bar */}
-          {!isEditing && (
-            <div className="mr-1 flex items-center gap-0.5">
-              {onEdit && !isGenerating && (
-                <button onClick={startEditing} className="rounded-md p-1.5 active:opacity-60" title={t("common.edit")}>
-                  <Pencil size={14} color="var(--muted-foreground)" />
-                </button>
-              )}
-              {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
-              {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── AI message — exact RN ModelAvatar color logic ──
-  const senderName = message.senderName ?? "AI";
-  const { color: avatarColor, initials: avatarInitials } = getAvatarProps(senderName);
-
-  return (
-    <div className="group mb-6 flex items-start gap-3 px-4">
-      {/* AI Avatar — RN: ModelAvatar name={message.senderName} */}
-      <div
-        className="h-9 w-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-        style={{ backgroundColor: avatarColor }}
-      >
-        {avatarInitials}
-      </div>
-
-      <div className="flex-1 min-w-0 flex flex-col gap-1">
+      <div className="group mb-6 flex flex-col items-end gap-1 px-4">
         {/* Label */}
-        <div className="ml-1 flex items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate max-w-[200px]">{senderName}</span>
+        <div className="mr-1 flex items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("chat.you")}</span>
           <span className="text-[10px] text-muted-foreground/60">{formatTime(message.createdAt)}</span>
         </div>
 
-        {/* Main bubble — hide when only toolCalls with no content */}
-        {(content || isStreaming || !(message.toolCalls && message.toolCalls.length > 0)) && (
-          <div
-            className="max-w-[90%] min-w-0 overflow-hidden rounded-2xl px-4 py-3"
-            style={{
-              backgroundColor: "var(--muted)",
-              borderTopLeftRadius: 0,
-              maxWidth: "min(90%, 720px)",
-            }}
-          >
-            {isStreaming && !content && !message.reasoningContent ? (
-              <div className="flex items-center gap-1.5 py-1">
-                <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" />
-                <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.15s" }} />
-                <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.3s" }} />
-              </div>
-            ) : (
-              <MessageContent message={message} isStreaming={isStreaming} />
-            )}
-          </div>
-        )}
-
-        {/* Tool Calls — compact inline cards */}
-        {message.toolCalls && message.toolCalls.length > 0 && (
-          <div className="max-w-[90%] flex flex-col gap-1" style={{ maxWidth: "min(90%, 720px)" }}>
-            {message.toolCalls.map((tc) => {
-              const result = message.toolResults?.find((r) => r.toolCallId === tc.id);
-              const isExpanded = expandedTools.has(tc.id);
-              const isPending = !result;
-              return (
-                <div key={tc.id} className="overflow-hidden rounded-lg">
-                  <button
-                    onClick={() => {
-                      if (isPending) return;
-                      setExpandedTools((prev) => {
-                        const next = new Set(prev);
-                        next.has(tc.id) ? next.delete(tc.id) : next.add(tc.id);
-                        return next;
-                      });
-                    }}
-                    className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 ${isPending ? "cursor-default" : "active:opacity-70"}`}
-                    style={{ backgroundColor: "color-mix(in srgb, var(--muted) 70%, transparent)" }}
-                  >
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                      {isPending
-                        ? <Hourglass size={13} color="#d97706" className="animate-spin flex-shrink-0" style={{ animationDuration: "2s" }} />
-                        : <Wrench size={13} color="var(--muted-foreground)" className="flex-shrink-0" />
-                      }
-                      <span className={`text-[12px] font-medium truncate ${isPending ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
-                        {isPending ? `${tc.name}…` : tc.name}
-                      </span>
-                    </div>
-                    {!isPending && (
-                      isExpanded
-                        ? <ChevronUp size={14} color="var(--muted-foreground)" />
-                        : <ChevronDown size={14} color="var(--muted-foreground)" />
-                    )}
-                  </button>
-                  {isExpanded && result && (
-                    <div className="rounded-lg px-2.5 py-2 mt-0.5" style={{ backgroundColor: "var(--muted)" }}>
-                      <p className="text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap break-all">
-                        {result.content.slice(0, 1000)}{result.content.length > 1000 ? " …" : ""}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Written files chips */}
-        {writtenFiles && writtenFiles.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-1" style={{ maxWidth: "min(90%, 720px)" }}>
-            {writtenFiles.map((wf, idx) => (
-              <button
-                key={idx}
-                onClick={async () => {
-                  if (!window.__TAURI_INTERNALS__) return;
-                  try {
-                    const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
-                    await revealItemInDir(wf.fullPath);
-                  } catch { /* fallback: do nothing */ }
-                }}
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 active:opacity-70 transition-opacity"
-                style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--muted))", border: "0.5px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}
-                title={wf.fullPath}
-              >
-                <Save size={13} color="var(--primary)" className="flex-shrink-0" />
-                <span className="text-[12px] font-medium truncate max-w-[200px]" style={{ color: "var(--primary)" }}>{wf.path}</span>
-                <FolderOpen size={12} color="var(--muted-foreground)" className="flex-shrink-0" />
-              </button>
+        {/* User images */}
+        {message.images && message.images.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 max-w-[80%]">
+            {message.images.map((uri: string, idx: number) => (
+              <img key={idx} src={uri} className="h-32 w-32 rounded-lg object-cover" />
             ))}
           </div>
         )}
 
-        {/* Assistant action bar — primary: copy + regenerate, secondary: ··· menu */}
-        {!isStreaming && content && (
-          <AssistantActionBar
-            content={content}
-            message={message}
-            onCopy={onCopy}
-            onRegenerate={onRegenerate}
-            onBranch={onBranch}
-            onDelete={onDelete}
-            t={t}
-          />
+        {/* Attached file chips */}
+        {fileNames.length > 0 && !isEditing && (
+          <div className="flex flex-wrap gap-1 max-w-[80%]" style={{ maxWidth: "min(80%, 640px)" }}>
+            {fileNames.map((name, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-1 rounded-lg px-2 py-1"
+                style={{ backgroundColor: "color-mix(in srgb, var(--primary) 80%, white)", opacity: 0.9 }}
+              >
+                <FileText size={12} color="white" className="flex-shrink-0" />
+                <span className="text-[11px] font-medium text-white truncate max-w-[140px]">{name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Bubble or Edit textarea */}
+        {isEditing ? (
+          <div className="w-full max-w-[80%]" style={{ maxWidth: "min(80%, 640px)" }}>
+            <div className="rounded-2xl px-3" style={{ backgroundColor: "var(--muted)", border: "1px solid var(--primary)" }}>
+              <textarea
+                ref={editRef}
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") cancelEditing();
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); confirmEdit(); }
+                }}
+                className="w-full bg-transparent py-3 text-[15px] leading-relaxed text-foreground outline-none resize-none"
+                style={{ minHeight: "60px" }}
+                rows={Math.max(2, editText.split("\n").length)}
+              />
+            </div>
+            <div className="flex justify-end gap-2 mt-2">
+              <button
+                onClick={cancelEditing}
+                className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-medium active:opacity-70"
+                style={{ backgroundColor: "var(--secondary)", color: "var(--muted-foreground)" }}
+              >
+                <X size={14} />
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={confirmEdit}
+                className="flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-medium text-white active:opacity-70"
+                style={{ backgroundColor: "var(--primary)" }}
+              >
+                <Check size={14} />
+                {t("common.save")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="max-w-[80%] rounded-2xl px-4 py-3"
+            style={{ backgroundColor: "var(--primary)", maxWidth: "min(80%, 640px)", borderTopRightRadius: 0 }}
+          >
+            <p className="text-[15px] leading-relaxed text-white whitespace-pre-wrap break-words">
+              {content || (message.images?.length ? "📷" : "")}
+            </p>
+          </div>
+        )}
+
+        {/* User action bar */}
+        {!isEditing && (
+          <div className="mr-1 flex items-center gap-0.5">
+            {onEdit && !isGenerating && (
+              <button onClick={startEditing} className="rounded-md p-1.5 active:opacity-60" title={t("common.edit")}>
+                <Pencil size={14} color="var(--muted-foreground)" />
+              </button>
+            )}
+            {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
+            {onDelete && <ActionBtn icon="trash-outline" onClick={() => onDelete(message.id)} color="var(--destructive)" />}
+          </div>
         )}
       </div>
+    );
+  }
+
+  // ── AI message ──
+  const senderName = message.senderName ?? "AI";
+  const { color: senderColor } = getAvatarProps(senderName);
+
+  return (
+    <div className="group mb-6 flex flex-col gap-1 px-4">
+      {/* Label */}
+      <div className="ml-1 flex items-center gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wider truncate max-w-[200px]" style={{ color: senderColor }}>{senderName}</span>
+        <span className="text-[10px] text-muted-foreground/60">{formatTime(message.createdAt)}</span>
+      </div>
+
+      {/* Main bubble — hide when only toolCalls with no content */}
+      {(content || isStreaming || !(message.toolCalls && message.toolCalls.length > 0)) && (
+        <div
+          className="min-w-0 overflow-hidden rounded-2xl px-4 py-3"
+          style={{
+            backgroundColor: "var(--muted)",
+            borderTopLeftRadius: 0,
+            maxWidth: 720,
+          }}
+        >
+          {isStreaming && !content && !message.reasoningContent ? (
+            <div className="flex items-center gap-1.5 py-1">
+              <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" />
+              <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.15s" }} />
+              <span className="inline-block w-[7px] h-[7px] rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: "0.3s" }} />
+            </div>
+          ) : (
+            <MessageContent message={message} isStreaming={isStreaming} />
+          )}
+        </div>
+      )}
+
+      {/* Tool Calls — compact inline cards */}
+      {message.toolCalls && message.toolCalls.length > 0 && (
+        <div className="flex flex-col gap-1" style={{ maxWidth: 720 }}>
+          {message.toolCalls.map((tc) => {
+            const result = message.toolResults?.find((r) => r.toolCallId === tc.id);
+            const isExpanded = expandedTools.has(tc.id);
+            const isPending = !result;
+            return (
+              <div key={tc.id} className="overflow-hidden rounded-lg">
+                <button
+                  onClick={() => {
+                    if (isPending) return;
+                    setExpandedTools((prev) => {
+                      const next = new Set(prev);
+                      next.has(tc.id) ? next.delete(tc.id) : next.add(tc.id);
+                      return next;
+                    });
+                  }}
+                  className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 ${isPending ? "cursor-default" : "active:opacity-70"}`}
+                  style={{ backgroundColor: "color-mix(in srgb, var(--muted) 70%, transparent)" }}
+                >
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    {isPending
+                      ? <Hourglass size={13} color="#d97706" className="animate-spin flex-shrink-0" style={{ animationDuration: "2s" }} />
+                      : <Wrench size={13} color="var(--muted-foreground)" className="flex-shrink-0" />
+                    }
+                    <span className={`text-[12px] font-medium truncate ${isPending ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+                      {isPending ? `${tc.name}…` : tc.name}
+                    </span>
+                  </div>
+                  {!isPending && (
+                    isExpanded
+                      ? <ChevronUp size={14} color="var(--muted-foreground)" />
+                      : <ChevronDown size={14} color="var(--muted-foreground)" />
+                  )}
+                </button>
+                {isExpanded && result && (
+                  <div className="rounded-lg px-2.5 py-2 mt-0.5" style={{ backgroundColor: "var(--muted)" }}>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap break-all">
+                      {result.content.slice(0, 1000)}{result.content.length > 1000 ? " …" : ""}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Written files chips */}
+      {writtenFiles && writtenFiles.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-1" style={{ maxWidth: 720 }}>
+          {writtenFiles.map((wf, idx) => (
+            <button
+              key={idx}
+              onClick={async () => {
+                if (!window.__TAURI_INTERNALS__) return;
+                try {
+                  const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+                  await revealItemInDir(wf.fullPath);
+                } catch { /* fallback: do nothing */ }
+              }}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 active:opacity-70 transition-opacity"
+              style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--muted))", border: "0.5px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}
+              title={wf.fullPath}
+            >
+              <Save size={13} color="var(--primary)" className="flex-shrink-0" />
+              <span className="text-[12px] font-medium truncate max-w-[200px]" style={{ color: "var(--primary)" }}>{wf.path}</span>
+              <FolderOpen size={12} color="var(--muted-foreground)" className="flex-shrink-0" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Assistant action bar — primary: copy + regenerate, secondary: ··· menu */}
+      {!isStreaming && content && (
+        <AssistantActionBar
+          content={content}
+          message={message}
+          onCopy={onCopy}
+          onRegenerate={onRegenerate}
+          onBranch={onBranch}
+          onDelete={onDelete}
+          t={t}
+        />
+      )}
     </div>
   );
 });
