@@ -60,7 +60,8 @@ class McpConnectionManager {
     if (existing?.connecting) {
       await existing.connecting;
       const resolved = this.connections.get(server.id);
-      if (!resolved) throw new Error(`[MCP] Connection lost for server ${server.id} during connect`);
+      if (!resolved)
+        throw new Error(`[MCP] Connection lost for server ${server.id} during connect`);
       return resolved;
     }
 
