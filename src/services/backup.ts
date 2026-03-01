@@ -3,15 +3,18 @@
  * Exports/imports providers, models, identities, and MCP servers as JSON.
  */
 import { kvStore } from "../storage/kv-store";
+import { saveOrShareFile } from "./file-download";
+import type { Provider, Model, Identity, McpServer } from "../types";
+import type { AppSettings } from "../stores/settings-store";
 
 export interface BackupData {
   version: "2.0";
   exportedAt: string;
-  providers: any[];
-  models: any[];
-  identities: any[];
-  mcpServers: any[];
-  settings?: any;
+  providers: Provider[];
+  models: Model[];
+  identities: Identity[];
+  mcpServers: McpServer[];
+  settings?: AppSettings | null;
 }
 
 export function createBackup(): BackupData {
@@ -29,43 +32,11 @@ export function createBackup(): BackupData {
 export async function downloadBackup(data: BackupData): Promise<boolean> {
   const json = JSON.stringify(data, null, 2);
   const defaultName = `talkio-config-${new Date().toISOString().slice(0, 10)}.json`;
-
-  if ((window as any).__TAURI_INTERNALS__) {
-    // Mobile (Android/iOS): share file via native bridge
-    // Return false so caller skips the "export success" alert — the share sheet itself is feedback enough.
-    const nativeShare = (window as any).NativeShare;
-    if (nativeShare) {
-      try {
-        nativeShare.shareFile(defaultName, json, "application/json");
-        return false;
-      } catch {
-        // fall through to save dialog
-      }
-    }
-    // Desktop Tauri: save dialog
-    try {
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const { writeTextFile } = await import("@tauri-apps/plugin-fs");
-      const filePath = await save({
-        defaultPath: defaultName,
-        filters: [{ name: "JSON", extensions: ["json"] }],
-      });
-      if (!filePath) return false;
-      await writeTextFile(filePath, json);
-      return true;
-    } catch {
-      // Fallback to browser download
-    }
-  }
-
-  const blob = new Blob([json], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = defaultName;
-  a.click();
-  URL.revokeObjectURL(url);
-  return true;
+  return saveOrShareFile(defaultName, json, {
+    mimeType: "application/json",
+    filterName: "JSON",
+    filterExtensions: ["json"],
+  });
 }
 
 export interface ImportResult {
