@@ -13,26 +13,10 @@ import { useProviderStore } from "../../stores/provider-store";
 import { useChatStore } from "../../stores/chat-store";
 import type { Model } from "../../types";
 import { getAvatarProps } from "../../lib/avatar-utils";
+import { groupModelsByProvider } from "../../lib/model-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
 
 // ── Models / Experts Page (1:1 RN original) ──
-
-function groupByProvider(
-  models: Model[],
-  getProviderById: (id: string) => { name: string } | undefined,
-): Array<{ title: string; data: Model[] }> {
-  const map = new Map<string, { title: string; data: Model[] }>();
-  for (const m of models) {
-    const provider = getProviderById(m.providerId);
-    const name = provider?.name ?? "Unknown";
-    if (!map.has(name)) map.set(name, { title: name, data: [] });
-    map.get(name)!.data.push(m);
-  }
-  for (const section of map.values()) {
-    section.data.sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }
-  return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title));
-}
 
 interface ModelsPageProps {
   onNavigateToChat?: (convId: string) => void;
@@ -76,7 +60,7 @@ export function ModelsPage({
   );
 
   const sections = useMemo(
-    () => groupByProvider(filtered, getProviderById),
+    () => groupModelsByProvider(filtered, getProviderById),
     [filtered, getProviderById],
   );
 

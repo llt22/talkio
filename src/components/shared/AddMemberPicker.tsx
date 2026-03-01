@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { useProviderStore } from "../../stores/provider-store";
 import { useIdentityStore } from "../../stores/identity-store";
 import { getAvatarProps } from "../../lib/avatar-utils";
+import { groupModelsByProvider } from "../../lib/model-utils";
 import type { Model, Identity } from "../../types";
 
 export interface SelectedMember {
@@ -45,19 +46,10 @@ export function AddMemberContent({
     );
   }, [enabledModels, search]);
 
-  const sections = useMemo(() => {
-    const map = new Map<string, { title: string; data: Model[] }>();
-    for (const m of filtered) {
-      const provider = getProviderById(m.providerId);
-      const name = provider?.name ?? "Unknown";
-      if (!map.has(name)) map.set(name, { title: name, data: [] });
-      map.get(name)!.data.push(m);
-    }
-    for (const section of map.values()) {
-      section.data.sort((a, b) => a.displayName.localeCompare(b.displayName));
-    }
-    return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title));
-  }, [filtered, getProviderById]);
+  const sections = useMemo(
+    () => groupModelsByProvider(filtered, getProviderById),
+    [filtered, getProviderById],
+  );
 
   // Auto-select first model when sections change
   useEffect(() => {
