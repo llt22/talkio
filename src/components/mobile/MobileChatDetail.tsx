@@ -585,7 +585,13 @@ export function MobileChatDetail({
       />
 
       {/* Messages + Input */}
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        className="relative flex min-h-0 flex-1 flex-col"
+        onTouchStart={() => {
+          setShowParticipants(false);
+          setShowIdentityPanel(false);
+        }}
+      >
         <ChatView
           conversationId={conversationId}
           isMobile

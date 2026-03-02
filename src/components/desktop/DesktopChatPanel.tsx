@@ -588,7 +588,13 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
 
       {/* Chat */}
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1">
+        <div
+          className="min-h-0 flex-1"
+          onMouseDown={() => {
+            setShowParticipants(false);
+            setShowIdentityPanel(false);
+          }}
+        >
           <ChatView
             conversationId={conversationId}
             modelName={!isGroup ? model?.displayName : undefined}
