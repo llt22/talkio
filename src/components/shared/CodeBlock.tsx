@@ -189,7 +189,7 @@ function HighlightedCodeBlock({
     >
       <div
         className="flex items-center justify-between px-3 py-2"
-        style={{ backgroundColor: "var(--secondary)", borderBottom: "0.5px solid var(--border)" }}
+        style={{ backgroundColor: "var(--background)", borderBottom: "0.5px solid var(--border)" }}
       >
         <span
           className="font-mono text-[10px] font-bold uppercase"
@@ -206,7 +206,7 @@ function HighlightedCodeBlock({
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <div className="overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+      <div className="overflow-x-auto" style={{ scrollbarWidth: "thin", backgroundColor: "var(--background)" }}>
         {html ? (
           <div
             className="shiki-code text-[13px] leading-relaxed [&_code]:bg-transparent [&_pre]:m-0 [&_pre]:bg-transparent [&_pre]:px-3 [&_pre]:py-2"
@@ -215,7 +215,7 @@ function HighlightedCodeBlock({
         ) : (
           <pre
             className="m-0 px-3 py-2 font-mono text-[13px] leading-relaxed"
-            style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}
+            style={{ color: "var(--foreground)" }}
           >
             <code>{code}</code>
           </pre>
