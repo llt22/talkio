@@ -15,6 +15,7 @@ import {
   IoPersonAddOutline,
   IoEllipsisHorizontal,
 } from "../../icons";
+import { ArrowUpDown, Shuffle, Layers } from "lucide-react";
 import { ChatView, type ChatViewHandle } from "../shared/ChatView";
 import { ModelPicker } from "../shared/ModelPicker";
 import { useChatStore } from "../../stores/chat-store";
@@ -248,7 +249,13 @@ export function MobileChatDetail({
             </span>
             <div className="mt-0.5 flex max-w-full items-center gap-1">
               {isGroup ? (
-                <IoPeopleOutline size={12} color="var(--primary)" className="flex-shrink-0" />
+                conv?.speakingOrder === "parallel" ? (
+                  <Layers size={12} color="var(--primary)" className="flex-shrink-0" />
+                ) : conv?.speakingOrder === "random" ? (
+                  <Shuffle size={12} color="var(--primary)" className="flex-shrink-0" />
+                ) : (
+                  <ArrowUpDown size={12} color="var(--primary)" className="flex-shrink-0" />
+                )
               ) : (
                 <IoPersonOutline size={12} color="var(--primary)" className="flex-shrink-0" />
               )}

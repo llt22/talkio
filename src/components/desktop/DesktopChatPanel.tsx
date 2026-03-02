@@ -282,7 +282,13 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
                 <span className="text-foreground truncate text-sm font-semibold">{title}</span>
                 <span className="text-muted-foreground truncate text-xs">·</span>
                 {isGroup ? (
-                  <Users size={12} className="text-primary flex-shrink-0" />
+                  conv?.speakingOrder === "parallel" ? (
+                    <Layers size={12} className="text-primary flex-shrink-0" />
+                  ) : conv?.speakingOrder === "random" ? (
+                    <Shuffle size={12} className="text-primary flex-shrink-0" />
+                  ) : (
+                    <ArrowUpDown size={12} className="text-primary flex-shrink-0" />
+                  )
                 ) : (
                   <User size={12} className="text-primary flex-shrink-0" />
                 )}
