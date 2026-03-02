@@ -147,6 +147,12 @@ export function buildApiMessagesForParticipant(
         const isSelf = m.participantId != null && m.participantId === participant.id;
         if (!isSelf) {
           role = "user";
+          // Strip <think>/<thinking> blocks so other models don't see reasoning
+          if (typeof content === "string") {
+            content = content
+              .replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>\s*/g, "")
+              .trim();
+          }
           const prefix = `[${m.senderName} said]: `;
           if (typeof content === "string") content = prefix + content;
         }
