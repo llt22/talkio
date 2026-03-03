@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   MoreHorizontal,
@@ -35,6 +35,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ChatView, type ChatViewHandle } from "../shared/ChatView";
+import { MentionTextarea } from "../shared/MentionTextarea";
 import { ModelPicker } from "../shared/ModelPicker";
 import { AddMemberPicker } from "../shared/AddMemberPicker";
 import { useChatStore } from "../../stores/chat-store";
@@ -164,6 +165,15 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
+  const [groupPromptText, setGroupPromptText] = useState(conv?.groupSystemPrompt ?? "");
+  useEffect(() => { setGroupPromptText(conv?.groupSystemPrompt ?? ""); }, [conversationId]);
+  const participantMentions = useMemo(
+    () => (conv?.participants ?? []).map((p) => {
+      const m = getModelById(p.modelId);
+      return { id: p.id, label: m?.displayName ?? p.modelId };
+    }),
+    [conv?.participants, getModelById],
+  );
   const title = isGroup
     ? (conv?.title ?? t("chat.group"))
     : (model?.displayName ?? t("chat.chatTitle"));
@@ -459,13 +469,15 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
           </div>
           {/* Group system prompt */}
           <div className="border-border mb-2 border-b pb-2">
-            <textarea
+            <MentionTextarea
               className="text-foreground placeholder:text-muted-foreground w-full resize-none rounded-lg border-0 bg-transparent px-0 py-1 text-xs leading-relaxed outline-none"
               rows={2}
               placeholder={t("chat.groupPromptPlaceholder")}
-              defaultValue={conv.groupSystemPrompt ?? ""}
-              onBlur={(e) => {
-                const val = e.target.value.trim();
+              mentions={participantMentions}
+              value={groupPromptText}
+              onChange={setGroupPromptText}
+              onBlur={() => {
+                const val = groupPromptText.trim();
                 if (val !== (conv.groupSystemPrompt ?? "")) {
                   useChatStore.getState().updateGroupSystemPrompt(conversationId, val);
                 }

@@ -17,6 +17,7 @@ import {
 } from "../../icons";
 import { ArrowUpDown, Shuffle, Layers } from "lucide-react";
 import { ChatView, type ChatViewHandle } from "../shared/ChatView";
+import { MentionTextarea } from "../shared/MentionTextarea";
 import { ModelPicker } from "../shared/ModelPicker";
 import { useChatStore } from "../../stores/chat-store";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
@@ -77,6 +78,15 @@ export function MobileChatDetail({
   const hasManualSummary = !!getManualSummary(conversationId);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
+  const [groupPromptText, setGroupPromptText] = useState(conv?.groupSystemPrompt ?? "");
+  useEffect(() => { setGroupPromptText(conv?.groupSystemPrompt ?? ""); }, [conversationId]);
+  const participantMentions = useMemo(
+    () => (conv?.participants ?? []).map((p) => {
+      const m = getModelById(p.modelId);
+      return { id: p.id, label: m?.displayName ?? p.modelId };
+    }),
+    [conv?.participants, getModelById],
+  );
   const chatViewRef = useRef<ChatViewHandle>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   // Optimistic identity id — updates immediately on selection, before DB roundtrip
@@ -495,13 +505,15 @@ export function MobileChatDetail({
           </div>
           {/* Group system prompt */}
           <div className="border-border mb-2 border-b pb-2">
-            <textarea
+            <MentionTextarea
               className="text-foreground placeholder:text-muted-foreground w-full resize-none rounded-lg border-0 bg-transparent px-0 py-1 text-xs leading-relaxed outline-none"
               rows={2}
               placeholder={t("chat.groupPromptPlaceholder")}
-              defaultValue={conv.groupSystemPrompt ?? ""}
-              onBlur={(e) => {
-                const val = e.target.value.trim();
+              mentions={participantMentions}
+              value={groupPromptText}
+              onChange={setGroupPromptText}
+              onBlur={() => {
+                const val = groupPromptText.trim();
                 if (val !== (conv.groupSystemPrompt ?? "")) {
                   useChatStore.getState().updateGroupSystemPrompt(conversationId, val);
                 }
