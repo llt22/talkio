@@ -281,6 +281,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     const MAX_MENTION_ROUNDS = 2;
+    let globalMsgIndex = 0;
     try {
       let currentTargets = targets;
       for (let round = 0; round <= MAX_MENTION_ROUNDS; round++) {
@@ -289,14 +290,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // Generate replies for current targets
         const responses: { participantId: string; content: string }[] = [];
         if (conv.speakingOrder === "parallel" && currentTargets.length > 1) {
+          const baseIndex = globalMsgIndex;
           const results = await Promise.all(
-            currentTargets.map((target, i) => generateForParticipant(ctx, target, i)),
+            currentTargets.map((target, i) => generateForParticipant(ctx, target, baseIndex + i)),
           );
+          globalMsgIndex += currentTargets.length;
           currentTargets.forEach((t, i) => responses.push({ participantId: t.id, content: results[i] }));
         } else {
           for (let i = 0; i < currentTargets.length; i++) {
             if (abortController.signal.aborted) break;
-            const content = await generateForParticipant(ctx, currentTargets[i], i);
+            const content = await generateForParticipant(ctx, currentTargets[i], globalMsgIndex++);
             responses.push({ participantId: currentTargets[i].id, content });
           }
         }
