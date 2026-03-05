@@ -31,7 +31,10 @@ export const HtmlPreview = memo(function HtmlPreview({
     navigator.clipboard.writeText(code);
   }, [code]);
 
-  const wrappedHtml = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><style>html,body{overflow-x:hidden;max-width:100vw}body{background:#fff;color:#121212;margin:0;padding:12px;font-family:system-ui,sans-serif;box-sizing:border-box;word-break:break-word}</style></head><body>${code}</body></html>`;
+  const isFullDocument = /^\s*<!DOCTYPE\s/i.test(code) || /^\s*<html[\s>]/i.test(code);
+  const wrappedHtml = isFullDocument
+    ? code
+    : `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><style>html,body{overflow-x:hidden;max-width:100vw}body{background:#fff;color:#121212;margin:0;padding:12px;font-family:system-ui,sans-serif;box-sizing:border-box;word-break:break-word}</style></head><body>${code}</body></html>`;
 
   return (
     <>
