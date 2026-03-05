@@ -1,4 +1,5 @@
 export type ProviderType = "openai" | "anthropic" | "gemini" | "azure-openai";
+export type ApiFormat = "chat-completions" | "responses";
 export type ProviderStatus = "connected" | "disconnected" | "error" | "pending";
 export type ConversationType = "single" | "group";
 export type MessageRole = "user" | "assistant" | "system" | "tool";
@@ -14,6 +15,7 @@ export interface Provider {
   id: string;
   name: string;
   type: ProviderType;
+  apiFormat?: ApiFormat;
   baseUrl: string;
   apiKey: string;
   apiVersion?: string;

@@ -7,7 +7,8 @@
  *
  * Inspired by LobeChat's compressContext / summaryHistory chains.
  */
-import { appFetch } from "./http";
+import { getAdapter } from "../services/provider-adapters";
+import type { ApiFormat } from "../types";
 
 // ── Token estimation ──
 
@@ -85,6 +86,8 @@ export interface CompressOptions {
   headers: Record<string, string>;
   /** Model ID to use for compression (should be cheap/fast) */
   model: string;
+  /** API format: chat-completions or responses */
+  apiFormat?: ApiFormat;
   /** AbortSignal */
   signal?: AbortSignal;
 }
@@ -118,6 +121,7 @@ async function callCompressionApi(
   baseUrl: string,
   headers: Record<string, string>,
   model: string,
+  apiFormat?: ApiFormat,
   signal?: AbortSignal,
 ): Promise<string> {
   const compressText = toCompress
@@ -127,28 +131,20 @@ async function callCompressionApi(
     })
     .join("\n\n");
 
-  const response = await appFetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
+  const adapter = getAdapter(apiFormat);
+  return adapter.chat({
+    baseUrl,
     headers,
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: COMPRESS_SYSTEM_PROMPT },
-        { role: "user", content: compressText },
-        { role: "user", content: COMPRESS_USER_PROMPT },
-      ],
-      stream: false,
-      max_tokens: 1000,
-      temperature: 0.2,
-    }),
+    modelId: model,
+    messages: [
+      { role: "system", content: COMPRESS_SYSTEM_PROMPT },
+      { role: "user", content: compressText },
+      { role: "user", content: COMPRESS_USER_PROMPT },
+    ],
+    maxTokens: 1000,
+    temperature: 0.2,
     signal,
   });
-
-  if (!response.ok) throw new Error(`API error ${response.status}`);
-  const data = await response.json();
-  const summary = data.choices?.[0]?.message?.content?.trim();
-  if (!summary) throw new Error("Empty compression result");
-  return summary;
 }
 
 /**
@@ -169,7 +165,7 @@ export async function compressIfNeeded(
   if (toCompress.length <= 1) return { messages, compressed: false };
 
   try {
-    const summary = await callCompressionApi(toCompress, baseUrl, headers, model, signal);
+    const summary = await callCompressionApi(toCompress, baseUrl, headers, model, options.apiFormat, signal);
     const originalTokens = estimateMessagesTokens(toCompress);
     const compressedTokens = estimateTokens(summary);
     console.log(
@@ -223,6 +219,7 @@ export async function manualCompress(
     options.baseUrl,
     options.headers,
     options.model,
+    options.apiFormat,
     options.signal,
   );
   const originalTokens = estimateMessagesTokens(toCompress);

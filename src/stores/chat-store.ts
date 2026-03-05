@@ -140,6 +140,7 @@ async function preComputeCompression(
     baseUrl,
     headers,
     model: firstModel.modelId,
+    apiFormat: firstProvider.apiFormat,
     signal: abortController.signal,
   });
   if (!result.compressed) return null;
@@ -253,6 +254,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (cid === get().currentConversationId) set({ isGenerating: true });
 
     const targets = resolveTargetParticipants(conv, options?.mentionedParticipantIds);
+    console.log("[DEBUG @mention]", {
+      mentionedParticipantIds: options?.mentionedParticipantIds,
+      allParticipantIds: conv.participants.map((p) => p.id),
+      targetIds: targets.map((t) => t.id),
+    });
 
     // Pre-compute compression summary once for group chats
     const cachedCompressionSummary = await preComputeCompression(

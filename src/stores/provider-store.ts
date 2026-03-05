@@ -8,6 +8,7 @@ import { kvStore } from "../storage/kv-store";
 import { generateId } from "../lib/id";
 import { buildProviderHeaders } from "../services/provider-headers";
 import { appFetch } from "../lib/http";
+import { getAdapter } from "../services/provider-adapters";
 
 const PROVIDERS_KEY = "providers";
 const MODELS_KEY = "models";
@@ -274,66 +275,9 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
 
     const baseUrl = provider.baseUrl.replace(/\/+$/, "");
     const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
+    const adapter = getAdapter(provider.apiFormat);
 
-    const caps = { vision: false, toolCall: false, reasoning: false, streaming: true };
-
-    // Probe vision: send an image in the message
-    try {
-      const visionRes = await appFetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers,
-        signal: AbortSignal.timeout(15000),
-        body: JSON.stringify({
-          model: model.modelId,
-          max_tokens: 1,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: "hi" },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-                  },
-                },
-              ],
-            },
-          ],
-        }),
-      });
-      caps.vision = visionRes.ok;
-    } catch {
-      /* ignore */
-    }
-
-    // Probe tool call
-    try {
-      const toolRes = await appFetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers,
-        signal: AbortSignal.timeout(15000),
-        body: JSON.stringify({
-          model: model.modelId,
-          max_tokens: 1,
-          messages: [{ role: "user", content: "hi" }],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "test",
-                description: "test",
-                parameters: { type: "object", properties: {} },
-              },
-            },
-          ],
-        }),
-      });
-      caps.toolCall = toolRes.ok;
-    } catch {
-      /* ignore */
-    }
-
+    const caps = await adapter.probeCapabilities({ baseUrl, headers, modelId: model.modelId });
     get().updateModelCapabilities(modelId, caps);
   },
 }));

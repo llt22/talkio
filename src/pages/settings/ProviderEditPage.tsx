@@ -6,27 +6,18 @@ import { useTranslation } from "react-i18next";
 import {
   IoLinkOutline,
   IoChevronForward,
-  IoKeyOutline,
-  IoEyeOutline,
-  IoEyeOffOutline,
   IoCaretDown,
-  IoCaretUp,
-  IoAdd,
-  IoCloseCircle,
-  IoRefreshOutline,
-  IoSearchOutline,
   IoLockClosed,
   IoCheckmarkCircle,
-  IoConstructOutline,
-  IoBulbOutline,
-  IoPulseOutline,
 } from "../../icons";
 import { useProviderStore } from "../../stores/provider-store";
-import type { Provider, ProviderType, CustomHeader, Model } from "../../types";
+import type { Provider, ProviderType, ApiFormat, CustomHeader } from "../../types";
 import { generateId } from "../../lib/id";
 import { buildProviderHeadersFromRaw } from "../../services/provider-headers";
 import { appFetch } from "../../lib/http";
 import { appAlert } from "../../components/shared/ConfirmDialogProvider";
+import { ProviderModelList } from "./ProviderModelList";
+import { ProviderConfigForm } from "./ProviderConfigForm";
 
 type ProviderStoreState = ReturnType<typeof useProviderStore.getState>;
 
@@ -66,19 +57,9 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
   const addProvider = useProviderStore((s: ProviderStoreState) => s.addProvider);
   const updateProvider = useProviderStore((s: ProviderStoreState) => s.updateProvider);
   const getProviderById = useProviderStore((s: ProviderStoreState) => s.getProviderById);
-  const getModelsByProvider = useProviderStore((s: ProviderStoreState) => s.getModelsByProvider);
   const fetchModels = useProviderStore((s: ProviderStoreState) => s.fetchModels);
   const testConnection = useProviderStore((s: ProviderStoreState) => s.testConnection);
-  const updateModel = useProviderStore((s: ProviderStoreState) => s.updateModel);
-  const toggleModel = useProviderStore((s: ProviderStoreState) => s.toggleModel);
-  const setProviderModelsEnabled = useProviderStore(
-    (s: ProviderStoreState) => s.setProviderModelsEnabled,
-  );
   const addModelById = useProviderStore((s: ProviderStoreState) => s.addModelById);
-  const allModels = useProviderStore((s: ProviderStoreState) => s.models);
-  const probeModelCapabilities = useProviderStore(
-    (s: ProviderStoreState) => s.probeModelCapabilities,
-  );
 
   const [selectedPreset, setSelectedPreset] = useState<string | null>(
     isEditing ? "__edit__" : null,
@@ -87,8 +68,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [providerType, setProviderType] = useState<ProviderType>("openai");
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [apiFormat, setApiFormat] = useState<ApiFormat>("chat-completions");
   const [customHeaders, setCustomHeaders] = useState<CustomHeader[]>([]);
   const [providerEnabled, setProviderEnabled] = useState(true);
 
@@ -99,9 +79,6 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
   const [testPulledModels, setTestPulledModels] = useState<Array<{ id: string; object: string }>>(
     [],
   );
-  const [modelSearch, setModelSearch] = useState("");
-  const [newModelId, setNewModelId] = useState("");
-  const [probingModelIds, setProbingModelIds] = useState<Set<string>>(new Set());
   const [disabledTestModels, setDisabledTestModels] = useState<Set<string>>(new Set());
 
   // Load existing provider data
@@ -113,6 +90,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
         setBaseUrl(provider.baseUrl);
         setApiKey(provider.apiKey);
         setProviderType("openai");
+        setApiFormat(provider.apiFormat ?? "chat-completions");
         setCustomHeaders(provider.customHeaders ?? []);
         setProviderEnabled(provider.enabled !== false);
         setConnected(provider.status === "connected" || (provider as any).status === "active");
@@ -130,16 +108,6 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
       setConnected(null);
     }
   };
-
-  const displayModels = savedProviderId ? getModelsByProvider(savedProviderId) : [];
-
-  const filteredModels = modelSearch
-    ? displayModels.filter(
-        (m: Model) =>
-          m.displayName.toLowerCase().includes(modelSearch.toLowerCase()) ||
-          m.modelId.toLowerCase().includes(modelSearch.toLowerCase()),
-      )
-    : displayModels;
 
   const handleConnect = useCallback(async () => {
     if (!name.trim() || !baseUrl.trim()) return;
@@ -166,6 +134,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
           baseUrl: baseUrl.trim(),
           apiKey: apiKey.trim(),
           type: providerType,
+          apiFormat,
           customHeaders,
           enabled: providerEnabled,
         });
@@ -209,6 +178,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
             baseUrl: baseUrl.trim(),
             apiKey: apiKey.trim(),
             type: providerType,
+            apiFormat,
             customHeaders,
             enabled: providerEnabled,
             apiVersion: undefined,
@@ -252,6 +222,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
     baseUrl,
     apiKey,
     providerType,
+    apiFormat,
     customHeaders,
     providerEnabled,
     isEditing,
@@ -271,6 +242,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
       baseUrl: baseUrl.trim(),
       apiKey: apiKey.trim(),
       type: providerType,
+      apiFormat,
       customHeaders,
       enabled: providerEnabled,
     };
@@ -285,7 +257,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
         id,
         ...providerData,
         apiVersion: undefined,
-        status: "connected",
+        status: "connected" as const,
         createdAt: new Date().toISOString(),
       };
       addProvider(provider);
@@ -305,6 +277,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
     baseUrl,
     apiKey,
     providerType,
+    apiFormat,
     customHeaders,
     providerEnabled,
     savedProviderId,
@@ -420,170 +393,23 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
               </button>
             )}
 
-            {/* Full form for Custom or Editing (1:1 RN) */}
-            {(isCustom || isEditing) && (
-              <div
-                className="mb-4 overflow-hidden rounded-xl"
-                style={{ backgroundColor: "var(--card)" }}
-              >
-                <FormRow label={t("providerEdit.name")}>
-                  <input
-                    className="text-foreground flex-1 bg-transparent text-[16px] outline-none"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. OpenRouter"
-                  />
-                </FormRow>
-                <FormRow label={t("providerEdit.baseUrl")}>
-                  <input
-                    className="text-foreground flex-1 bg-transparent text-[16px] outline-none"
-                    value={baseUrl}
-                    onChange={(e) => setBaseUrl(e.target.value)}
-                    placeholder="https://api.example.com/v1"
-                  />
-                </FormRow>
-                <FormRow label={t("providerEdit.type")} isLast>
-                  <div className="flex flex-wrap gap-2">
-                    {PROVIDER_TYPE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setProviderType(opt.value)}
-                        className="rounded-full px-3 py-1 text-[13px] font-medium transition-colors"
-                        style={{
-                          border: `1px solid ${providerType === opt.value ? "var(--primary)" : "var(--border)"}`,
-                          backgroundColor:
-                            providerType === opt.value
-                              ? "color-mix(in srgb, var(--primary) 10%, transparent)"
-                              : "transparent",
-                          color:
-                            providerType === opt.value
-                              ? "var(--primary)"
-                              : "var(--muted-foreground)",
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </FormRow>
-              </div>
-            )}
-
-            {/* API Key */}
-            <div
-              className="mb-4 overflow-hidden rounded-xl"
-              style={{ backgroundColor: "var(--card)" }}
-            >
-              <div className="flex items-center px-4 py-3.5">
-                <IoKeyOutline
-                  size={18}
-                  color="var(--muted-foreground)"
-                  className="mr-3 flex-shrink-0"
-                />
-                <input
-                  type={showApiKey ? "text" : "password"}
-                  className="text-foreground flex-1 bg-transparent text-[16px] outline-none"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={t("providerEdit.apiKeyPlaceholder")}
-                />
-                <button
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="ml-2 p-1 active:opacity-60"
-                >
-                  {showApiKey ? (
-                    <IoEyeOffOutline size={20} color="var(--muted-foreground)" />
-                  ) : (
-                    <IoEyeOutline size={20} color="var(--muted-foreground)" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Advanced */}
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="mb-2 flex w-full items-center justify-between px-1 py-2"
-            >
-              <span className="text-muted-foreground text-[13px] font-medium">
-                {t("providerEdit.advancedSettings")}
-              </span>
-              {showAdvanced ? (
-                <IoCaretUp size={16} color="var(--muted-foreground)" style={{ opacity: 0.5 }} />
-              ) : (
-                <IoCaretDown size={16} color="var(--muted-foreground)" style={{ opacity: 0.5 }} />
-              )}
-            </button>
-
-            {showAdvanced && (
-              <div
-                className="mb-4 overflow-hidden rounded-xl"
-                style={{ backgroundColor: "var(--card)" }}
-              >
-                <div
-                  className="flex items-center justify-between px-4 py-3.5"
-                  style={{ borderBottom: "0.5px solid var(--border)" }}
-                >
-                  <span className="text-foreground text-[15px]">{t("providerEdit.enabled")}</span>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={providerEnabled}
-                      onChange={(e) => setProviderEnabled(e.target.checked)}
-                      className="peer sr-only"
-                    />
-                    <div className="peer-checked:bg-primary bg-muted-foreground/30 h-6 w-11 rounded-full after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
-                  </label>
-                </div>
-                <div className="px-4 py-3.5">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-foreground text-[14px]">
-                      {t("providerEdit.customHeaders")}
-                    </span>
-                    <button
-                      onClick={() => setCustomHeaders([...customHeaders, { name: "", value: "" }])}
-                      className="flex items-center gap-1 text-[13px] font-medium active:opacity-60"
-                      style={{ color: "var(--primary)" }}
-                    >
-                      <IoAdd size={14} color="var(--primary)" />
-                      {t("common.add")}
-                    </button>
-                  </div>
-                  {customHeaders.map((h: CustomHeader, idx: number) => (
-                    <div key={idx} className="mb-2 flex items-center gap-2">
-                      <input
-                        className="text-foreground flex-1 rounded-lg px-3 py-2 text-[14px] outline-none"
-                        style={{ backgroundColor: "var(--muted)" }}
-                        value={h.name}
-                        onChange={(e) => {
-                          const next = [...customHeaders];
-                          next[idx] = { ...next[idx], name: e.target.value };
-                          setCustomHeaders(next);
-                        }}
-                        placeholder={t("providerEdit.customHeaderName")}
-                      />
-                      <input
-                        className="text-foreground flex-1 rounded-lg px-3 py-2 text-[14px] outline-none"
-                        style={{ backgroundColor: "var(--muted)" }}
-                        value={h.value}
-                        onChange={(e) => {
-                          const next = [...customHeaders];
-                          next[idx] = { ...next[idx], value: e.target.value };
-                          setCustomHeaders(next);
-                        }}
-                        placeholder={t("providerEdit.customHeaderValue")}
-                      />
-                      <button
-                        onClick={() => setCustomHeaders(customHeaders.filter((_, i) => i !== idx))}
-                        className="p-1 active:opacity-60"
-                      >
-                        <IoCloseCircle size={18} color="var(--destructive)" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <ProviderConfigForm
+              name={name}
+              onNameChange={setName}
+              baseUrl={baseUrl}
+              onBaseUrlChange={setBaseUrl}
+              apiKey={apiKey}
+              onApiKeyChange={setApiKey}
+              providerType={providerType}
+              onProviderTypeChange={setProviderType}
+              apiFormat={apiFormat}
+              onApiFormatChange={setApiFormat}
+              customHeaders={customHeaders}
+              onCustomHeadersChange={setCustomHeaders}
+              providerEnabled={providerEnabled}
+              onProviderEnabledChange={setProviderEnabled}
+              showBaseFields={isCustom || isEditing}
+            />
 
             {/* Action Buttons Row (1:1 RN: flex-row gap-3) */}
             <div className="mt-4 flex gap-3">
@@ -628,178 +454,11 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
 
             {/* ── Step 3: Models (existing provider) ── */}
             {savedProviderId && (
-              <div className="mt-6">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-muted-foreground text-[13px] font-normal tracking-tight uppercase">
-                    {t("providerEdit.models")} ({filteredModels.length})
-                  </span>
-                  <div className="flex items-center gap-3">
-                    {displayModels.length > 0 && (
-                      <button
-                        onClick={() => {
-                          if (!savedProviderId) return;
-                          const allEnabled = displayModels.every((m: Model) => m.enabled);
-                          setProviderModelsEnabled(savedProviderId, !allEnabled);
-                        }}
-                        className="text-[13px] font-medium active:opacity-60"
-                        style={{ color: "var(--primary)" }}
-                      >
-                        {displayModels.every((m: Model) => m.enabled)
-                          ? t("providerEdit.deselectAll")
-                          : t("providerEdit.selectAll")}
-                      </button>
-                    )}
-                    <button
-                      onClick={handleRefresh}
-                      disabled={pulling}
-                      className="flex items-center gap-1 text-[13px] font-medium active:opacity-60"
-                      style={{ color: "var(--primary)" }}
-                    >
-                      <IoRefreshOutline size={14} color="var(--primary)" />
-                      {t("providerEdit.refresh")}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Model Search */}
-                <div
-                  className="mt-3 flex items-center rounded-xl px-3 py-2"
-                  style={{ backgroundColor: "var(--card)" }}
-                >
-                  <IoSearchOutline size={16} color="var(--muted-foreground)" className="mr-2" />
-                  <input
-                    className="text-foreground flex-1 bg-transparent text-[14px] outline-none"
-                    value={modelSearch}
-                    onChange={(e) => setModelSearch(e.target.value)}
-                    placeholder={t("providerEdit.searchModels")}
-                  />
-                  {modelSearch && (
-                    <button onClick={() => setModelSearch("")} className="active:opacity-60">
-                      <IoCloseCircle size={16} color="var(--muted-foreground)" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Manual Add Model */}
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    className="text-foreground flex-1 rounded-xl px-3 py-2.5 text-[14px] outline-none"
-                    style={{ backgroundColor: "var(--card)" }}
-                    value={newModelId}
-                    onChange={(e) => setNewModelId(e.target.value)}
-                    placeholder={t("providerEdit.addModelPlaceholder")}
-                  />
-                  <button
-                    onClick={() => {
-                      const mid = newModelId.trim();
-                      if (!mid || !savedProviderId) return;
-                      addModelById(savedProviderId, mid);
-                      setNewModelId("");
-                    }}
-                    disabled={!newModelId.trim()}
-                    className="rounded-xl px-4 py-2.5 text-[14px] font-medium active:opacity-80"
-                    style={{
-                      backgroundColor: newModelId.trim() ? "var(--primary)" : "var(--muted)",
-                      color: newModelId.trim() ? "white" : "var(--muted-foreground)",
-                    }}
-                  >
-                    {t("common.add")}
-                  </button>
-                </div>
-
-                {/* Model List — 1:1 RN: separate rounded cards */}
-                <div className="mt-3 flex flex-col gap-2">
-                  {filteredModels.map((m: Model) => (
-                    <div
-                      key={m.id}
-                      className="rounded-xl px-4 py-3"
-                      style={{ backgroundColor: "var(--card)" }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="mr-3 min-w-0 flex-1">
-                          <p
-                            className={`truncate text-[15px] font-semibold ${m.enabled ? "text-foreground" : "text-muted-foreground/40"}`}
-                          >
-                            {m.displayName}
-                          </p>
-                          <p className="text-muted-foreground truncate text-[12px]">{m.modelId}</p>
-                        </div>
-                        <label className="relative inline-flex flex-shrink-0 cursor-pointer items-center">
-                          <input
-                            type="checkbox"
-                            checked={m.enabled}
-                            onChange={() => toggleModel(m.id)}
-                            className="peer sr-only"
-                          />
-                          <div className="peer-checked:bg-primary bg-muted-foreground/30 h-6 w-11 rounded-full after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
-                        </label>
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {[
-                          {
-                            key: "vision",
-                            label: t("providerEdit.vision"),
-                            on: m.capabilities?.vision,
-                            icon: <IoEyeOutline size={12} />,
-                          },
-                          {
-                            key: "tools",
-                            label: t("providerEdit.tools"),
-                            on: m.capabilities?.toolCall,
-                            icon: <IoConstructOutline size={12} />,
-                          },
-                          {
-                            key: "reasoning",
-                            label: t("providerEdit.reasoning"),
-                            on: m.capabilities?.reasoning,
-                            icon: <IoBulbOutline size={12} />,
-                          },
-                        ].map((cap) => (
-                          <span
-                            key={cap.key}
-                            className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] ${!cap.on ? "opacity-30" : ""}`}
-                            style={{
-                              backgroundColor: "var(--muted)",
-                              color: cap.on ? "var(--foreground)" : "var(--muted-foreground)",
-                            }}
-                          >
-                            <span style={{ color: cap.on ? "var(--primary)" : "inherit" }}>
-                              {cap.icon}
-                            </span>
-                            {cap.label}
-                          </span>
-                        ))}
-                        <button
-                          onClick={async () => {
-                            setProbingModelIds((prev) => new Set(prev).add(m.id));
-                            try {
-                              await probeModelCapabilities(m.id);
-                            } catch {
-                              /* ignore */
-                            } finally {
-                              setProbingModelIds((prev) => {
-                                const next = new Set(prev);
-                                next.delete(m.id);
-                                return next;
-                              });
-                            }
-                          }}
-                          disabled={probingModelIds.has(m.id)}
-                          className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium active:opacity-60 disabled:opacity-40"
-                          style={{ backgroundColor: "var(--muted)", color: "var(--primary)" }}
-                        >
-                          {probingModelIds.has(m.id) ? (
-                            <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-                          ) : (
-                            <IoPulseOutline size={12} />
-                          )}
-                          {t("providerEdit.probe")}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <ProviderModelList
+                providerId={savedProviderId}
+                pulling={pulling}
+                onRefresh={handleRefresh}
+              />
             )}
           </>
         )}
@@ -882,24 +541,3 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
   );
 }
 
-// ── Helper: Form Row (1:1 RN original) ──
-
-function FormRow({
-  label,
-  children,
-  isLast = false,
-}: {
-  label: string;
-  children: React.ReactNode;
-  isLast?: boolean;
-}) {
-  return (
-    <div
-      className="flex items-center px-4 py-3.5"
-      style={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)" }}
-    >
-      <span className="text-foreground w-24 flex-shrink-0 text-[15px]">{label}</span>
-      {children}
-    </div>
-  );
-}
