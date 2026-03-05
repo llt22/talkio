@@ -163,7 +163,7 @@ export function ProviderConfigForm(props: ProviderConfigFormProps) {
             className="flex items-center justify-between px-4 py-3.5"
             style={{ borderBottom: "0.5px solid var(--border)" }}
           >
-            <span className="text-foreground text-[15px]">API Format</span>
+            <span className="text-foreground text-[15px]">{t("providerEdit.apiFormat")}</span>
             <div className="flex gap-1.5">
               {(["chat-completions", "responses"] as const).map((fmt) => (
                 <button

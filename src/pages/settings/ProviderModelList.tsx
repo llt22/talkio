@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   IoRefreshOutline,
@@ -23,7 +23,11 @@ interface ProviderModelListProps {
 export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderModelListProps) {
   const { t } = useTranslation();
 
-  const getModelsByProvider = useProviderStore((s: ProviderStoreState) => s.getModelsByProvider);
+  const models = useProviderStore((s: ProviderStoreState) => s.models);
+  const displayModels = useMemo(
+    () => models.filter((m) => m.providerId === providerId),
+    [models, providerId],
+  );
   const toggleModel = useProviderStore((s: ProviderStoreState) => s.toggleModel);
   const setProviderModelsEnabled = useProviderStore(
     (s: ProviderStoreState) => s.setProviderModelsEnabled,
@@ -37,7 +41,6 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
   const [newModelId, setNewModelId] = useState("");
   const [probingModelIds, setProbingModelIds] = useState<Set<string>>(new Set());
 
-  const displayModels = getModelsByProvider(providerId);
   const filteredModels = modelSearch
     ? displayModels.filter(
         (m: Model) =>
