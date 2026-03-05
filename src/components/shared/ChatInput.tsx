@@ -142,6 +142,8 @@ export const ChatInput = memo(function ChatInput({
     setText("");
     setAttachedImages([]);
     setAttachedFiles([]);
+    setShowMentionPicker(false);
+    setShowRoundPicker(false);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       if (!isMobile) textareaRef.current.focus();
@@ -385,8 +387,14 @@ export const ChatInput = memo(function ChatInput({
 
       {/* @Mention picker */}
       {showMentionPicker && isGroup && (
+        <>
+        <button
+          className="fixed inset-0 z-40"
+          onClick={() => setShowMentionPicker(false)}
+          aria-label="Close mention picker"
+        />
         <div
-          className="px-4 py-3"
+          className="relative z-50 px-4 py-3"
           style={{ borderBottom: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}
         >
           <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-widest uppercase">
@@ -411,6 +419,7 @@ export const ChatInput = memo(function ChatInput({
             );
           })}
         </div>
+        </>
       )}
 
       {/* Auto-discuss control panel */}

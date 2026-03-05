@@ -2,9 +2,9 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import {
-  MessageSquare,
-  Bot,
-  Compass,
+  MessagesSquare,
+  Box,
+  CircleUser,
   Settings,
   Plus,
   Trash2,
@@ -109,9 +109,9 @@ export function DesktopLayout() {
       {/* Icon Navigation Bar (WeChat-style) */}
       <div className="bg-sidebar border-sidebar-border flex w-14 flex-shrink-0 flex-col items-center gap-1 border-r py-4">
         {[
-          { id: "chats" as DesktopSection, icon: MessageSquare, label: t("tabs.chats") },
-          { id: "experts" as DesktopSection, icon: Bot, label: t("tabs.models") },
-          { id: "discover" as DesktopSection, icon: Compass, label: t("tabs.personas") },
+          { id: "chats" as DesktopSection, icon: MessagesSquare, label: t("tabs.chats") },
+          { id: "experts" as DesktopSection, icon: Box, label: t("tabs.models") },
+          { id: "discover" as DesktopSection, icon: CircleUser, label: t("tabs.personas") },
         ].map(({ id, icon: Icon, label }) => (
           <Tooltip key={id}>
             <TooltipTrigger asChild>
