@@ -29,6 +29,12 @@ export default defineConfig(async () => ({
           if (id.includes('node_modules/radix-ui') || id.includes('node_modules/@radix-ui')) return 'ui-vendor';
           if (id.includes('node_modules/lucide-react')) return 'ui-vendor';
           if (id.includes('node_modules/react-markdown') || id.includes('node_modules/remark-') || id.includes('node_modules/rehype-')) return 'markdown';
+          if (id.includes('node_modules/mermaid')) return 'mermaid-core';
+          if (id.includes('node_modules/katex')) return 'katex';
+          if (id.includes('node_modules/pdfjs-dist')) return 'pdf';
+          if (id.includes('node_modules/xlsx')) return 'xlsx';
+          if (id.includes('node_modules/cytoscape')) return 'cytoscape';
+          if (id.includes('node_modules/shiki')) return 'shiki';
         },
       },
     },
