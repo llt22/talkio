@@ -31,8 +31,14 @@ async function executeOneTool(
       : null;
   if (builtIn) return { content: builtIn.success ? builtIn.content : `Error: ${builtIn.error}` };
 
-  const remote = await executeMcpToolByName(name, args, allowedServerIds);
-  if (remote) return { content: remote.success ? remote.content : `Error: ${remote.error}` };
+  try {
+    const remote = await executeMcpToolByName(name, args, allowedServerIds);
+    if (remote) return { content: remote.success ? remote.content : `Error: ${remote.error}` };
+  } catch (error) {
+    return {
+      content: `Error: ${error instanceof Error ? error.message : "MCP tool execution failed"}`,
+    };
+  }
 
   return { content: `Tool not found: ${name}` };
 }
