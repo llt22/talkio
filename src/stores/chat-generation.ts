@@ -214,20 +214,40 @@ export async function generateForParticipant(
       () => acc.fullReasoning,
     );
 
-    const { usage: sseUsage } = await adapter.streamChat({
-      baseUrl,
-      headers,
-      modelId: model.modelId,
-      messages: apiMessages,
-      identity,
-      reasoningEffort,
-      toolDefs,
-      signal: ctx.abortController.signal,
-      onDelta: (delta) => {
-        processSseDelta(acc, delta);
-        flusher.schedule();
-      },
-    });
+    const streamOnce = () =>
+      adapter.streamChat({
+        baseUrl,
+        headers,
+        modelId: model.modelId,
+        messages: apiMessages,
+        identity,
+        reasoningEffort,
+        toolDefs,
+        signal: ctx.abortController.signal,
+        onDelta: (delta) => {
+          processSseDelta(acc, delta);
+          flusher.schedule();
+        },
+      });
+
+    const resetAcc = () => {
+      acc.fullContent = "";
+      acc.fullReasoning = "";
+      acc.inThinkTag = false;
+      acc.pendingToolCalls = [];
+    };
+
+    // Stream with auto-retry on transient errors
+    let sseUsage;
+    try {
+      ({ usage: sseUsage } = await streamOnce());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const retryable = /empty response|overloaded|timeout|temporarily|503|502|network/i.test(message);
+      if (!retryable || ctx.abortController.signal.aborted) throw error;
+      resetAcc();
+      ({ usage: sseUsage } = await streamOnce());
+    }
     flusher.flush();
 
     const duration = (Date.now() - startTime) / 1000;
@@ -258,12 +278,35 @@ export async function generateForParticipant(
       );
       lastContent = result.content;
     } else if (!acc.fullContent && !acc.fullReasoning) {
-      // API returned 200 but produced no content — treat as error
-      await updateMessage(assistantMsgId, {
-        isStreaming: false,
-        status: MessageStatus.ERROR,
-        errorMessage: "Model returned an empty response. It may be unavailable, overloaded, or the model ID may be incorrect.",
-      });
+      // Empty response — retry once
+      resetAcc();
+      const retry = await streamOnce();
+      flusher.flush();
+
+      if (retry.usage) {
+        tokenUsage = {
+          inputTokens: retry.usage.prompt_tokens,
+          outputTokens: retry.usage.completion_tokens,
+        };
+      }
+
+      if (!acc.fullContent && !acc.fullReasoning) {
+        await updateMessage(assistantMsgId, {
+          isStreaming: false,
+          status: MessageStatus.ERROR,
+          errorMessage: "Model returned an empty response twice. It may be unavailable, overloaded, or the model ID may be incorrect.",
+        });
+      } else {
+        await updateMessage(assistantMsgId, {
+          content: acc.fullContent,
+          reasoningContent: acc.fullReasoning || null,
+          reasoningDuration: acc.fullReasoning ? duration : null,
+          isStreaming: false,
+          status: MessageStatus.SUCCESS,
+          tokenUsage,
+        });
+        lastContent = acc.fullContent;
+      }
     } else {
       await updateMessage(assistantMsgId, {
         content: acc.fullContent,
