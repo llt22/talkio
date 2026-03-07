@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
@@ -35,6 +35,23 @@ export default function App() {
   const isMobile = useIsMobile();
   const [ready, setReady] = useState(false);
   const mcpServers = useMcpStore((s) => s.servers);
+  const enabledMcpSignature = useMemo(
+    () =>
+      JSON.stringify(
+        mcpServers
+          .filter((server) => server.enabled)
+          .map((server) => ({
+            id: server.id,
+            type: server.type,
+            url: server.url,
+            command: server.command,
+            args: server.args,
+            env: server.env,
+            customHeaders: server.customHeaders,
+          })),
+      ),
+    [mcpServers],
+  );
 
   // Initialize database and load all stores
   useEffect(() => {
@@ -78,8 +95,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
     refreshMcpConnections().catch((err) => console.warn("[App] MCP refresh failed:", err));
-  }, [mcpServers]);
+  }, [ready, enabledMcpSignature]);
 
   return (
     <BrowserRouter>
