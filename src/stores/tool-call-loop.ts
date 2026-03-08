@@ -5,7 +5,7 @@
 import { MessageStatus } from "../types";
 import { updateMessage } from "../storage/database";
 import { notifyDbChange } from "../hooks/useDatabase";
-import { executeBuiltInTool } from "../services/built-in-tools";
+import { executeBuiltInTool, type ToolContext } from "../services/built-in-tools";
 import { executeMcpToolByName } from "../services/mcp";
 import type { ProviderAdapter } from "../services/provider-adapters";
 import type { GenerationContext } from "./chat-generation";
@@ -21,13 +21,14 @@ async function executeOneTool(
   identity: any,
   allowedBuiltInToolNames: Set<string> | null,
   allowedServerIds: string[] | undefined,
+  toolContext?: ToolContext,
 ): Promise<{ toolCallId?: string; content: string }> {
   const builtInGloballyEnabled = builtInEnabledByName[name] !== false;
   const builtInEnabledForIdentity =
     !!identity && allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(name);
   const builtIn =
     builtInGloballyEnabled || builtInEnabledForIdentity
-      ? await executeBuiltInTool(name, args)
+      ? await executeBuiltInTool(name, args, toolContext)
       : null;
   if (builtIn) return { content: builtIn.success ? builtIn.content : `Error: ${builtIn.error}` };
 
@@ -60,6 +61,7 @@ export async function runToolCallLoop(
   allowedBuiltInToolNames: Set<string> | null,
   allowedServerIds: string[] | undefined,
   tokenUsage: { inputTokens: number; outputTokens: number } | null,
+  toolContext?: ToolContext,
 ): Promise<{ content: string; tokenUsage: { inputTokens: number; outputTokens: number } | null }> {
   // Save initial tool calls
   await updateMessage(assistantMsgId, {
@@ -80,6 +82,7 @@ export async function runToolCallLoop(
       identity,
       allowedBuiltInToolNames,
       allowedServerIds,
+      toolContext,
     );
     toolResults.push({ toolCallId: tc.id, content: result.content });
   }
@@ -182,6 +185,7 @@ export async function runToolCallLoop(
         identity,
         allowedBuiltInToolNames,
         allowedServerIds,
+        toolContext,
       );
       newResults.push({ toolCallId: tc.id, content: result.content });
     }

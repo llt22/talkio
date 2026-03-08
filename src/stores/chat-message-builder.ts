@@ -142,7 +142,13 @@ export function buildApiMessagesForParticipant(
       }
     }
     workspaceHint +=
-      "\nUse relative paths when you discuss files. If the user asks about a file that is not loaded yet, say which relative path you need.";
+      "\nYou have workspace tools available:"
+      + "\n- `read_workspace_file`: Read a text file by relative path."
+      + "\n- `list_workspace_dir`: List files in a directory (omit path for root)."
+      + "\n- `search_workspace`: Search for a text pattern across all files."
+      + "\n- `edit_workspace_file`: Edit a file using search/replace (provide path, old_content, new_content). Always read the file first before editing."
+      + "\nUse these tools to explore, read, and edit files. Do NOT ask the user to paste file content."
+      + "\nUse relative paths when you discuss files.";
   }
 
   if (isGroup) {

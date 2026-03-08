@@ -159,8 +159,9 @@ export async function generateForParticipant(
   );
 
   // Resolve tool definitions
+  const toolContext = { workspaceDir: ctx.conversation.workspaceDir || undefined };
   const builtInToolDefs = (() => {
-    const defs = getBuiltInToolDefs();
+    const defs = getBuiltInToolDefs(toolContext);
     const selected = allowedBuiltInToolNames ?? new Set<string>();
     return defs.filter((d) => {
       const name = d.function.name;
@@ -267,6 +268,7 @@ export async function generateForParticipant(
         allowedBuiltInToolNames,
         allowedServerIds,
         tokenUsage,
+        toolContext,
       );
       lastContent = result.content;
     } else if (!acc.fullContent && !acc.fullReasoning) {

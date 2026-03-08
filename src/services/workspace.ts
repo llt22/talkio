@@ -239,3 +239,168 @@ export async function buildWorkspaceContextBundle(
     files,
   };
 }
+
+export interface EditResult {
+  path: string;
+  applied: boolean;
+  error?: string;
+}
+
+export async function editWorkspaceFile(
+  workspaceDir: string,
+  relativePath: string,
+  oldContent: string,
+  newContent: string,
+): Promise<EditResult> {
+  if (!isTauriEnv() || !workspaceDir) {
+    return { path: relativePath, applied: false, error: "Not in Tauri environment" };
+  }
+  const safePath = sanitizeRelativePath(relativePath);
+  if (!safePath) {
+    return { path: relativePath, applied: false, error: "Invalid file path" };
+  }
+
+  const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+  const fullPath = joinPath(workspaceDir, safePath);
+
+  let fileContent: string;
+  try {
+    fileContent = await readTextFile(fullPath);
+  } catch {
+    return { path: safePath, applied: false, error: "File not found or unreadable" };
+  }
+
+  // Exact match
+  const idx = fileContent.indexOf(oldContent);
+  if (idx === -1) {
+    // Fallback: trimmed-whitespace match per line
+    const oldLines = oldContent.split("\n").map((l) => l.trimEnd());
+    const fileLines = fileContent.split("\n");
+    let matchStart = -1;
+    outer: for (let i = 0; i <= fileLines.length - oldLines.length; i++) {
+      for (let j = 0; j < oldLines.length; j++) {
+        if (fileLines[i + j].trimEnd() !== oldLines[j]) continue outer;
+      }
+      matchStart = i;
+      break;
+    }
+    if (matchStart === -1) {
+      return {
+        path: safePath,
+        applied: false,
+        error: `Search block not found in file. Make sure the old_content exactly matches the existing code (including indentation).`,
+      };
+    }
+    // Replace matched lines preserving original line endings
+    const before = fileLines.slice(0, matchStart);
+    const after = fileLines.slice(matchStart + oldLines.length);
+    const result = [...before, ...newContent.split("\n"), ...after].join("\n");
+    await writeTextFile(fullPath, result);
+    return { path: safePath, applied: true };
+  }
+
+  // Exact match found — simple string replacement (first occurrence only)
+  const result = fileContent.slice(0, idx) + newContent + fileContent.slice(idx + oldContent.length);
+  await writeTextFile(fullPath, result);
+  return { path: safePath, applied: true };
+}
+
+const BINARY_EXTENSIONS = new Set([
+  "png", "jpg", "jpeg", "gif", "bmp", "webp", "ico", "svg",
+  "mp3", "mp4", "wav", "ogg", "flac", "avi", "mov", "mkv",
+  "zip", "tar", "gz", "bz2", "7z", "rar",
+  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+  "exe", "dll", "so", "dylib", "bin", "dat",
+  "woff", "woff2", "ttf", "otf", "eot",
+  "lock", "sqlite", "db",
+]);
+
+export function isBinaryPath(filePath: string): boolean {
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+  return BINARY_EXTENSIONS.has(ext);
+}
+
+export async function listWorkspaceDir(
+  workspaceDir: string,
+  relativePath?: string,
+): Promise<string> {
+  if (!isTauriEnv() || !workspaceDir) return "";
+
+  let targetDir = workspaceDir;
+  if (relativePath) {
+    const safePath = sanitizeRelativePath(relativePath);
+    if (!safePath) throw new Error("Invalid directory path");
+    targetDir = joinPath(workspaceDir, safePath);
+  }
+
+  const entries = await readDir(targetDir);
+  const filtered = entries.filter((e) => !shouldIgnoreName(e.name ?? ""));
+  filtered.sort(compareEntries);
+
+  const lines: string[] = [];
+  for (const entry of filtered) {
+    const name = entry.name ?? "";
+    const icon = entry.isDirectory ? "📁" : "📄";
+    lines.push(`${icon} ${name}${entry.isDirectory ? "/" : ""}`);
+  }
+  return lines.join("\n");
+}
+
+const DEFAULT_MAX_SEARCH_RESULTS = 20;
+
+export async function searchWorkspaceFiles(
+  workspaceDir: string,
+  query: string,
+  options?: { maxResults?: number; maxDepth?: number },
+): Promise<string> {
+  if (!isTauriEnv() || !workspaceDir || !query) return "";
+
+  const maxResults = options?.maxResults ?? DEFAULT_MAX_SEARCH_RESULTS;
+  const maxDepth = options?.maxDepth ?? 5;
+  const queryLower = query.toLowerCase();
+  const results: { path: string; line: number; text: string }[] = [];
+
+  async function walk(dir: string, depth: number) {
+    if (results.length >= maxResults || depth > maxDepth) return;
+    let entries;
+    try {
+      entries = await readDir(dir);
+    } catch {
+      return;
+    }
+    const filtered = entries.filter((e) => !shouldIgnoreName(e.name ?? ""));
+    for (const entry of filtered) {
+      if (results.length >= maxResults) return;
+      const name = entry.name ?? "";
+      const fullPath = joinPath(dir, name);
+      if (entry.isDirectory) {
+        await walk(fullPath, depth + 1);
+      } else {
+        if (isBinaryPath(name)) continue;
+        try {
+          const text = await readTextFile(fullPath);
+          if (new Blob([text]).size > DEFAULT_MAX_FILE_BYTES) continue;
+          const lines = text.split("\n");
+          for (let i = 0; i < lines.length; i++) {
+            if (results.length >= maxResults) break;
+            if (lines[i].toLowerCase().includes(queryLower)) {
+              results.push({
+                path: getRelativePath(workspaceDir, fullPath),
+                line: i + 1,
+                text: lines[i].trim().slice(0, 200),
+              });
+            }
+          }
+        } catch {
+          // skip unreadable files
+        }
+      }
+    }
+  }
+
+  await walk(workspaceDir, 0);
+  if (results.length === 0) return "No matches found.";
+  const lines = results.map((r) => `${r.path}:${r.line}: ${r.text}`);
+  if (results.length >= maxResults) lines.push(`… (results capped at ${maxResults})`);
+  return lines.join("\n");
+}
