@@ -125,7 +125,13 @@
     "applyFilesConfirm": "These files will be written into the current workspace directory:",
     "applyFilesSuccess": "Wrote {{count}} files",
     "analyzeProject": "Analyze Current Project",
-    "reviewProject": "Review Current Project"
+    "reviewProject": "Review Current Project",
+    "applyThisFile": "Apply This File",
+    "previewFile": "Preview File",
+    "currentFile": "Current File",
+    "generatedFile": "Generated Content",
+    "overwrite": "Overwrite",
+    "create": "Create"
   },
   "models": {
     "title": "Models",

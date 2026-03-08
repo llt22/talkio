@@ -12,6 +12,13 @@ export interface WrittenFile {
   size: number; // bytes written
 }
 
+export interface WorkspaceFileStatus {
+  path: string;
+  fullPath: string;
+  exists: boolean;
+  currentContent?: string;
+}
+
 /**
  * Extract <file path="...">content</file> blocks from AI message content.
  * Returns array of { path, content } objects.
@@ -35,11 +42,8 @@ export function parseFileBlocks(text: string): { path: string; content: string }
  * Removes leading slashes, ../ components, and normalizes separators.
  */
 function sanitizePath(relativePath: string): string | null {
-  // Normalize separators
   let p = relativePath.replace(/\\/g, "/");
-  // Remove leading slashes
   p = p.replace(/^\/+/, "");
-  // Split and filter out dangerous components
   const parts = p.split("/").filter((part) => part !== ".." && part !== "." && part !== "");
   if (parts.length === 0) return null;
   return parts.join("/");
@@ -49,6 +53,38 @@ function sanitizePath(relativePath: string): string | null {
 function buildFullPath(workspaceDir: string, safePath: string): string {
   const sep = workspaceDir.includes("\\") ? "\\" : "/";
   return workspaceDir.replace(/[/\\]+$/, "") + sep + safePath.replace(/\//g, sep);
+}
+
+/**
+ * Read existing file statuses for proposed file blocks.
+ */
+export async function getWorkspaceFileStatuses(
+  blocks: { path: string; content: string }[],
+  workspaceDir: string,
+): Promise<WorkspaceFileStatus[]> {
+  if (!window.__TAURI_INTERNALS__ || !workspaceDir) return [];
+
+  const { exists, readTextFile } = await import("@tauri-apps/plugin-fs");
+  const statuses: WorkspaceFileStatus[] = [];
+
+  for (const block of blocks) {
+    const safePath = sanitizePath(block.path);
+    if (!safePath) continue;
+    const fullPath = buildFullPath(workspaceDir, safePath);
+    const fileExists = await exists(fullPath).catch(() => false);
+    let currentContent: string | undefined;
+    if (fileExists) {
+      currentContent = await readTextFile(fullPath).catch(() => undefined);
+    }
+    statuses.push({
+      path: safePath,
+      fullPath,
+      exists: fileExists,
+      currentContent,
+    });
+  }
+
+  return statuses;
 }
 
 /**

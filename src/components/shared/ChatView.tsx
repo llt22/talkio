@@ -46,7 +46,9 @@ import { useStickToBottom } from "use-stick-to-bottom";
 import {
   parseFileBlocks,
   writeFilesToWorkspace,
+  getWorkspaceFileStatuses,
   type WrittenFile,
+  type WorkspaceFileStatus,
 } from "../../services/file-writer";
 import { appAlert } from "./ConfirmDialogProvider";
 
@@ -306,6 +308,9 @@ export function ChatView({
   const [pendingFileBlocksMap, setPendingFileBlocksMap] = useState<
     Record<string, { path: string; content: string }[]>
   >({});
+  const [pendingFileStatusMap, setPendingFileStatusMap] = useState<
+    Record<string, WorkspaceFileStatus[]>
+  >({});
   const fileWriteProcessedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -319,37 +324,62 @@ export function ChatView({
     if (blocks.length === 0) return;
     fileWriteProcessedRef.current.add(last.id);
     setPendingFileBlocksMap((prev) => ({ ...prev, [last.id]: blocks }));
+    getWorkspaceFileStatuses(blocks, workspaceDir).then((statuses) => {
+      setPendingFileStatusMap((prev) => ({ ...prev, [last.id]: statuses }));
+    });
   }, [isGenerating, displayMessages, workspaceDir]);
 
+  const clearPendingFiles = useCallback((messageId: string, appliedPath?: string) => {
+    setPendingFileBlocksMap((prev) => {
+      const next = { ...prev };
+      const blocks = next[messageId] ?? [];
+      const filtered = appliedPath ? blocks.filter((b) => b.path !== appliedPath) : [];
+      if (filtered.length > 0) next[messageId] = filtered;
+      else delete next[messageId];
+      return next;
+    });
+    setPendingFileStatusMap((prev) => {
+      const next = { ...prev };
+      const statuses = next[messageId] ?? [];
+      const filtered = appliedPath ? statuses.filter((s) => s.path !== appliedPath) : [];
+      if (filtered.length > 0) next[messageId] = filtered;
+      else delete next[messageId];
+      return next;
+    });
+  }, []);
+
   const handleApplyFileBlocks = useCallback(
-    async (messageId: string) => {
+    async (messageId: string, targetPath?: string) => {
       const blocks = pendingFileBlocksMap[messageId];
       if (!workspaceDir || !blocks || blocks.length === 0) return;
 
-      const preview = blocks
+      const selectedBlocks = targetPath ? blocks.filter((b) => b.path === targetPath) : blocks;
+      if (selectedBlocks.length === 0) return;
+
+      const preview = selectedBlocks
         .slice(0, 6)
         .map((b) => `• ${b.path}`)
         .join("\n");
-      const extra = blocks.length > 6 ? `\n… +${blocks.length - 6} more` : "";
+      const extra = selectedBlocks.length > 6 ? `\n… +${selectedBlocks.length - 6} more` : "";
       const ok = await confirm({
-        title: t("chat.applyFiles"),
+        title: targetPath ? t("chat.applyThisFile") : t("chat.applyFiles"),
         description: `${t("chat.applyFilesConfirm")}\n\n${preview}${extra}`,
         confirmText: t("common.save"),
       });
       if (!ok) return;
 
-      const written = await writeFilesToWorkspace(blocks, workspaceDir);
+      const written = await writeFilesToWorkspace(selectedBlocks, workspaceDir);
       if (written.length > 0) {
-        setWrittenFilesMap((prev) => ({ ...prev, [messageId]: written }));
-        setPendingFileBlocksMap((prev) => {
-          const next = { ...prev };
-          delete next[messageId];
-          return next;
-        });
+        setWrittenFilesMap((prev) => ({
+          ...prev,
+          [messageId]: [...(prev[messageId] ?? []), ...written],
+        }));
+        if (targetPath) clearPendingFiles(messageId, targetPath);
+        else clearPendingFiles(messageId);
         await appAlert(t("chat.applyFilesSuccess", { count: written.length }));
       }
     },
-    [pendingFileBlocksMap, workspaceDir, confirm, t],
+    [pendingFileBlocksMap, workspaceDir, confirm, t, clearPendingFiles],
   );
 
   const branchBanner = activeBranchId ? (
@@ -453,6 +483,7 @@ export function ChatView({
               isGenerating={isGenerating}
               writtenFiles={writtenFilesMap[msg.id]}
               pendingFileBlocks={pendingFileBlocksMap[msg.id]}
+              pendingFileStatuses={pendingFileStatusMap[msg.id]}
               onApplyFileBlocks={handleApplyFileBlocks}
             />
           ))}
@@ -533,7 +564,8 @@ interface MessageRowProps {
   isGenerating?: boolean;
   writtenFiles?: WrittenFile[];
   pendingFileBlocks?: { path: string; content: string }[];
-  onApplyFileBlocks?: (messageId: string) => void;
+  pendingFileStatuses?: WorkspaceFileStatus[];
+  onApplyFileBlocks?: (messageId: string, targetPath?: string) => void;
 }
 
 // ── Assistant action bar: primary buttons + ··· overflow menu ──
@@ -667,6 +699,7 @@ const MessageRow = memo(function MessageRow({
   isGenerating,
   writtenFiles,
   pendingFileBlocks,
+  pendingFileStatuses,
   onApplyFileBlocks,
 }: MessageRowProps) {
   const { t } = useTranslation();
@@ -687,6 +720,7 @@ const MessageRow = memo(function MessageRow({
     return { displayText: cleaned.trimStart(), fileNames: names };
   }, [rawContent]);
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  const [expandedPendingFiles, setExpandedPendingFiles] = useState<Set<string>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState("");
   const editRef = useRef<HTMLTextAreaElement>(null);
@@ -952,25 +986,99 @@ const MessageRow = memo(function MessageRow({
       {/* Pending generated files */}
       {pendingFileBlocks && pendingFileBlocks.length > 0 && (
         <div className="mt-1 flex flex-col gap-2" style={{ maxWidth: 720 }}>
-          <div className="flex flex-wrap gap-1.5">
-            {pendingFileBlocks.map((block, idx) => (
-              <div
-                key={idx}
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
-                style={{
-                  backgroundColor: "color-mix(in srgb, var(--secondary) 80%, transparent)",
-                  border: "0.5px solid color-mix(in srgb, var(--border) 80%, transparent)",
-                }}
-                title={block.path}
-              >
-                <FileText size={13} color="var(--muted-foreground)" className="flex-shrink-0" />
-                <span className="text-foreground max-w-[240px] truncate text-[12px] font-medium">
-                  {block.path}
-                </span>
-              </div>
-            ))}
+          <div className="flex flex-col gap-2">
+            {pendingFileBlocks.map((block, idx) => {
+              const status = pendingFileStatuses?.find((s) => s.path === block.path);
+              const isExpanded = expandedPendingFiles.has(block.path);
+              const previewText = (status?.exists ? status.currentContent : block.content) || "";
+              return (
+                <div
+                  key={idx}
+                  className="overflow-hidden rounded-lg"
+                  style={{
+                    backgroundColor: "color-mix(in srgb, var(--secondary) 80%, transparent)",
+                    border: "0.5px solid color-mix(in srgb, var(--border) 80%, transparent)",
+                  }}
+                >
+                  <div className="flex items-center gap-2 px-2.5 py-2">
+                    <FileText size={13} color="var(--muted-foreground)" className="flex-shrink-0" />
+                    <span className="text-foreground min-w-0 flex-1 truncate text-[12px] font-medium">
+                      {block.path}
+                    </span>
+                    <span
+                      className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                      style={{
+                        backgroundColor: status?.exists
+                          ? "color-mix(in srgb, var(--destructive) 10%, transparent)"
+                          : "color-mix(in srgb, var(--primary) 10%, transparent)",
+                        color: status?.exists ? "var(--destructive)" : "var(--primary)",
+                      }}
+                    >
+                      {status?.exists ? t("chat.overwrite") : t("chat.create")}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setExpandedPendingFiles((prev) => {
+                          const next = new Set(prev);
+                          next.has(block.path) ? next.delete(block.path) : next.add(block.path);
+                          return next;
+                        })
+                      }
+                      className="rounded p-1 active:opacity-70"
+                      title={t("chat.previewFile")}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp size={14} color="var(--muted-foreground)" />
+                      ) : (
+                        <ChevronDown size={14} color="var(--muted-foreground)" />
+                      )}
+                    </button>
+                    {onApplyFileBlocks && (
+                      <button
+                        onClick={() => onApplyFileBlocks(message.id, block.path)}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-opacity active:opacity-70"
+                        style={{
+                          backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--muted))",
+                          color: "var(--primary)",
+                        }}
+                      >
+                        <Save size={12} className="flex-shrink-0" />
+                        {t("chat.applyThisFile")}
+                      </button>
+                    )}
+                  </div>
+                  {isExpanded && (
+                    <div
+                      className="border-t px-2.5 py-2"
+                      style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}
+                    >
+                      {status?.exists && status.currentContent !== undefined && (
+                        <div className="mb-2">
+                          <div className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase">
+                            {t("chat.currentFile")}
+                          </div>
+                          <pre className="text-muted-foreground max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-relaxed">
+                            {status.currentContent.slice(0, 1200)}
+                            {status.currentContent.length > 1200 ? "\n…" : ""}
+                          </pre>
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase">
+                          {t("chat.generatedFile")}
+                        </div>
+                        <pre className="text-foreground max-h-48 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-relaxed">
+                          {block.content.slice(0, 1600)}
+                          {block.content.length > 1600 ? "\n…" : ""}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          {onApplyFileBlocks && (
+          {onApplyFileBlocks && pendingFileBlocks.length > 1 && (
             <div>
               <button
                 onClick={() => onApplyFileBlocks(message.id)}
