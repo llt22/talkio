@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import {
   IoRefreshOutline,
@@ -41,13 +42,19 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
   const [newModelId, setNewModelId] = useState("");
   const [probingModelIds, setProbingModelIds] = useState<Set<string>>(new Set());
 
-  const filteredModels = modelSearch
-    ? displayModels.filter(
-        (m: Model) =>
-          m.displayName.toLowerCase().includes(modelSearch.toLowerCase()) ||
-          m.modelId.toLowerCase().includes(modelSearch.toLowerCase()),
-      )
-    : displayModels;
+  const filteredModels = useMemo(() => {
+    const filtered = modelSearch
+      ? displayModels.filter(
+          (m: Model) =>
+            m.displayName.toLowerCase().includes(modelSearch.toLowerCase()) ||
+            m.modelId.toLowerCase().includes(modelSearch.toLowerCase()),
+        )
+      : displayModels;
+    return [...filtered].sort((a, b) => {
+      if (a.enabled === b.enabled) return 0;
+      return a.enabled ? -1 : 1;
+    });
+  }, [displayModels, modelSearch]);
 
   return (
     <div className="mt-6">
@@ -130,9 +137,12 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
 
       {/* Model List */}
       <div className="mt-3 flex flex-col gap-2">
+        <AnimatePresence initial={false}>
         {filteredModels.map((m: Model) => (
-          <div
+          <motion.div
             key={m.id}
+            layout
+            transition={{ type: "spring", stiffness: 500, damping: 35 }}
             className="rounded-xl px-4 py-3"
             style={{ backgroundColor: "var(--card)" }}
           >
@@ -217,8 +227,9 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
                 {t("providerEdit.probe")}
               </button>
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
       </div>
     </div>
   );
