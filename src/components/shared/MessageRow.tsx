@@ -651,7 +651,7 @@ export const MessageRow = memo(function MessageRow({
       )}
 
       {/* Assistant action bar — primary: copy + regenerate, secondary: ··· menu */}
-      {!isStreaming && content && (
+      {!isStreaming && (content || message.status === MessageStatus.ERROR) && (
         <AssistantActionBar
           content={content}
           message={message}
