@@ -1,5 +1,5 @@
 export type ProviderType = "openai" | "anthropic" | "gemini" | "azure-openai";
-export type ApiFormat = "chat-completions" | "responses";
+export type ApiFormat = "chat-completions" | "responses" | "anthropic-messages";
 export type ProviderStatus = "connected" | "disconnected" | "error" | "pending";
 export type ConversationType = "single" | "group";
 export type MessageRole = "user" | "assistant" | "system" | "tool";

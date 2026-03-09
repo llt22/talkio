@@ -34,6 +34,10 @@ export function createModelFromProviderPayload(
 }
 
 export async function fetchProviderModels(provider: Provider): Promise<any[]> {
+  if (provider.apiFormat === "anthropic-messages") {
+    // Anthropic has no /models endpoint — models are added manually
+    return [];
+  }
   const baseUrl = provider.baseUrl.replace(/\/+$/, "");
   const headers = buildProviderHeaders(provider);
   const res = await appFetch(`${baseUrl}/models`, {
@@ -47,6 +51,16 @@ export async function fetchProviderModels(provider: Provider): Promise<any[]> {
 
 export async function testProviderConnection(provider: Provider): Promise<boolean> {
   const baseUrl = provider.baseUrl.replace(/\/+$/, "");
+  if (provider.apiFormat === "anthropic-messages") {
+    const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
+    const res = await appFetch(`${baseUrl}/v1/messages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1, messages: [{ role: "user", content: "hi" }] }),
+      signal: AbortSignal.timeout(10000),
+    });
+    return res.ok;
+  }
   const res = await appFetch(`${baseUrl}/models`, {
     headers: buildProviderHeaders(provider),
     signal: AbortSignal.timeout(10000),
