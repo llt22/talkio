@@ -6,7 +6,7 @@ on:
       tag:
         description: 'Release tag (e.g. v2.0.0)'
         required: true
-        default: 'v2.0.0'
+        default: 'v2.5.3'
   push:
     tags:
       - 'v*.*.*'

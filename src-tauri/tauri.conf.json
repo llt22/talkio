@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "talkio",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "identifier": "com.lilongtao.talkio",
   "build": {
     "frontendDist": "../dist",
