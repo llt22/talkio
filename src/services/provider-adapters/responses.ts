@@ -69,7 +69,18 @@ function buildRequestBody(
     body.reasoning = { effort: reasoningEffort };
   }
   if (toolDefs.length > 0) {
-    body.tools = toolDefs;
+    // Convert Chat Completions format → Responses API flat format
+    body.tools = toolDefs.map((td: any) => {
+      if (td.function) {
+        return {
+          type: "function",
+          name: td.function.name,
+          description: td.function.description,
+          parameters: td.function.parameters,
+        };
+      }
+      return td;
+    });
   }
 
   return body;
