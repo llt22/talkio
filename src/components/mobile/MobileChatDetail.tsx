@@ -14,6 +14,7 @@ import {
   IoTrashOutline,
   IoPersonAddOutline,
   IoEllipsisHorizontal,
+  IoCopyOutline,
 } from "../../icons";
 import { ArrowUpDown, Shuffle, Layers } from "lucide-react";
 import { ChatView, type ChatViewHandle } from "../shared/ChatView";
@@ -69,6 +70,7 @@ export function MobileChatDetail({
     modelPickerMode,
     showAddMemberPicker,
     setShowAddMemberPicker,
+    duplicateConversation,
   } = useChatPanelState(conversationId);
 
   const renameConversation = useChatStore((s) => s.renameConversation);
@@ -79,7 +81,9 @@ export function MobileChatDetail({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [groupPromptText, setGroupPromptText] = useState(conv?.groupSystemPrompt ?? "");
-  useEffect(() => { setGroupPromptText(conv?.groupSystemPrompt ?? ""); }, [conversationId]);
+  useEffect(() => {
+    setGroupPromptText(conv?.groupSystemPrompt ?? "");
+  }, [conversationId]);
   useEffect(() => {
     const trimmed = groupPromptText.trim();
     if (trimmed === (conv?.groupSystemPrompt ?? "")) return;
@@ -89,10 +93,11 @@ export function MobileChatDetail({
     return () => clearTimeout(timer);
   }, [groupPromptText, conversationId]);
   const participantMentions = useMemo(
-    () => (conv?.participants ?? []).map((p) => {
-      const m = getModelById(p.modelId);
-      return { id: p.id, label: m?.displayName ?? p.modelId };
-    }),
+    () =>
+      (conv?.participants ?? []).map((p) => {
+        const m = getModelById(p.modelId);
+        return { id: p.id, label: m?.displayName ?? p.modelId };
+      }),
     [conv?.participants, getModelById],
   );
   const chatViewRef = useRef<ChatViewHandle>(null);
@@ -217,7 +222,6 @@ export function MobileChatDetail({
       style={{
         backgroundColor: "var(--background)",
         paddingTop: "env(safe-area-inset-top, 0px)",
-        paddingBottom: keyboardHeight > 0 ? keyboardHeight : undefined,
       }}
     >
       {/* Header */}
@@ -382,6 +386,19 @@ export function MobileChatDetail({
                   <IoPersonAddOutline size={18} color="var(--foreground)" />
                   <span className="text-foreground text-[14px]">{t("chat.addMember")}</span>
                 </button>
+                {isGroup && (
+                  <button
+                    className="flex w-full items-center gap-3 px-4 py-3 active:opacity-60"
+                    onClick={async () => {
+                      setShowMoreMenu(false);
+                      const duplicated = await duplicateConversation(conversationId);
+                      if (duplicated) mobileNav?.pushChat(duplicated.id);
+                    }}
+                  >
+                    <IoCopyOutline size={18} color="var(--foreground)" />
+                    <span className="text-foreground text-[14px]">{t("chat.duplicateGroup")}</span>
+                  </button>
+                )}
                 <button
                   className="flex w-full items-center gap-3 px-4 py-3 active:opacity-60"
                   style={{ opacity: messages.length === 0 ? 0.4 : 1 }}
@@ -394,7 +411,7 @@ export function MobileChatDetail({
                   <IoShareOutline size={18} color="var(--foreground)" />
                   <span className="text-foreground text-[14px]">{t("chat.export")}</span>
                 </button>
-                                <button
+                <button
                   className="flex w-full items-center gap-3 px-4 py-3 active:opacity-60"
                   style={{ opacity: messages.length < 4 || isCompressing ? 0.4 : 1 }}
                   disabled={messages.length < 4 || isCompressing}
@@ -506,7 +523,9 @@ export function MobileChatDetail({
                   ? { backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)" }
                   : {}
               }
-              onClick={() => useChatStore.getState().updateSpeakingOrder(conversationId, "parallel")}
+              onClick={() =>
+                useChatStore.getState().updateSpeakingOrder(conversationId, "parallel")
+              }
             >
               {t("chat.parallel")}
             </button>
@@ -631,6 +650,7 @@ export function MobileChatDetail({
         <ChatView
           conversationId={conversationId}
           isMobile
+          keyboardInset={keyboardHeight}
           handleRef={chatViewRef}
           onAtBottomChange={(atBottom) => setShowScrollToBottom(!atBottom)}
           modelName={!isGroup ? model?.displayName : undefined}

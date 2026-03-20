@@ -5,6 +5,7 @@ import {
   getConversation,
   getRecentMessages,
   insertMessages,
+  insertConversation,
   updateConversation,
   updateMessage,
 } from "../storage/database";
@@ -18,7 +19,15 @@ export async function regenerateAssistantMessage(
   activeBranchId: string | null,
   isGenerating: boolean,
   messageId: string,
-  resend: (content: string, images?: string[], options?: { reuseUserMessageId?: string }) => Promise<void>,
+  resend: (
+    content: string,
+    images?: string[],
+    options?: {
+      reuseUserMessageId?: string;
+      mentionedParticipantIds?: string[];
+      targetParticipantIds?: string[];
+    },
+  ) => Promise<void>,
 ): Promise<void> {
   if (!conversationId || isGenerating) return;
   const messages = await getRecentMessages(conversationId, activeBranchId, 200);
@@ -37,6 +46,7 @@ export async function regenerateAssistantMessage(
 
   await resend(previousUserMessage.content, previousUserMessage.images, {
     reuseUserMessageId: previousUserMessage.id,
+    targetParticipantIds: message.participantId ? [message.participantId] : undefined,
   });
 }
 
@@ -46,7 +56,15 @@ export async function editUserMessage(
   isGenerating: boolean,
   messageId: string,
   newContent: string,
-  resend: (content: string, images?: string[], options?: { reuseUserMessageId?: string }) => Promise<void>,
+  resend: (
+    content: string,
+    images?: string[],
+    options?: {
+      reuseUserMessageId?: string;
+      mentionedParticipantIds?: string[];
+      targetParticipantIds?: string[];
+    },
+  ) => Promise<void>,
 ): Promise<void> {
   if (!conversationId || isGenerating) return;
 
@@ -68,7 +86,10 @@ export async function editUserMessage(
   await resend(newContent, message.images, { reuseUserMessageId: messageId });
 }
 
-export async function deleteMessageById(messageId: string, conversationId: string | null): Promise<void> {
+export async function deleteMessageById(
+  messageId: string,
+  conversationId: string | null,
+): Promise<void> {
   await dbDeleteMessage(messageId);
   if (conversationId) notifyDbChange("messages", conversationId);
   else notifyDbChange("all");
@@ -165,10 +186,15 @@ export async function addParticipants(
   notifyDbChange("conversations");
 }
 
-export async function removeParticipant(conversationId: string, participantId: string): Promise<void> {
+export async function removeParticipant(
+  conversationId: string,
+  participantId: string,
+): Promise<void> {
   const conversation = await getConversation(conversationId);
   if (!conversation) return;
-  const participants = conversation.participants.filter((participant) => participant.id !== participantId);
+  const participants = conversation.participants.filter(
+    (participant) => participant.id !== participantId,
+  );
   const isAutoTitle = conversation.title === autoTitle(conversation.participants);
   const updates: Partial<Conversation> = {
     participants,
@@ -186,12 +212,18 @@ export async function renameConversation(conversationId: string, title: string):
   notifyDbChange("conversations");
 }
 
-export async function updateSpeakingOrder(conversationId: string, order: SpeakingOrder): Promise<void> {
+export async function updateSpeakingOrder(
+  conversationId: string,
+  order: SpeakingOrder,
+): Promise<void> {
   await updateConversation(conversationId, { speakingOrder: order });
   notifyDbChange("conversations");
 }
 
-export async function updateGroupSystemPrompt(conversationId: string, prompt: string): Promise<void> {
+export async function updateGroupSystemPrompt(
+  conversationId: string,
+  prompt: string,
+): Promise<void> {
   await updateConversation(conversationId, { groupSystemPrompt: prompt });
   notifyDbChange("conversations");
 }
@@ -233,4 +265,27 @@ export async function branchFromMessage(
 export async function searchAllMessages(query: string): Promise<Message[]> {
   const { searchMessages } = await import("../storage/database");
   return searchMessages(query);
+}
+
+export async function duplicateConversation(conversationId: string): Promise<Conversation | null> {
+  const conversation = await getConversation(conversationId);
+  if (!conversation) return null;
+
+  const duplicated: Conversation = {
+    ...conversation,
+    id: generateId(),
+    participants: conversation.participants.map((participant) => ({
+      ...participant,
+      id: generateId(),
+    })),
+    lastMessage: null,
+    lastMessageAt: null,
+    pinned: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  await insertConversation(duplicated);
+  notifyDbChange("conversations");
+  return duplicated;
 }

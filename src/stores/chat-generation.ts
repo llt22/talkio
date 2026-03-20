@@ -146,7 +146,12 @@ export async function generateForParticipant(
   notifyDbChange("messages", ctx.cid);
 
   // Init streaming state
-  ctx.streamingMessages.set(assistantMsgId, { cid: ctx.cid, messageId: assistantMsgId, content: "", reasoning: "" });
+  ctx.streamingMessages.set(assistantMsgId, {
+    cid: ctx.cid,
+    messageId: assistantMsgId,
+    content: "",
+    reasoning: "",
+  });
   if (ctx.cid === ctx.getCurrentConversationId()) {
     const all = Array.from(ctx.streamingMessages.values()).filter((s) => s.cid === ctx.cid);
     ctx.setStoreState({ streamingMessages: all });
@@ -186,10 +191,22 @@ export async function generateForParticipant(
       workspaceTree: ctx.workspaceTree,
       workspaceFiles: ctx.workspaceFiles,
     });
-    apiMessages = await applyCompression(apiMessages, ctx, baseUrl, headers, model.modelId, provider.apiFormat);
+    apiMessages = await applyCompression(
+      apiMessages,
+      ctx,
+      baseUrl,
+      headers,
+      model.modelId,
+      provider.apiFormat,
+    );
 
     const reasoningEffort =
-      identity?.params?.reasoningEffort || (model.capabilities?.reasoning ? "medium" : undefined);
+      identity?.params?.reasoningEffort ||
+      (provider.apiFormat === "anthropic-messages"
+        ? undefined
+        : model.capabilities?.reasoning
+          ? "medium"
+          : undefined);
 
     // Initial SSE stream
 
@@ -236,7 +253,9 @@ export async function generateForParticipant(
       ({ usage: sseUsage } = await streamOnce());
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const retryable = /empty response|overloaded|timeout|temporarily|503|502|network/i.test(message);
+      const retryable = /empty response|overloaded|timeout|temporarily|503|502|network/i.test(
+        message,
+      );
       if (!retryable || ctx.abortController.signal.aborted) throw error;
       resetAcc();
       ({ usage: sseUsage } = await streamOnce());
@@ -288,7 +307,8 @@ export async function generateForParticipant(
         await updateMessage(assistantMsgId, {
           isStreaming: false,
           status: MessageStatus.ERROR,
-          errorMessage: "Model returned an empty response twice. It may be unavailable, overloaded, or the model ID may be incorrect.",
+          errorMessage:
+            "Model returned an empty response twice. It may be unavailable, overloaded, or the model ID may be incorrect.",
         });
       } else {
         await updateMessage(assistantMsgId, {

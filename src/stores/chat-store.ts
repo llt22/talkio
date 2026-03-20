@@ -22,6 +22,7 @@ import {
   branchFromMessage,
   clearConversationMessages,
   deleteMessageById,
+  duplicateConversation,
   editUserMessage,
   regenerateAssistantMessage,
   removeParticipant,
@@ -59,12 +60,17 @@ export interface ChatState {
   sendMessage: (
     text: string,
     images?: string[],
-    options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] },
+    options?: {
+      reuseUserMessageId?: string;
+      mentionedParticipantIds?: string[];
+      targetParticipantIds?: string[];
+    },
   ) => Promise<void>;
   stopGeneration: () => void;
   startAutoDiscuss: (rounds: number, topicText?: string) => Promise<void>;
   stopAutoDiscuss: () => void;
   regenerateMessage: (messageId: string) => Promise<void>;
+  duplicateConversation: (conversationId: string) => Promise<Conversation | null>;
   branchFromMessage: (messageId: string, messages: Message[]) => Promise<string>;
   switchBranch: (branchId: string | null) => void;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
@@ -110,7 +116,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     extraModelIds?: string[],
     membersWithIdentity?: { modelId: string; identityId: string | null }[],
   ) => {
-    const conversation = await createConversationRecord(modelId, extraModelIds, membersWithIdentity);
+    const conversation = await createConversationRecord(
+      modelId,
+      extraModelIds,
+      membersWithIdentity,
+    );
     set({ currentConversationId: conversation.id });
     return conversation;
   },
@@ -128,14 +138,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setCurrentConversation: (id: string | null) => {
-    const next = deriveConversationViewState(id, get().currentConversationId, _abortControllers, _streamingMessages);
+    const next = deriveConversationViewState(
+      id,
+      get().currentConversationId,
+      _abortControllers,
+      _streamingMessages,
+    );
     if (next) set(next);
   },
 
   sendMessage: async (
     text: string,
     images?: string[],
-    options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] },
+    options?: {
+      reuseUserMessageId?: string;
+      mentionedParticipantIds?: string[];
+      targetParticipantIds?: string[];
+    },
   ) => {
     const conversationId = get().currentConversationId;
     if (!conversationId) return;
@@ -182,6 +201,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messageId,
       get().sendMessage,
     );
+  },
+
+  duplicateConversation: async (conversationId: string) => {
+    const conversation = await duplicateConversation(conversationId);
+    if (conversation) set({ currentConversationId: conversation.id, activeBranchId: null });
+    return conversation;
   },
 
   editMessage: async (messageId: string, newContent: string) => {

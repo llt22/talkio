@@ -16,7 +16,11 @@ import { notifyDbChange } from "../hooks/useDatabase";
 import { useProviderStore } from "./provider-store";
 import { buildProviderHeaders } from "../services/provider-headers";
 import { useSettingsStore } from "./settings-store";
-import { generateForParticipant, type GenerationContext, type StreamingState } from "./chat-generation";
+import {
+  generateForParticipant,
+  type GenerationContext,
+  type StreamingState,
+} from "./chat-generation";
 import { estimateMessagesTokens, compressIfNeeded } from "../lib/context-compression";
 import { generateId } from "../lib/id";
 import i18n from "../i18n";
@@ -43,7 +47,9 @@ export async function preComputeCompression(
   if (!firstModel || !firstProvider || firstProvider.type !== "openai") return null;
 
   const allMsgs = await getRecentMessages(cid, activeBranchId, MAX_HISTORY);
-  const filtered = allMsgs.filter((message) => message.status === MessageStatus.SUCCESS || message.id === userMsg.id);
+  const filtered = allMsgs.filter(
+    (message) => message.status === MessageStatus.SUCCESS || message.id === userMsg.id,
+  );
   const sampleApiMessages = buildApiMessagesForParticipant(filtered, targets[0], conversation, {
     workspaceTree: workspaceContext?.tree,
     workspaceFiles: workspaceContext?.files,
@@ -76,12 +82,19 @@ export async function dispatchMessageGeneration(args: {
   conversationId: string;
   text: string;
   images?: string[];
-  options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] };
+  options?: {
+    reuseUserMessageId?: string;
+    mentionedParticipantIds?: string[];
+    targetParticipantIds?: string[];
+  };
   activeBranchId: string | null;
   getCurrentConversationId: () => string | null;
   abortControllers: Map<string, AbortController>;
   streamingMessages: Map<string, StreamingState>;
-  setStoreState: (partial: { isGenerating?: boolean; streamingMessages?: StreamingState[] }) => void;
+  setStoreState: (partial: {
+    isGenerating?: boolean;
+    streamingMessages?: StreamingState[];
+  }) => void;
 }): Promise<void> {
   const {
     conversationId,
@@ -108,7 +121,9 @@ export async function dispatchMessageGeneration(args: {
   } else {
     userMsg = createUserMessage(generateId(), cid, text, images ?? [], activeBranchId);
     await insertMessage(userMsg);
-    updateConversation(cid, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(() => {});
+    updateConversation(cid, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(
+      () => {},
+    );
     notifyDbChange("messages", cid);
     notifyDbChange("conversations");
   }
@@ -117,7 +132,11 @@ export async function dispatchMessageGeneration(args: {
   abortControllers.set(cid, abortController);
   if (cid === getCurrentConversationId()) setStoreState({ isGenerating: true });
 
-  const targets = resolveTargetParticipants(conversation, options?.mentionedParticipantIds);
+  const targetIds = options?.targetParticipantIds;
+  const targets = resolveTargetParticipants(
+    conversation,
+    targetIds && targetIds.length > 0 ? targetIds : options?.mentionedParticipantIds,
+  );
   const workspaceContext = conversation.workspaceDir
     ? await buildWorkspaceContextBundle(conversation.workspaceDir, text, { includeTree: true })
     : { files: [] as Array<{ path: string; content: string }>, tree: undefined };
@@ -158,14 +177,22 @@ export async function dispatchMessageGeneration(args: {
       if (conversation.speakingOrder === "parallel" && currentTargets.length > 1) {
         const baseIndex = globalMsgIndex;
         const results = await Promise.all(
-          currentTargets.map((target, index) => generateForParticipant(ctx, target, baseIndex + index)),
+          currentTargets.map((target, index) =>
+            generateForParticipant(ctx, target, baseIndex + index),
+          ),
         );
         globalMsgIndex += currentTargets.length;
-        currentTargets.forEach((target, index) => responses.push({ participantId: target.id, content: results[index] }));
+        currentTargets.forEach((target, index) =>
+          responses.push({ participantId: target.id, content: results[index] }),
+        );
       } else {
         for (let index = 0; index < currentTargets.length; index++) {
           if (abortController.signal.aborted) break;
-          const content = await generateForParticipant(ctx, currentTargets[index], globalMsgIndex++);
+          const content = await generateForParticipant(
+            ctx,
+            currentTargets[index],
+            globalMsgIndex++,
+          );
           responses.push({ participantId: currentTargets[index].id, content });
         }
       }
@@ -174,12 +201,18 @@ export async function dispatchMessageGeneration(args: {
       const mentionedIds = new Set<string>();
       for (const response of responses) {
         if (!response.content) continue;
-        const ids = extractMentionedParticipants(response.content, conversation, response.participantId);
+        const ids = extractMentionedParticipants(
+          response.content,
+          conversation,
+          response.participantId,
+        );
         for (const id of ids) mentionedIds.add(id);
       }
       for (const response of responses) mentionedIds.delete(response.participantId);
       if (mentionedIds.size === 0) break;
-      currentTargets = conversation.participants.filter((participant) => mentionedIds.has(participant.id));
+      currentTargets = conversation.participants.filter((participant) =>
+        mentionedIds.has(participant.id),
+      );
     }
   } finally {
     abortControllers.delete(cid);
@@ -198,15 +231,27 @@ export async function runAutoDiscuss(args: {
   currentConversationId: string | null;
   isGenerating: () => boolean;
   autoDiscussRemaining: () => number;
-  setStoreState: (partial: { autoDiscussRemaining?: number; autoDiscussTotalRounds?: number }) => void;
-  sendMessage: (text: string, images?: string[], options?: { reuseUserMessageId?: string; mentionedParticipantIds?: string[] }) => Promise<void>;
+  setStoreState: (partial: {
+    autoDiscussRemaining?: number;
+    autoDiscussTotalRounds?: number;
+  }) => void;
+  sendMessage: (
+    text: string,
+    images?: string[],
+    options?: {
+      reuseUserMessageId?: string;
+      mentionedParticipantIds?: string[];
+      targetParticipantIds?: string[];
+    },
+  ) => Promise<void>;
 }): Promise<void> {
   const { rounds, topicText } = args;
   const convId = args.currentConversationId;
   if (!convId) return;
 
   const conversation = await getConversation(convId);
-  if (!conversation || conversation.type !== "group" || conversation.participants.length < 2) return;
+  if (!conversation || conversation.type !== "group" || conversation.participants.length < 2)
+    return;
 
   args.setStoreState({ autoDiscussRemaining: rounds, autoDiscussTotalRounds: rounds });
 

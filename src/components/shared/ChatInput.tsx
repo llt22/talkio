@@ -47,6 +47,7 @@ interface ChatInputProps {
   autoDiscussTotalRounds?: number;
   externalFiles?: { images: string[]; files: ParsedFile[] } | null;
   onExternalFilesConsumed?: () => void;
+  keyboardInset?: number;
 }
 
 export const ChatInput = memo(function ChatInput({
@@ -66,6 +67,7 @@ export const ChatInput = memo(function ChatInput({
   autoDiscussTotalRounds = 0,
   externalFiles,
   onExternalFilesConsumed,
+  keyboardInset = 0,
 }: ChatInputProps) {
   const { t } = useTranslation();
   const getModelById = useProviderStore((s) => s.getModelById);
@@ -107,6 +109,25 @@ export const ChatInput = memo(function ChatInput({
       .filter((e) => e.model != null);
   }, [participants, getModelById]);
 
+  const anyTargetModelSupportsVision = useCallback(
+    (mentionedIds?: string[]) => {
+      const targetParticipants =
+        isGroup && mentionedIds && mentionedIds.length > 0
+          ? participants.filter((participant) => mentionedIds.includes(participant.id))
+          : participants;
+
+      if (targetParticipants.length === 0) {
+        return !!participantEntries[0]?.model?.capabilities?.vision;
+      }
+
+      return targetParticipants.some((participant) => {
+        const model = getModelById(participant.modelId);
+        return !!model?.capabilities?.vision;
+      });
+    },
+    [getModelById, isGroup, participantEntries, participants],
+  );
+
   const insertMention = useCallback(
     (participantId: string) => {
       const label = participantNames.get(participantId);
@@ -138,7 +159,20 @@ export const ChatInput = memo(function ChatInput({
     // Collect image data URIs from both attachedImages and attachedFiles
     const fileImages = attachedFiles.filter((f) => f.type === "image").map((f) => f.content);
     const allImages = [...attachedImages, ...fileImages];
-    onSend(finalText, mentionedIds, allImages.length > 0 ? allImages : undefined);
+    const allowImages = allImages.length === 0 || anyTargetModelSupportsVision(mentionedIds);
+    const imagesToSend = allowImages ? allImages : [];
+
+    if (!allowImages && !finalText.trim()) {
+      appAlert("Current target model(s) do not support image input.");
+      return;
+    }
+
+    onSend(finalText, mentionedIds, imagesToSend.length > 0 ? imagesToSend : undefined);
+
+    if (!allowImages && allImages.length > 0) {
+      appAlert("Current target model(s) do not support image input, so images were skipped.");
+    }
+
     setText("");
     setAttachedImages([]);
     setAttachedFiles([]);
@@ -148,7 +182,16 @@ export const ChatInput = memo(function ChatInput({
       textareaRef.current.style.height = "auto";
       if (!isMobile) textareaRef.current.focus();
     }
-  }, [text, attachedImages, attachedFiles, isGenerating, onSend, isGroup, participantNames]);
+  }, [
+    text,
+    attachedImages,
+    attachedFiles,
+    isGenerating,
+    onSend,
+    isGroup,
+    participantNames,
+    anyTargetModelSupportsVision,
+  ]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -346,7 +389,11 @@ export const ChatInput = memo(function ChatInput({
   return (
     <div
       className="flex-shrink-0"
-      style={{ backgroundColor: "var(--background)", borderTop: "0.5px solid var(--border)" }}
+      style={{
+        backgroundColor: "var(--background)",
+        borderTop: "0.5px solid var(--border)",
+        paddingBottom: keyboardInset > 0 ? keyboardInset : undefined,
+      }}
     >
       {/* Auto-discuss round picker */}
       {showRoundPicker && !isAutoDiscussing && (
@@ -388,37 +435,37 @@ export const ChatInput = memo(function ChatInput({
       {/* @Mention picker */}
       {showMentionPicker && isGroup && (
         <>
-        <button
-          className="fixed inset-0 z-40"
-          onClick={() => setShowMentionPicker(false)}
-          aria-label="Close mention picker"
-        />
-        <div
-          className="relative z-50 px-4 py-3"
-          style={{ borderBottom: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}
-        >
-          <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-widest uppercase">
-            {t("chat.selectModel")}
-          </p>
-          {participantEntries.map((entry, idx) => {
-            const { color: avatarColor, initials } = getAvatarProps(entry.label);
-            return (
-              <button
-                key={entry.participant.id}
-                onClick={() => insertMention(entry.participant.id)}
-                className={`-mx-2 flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left active:opacity-60 ${idx === mentionIndex ? "bg-primary/10" : ""}`}
-              >
-                <div
-                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white"
-                  style={{ backgroundColor: avatarColor }}
+          <button
+            className="fixed inset-0 z-40"
+            onClick={() => setShowMentionPicker(false)}
+            aria-label="Close mention picker"
+          />
+          <div
+            className="relative z-50 px-4 py-3"
+            style={{ borderBottom: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}
+          >
+            <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-widest uppercase">
+              {t("chat.selectModel")}
+            </p>
+            {participantEntries.map((entry, idx) => {
+              const { color: avatarColor, initials } = getAvatarProps(entry.label);
+              return (
+                <button
+                  key={entry.participant.id}
+                  onClick={() => insertMention(entry.participant.id)}
+                  className={`-mx-2 flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left active:opacity-60 ${idx === mentionIndex ? "bg-primary/10" : ""}`}
                 >
-                  {initials}
-                </div>
-                <span className="text-foreground text-[15px] font-medium">{entry.label}</span>
-              </button>
-            );
-          })}
-        </div>
+                  <div
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white"
+                    style={{ backgroundColor: avatarColor }}
+                  >
+                    {initials}
+                  </div>
+                  <span className="text-foreground text-[15px] font-medium">{entry.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </>
       )}
 
@@ -626,7 +673,7 @@ export const ChatInput = memo(function ChatInput({
 
           {/* Action bar */}
           <div
-            className="flex items-center gap-0.5 pl-3 pr-7"
+            className="flex items-center gap-0.5 pr-7 pl-3"
             style={{
               paddingBottom: isMobile ? "max(4px, env(safe-area-inset-bottom, 4px))" : "4px",
             }}

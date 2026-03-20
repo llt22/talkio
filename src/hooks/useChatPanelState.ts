@@ -24,6 +24,7 @@ export function useChatPanelState(conversationId: string): {
   addParticipant: ChatState["addParticipant"];
   addParticipants: ChatState["addParticipants"];
   removeParticipant: ChatState["removeParticipant"];
+  duplicateConversation: ChatState["duplicateConversation"];
 
   isGroup: boolean;
   currentParticipant: ConversationParticipant | null;
@@ -67,6 +68,7 @@ export function useChatPanelState(conversationId: string): {
   const addParticipant = useChatStore((s: ChatState) => s.addParticipant);
   const addParticipants = useChatStore((s: ChatState) => s.addParticipants);
   const removeParticipant = useChatStore((s: ChatState) => s.removeParticipant);
+  const duplicateConversation = useChatStore((s: ChatState) => s.duplicateConversation);
 
   const [showIdentityPanel, setShowIdentityPanel] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
@@ -126,6 +128,7 @@ export function useChatPanelState(conversationId: string): {
     addParticipant,
     addParticipants,
     removeParticipant,
+    duplicateConversation,
 
     isGroup: !!isGroup,
     currentParticipant,

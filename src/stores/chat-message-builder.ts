@@ -121,6 +121,8 @@ export function buildApiMessagesForParticipant(
   const identity = participant.identityId
     ? useIdentityStore.getState().getIdentityById(participant.identityId)
     : null;
+  const model = useProviderStore.getState().getModelById(participant.modelId);
+  const supportsVision = !!model?.capabilities?.vision;
 
   const isGroup = conv.type === "group";
   const apiMessages: Array<{ role: string; content: unknown }> = [];
@@ -142,17 +144,17 @@ export function buildApiMessagesForParticipant(
       }
     }
     workspaceHint +=
-      "\nYou have workspace tools available:"
-      + "\n- `read_workspace_file`: Read a text file by relative path."
-      + "\n- `list_workspace_dir`: List files in a directory (omit path for root)."
-      + "\n- `search_workspace`: Search for a text pattern across all files."
-      + "\n- `edit_workspace_file`: Edit a file using search/replace (provide path, old_content, new_content). Always read the file first before editing."
-      + "\n- `git_status`: Check git status (modified/staged/untracked files)."
-      + "\n- `git_diff`: Show file changes (set staged=true for staged changes)."
-      + "\n- `git_log`: Show recent commit history."
-      + "\n- `git_command`: Run any allowed git subcommand. Write operations (add, commit, push, etc.) require user confirmation. Dangerous operations (force push, hard reset, rebase) are blocked."
-      + "\nUse these tools to explore, read, edit files and manage git. Do NOT ask the user to paste file content."
-      + "\nUse relative paths when you discuss files.";
+      "\nYou have workspace tools available:" +
+      "\n- `read_workspace_file`: Read a text file by relative path." +
+      "\n- `list_workspace_dir`: List files in a directory (omit path for root)." +
+      "\n- `search_workspace`: Search for a text pattern across all files." +
+      "\n- `edit_workspace_file`: Edit a file using search/replace (provide path, old_content, new_content). Always read the file first before editing." +
+      "\n- `git_status`: Check git status (modified/staged/untracked files)." +
+      "\n- `git_diff`: Show file changes (set staged=true for staged changes)." +
+      "\n- `git_log`: Show recent commit history." +
+      "\n- `git_command`: Run any allowed git subcommand. Write operations (add, commit, push, etc.) require user confirmation. Dangerous operations (force push, hard reset, rebase) are blocked." +
+      "\nUse these tools to explore, read, edit files and manage git. Do NOT ask the user to paste file content." +
+      "\nUse relative paths when you discuss files.";
   }
 
   if (isGroup) {
@@ -175,12 +177,20 @@ export function buildApiMessagesForParticipant(
 
     if (m.role === "user") {
       if (m.images && m.images.length > 0) {
-        const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
-        if (m.content) parts.push({ type: "text", text: m.content });
-        for (const uri of m.images) {
-          parts.push({ type: "image_url", image_url: { url: uri } });
+        if (supportsVision) {
+          const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+          if (m.content) parts.push({ type: "text", text: m.content });
+          for (const uri of m.images) {
+            parts.push({ type: "image_url", image_url: { url: uri } });
+          }
+          content = parts;
+        } else {
+          const imageOmittedNotice =
+            "[User attached image(s), but they were omitted because this model does not support image input.]";
+          content = m.content?.trim()
+            ? `${m.content}\n\n${imageOmittedNotice}`
+            : imageOmittedNotice;
         }
-        content = parts;
       }
     }
 
@@ -194,9 +204,7 @@ export function buildApiMessagesForParticipant(
           role = "user";
           // Strip <think>/<thinking> blocks so other models don't see reasoning
           if (typeof content === "string") {
-            content = content
-              .replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>\s*/g, "")
-              .trim();
+            content = content.replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>\s*/g, "").trim();
           }
           const prefix = `[${m.senderName} said]: `;
           if (typeof content === "string") content = prefix + content;

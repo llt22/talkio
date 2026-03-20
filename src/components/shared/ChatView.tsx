@@ -1,21 +1,10 @@
 /**
  * ChatView — shared chat message list + input (1:1 RN original).
  */
-import {
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-  useImperativeHandle,
-} from "react";
+import { useRef, useEffect, useCallback, useMemo, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  IoChatbubbleOutline,
-} from "../../icons";
-import {
-  GitBranch,
-  Paperclip,
-} from "lucide-react";
+import { IoChatbubbleOutline } from "../../icons";
+import { GitBranch, Paperclip } from "lucide-react";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
 import { useMessages, useConversation } from "../../hooks/useDatabase";
@@ -41,6 +30,7 @@ interface ChatViewProps {
   onSwitchModel?: () => void;
   isGroup?: boolean;
   participants?: ConversationParticipant[];
+  keyboardInset?: number;
 }
 
 export function ChatView({
@@ -52,6 +42,7 @@ export function ChatView({
   onSwitchModel,
   isGroup = false,
   participants = [],
+  keyboardInset = 0,
 }: ChatViewProps) {
   const { t, i18n } = useTranslation();
   const { confirm } = useConfirm();
@@ -218,12 +209,8 @@ export function ChatView({
   // ── Auto-write files from AI responses ──
   const conversation = useConversation(conversationId);
   const workspaceDir = !isMobile ? conversation?.workspaceDir || "" : "";
-  const {
-    writtenFilesMap,
-    pendingFileBlocksMap,
-    pendingFileStatusMap,
-    handleApplyFileBlocks,
-  } = useFileWriteDetection(displayMessages, workspaceDir, isGenerating);
+  const { writtenFilesMap, pendingFileBlocksMap, pendingFileStatusMap, handleApplyFileBlocks } =
+    useFileWriteDetection(displayMessages, workspaceDir, isGenerating);
 
   const branchBanner = activeBranchId ? (
     <div
@@ -273,6 +260,7 @@ export function ChatView({
           isGroup={isGroup}
           participants={participants}
           hasMessages={false}
+          keyboardInset={keyboardInset}
           onStartAutoDiscuss={startAutoDiscuss}
           onStopAutoDiscuss={stopAutoDiscuss}
           autoDiscussRemaining={autoDiscussRemaining}
@@ -344,6 +332,7 @@ export function ChatView({
         isGroup={isGroup}
         participants={participants}
         hasMessages={hasMessages}
+        keyboardInset={keyboardInset}
         onStartAutoDiscuss={startAutoDiscuss}
         onStopAutoDiscuss={stopAutoDiscuss}
         autoDiscussRemaining={autoDiscussRemaining}

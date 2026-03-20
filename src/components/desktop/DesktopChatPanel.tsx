@@ -5,6 +5,7 @@ import {
   Trash2,
   UserPlus,
   Share2,
+  Copy,
   ChevronDown,
   ChevronUp,
   User,
@@ -157,6 +158,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
     handleAddMembers,
     showAddMemberPicker,
     setShowAddMemberPicker,
+    duplicateConversation,
   } = useChatPanelState(conversationId);
   const renameConversation = useChatStore((s) => s.renameConversation);
   const sendMessage = useChatStore((s) => s.sendMessage);
@@ -167,7 +169,9 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [groupPromptText, setGroupPromptText] = useState(conv?.groupSystemPrompt ?? "");
-  useEffect(() => { setGroupPromptText(conv?.groupSystemPrompt ?? ""); }, [conversationId]);
+  useEffect(() => {
+    setGroupPromptText(conv?.groupSystemPrompt ?? "");
+  }, [conversationId]);
   useEffect(() => {
     const trimmed = groupPromptText.trim();
     if (trimmed === (conv?.groupSystemPrompt ?? "")) return;
@@ -177,10 +181,11 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
     return () => clearTimeout(timer);
   }, [groupPromptText, conversationId]);
   const participantMentions = useMemo(
-    () => (conv?.participants ?? []).map((p) => {
-      const m = getModelById(p.modelId);
-      return { id: p.id, label: m?.displayName ?? p.modelId };
-    }),
+    () =>
+      (conv?.participants ?? []).map((p) => {
+        const m = getModelById(p.modelId);
+        return { id: p.id, label: m?.displayName ?? p.modelId };
+      }),
     [conv?.participants, getModelById],
   );
   const title = isGroup
@@ -420,6 +425,16 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
               <UserPlus size={14} className="mr-2" />
               {t("chat.addMember")}
             </DropdownMenuItem>
+            {isGroup && (
+              <DropdownMenuItem
+                onClick={async () => {
+                  await duplicateConversation(conversationId);
+                }}
+              >
+                <Copy size={14} className="mr-2" />
+                {t("chat.duplicateGroup")}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onClick={handleExport}
               disabled={messages.length === 0 || isExporting}
@@ -517,7 +532,9 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted/50"
               }`}
-              onClick={() => useChatStore.getState().updateSpeakingOrder(conversationId, "parallel")}
+              onClick={() =>
+                useChatStore.getState().updateSpeakingOrder(conversationId, "parallel")
+              }
             >
               <Layers size={11} /> {t("chat.parallel")}
             </button>
@@ -678,11 +695,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
           <ChatView
             conversationId={conversationId}
             modelName={!isGroup ? model?.displayName : undefined}
-            onSwitchModel={
-              !isGroup
-                ? () => setShowModelPicker(true)
-                : undefined
-            }
+            onSwitchModel={!isGroup ? () => setShowModelPicker(true) : undefined}
             isGroup={isGroup}
             participants={conv?.participants ?? []}
             handleRef={chatViewRef}
