@@ -1,5 +1,16 @@
 import type { Model } from "../types";
 
+export function sortEnabledFirst(models: Model[]): Model[] {
+  return [...models].sort((a, b) => {
+    if (a.enabled === b.enabled) return 0;
+    return a.enabled ? -1 : 1;
+  });
+}
+
+export function isSameOrder(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
 /**
  * Group models by their provider name, sorted alphabetically.
  * Models within each group are also sorted by displayName.

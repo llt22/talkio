@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,9 +12,8 @@ import {
   IoPulseOutline,
 } from "../../icons";
 import { useProviderStore } from "../../stores/provider-store";
+import { sortEnabledFirst, isSameOrder } from "../../lib/model-utils";
 import type { Model } from "../../types";
-
-type ProviderStoreState = ReturnType<typeof useProviderStore.getState>;
 
 interface ProviderModelListProps {
   providerId: string;
@@ -25,38 +24,69 @@ interface ProviderModelListProps {
 export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderModelListProps) {
   const { t } = useTranslation();
 
-  const models = useProviderStore((s: ProviderStoreState) => s.models);
+  const models = useProviderStore((s) => s.models);
   const displayModels = useMemo(
     () => models.filter((m) => m.providerId === providerId),
     [models, providerId],
   );
-  const toggleModel = useProviderStore((s: ProviderStoreState) => s.toggleModel);
-  const setProviderModelsEnabled = useProviderStore(
-    (s: ProviderStoreState) => s.setProviderModelsEnabled,
-  );
-  const addModelById = useProviderStore((s: ProviderStoreState) => s.addModelById);
-  const deleteModel = useProviderStore((s: ProviderStoreState) => s.deleteModel);
-  const probeModelCapabilities = useProviderStore(
-    (s: ProviderStoreState) => s.probeModelCapabilities,
-  );
+  const toggleModel = useProviderStore((s) => s.toggleModel);
+  const setProviderModelsEnabled = useProviderStore((s) => s.setProviderModelsEnabled);
+  const addModelById = useProviderStore((s) => s.addModelById);
+  const deleteModel = useProviderStore((s) => s.deleteModel);
+  const probeModelCapabilities = useProviderStore((s) => s.probeModelCapabilities);
 
   const [modelSearch, setModelSearch] = useState("");
   const [newModelId, setNewModelId] = useState("");
   const [probingModelIds, setProbingModelIds] = useState<Set<string>>(new Set());
+  const [modelOrder, setModelOrder] = useState<{ providerId: string; ids: string[] }>(() => {
+    const initial = useProviderStore.getState().models.filter((m) => m.providerId === providerId);
+    return { providerId, ids: sortEnabledFirst(initial).map((m) => m.id) };
+  });
+
+  useEffect(() => {
+    if (displayModels.length === 0) return;
+    setModelOrder((current) => {
+      // providerId 切换：重新初始化顺序
+      if (current.providerId !== providerId) {
+        return { providerId, ids: sortEnabledFirst(displayModels).map((m) => m.id) };
+      }
+      // 增量更新：保留已有顺序，追加新模型，移除已删除模型
+      const modelIds = new Set(displayModels.map((m) => m.id));
+      const nextIds = current.ids.filter((id) => modelIds.has(id));
+      const orderedIds = new Set(nextIds);
+      for (const m of displayModels) {
+        if (!orderedIds.has(m.id)) nextIds.push(m.id);
+      }
+      return isSameOrder(current.ids, nextIds) ? current : { providerId, ids: nextIds };
+    });
+  }, [displayModels, providerId]);
+
+  const orderedModels = useMemo(() => {
+    const modelsById = new Map(displayModels.map((model) => [model.id, model]));
+    const ordered: Model[] = [];
+
+    for (const id of modelOrder.ids) {
+      const model = modelsById.get(id);
+      if (!model) continue;
+      ordered.push(model);
+      modelsById.delete(id);
+    }
+
+    ordered.push(...modelsById.values());
+    return ordered;
+  }, [displayModels, modelOrder]);
 
   const filteredModels = useMemo(() => {
-    const filtered = modelSearch
-      ? displayModels.filter(
-          (m: Model) =>
-            m.displayName.toLowerCase().includes(modelSearch.toLowerCase()) ||
-            m.modelId.toLowerCase().includes(modelSearch.toLowerCase()),
-        )
-      : displayModels;
-    return [...filtered].sort((a, b) => {
-      if (a.enabled === b.enabled) return 0;
-      return a.enabled ? -1 : 1;
-    });
-  }, [displayModels, modelSearch]);
+    if (!modelSearch) return orderedModels;
+    const query = modelSearch.toLowerCase();
+    return orderedModels.filter(
+      (m) =>
+        m.displayName.toLowerCase().includes(query) || m.modelId.toLowerCase().includes(query),
+    );
+  }, [orderedModels, modelSearch]);
+
+  const allEnabled = useMemo(() => displayModels.every((m) => m.enabled), [displayModels]);
+  const trimmedModelId = newModelId.trim();
 
   return (
     <div className="mt-6">
@@ -67,16 +97,11 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
         <div className="flex items-center gap-3">
           {displayModels.length > 0 && (
             <button
-              onClick={() => {
-                const allEnabled = displayModels.every((m: Model) => m.enabled);
-                setProviderModelsEnabled(providerId, !allEnabled);
-              }}
+              onClick={() => setProviderModelsEnabled(providerId, !allEnabled)}
               className="text-[13px] font-medium active:opacity-60"
               style={{ color: "var(--primary)" }}
             >
-              {displayModels.every((m: Model) => m.enabled)
-                ? t("providerEdit.deselectAll")
-                : t("providerEdit.selectAll")}
+              {allEnabled ? t("providerEdit.deselectAll") : t("providerEdit.selectAll")}
             </button>
           )}
           <button
@@ -91,7 +116,6 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
         </div>
       </div>
 
-      {/* Model Search */}
       <div
         className="mt-3 flex items-center rounded-xl px-3 py-2"
         style={{ backgroundColor: "var(--card)" }}
@@ -110,7 +134,6 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
         )}
       </div>
 
-      {/* Manual Add Model */}
       <div className="mt-2 flex items-center gap-2">
         <input
           className="text-foreground flex-1 rounded-xl px-3 py-2.5 text-[14px] outline-none"
@@ -121,26 +144,24 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
         />
         <button
           onClick={() => {
-            const mid = newModelId.trim();
-            if (!mid) return;
-            addModelById(providerId, mid);
+            if (!trimmedModelId) return;
+            addModelById(providerId, trimmedModelId);
             setNewModelId("");
           }}
-          disabled={!newModelId.trim()}
+          disabled={!trimmedModelId}
           className="rounded-xl px-4 py-2.5 text-[14px] font-medium active:opacity-80"
           style={{
-            backgroundColor: newModelId.trim() ? "var(--primary)" : "var(--muted)",
-            color: newModelId.trim() ? "white" : "var(--muted-foreground)",
+            backgroundColor: trimmedModelId ? "var(--primary)" : "var(--muted)",
+            color: trimmedModelId ? "white" : "var(--muted-foreground)",
           }}
         >
           {t("common.add")}
         </button>
       </div>
 
-      {/* Model List */}
       <div className="mt-3 flex flex-col gap-2">
         <AnimatePresence initial={false}>
-        {filteredModels.map((m: Model) => (
+        {filteredModels.map((m) => (
           <motion.div
             key={m.id}
             layout
