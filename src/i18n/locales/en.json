@@ -20,7 +20,8 @@
     "configured": "{{count}} configured",
     "yesterday": "Yesterday",
     "add": "Add",
-    "success": "Success"
+    "success": "Success",
+    "selected": "Selected"
   },
   "tabs": {
     "chats": "Chats",
@@ -97,6 +98,7 @@
     "addMember": "Add Member",
     "duplicateGroup": "Duplicate Group",
     "selectRole": "Select Role",
+    "alreadyInGroup": "Already in group",
     "nSelected": "{{count}} selected",
     "switchModel": "Switch Model",
     "removeMember": "Remove",

@@ -20,6 +20,7 @@ import { IdentityEditPage } from "../../pages/settings/IdentityPage";
 import { AddMemberContent, type SelectedMember } from "../shared/AddMemberPicker";
 import { MobileTabLayout, MobileChatDetail } from "./MobileLayout";
 import { MobileNavContext, type MobileNavFunctions } from "../../contexts/MobileNavContext";
+import { useConversation } from "../../hooks/useDatabase";
 
 // ── Forward declaration for useFlow ──
 let _useFlow: ReturnType<typeof stackflow>["useFlow"];
@@ -133,6 +134,11 @@ const AddMember: ActivityComponentType<{ conversationId: string }> = ({ params }
   }, []);
 
   const isCreateMode = !params.conversationId;
+  const conversation = useConversation(isCreateMode ? null : params.conversationId);
+  const existingModelIds = useMemo(
+    () => Array.from(new Set(conversation?.participants.map((p) => p.modelId) ?? [])),
+    [conversation],
+  );
 
   const handleConfirm = async (members: SelectedMember[]) => {
     if (isCreateMode) {
@@ -162,6 +168,7 @@ const AddMember: ActivityComponentType<{ conversationId: string }> = ({ params }
               ? t("models.createGroup", { count: 0 }).replace("(0)", "").trim()
               : undefined
           }
+          existingModelIds={isCreateMode ? undefined : existingModelIds}
         />
       </div>
     </AppScreen>

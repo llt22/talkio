@@ -681,6 +681,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
         open={showAddMemberPicker}
         onClose={() => setShowAddMemberPicker(false)}
         onConfirm={handleAddMembers}
+        existingModelIds={conv?.participants.map((p) => p.modelId)}
       />
 
       {/* Chat */}

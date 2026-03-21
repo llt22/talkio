@@ -1,12 +1,12 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, X, User } from "lucide-react";
+import { Check, Search, Users, X, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { useProviderStore } from "../../stores/provider-store";
 import { useIdentityStore } from "../../stores/identity-store";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { groupModelsByProvider } from "../../lib/model-utils";
-import type { Model, Identity } from "../../types";
+import type { Identity } from "../../types";
 
 export interface SelectedMember {
   modelId: string;
@@ -20,12 +20,15 @@ interface AddMemberContentProps {
   confirmLabel?: string;
   /** Minimum members required to enable confirm button (e.g. 2 for group creation) */
   minMembers?: number;
+  /** Models that are already in the current group chat */
+  existingModelIds?: string[];
 }
 
 export function AddMemberContent({
   onConfirm,
   confirmLabel,
   minMembers = 1,
+  existingModelIds,
 }: AddMemberContentProps) {
   const { t } = useTranslation();
   const models = useProviderStore((s) => s.models);
@@ -35,6 +38,10 @@ export function AddMemberContent({
   const [search, setSearch] = useState("");
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedMember[]>([]);
+  const existingModelIdSet = useMemo(
+    () => new Set(existingModelIds ?? []),
+    [existingModelIds],
+  );
 
   const enabledModels = useMemo(() => models.filter((m) => m.enabled), [models]);
 
@@ -155,6 +162,13 @@ export function AddMemberContent({
                   {section.data.map((model) => {
                     const isActive = model.id === activeModelId;
                     const isSelected = selected.some((m) => m.modelId === model.id);
+                    const isExisting = existingModelIdSet.has(model.id);
+                    const StatusIcon = isSelected ? Check : isExisting ? Users : null;
+                    const statusLabel = isSelected
+                      ? t("common.selected")
+                      : isExisting
+                        ? t("chat.alreadyInGroup")
+                        : null;
                     return (
                       <button
                         key={model.id}
@@ -165,12 +179,26 @@ export function AddMemberContent({
                         className={`flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-[13px] transition-colors ${
                           isActive
                             ? "bg-primary/10 text-primary font-medium"
-                            : "text-foreground hover:bg-muted/50"
+                            : isSelected
+                              ? "bg-primary/5 text-foreground hover:bg-primary/10"
+                              : isExisting
+                                ? "bg-primary/5 text-foreground hover:bg-primary/10"
+                              : "text-foreground hover:bg-muted/50"
                         }`}
                       >
-                        <span className="flex-1 truncate">{model.displayName}</span>
-                        {isSelected && (
-                          <span className="text-primary flex-shrink-0 text-[11px]">✓</span>
+                        <span className="min-w-0 flex-1 truncate">{model.displayName}</span>
+                        {StatusIcon && (
+                          <span
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                              isSelected
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-primary/10 text-primary"
+                            }`}
+                            title={statusLabel ?? undefined}
+                            aria-label={statusLabel ?? undefined}
+                          >
+                            <StatusIcon size={12} strokeWidth={2.5} />
+                          </span>
                         )}
                       </button>
                     );
@@ -311,6 +339,7 @@ interface AddMemberPickerProps {
   onConfirm: (members: SelectedMember[]) => void;
   minMembers?: number;
   confirmLabel?: string;
+  existingModelIds?: string[];
 }
 
 export function AddMemberPicker({
@@ -319,6 +348,7 @@ export function AddMemberPicker({
   onConfirm,
   minMembers,
   confirmLabel,
+  existingModelIds,
 }: AddMemberPickerProps) {
   const { t } = useTranslation();
 
@@ -341,6 +371,7 @@ export function AddMemberPicker({
             onConfirm={handleConfirm}
             minMembers={minMembers}
             confirmLabel={confirmLabel}
+            existingModelIds={existingModelIds}
           />
         )}
       </DialogContent>

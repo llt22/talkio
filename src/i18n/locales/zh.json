@@ -20,7 +20,8 @@
     "configured": "已配置 {{count}} 个",
     "yesterday": "昨天",
     "add": "添加",
-    "success": "成功"
+    "success": "成功",
+    "selected": "已选"
   },
   "tabs": {
     "chats": "聊天",
@@ -97,6 +98,7 @@
     "addMember": "添加成员",
     "duplicateGroup": "复制当前群组",
     "selectRole": "选择角色",
+    "alreadyInGroup": "已在群聊",
     "nSelected": "已选 {{count}} 个",
     "switchModel": "切换模型",
     "removeMember": "移除",
