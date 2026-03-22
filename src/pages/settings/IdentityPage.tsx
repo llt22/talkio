@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMobileNav } from "../../contexts/MobileNavContext";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
+import { Store } from "lucide-react";
 import {
   IoPersonOutline,
   IoAddCircleOutline,
@@ -14,6 +15,7 @@ import {
   IoAdd,
   IoSparkles,
 } from "../../icons";
+import { PersonaMarketPage } from "./PersonaMarketPage";
 import { useIdentityStore } from "../../stores/identity-store";
 import { useProviderStore } from "../../stores/provider-store";
 import { useMcpStore } from "../../stores/mcp-store";
@@ -40,6 +42,31 @@ export function IdentityPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null | "new">(null);
+  const [showMarket, setShowMarket] = useState(false);
+  const showMarketRef = useRef(false);
+
+  const openMarket = useCallback(() => {
+    setShowMarket(true);
+    showMarketRef.current = true;
+    window.history.pushState({ personaMarket: true }, "");
+  }, []);
+
+  const closeMarket = useCallback(() => {
+    if (showMarketRef.current) {
+      showMarketRef.current = false;
+      setShowMarket(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      if (showMarketRef.current) {
+        closeMarket();
+      }
+    };
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, [closeMarket]);
 
   const filtered = useMemo(
     () =>
@@ -73,6 +100,21 @@ export function IdentityPage() {
             />
           </motion.div>
         )}
+        {showMarket && (
+          <motion.div
+            key="persona-market"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "tween", duration: 0.25 }}
+            className="absolute inset-0 z-10"
+            style={{ backgroundColor: "var(--background)" }}
+          >
+            <PersonaMarketPage onClose={() => {
+              window.history.back();
+            }} />
+          </motion.div>
+        )}
       </AnimatePresence>
       <div className="flex h-full flex-col">
         {/* Header: title + search + add */}
@@ -82,6 +124,13 @@ export function IdentityPage() {
               {t("personas.title")}
             </h1>
             <div className="flex items-center gap-1">
+              <button
+                onClick={() => openMarket()}
+                className="flex h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+                title="角色市场"
+              >
+                <Store size={20} color="var(--primary)" />
+              </button>
               <button
                 onClick={() => setShowSearch((v) => !v)}
                 className="flex h-9 w-9 items-center justify-center rounded-full active:opacity-60"
