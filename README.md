@@ -81,6 +81,7 @@ Talkio 不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉
 - 每个参与者可以绑定不同的**身份（Persona）**，拥有独立的系统提示词和参数
 - AI 之间能看到彼此的发言，独立思考，不会简单附和
 - 用 **@提及** 指定某个模型回答，或让所有人轮流发言
+- 支持**群组系统提示词**，引导 AI 角色行为和讨论方向
 
 ### 🧠 身份系统
 
@@ -93,8 +94,9 @@ Talkio 不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉
 
 ### 🔧 MCP 工具调用
 
-通过 [Model Context Protocol](https://modelcontextprotocol.io/) 连接远程工具服务器：
+通过 [Model Context Protocol](https://modelcontextprotocol.io/) 连接外部工具服务器：
 
+- 支持 SSE（远程）和 Stdio（本地，桌面端）两种传输模式
 - 日历、位置、提醒等系统能力
 - 自定义工具服务器
 - AI 自动决定何时调用工具
@@ -109,13 +111,15 @@ Talkio 不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉
 
 ## 更多功能
 
-- **多 Provider** — OpenAI / Anthropic / DeepSeek / Groq / Ollama 等任何 OpenAI 兼容 API
+- **多 Provider** — OpenAI / Anthropic / DeepSeek / Groq / Ollama 等，支持 OpenAI Chat / Responses API 和 Anthropic Messages API
 - **流式输出** — 实时渲染，支持 Markdown / 代码高亮 / Mermaid 图表 / HTML 预览
 - **深度推理** — 支持 DeepSeek、Qwen 等模型的 reasoning_content 和 `<think>` 标签
+- **工作区工具** — 绑定本地项目目录，AI 可读取、搜索、编辑文件，支持逐文件预览确认
+- **Git 工具** — 在对话中执行 git status / diff / log 等操作，Rust 层白名单 + 确认对话框保障安全
 - **文件解析** — 支持 PDF / Word / Excel / 多种文本格式，拖拽上传或 Ctrl+V 粘贴图片
 - **语音输入** — 接入 Whisper 兼容 STT 服务（Groq / OpenAI），按住录音自动转文字
 - **上下文压缩** — 长对话自动或手动压缩历史，节省 Token 开支
-- **智能建议** — AI 回复后自动推荐后续问题
+- **对话置顶** — 重要对话置顶显示，桌面端右键菜单 / 移动端更多菜单快速操作
 - **Token 用量** — 每条回复显示输入/输出 Token 数
 - **消息编辑** — 编辑已发送的用户消息，AI 重新回答
 - **消息分支** — 重新生成回复，自动管理分支历史

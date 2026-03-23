@@ -81,6 +81,7 @@ Unlike traditional one-on-one chat, Talkio supports **multi-model group chat**:
 - Each participant can have a different **Persona** with its own system prompt and parameters
 - AIs see each other's messages, think independently, and won't simply agree
 - Use **@mentions** to direct a specific model, or let everyone take turns
+- Supports **group system prompts** to guide AI role behavior and discussion direction
 
 ### 🧠 Persona System
 
@@ -93,8 +94,9 @@ Create roles for AI: translator, code reviewer, debate opponent, word game playe
 
 ### 🔧 MCP Tool Calling
 
-Connect to remote tool servers via [Model Context Protocol](https://modelcontextprotocol.io/):
+Connect to external tool servers via [Model Context Protocol](https://modelcontextprotocol.io/):
 
+- Supports both SSE (remote) and Stdio (local, desktop only) transport modes
 - Calendar, location, reminders, and other system capabilities
 - Custom tool servers
 - AI automatically decides when to invoke tools
@@ -109,13 +111,15 @@ Connect to remote tool servers via [Model Context Protocol](https://modelcontext
 
 ## More Features
 
-- **Multi-Provider** — OpenAI / Anthropic / DeepSeek / Groq / Ollama and any OpenAI-compatible API
+- **Multi-Provider** — OpenAI / Anthropic / DeepSeek / Groq / Ollama and more, supports OpenAI Chat / Responses API and Anthropic Messages API
 - **Streaming Output** — Real-time rendering with Markdown / syntax highlighting / Mermaid diagrams / HTML preview
 - **Deep Reasoning** — Supports reasoning_content and `<think>` tags from DeepSeek, Qwen, etc.
+- **Workspace Tools** — Bind a local project directory, AI can read, search, and edit files with per-file preview confirmation
+- **Git Tools** — Run git status / diff / log in conversations, secured by Rust-layer whitelist + confirmation dialog
 - **File Parsing** — PDF / Word / Excel / various text formats, drag & drop or Ctrl+V to paste images
 - **Voice Input** — Whisper-compatible STT (Groq / OpenAI), hold to record and auto-transcribe
 - **Context Compression** — Auto or manual compression of long conversation history to save tokens
-- **Smart Suggestions** — AI automatically suggests follow-up questions after each reply
+- **Pin Conversations** — Pin important conversations to the top, quick access via right-click menu (desktop) or more menu (mobile)
 - **Token Usage** — Input/output token counts displayed per message
 - **Message Editing** — Edit sent user messages, AI re-generates the response
 - **Message Branching** — Regenerate replies with automatic branch history management
