@@ -151,6 +151,7 @@ export async function dispatchMessageGeneration(args: {
   );
   const compressionSettings = useSettingsStore.getState().settings;
 
+  const isRetry = !!(options?.reuseUserMessageId && options?.targetParticipantIds?.length);
   const ctx: GenerationContext = {
     cid,
     conversation,
@@ -165,6 +166,7 @@ export async function dispatchMessageGeneration(args: {
     setStoreState: (partial) => setStoreState(partial),
     workspaceTree: workspaceContext.tree,
     workspaceFiles: workspaceContext.files,
+    isRetry,
   };
 
   let globalMsgIndex = 0;

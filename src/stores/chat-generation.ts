@@ -58,6 +58,7 @@ export interface GenerationContext {
   setStoreState: (partial: { streamingMessages: StreamingState[] }) => void;
   workspaceTree?: string;
   workspaceFiles?: Array<{ path: string; content: string }>;
+  isRetry?: boolean;
 }
 
 // ── Main generation function ──
@@ -75,6 +76,10 @@ export async function generateForParticipant(
   const model = providerStore.getModelById(participant.modelId);
   const provider = model ? providerStore.getProviderById(model.providerId) : null;
   if (!model || !provider) return "";
+
+  const msgCreatedAt = ctx.isRetry
+    ? new Date(Date.now() + index).toISOString()
+    : new Date(Date.parse(ctx.userMsg.createdAt) + 1 + index).toISOString();
 
   // Unsupported provider type — create error message
   if (provider.type !== "openai") {
@@ -114,7 +119,7 @@ export async function generateForParticipant(
         "See: docs/provider-unified-protocol.md",
       ].join("\n"),
       tokenUsage: null,
-      createdAt: new Date(Date.parse(ctx.userMsg.createdAt) + 1 + index).toISOString(),
+      createdAt: msgCreatedAt,
     };
     await insertMessage(assistantMsg);
     notifyDbChange("messages", ctx.cid);
@@ -140,7 +145,7 @@ export async function generateForParticipant(
     participant.id,
     participant.identityId,
     ctx.activeBranchId,
-    new Date(Date.parse(ctx.userMsg.createdAt) + 1 + index).toISOString(),
+    msgCreatedAt,
   );
   await insertMessage(assistantMsg);
   notifyDbChange("messages", ctx.cid);
