@@ -43,7 +43,7 @@ import { ModelPicker } from "../shared/ModelPicker";
 import { AddMemberPicker } from "../shared/AddMemberPicker";
 import { useChatStore } from "../../stores/chat-store";
 import { manualCompress, setManualSummary, getManualSummary } from "../../lib/context-compression";
-import { buildApiMessagesForParticipant } from "../../stores/chat-message-builder";
+import { buildApiMessagesForParticipant, getParticipantLabel } from "../../stores/chat-message-builder";
 import { buildProviderHeaders } from "../../services/provider-headers";
 import { useProviderStore } from "../../stores/provider-store";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
@@ -182,11 +182,11 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
   }, [groupPromptText, conversationId]);
   const participantMentions = useMemo(
     () =>
-      (conv?.participants ?? []).map((p) => {
-        const m = getModelById(p.modelId);
-        return { id: p.id, label: m?.displayName ?? p.modelId };
-      }),
-    [conv?.participants, getModelById],
+      (conv?.participants ?? []).map((p) => ({
+        id: p.id,
+        label: getParticipantLabel(p, conv?.participants ?? []),
+      })),
+    [conv?.participants],
   );
   const title = isGroup
     ? (conv?.title ?? t("chat.group"))

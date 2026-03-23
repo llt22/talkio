@@ -26,7 +26,7 @@ import type { Identity } from "../../types";
 import { exportConversationAsMarkdown } from "../../services/export";
 import { useConfirm, appAlert } from "../shared/ConfirmDialogProvider";
 import { manualCompress, setManualSummary, getManualSummary } from "../../lib/context-compression";
-import { buildApiMessagesForParticipant } from "../../stores/chat-message-builder";
+import { buildApiMessagesForParticipant, getParticipantLabel } from "../../stores/chat-message-builder";
 import { buildProviderHeaders } from "../../services/provider-headers";
 import { useProviderStore } from "../../stores/provider-store";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
@@ -94,11 +94,11 @@ export function MobileChatDetail({
   }, [groupPromptText, conversationId]);
   const participantMentions = useMemo(
     () =>
-      (conv?.participants ?? []).map((p) => {
-        const m = getModelById(p.modelId);
-        return { id: p.id, label: m?.displayName ?? p.modelId };
-      }),
-    [conv?.participants, getModelById],
+      (conv?.participants ?? []).map((p) => ({
+        id: p.id,
+        label: getParticipantLabel(p, conv?.participants ?? []),
+      })),
+    [conv?.participants],
   );
   const chatViewRef = useRef<ChatViewHandle>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
