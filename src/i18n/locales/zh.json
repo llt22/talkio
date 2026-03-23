@@ -292,7 +292,10 @@
     "modelsCount": "{{total}} 个模型 · {{active}} 个已启用",
     "addProvider": "添加供应商",
     "refreshAll": "刷新所有供应商模型",
-    "refreshingAll": "正在刷新..."
+    "refreshingAll": "正在刷新...",
+    "refreshSuccess": "已刷新 {{success}} 个供应商模型",
+    "refreshPartial": "{{success}} 个成功，{{failed}} 个失败",
+    "refreshFailed": "全部刷新失败"
   },
   "webConfig": {
     "scanOrVisit": "扫描二维码或在浏览器中访问",

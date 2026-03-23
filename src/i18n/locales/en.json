@@ -292,7 +292,10 @@
     "modelsCount": "{{total}} models · {{active}} active",
     "addProvider": "Add Provider",
     "refreshAll": "Refresh All Providers",
-    "refreshingAll": "Refreshing..."
+    "refreshingAll": "Refreshing...",
+    "refreshSuccess": "Refreshed {{success}} providers",
+    "refreshPartial": "{{success}} succeeded, {{failed}} failed",
+    "refreshFailed": "All providers failed to refresh"
   },
   "webConfig": {
     "scanOrVisit": "Scan QR or visit in browser",

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import {
@@ -461,17 +462,35 @@ function RefreshAllButton() {
   const { t } = useTranslation();
   const providers = useProviderStore((s) => s.providers);
   const fetchModels = useProviderStore((s) => s.fetchModels);
+  const updateProvider = useProviderStore((s) => s.updateProvider);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefreshAll = useCallback(async () => {
     if (refreshing || providers.length === 0) return;
     setRefreshing(true);
-    try {
-      await Promise.allSettled(providers.map((p: { id: string }) => fetchModels(p.id)));
-    } finally {
-      setRefreshing(false);
+    let success = 0;
+    let failed = 0;
+    await Promise.all(
+      providers.map(async (p: { id: string }) => {
+        updateProvider(p.id, { status: "pending" });
+        try {
+          await fetchModels(p.id);
+          success++;
+        } catch {
+          updateProvider(p.id, { status: "error" });
+          failed++;
+        }
+      }),
+    );
+    if (failed === 0) {
+      toast.success(t("providers.refreshSuccess", { success }));
+    } else if (success === 0) {
+      toast.error(t("providers.refreshFailed"));
+    } else {
+      toast.warning(t("providers.refreshPartial", { success, failed }));
     }
-  }, [refreshing, providers, fetchModels]);
+    setRefreshing(false);
+  }, [refreshing, providers, fetchModels, updateProvider]);
 
   return (
     <button
