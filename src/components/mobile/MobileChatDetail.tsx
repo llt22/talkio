@@ -16,7 +16,7 @@ import {
   IoEllipsisHorizontal,
   IoCopyOutline,
 } from "../../icons";
-import { ArrowUpDown, Shuffle, Layers } from "lucide-react";
+import { ArrowUpDown, Shuffle, Layers, Pin } from "lucide-react";
 import { ChatView, type ChatViewHandle } from "../shared/ChatView";
 import { MentionTextarea } from "../shared/MentionTextarea";
 import { ModelPicker } from "../shared/ModelPicker";
@@ -74,6 +74,7 @@ export function MobileChatDetail({
   } = useChatPanelState(conversationId);
 
   const renameConversation = useChatStore((s) => s.renameConversation);
+  const togglePinConversation = useChatStore((s) => s.togglePinConversation);
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -363,6 +364,18 @@ export function MobileChatDetail({
                 className="absolute top-full right-0 z-30 mt-1 min-w-[180px] rounded-xl py-1 shadow-lg"
                 style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
               >
+                <button
+                  className="flex w-full items-center gap-3 px-4 py-3 active:opacity-60"
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    togglePinConversation(conversationId);
+                  }}
+                >
+                  <Pin size={18} color="var(--foreground)" />
+                  <span className="text-foreground text-[14px]">
+                    {conv?.pinned ? t("chat.unpinConversation") : t("chat.pinConversation")}
+                  </span>
+                </button>
                 {isGroup && (
                   <button
                     className="flex w-full items-center gap-3 px-4 py-3 active:opacity-60"

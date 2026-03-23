@@ -29,6 +29,7 @@ import {
   renameConversation,
   reorderParticipants,
   searchAllMessages,
+  togglePinConversation,
   updateGroupSystemPrompt,
   updateParticipantIdentity,
   updateParticipantModel,
@@ -98,6 +99,7 @@ export interface ChatState {
   ) => Promise<void>;
   removeParticipant: (conversationId: string, participantId: string) => Promise<void>;
   renameConversation: (conversationId: string, title: string) => Promise<void>;
+  togglePinConversation: (conversationId: string) => Promise<void>;
   updateSpeakingOrder: (conversationId: string, order: SpeakingOrder) => Promise<void>;
   updateGroupSystemPrompt: (conversationId: string, prompt: string) => Promise<void>;
   reorderParticipants: (conversationId: string, participantIds: string[]) => Promise<void>;
@@ -261,6 +263,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   renameConversation: async (conversationId: string, title: string) => {
     await renameConversation(conversationId, title);
+  },
+
+  togglePinConversation: async (conversationId: string) => {
+    await togglePinConversation(conversationId);
   },
 
   updateSpeakingOrder: async (conversationId: string, order) => {

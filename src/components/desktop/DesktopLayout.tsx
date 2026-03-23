@@ -13,6 +13,7 @@ import {
   MoreHorizontal,
   Users,
   Pencil,
+  Pin,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ModelPicker } from "../shared/ModelPicker";
@@ -209,6 +210,7 @@ function DesktopConversationList() {
   const deleteConversation = useChatStore((s) => s.deleteConversation);
   const clearConversationMessages = useChatStore((s) => s.clearConversationMessages);
   const renameConversation = useChatStore((s) => s.renameConversation);
+  const togglePinConversation = useChatStore((s) => s.togglePinConversation);
   const models = useProviderStore((s) => s.models);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -307,6 +309,7 @@ function DesktopConversationList() {
               onDelete={() => deleteConversation(conv.id)}
               onClear={() => clearConversationMessages(conv.id)}
               onRename={(title) => renameConversation(conv.id, title)}
+              onTogglePin={() => togglePinConversation(conv.id)}
             />
           ))
         )}
@@ -322,6 +325,7 @@ function DesktopConversationItem({
   onDelete,
   onClear,
   onRename,
+  onTogglePin,
 }: {
   conversation: Conversation;
   isActive: boolean;
@@ -329,6 +333,7 @@ function DesktopConversationItem({
   onDelete: () => void;
   onClear: () => void;
   onRename: (title: string) => void;
+  onTogglePin: () => void;
 }) {
   const { t } = useTranslation();
   const [showMenu, setShowMenu] = useState(false);
@@ -377,8 +382,9 @@ function DesktopConversationItem({
                 className="text-sidebar-foreground border-primary w-full border-b bg-transparent text-[13px] font-medium outline-none"
               />
             ) : (
-              <p className="text-sidebar-foreground truncate text-[13px] font-medium">
-                {conversation.title}
+              <p className="text-sidebar-foreground flex items-center gap-1 truncate text-[13px] font-medium">
+                {conversation.pinned && <Pin size={12} className="text-primary flex-shrink-0" />}
+                <span className="truncate">{conversation.title}</span>
               </p>
             )}
             {conversation.lastMessage && (
@@ -405,6 +411,16 @@ function DesktopConversationItem({
                 className="text-xs"
                 onClick={(e) => {
                   e.stopPropagation();
+                  onTogglePin();
+                }}
+              >
+                <Pin size={14} className="mr-2" />
+                {conversation.pinned ? t("chat.unpinConversation") : t("chat.pinConversation")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
                   onClear();
                 }}
               >
@@ -426,6 +442,13 @@ function DesktopConversationItem({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-40">
+        <ContextMenuItem
+          className="text-xs"
+          onClick={onTogglePin}
+        >
+          <Pin size={14} className="mr-2" />
+          {conversation.pinned ? t("chat.unpinConversation") : t("chat.pinConversation")}
+        </ContextMenuItem>
         <ContextMenuItem
           className="text-xs"
           onClick={() => {

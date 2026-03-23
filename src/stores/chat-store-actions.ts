@@ -212,6 +212,13 @@ export async function renameConversation(conversationId: string, title: string):
   notifyDbChange("conversations");
 }
 
+export async function togglePinConversation(conversationId: string): Promise<void> {
+  const conversation = await getConversation(conversationId);
+  if (!conversation) return;
+  await updateConversation(conversationId, { pinned: !conversation.pinned });
+  notifyDbChange("conversations");
+}
+
 export async function updateSpeakingOrder(
   conversationId: string,
   order: SpeakingOrder,

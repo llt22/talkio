@@ -78,6 +78,8 @@
     "reduction": "压缩",
     "clearHistory": "清空历史",
     "clearHistoryConfirm": "确定删除该会话中的所有消息？",
+    "pinConversation": "置顶",
+    "unpinConversation": "取消置顶",
     "deleteMessageConfirm": "删除这条消息？",
     "photoPermissionDenied": "需要相册访问权限才能附加图片。",
     "imageSelected": "已选择图片",

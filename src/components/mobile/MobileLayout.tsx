@@ -429,8 +429,24 @@ function ConversationItem({
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center justify-between">
-          <span className="text-foreground flex-1 truncate text-[16px] font-semibold">
-            {isGroup ? conversation.title : modelName}
+          <span className="text-foreground flex items-center gap-1 flex-1 truncate text-[16px] font-semibold">
+            {conversation.pinned && (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--primary)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="flex-shrink-0"
+              >
+                <line x1="12" y1="17" x2="12" y2="22" />
+                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+              </svg>
+            )}
+            <span className="truncate">{isGroup ? conversation.title : modelName}</span>
           </span>
           <span className="text-muted-foreground ml-2 flex-shrink-0 text-xs">{timeStr}</span>
         </div>
