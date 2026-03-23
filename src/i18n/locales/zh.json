@@ -290,7 +290,9 @@
     "deleteProvider": "删除供应商",
     "deleteConfirm": "确定删除 \"{{name}}\" 及其所有模型？",
     "modelsCount": "{{total}} 个模型 · {{active}} 个已启用",
-    "addProvider": "添加供应商"
+    "addProvider": "添加供应商",
+    "refreshAll": "刷新所有供应商模型",
+    "refreshingAll": "正在刷新..."
   },
   "webConfig": {
     "scanOrVisit": "扫描二维码或在浏览器中访问",

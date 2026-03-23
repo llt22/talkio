@@ -7,6 +7,7 @@ import {
   IoAddCircleOutline,
   IoTrashOutline,
   IoAdd,
+  IoRefreshOutline,
 } from "../../icons";
 import {
   ArrowLeftRight,
@@ -465,6 +466,18 @@ export function ProvidersListPage({
   const providers = useProviderStore((s) => s.providers);
   const models = useProviderStore((s) => s.models);
   const deleteProvider = useProviderStore((s) => s.deleteProvider);
+  const fetchModels = useProviderStore((s) => s.fetchModels);
+  const [refreshingAll, setRefreshingAll] = useState(false);
+
+  const handleRefreshAll = useCallback(async () => {
+    if (refreshingAll || providers.length === 0) return;
+    setRefreshingAll(true);
+    try {
+      await Promise.allSettled(providers.map((p: { id: string }) => fetchModels(p.id)));
+    } finally {
+      setRefreshingAll(false);
+    }
+  }, [refreshingAll, providers, fetchModels]);
 
   return (
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
@@ -482,6 +495,26 @@ export function ProvidersListPage({
               borderBottom: "0.5px solid var(--border)",
             }}
           >
+            <button
+              onClick={handleRefreshAll}
+              disabled={refreshingAll}
+              className="flex w-full items-center gap-4 px-4 py-3 transition-colors active:bg-black/5 disabled:opacity-60"
+              style={{ borderBottom: "0.5px solid var(--border)" }}
+            >
+              <div
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: "rgba(59,130,246,0.1)" }}
+              >
+                <IoRefreshOutline
+                  size={18}
+                  color="#3b82f6"
+                  className={refreshingAll ? "animate-spin" : ""}
+                />
+              </div>
+              <span className="text-foreground flex-1 text-left text-[16px] font-medium">
+                {refreshingAll ? t("providers.refreshingAll") : t("providers.refreshAll")}
+              </span>
+            </button>
             {providers.map(
               (
                 provider: {

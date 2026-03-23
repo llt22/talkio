@@ -290,7 +290,9 @@
     "deleteProvider": "Delete Provider",
     "deleteConfirm": "Remove \"{{name}}\" and all its models?",
     "modelsCount": "{{total}} models · {{active}} active",
-    "addProvider": "Add Provider"
+    "addProvider": "Add Provider",
+    "refreshAll": "Refresh All Providers",
+    "refreshingAll": "Refreshing..."
   },
   "webConfig": {
     "scanOrVisit": "Scan QR or visit in browser",
