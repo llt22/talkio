@@ -270,7 +270,7 @@ export const MessageRow = memo(function MessageRow({
 
   if (isUser) {
     return (
-      <div className="group mb-6 flex flex-col items-end gap-1 px-4">
+      <div data-message-id={message.id} className="group mb-6 flex flex-col items-end gap-1 px-4">
         {/* Label */}
         <div className="mr-1 flex items-baseline gap-2">
           <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">

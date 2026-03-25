@@ -223,6 +223,41 @@ export function MobileChatDetail({
     }
   }, [conv, messages, isExporting, t]);
 
+  const handleExportPdf = useCallback(async () => {
+    if (!conv || isExporting || messages.length === 0) return;
+    setIsExporting(true);
+    try {
+      await exportConversationAsPdf({
+        conversation: conv,
+        messages,
+        titleFallback: t("chat.chatTitle"),
+        youLabel: t("chat.you"),
+        thoughtProcessLabel: t("chat.thoughtProcess"),
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [conv, messages, isExporting, t]);
+
+  // Error message navigation
+  const errorMessageIds = useMemo(
+    () => messages.filter((m) => m.status === MessageStatus.ERROR).map((m) => m.id),
+    [messages],
+  );
+  const [errorNavIndex, setErrorNavIndex] = useState(0);
+  const navigateError = useCallback(
+    (direction: "next" | "prev") => {
+      if (errorMessageIds.length === 0) return;
+      const newIndex =
+        direction === "next"
+          ? (errorNavIndex + 1) % errorMessageIds.length
+          : (errorNavIndex - 1 + errorMessageIds.length) % errorMessageIds.length;
+      setErrorNavIndex(newIndex);
+      chatViewRef.current?.scrollToMessage(errorMessageIds[newIndex]);
+    },
+    [errorMessageIds, errorNavIndex],
+  );
+
   return (
     <div
       className="flex h-full flex-col"
@@ -429,6 +464,18 @@ export function MobileChatDetail({
                 >
                   <IoShareOutline size={18} color="var(--foreground)" />
                   <span className="text-foreground text-[14px]">{t("chat.export")}</span>
+                </button>
+                <button
+                  className="flex w-full items-center gap-3 px-4 py-3 active:opacity-60"
+                  style={{ opacity: messages.length === 0 ? 0.4 : 1 }}
+                  disabled={messages.length === 0 || isExporting}
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    handleExportPdf();
+                  }}
+                >
+                  <FileDown size={18} color="var(--foreground)" />
+                  <span className="text-foreground text-[14px]">{t("chat.exportPdf")}</span>
                 </button>
                 <button
                   className="flex w-full items-center gap-3 px-4 py-3 active:opacity-60"
@@ -684,6 +731,39 @@ export function MobileChatDetail({
           isGroup={isGroup}
           participants={conv?.participants ?? []}
         />
+        {/* Error message navigator */}
+        {errorMessageIds.length > 0 && (
+          <div
+            className="absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-1.5"
+            style={{
+              bottom: 170,
+              backgroundColor: "color-mix(in srgb, var(--destructive) 12%, var(--card) 88%)",
+              border: "1px solid color-mix(in srgb, var(--destructive) 25%, transparent)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            <AlertTriangle size={13} color="var(--destructive)" />
+            <span className="text-[12px] font-medium" style={{ color: "var(--destructive)" }}>
+              {t("chat.errorCount", { count: errorMessageIds.length })}
+            </span>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => navigateError("prev")}
+                className="rounded p-0.5 active:opacity-60"
+                style={{ color: "var(--destructive)" }}
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                onClick={() => navigateError("next")}
+                className="rounded p-0.5 active:opacity-60"
+                style={{ color: "var(--destructive)" }}
+              >
+                <ChevronDown size={14} />
+              </button>
+            </div>
+          </div>
+        )}
         {/* Scroll to bottom — floating above input */}
         <div className="pointer-events-none absolute right-3" style={{ bottom: 160 }}>
           <button

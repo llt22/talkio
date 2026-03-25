@@ -69,6 +69,8 @@
     "messageOptions": "消息选项",
     "searchInChat": "搜索聊天记录",
     "export": "导出",
+    "exportPdf": "导出 PDF",
+    "errorCount": "{{count}} 条失败消息",
     "compressContext": "压缩上下文",
     "recompress": "重新压缩",
     "compressing": "压缩中...",

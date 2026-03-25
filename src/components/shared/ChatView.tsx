@@ -19,6 +19,7 @@ import { useFileWriteDetection } from "./useFileWriteDetection";
 export interface ChatViewHandle {
   scrollToBottom: () => void;
   getScrollElement: () => HTMLElement | null;
+  scrollToMessage: (messageId: string) => void;
 }
 
 interface ChatViewProps {
@@ -72,6 +73,10 @@ export function ChatView({
     () => ({
       scrollToBottom: () => scrollToBottom(),
       getScrollElement: () => scrollRef.current,
+      scrollToMessage: (messageId: string) => {
+        const el = scrollRef.current?.querySelector(`[data-message-id="${messageId}"]`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      },
     }),
     [scrollToBottom],
   );

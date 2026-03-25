@@ -69,6 +69,8 @@
     "messageOptions": "Message Options",
     "searchInChat": "Search in Chat",
     "export": "Export",
+    "exportPdf": "Export PDF",
+    "errorCount": "{{count}} failed",
     "compressContext": "Compress Context",
     "recompress": "Re-compress",
     "compressing": "Compressing...",
