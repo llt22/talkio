@@ -1,11 +1,12 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { stackflow, type ActivityComponentType } from "@stackflow/react";
 import { basicRendererPlugin } from "@stackflow/plugin-renderer-basic";
 import { basicUIPlugin } from "@stackflow/plugin-basic-ui";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import "@stackflow/plugin-basic-ui/index.css";
-import { IoAdd, IoTrashOutline, IoChevronForward, IoAddCircleOutline } from "../../icons";
+import { IoAdd, IoTrashOutline, IoChevronForward, IoAddCircleOutline, IoRefreshOutline } from "../../icons";
+import { toast } from "sonner";
 import { useChatStore } from "../../stores/chat-store";
 import { useProviderStore } from "../../stores/provider-store";
 import { useMcpStore, type McpServerConfig } from "../../stores/mcp-store";
@@ -228,14 +229,59 @@ const ProvidersList: ActivityComponentType = () => {
     };
   }, []);
 
+  const fetchModels = useProviderStore((s) => s.fetchModels);
+  const updateProvider = useProviderStore((s) => s.updateProvider);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefreshAll = useCallback(async () => {
+    if (refreshing || providers.length === 0) return;
+    setRefreshing(true);
+    let success = 0;
+    let failed = 0;
+    await Promise.all(
+      providers.map(async (p: { id: string }) => {
+        updateProvider(p.id, { status: "pending" });
+        try {
+          await fetchModels(p.id);
+          success++;
+        } catch {
+          updateProvider(p.id, { status: "error" });
+          failed++;
+        }
+      }),
+    );
+    if (failed === 0) {
+      toast.success(t("providers.refreshSuccess", { success }));
+    } else if (success === 0) {
+      toast.error(t("providers.refreshFailed"));
+    } else {
+      toast.warning(t("providers.refreshPartial", { success, failed }));
+    }
+    setRefreshing(false);
+  }, [refreshing, providers, fetchModels, updateProvider, t]);
+
   return (
     <AppScreen
       appBar={{
         title: t("settings.providers"),
         renderRight: () => (
-          <button onClick={() => push("ProviderEdit", {})} className="p-2 active:opacity-60">
-            <IoAdd size={22} color="var(--primary)" />
-          </button>
+          <div className="flex items-center">
+            <button
+              onClick={handleRefreshAll}
+              disabled={refreshing || providers.length === 0}
+              className="p-2 active:opacity-60 disabled:opacity-40"
+              title={t("providers.refreshAll")}
+            >
+              <IoRefreshOutline
+                size={20}
+                color="var(--primary)"
+                className={refreshing ? "animate-spin" : ""}
+              />
+            </button>
+            <button onClick={() => push("ProviderEdit", {})} className="p-2 active:opacity-60">
+              <IoAdd size={22} color="var(--primary)" />
+            </button>
+          </div>
         ),
       }}
     >
