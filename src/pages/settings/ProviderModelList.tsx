@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   IoRefreshOutline,
   IoSearchOutline,
@@ -10,6 +11,7 @@ import {
   IoConstructOutline,
   IoBulbOutline,
   IoPulseOutline,
+  IoCheckmarkCircle,
 } from "../../icons";
 import { useProviderStore } from "../../stores/provider-store";
 import { sortEnabledFirst, isSameOrder } from "../../lib/model-utils";
@@ -34,10 +36,14 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
   const addModelById = useProviderStore((s) => s.addModelById);
   const deleteModel = useProviderStore((s) => s.deleteModel);
   const probeModelCapabilities = useProviderStore((s) => s.probeModelCapabilities);
+  const checkModelHealthAction = useProviderStore((s) => s.checkModelHealth);
 
   const [modelSearch, setModelSearch] = useState("");
   const [newModelId, setNewModelId] = useState("");
   const [probingModelIds, setProbingModelIds] = useState<Set<string>>(new Set());
+  const [healthChecking, setHealthChecking] = useState(false);
+  const [healthCheckingIds, setHealthCheckingIds] = useState<Set<string>>(new Set());
+  const [healthResults, setHealthResults] = useState<Map<string, { ok: boolean; error?: string }>>(new Map());
   const [modelOrder, setModelOrder] = useState<{ providerId: string; ids: string[] }>(() => {
     const initial = useProviderStore.getState().models.filter((m) => m.providerId === providerId);
     return { providerId, ids: sortEnabledFirst(initial).map((m) => m.id) };
@@ -86,7 +92,39 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
   }, [orderedModels, modelSearch]);
 
   const allEnabled = useMemo(() => displayModels.every((m) => m.enabled), [displayModels]);
+  const enabledModels = useMemo(() => displayModels.filter((m) => m.enabled), [displayModels]);
   const trimmedModelId = newModelId.trim();
+
+  const handleBatchHealthCheck = useCallback(async () => {
+    if (healthChecking || enabledModels.length === 0) return;
+    setHealthChecking(true);
+    setHealthResults(new Map());
+    const checkingIds = new Set(enabledModels.map((m) => m.id));
+    setHealthCheckingIds(checkingIds);
+
+    let passed = 0;
+    let failed = 0;
+    await Promise.all(
+      enabledModels.map(async (m) => {
+        const result = await checkModelHealthAction(m.id);
+        if (result.ok) passed++;
+        else failed++;
+        setHealthResults((prev) => new Map(prev).set(m.id, result));
+        setHealthCheckingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(m.id);
+          return next;
+        });
+      }),
+    );
+
+    if (failed === 0) {
+      toast.success(t("providerEdit.healthAllPassed", { count: passed }));
+    } else {
+      toast.warning(t("providerEdit.healthResult", { passed, failed }));
+    }
+    setHealthChecking(false);
+  }, [healthChecking, enabledModels, checkModelHealthAction, t]);
 
   return (
     <div className="mt-6">
@@ -102,6 +140,21 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
               style={{ color: "var(--primary)" }}
             >
               {allEnabled ? t("providerEdit.deselectAll") : t("providerEdit.selectAll")}
+            </button>
+          )}
+          {enabledModels.length > 0 && (
+            <button
+              onClick={handleBatchHealthCheck}
+              disabled={healthChecking}
+              className="flex items-center gap-1 text-[13px] font-medium active:opacity-60 disabled:opacity-40"
+              style={{ color: "var(--primary)" }}
+            >
+              {healthChecking ? (
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+              ) : (
+                <IoPulseOutline size={14} color="var(--primary)" />
+              )}
+              {t("providerEdit.healthCheck")}
             </button>
           )}
           <button
@@ -171,12 +224,27 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
           >
             <div className="flex items-center justify-between">
               <div className="mr-3 min-w-0 flex-1">
-                <p
-                  className={`truncate text-[15px] font-semibold ${m.enabled ? "text-foreground" : "text-muted-foreground/40"}`}
-                >
-                  {m.displayName}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p
+                    className={`truncate text-[15px] font-semibold ${m.enabled ? "text-foreground" : "text-muted-foreground/40"}`}
+                  >
+                    {m.displayName}
+                  </p>
+                  {healthCheckingIds.has(m.id) && (
+                    <span className="inline-block h-3.5 w-3.5 flex-shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" style={{ color: "var(--primary)" }} />
+                  )}
+                  {!healthCheckingIds.has(m.id) && healthResults.has(m.id) && (
+                    healthResults.get(m.id)!.ok ? (
+                      <IoCheckmarkCircle size={15} color="var(--success)" className="flex-shrink-0" />
+                    ) : (
+                      <IoCloseCircle size={15} color="var(--destructive)" className="flex-shrink-0" />
+                    )
+                  )}
+                </div>
                 <p className="text-muted-foreground truncate text-[12px]">{m.modelId}</p>
+                {healthResults.has(m.id) && !healthResults.get(m.id)!.ok && healthResults.get(m.id)!.error && (
+                  <p className="text-destructive mt-0.5 truncate text-[11px]">{healthResults.get(m.id)!.error}</p>
+                )}
               </div>
               <div className="flex flex-shrink-0 items-center gap-2">
                 <label className="relative inline-flex cursor-pointer items-center">

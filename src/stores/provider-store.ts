@@ -11,6 +11,7 @@ import {
   fetchProviderModels,
   probeProviderModelCapabilities,
   testProviderConnection,
+  checkModelHealth,
 } from "../services/provider-service";
 
 const PROVIDERS_KEY = "providers";
@@ -42,6 +43,7 @@ interface ProviderState {
   fetchModels: (providerId: string) => Promise<Model[]>;
   testConnection: (providerId: string) => Promise<boolean>;
   probeModelCapabilities: (modelId: string) => Promise<void>;
+  checkModelHealth: (modelId: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 function persistProviders(providers: Provider[]) {
@@ -254,5 +256,13 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
 
     const caps = await probeProviderModelCapabilities(provider, model.modelId);
     get().updateModelCapabilities(modelId, caps);
+  },
+
+  checkModelHealth: async (modelId: string) => {
+    const model = get().getModelById(modelId);
+    if (!model) return { ok: false, error: "Model not found" };
+    const provider = get().getProviderById(model.providerId);
+    if (!provider) return { ok: false, error: "Provider not found" };
+    return checkModelHealth(provider, model.modelId);
   },
 }));

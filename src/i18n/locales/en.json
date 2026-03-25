@@ -286,7 +286,10 @@
     "connectionSuccess": "Connection successful",
     "saveAndFetch": "Save & Fetch",
     "apiFormat": "Provider Type",
-    "models": "Models"
+    "models": "Models",
+    "healthCheck": "Check",
+    "healthAllPassed": "All {{count}} models are healthy",
+    "healthResult": "{{passed}} passed, {{failed}} failed"
   },
   "providers": {
     "deleteProvider": "Delete Provider",

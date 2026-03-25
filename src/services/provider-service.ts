@@ -77,3 +77,49 @@ export async function probeProviderModelCapabilities(
   const adapter = getAdapter(provider.apiFormat);
   return adapter.probeCapabilities({ baseUrl, headers, modelId });
 }
+
+/**
+ * Lightweight check — send minimal request to verify a model is reachable and responding.
+ * Returns true if the model responds (even with an error about content), false if unreachable.
+ */
+export async function checkModelHealth(
+  provider: Provider,
+  modelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const baseUrl = provider.baseUrl.replace(/\/+$/, "");
+  const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
+
+  try {
+    if (provider.apiFormat === "anthropic-messages") {
+      const res = await appFetch(`${baseUrl}/v1/messages`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ model: modelId, max_tokens: 1, messages: [{ role: "user", content: "hi" }] }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) return { ok: true };
+      const text = await res.text().catch(() => "");
+      return { ok: false, error: `${res.status}${text ? ": " + text.slice(0, 120) : ""}` };
+    }
+
+    const endpoint = provider.apiFormat === "responses"
+      ? `${baseUrl}/responses`
+      : `${baseUrl}/chat/completions`;
+
+    const body = provider.apiFormat === "responses"
+      ? { model: modelId, input: "hi", max_output_tokens: 1 }
+      : { model: modelId, max_tokens: 1, messages: [{ role: "user", content: "hi" }] };
+
+    const res = await appFetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.ok) return { ok: true };
+    const text = await res.text().catch(() => "");
+    return { ok: false, error: `${res.status}${text ? ": " + text.slice(0, 120) : ""}` };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || "Unknown error" };
+  }
+}
