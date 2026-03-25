@@ -43,7 +43,7 @@ import { ModelPicker } from "../shared/ModelPicker";
 import { AddMemberPicker } from "../shared/AddMemberPicker";
 import { useChatStore } from "../../stores/chat-store";
 import { manualCompress, setManualSummary, getManualSummary } from "../../lib/context-compression";
-import { buildApiMessagesForParticipant, getParticipantLabel } from "../../stores/chat-message-builder";
+import { buildApiMessagesForParticipant, getParticipantLabel, getParticipantLabelParts } from "../../stores/chat-message-builder";
 import { buildProviderHeaders } from "../../services/provider-headers";
 import { useProviderStore } from "../../stores/provider-store";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
@@ -66,6 +66,7 @@ import { getWorkspaceName, pickWorkspaceDir } from "../../services/workspace";
 function SortableParticipantRow({
   participant: p,
   index: idx,
+  allParticipants,
   getModelById,
   getIdentityById,
   onEditRole,
@@ -74,6 +75,7 @@ function SortableParticipantRow({
 }: {
   participant: ConversationParticipant;
   index: number;
+  allParticipants: ConversationParticipant[];
   getModelById: (id: string) => any;
   getIdentityById: (id: string) => any;
   onEditRole: () => void;
@@ -91,7 +93,7 @@ function SortableParticipantRow({
   };
   const pModel = getModelById(p.modelId);
   const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
-  const displayName = pModel?.displayName ?? p.modelId;
+  const parts = getParticipantLabelParts(p, allParticipants);
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-3 py-2">
       {isSequential && (
@@ -107,7 +109,13 @@ function SortableParticipantRow({
         {idx + 1}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-foreground truncate text-[13px] font-medium">{displayName}</p>
+        <p className="text-foreground truncate text-[13px] font-medium">
+          {parts.modelName}
+          {parts.suffix && <span className="text-muted-foreground"> {parts.suffix}</span>}
+        </p>
+        {parts.providerName && (
+          <p className="text-muted-foreground truncate text-[11px]">{parts.providerName}</p>
+        )}
       </div>
       <button
         className="flex-shrink-0 rounded px-2 py-0.5 text-[11px] transition-opacity hover:opacity-80"
@@ -182,10 +190,15 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
   }, [groupPromptText, conversationId]);
   const participantMentions = useMemo(
     () =>
-      (conv?.participants ?? []).map((p) => ({
-        id: p.id,
-        label: getParticipantLabel(p, conv?.participants ?? []),
-      })),
+      (conv?.participants ?? []).map((p) => {
+        const parts = getParticipantLabelParts(p, conv?.participants ?? []);
+        const secondary = [parts.identityName, parts.providerName].filter(Boolean).join(" \u00b7 ");
+        return {
+          id: p.id,
+          label: getParticipantLabel(p, conv?.participants ?? []),
+          secondaryLabel: secondary || undefined,
+        };
+      }),
     [conv?.participants],
   );
   const title = isGroup
@@ -574,6 +587,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
                   key={p.id}
                   participant={p}
                   index={idx}
+                  allParticipants={conv.participants}
                   getModelById={getModelById}
                   getIdentityById={getIdentityById}
                   onEditRole={() => {

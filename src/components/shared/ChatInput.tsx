@@ -16,7 +16,7 @@ import {
 import type { ConversationParticipant, Model } from "../../types";
 import { extractMentionedParticipantIds } from "../../lib/mention-parser";
 import { useProviderStore } from "../../stores/provider-store";
-import { getParticipantLabel } from "../../stores/chat-message-builder";
+import { getParticipantLabel, getParticipantLabelParts } from "../../stores/chat-message-builder";
 import { useSettingsStore } from "../../stores/settings-store";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { appFetch } from "../../lib/http";
@@ -105,6 +105,7 @@ export const ChatInput = memo(function ChatInput({
         participant: p,
         model: getModelById(p.modelId),
         label: getParticipantLabel(p, participants),
+        parts: getParticipantLabelParts(p, participants),
       }))
       .filter((e) => e.model != null);
   }, [participants, getModelById]);
@@ -449,6 +450,8 @@ export const ChatInput = memo(function ChatInput({
             </p>
             {participantEntries.map((entry, idx) => {
               const { color: avatarColor, initials } = getAvatarProps(entry.label);
+              const { modelName, identityName, providerName, suffix } = entry.parts;
+              const secondLine = [identityName, providerName].filter(Boolean).join(" · ");
               return (
                 <button
                   key={entry.participant.id}
@@ -461,7 +464,16 @@ export const ChatInput = memo(function ChatInput({
                   >
                     {initials}
                   </div>
-                  <span className="text-foreground text-[15px] font-medium">{entry.label}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-foreground block truncate text-[15px] font-medium">
+                      {modelName}{suffix && <span className="text-muted-foreground"> {suffix}</span>}
+                    </span>
+                    {secondLine && (
+                      <span className="text-muted-foreground block truncate text-[12px]">
+                        {secondLine}
+                      </span>
+                    )}
+                  </div>
                 </button>
               );
             })}

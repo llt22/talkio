@@ -29,6 +29,8 @@ import type { Message } from "../../types";
 import { MessageStatus } from "../../types";
 import type { WrittenFile, WorkspaceFileStatus } from "../../services/file-writer";
 import { getAvatarProps } from "../../lib/avatar-utils";
+import { useProviderStore } from "../../stores/provider-store";
+import { useIdentityStore } from "../../stores/identity-store";
 
 // ── Ionicons-style action button (1:1 RN ActionButton) ──
 
@@ -396,15 +398,51 @@ export const MessageRow = memo(function MessageRow({
   const senderName = message.senderName ?? "AI";
   const { color: senderColor } = getAvatarProps(senderName);
 
+  // Structured label parts for rich display
+  const labelParts = useMemo(() => {
+    if (!message.senderModelId) return null;
+    const providerStore = useProviderStore.getState();
+    const identityStore = useIdentityStore.getState();
+    const model = providerStore.getModelById(message.senderModelId);
+    if (!model) return null;
+    const modelName = model.displayName ?? message.senderModelId;
+    const identity = message.identityId
+      ? identityStore.getIdentityById(message.identityId)
+      : null;
+    const identityName = identity?.name ?? null;
+    const provider = providerStore.getProviderById(model.providerId);
+    const providerName = provider?.name ?? null;
+    // #N suffix: parse from stored senderName (e.g. "ModelName #2")
+    let suffix: string | null = null;
+    if (message.senderName) {
+      const match = message.senderName.match(/#(\d+)$/);
+      if (match) suffix = `#${match[1]}`;
+    }
+    return { modelName, identityName, providerName, suffix };
+  }, [message.senderModelId, message.identityId, message.senderName]);
+
   return (
-    <div className="group mb-6 flex flex-col gap-1 px-4">
+    <div data-message-id={message.id} className="group mb-6 flex flex-col gap-1 px-4">
       {/* Label */}
       <div className="ml-1 flex items-baseline gap-2">
         <span
-          className="max-w-[200px] truncate text-[11px] font-semibold tracking-wider uppercase"
+          className="max-w-[360px] truncate text-[11px] font-semibold tracking-wider"
           style={{ color: senderColor }}
         >
-          {senderName}
+          {labelParts ? (
+            <>
+              <span className="uppercase">{labelParts.modelName}</span>
+              {labelParts.suffix && <span className="uppercase opacity-60"> {labelParts.suffix}</span>}
+              {labelParts.identityName && (
+                <span className="opacity-50 font-normal"> · {labelParts.identityName}</span>
+              )}
+              {labelParts.providerName && (
+                <span className="opacity-40 font-normal"> · {labelParts.providerName}</span>
+              )}
+            </>
+          ) : (
+            <span className="uppercase">{senderName}</span>
+          )}
         </span>
         <span className="text-muted-foreground/60 text-[10px]">
           {formatTime(message.createdAt)}

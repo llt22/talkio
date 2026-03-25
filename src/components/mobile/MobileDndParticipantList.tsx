@@ -18,10 +18,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { IoTrashOutline } from "../../icons";
 import { useChatStore } from "../../stores/chat-store";
 import type { ConversationParticipant } from "../../types";
+import { getParticipantLabelParts } from "../../stores/chat-message-builder";
 
 function MobileSortableRow({
   participant: p,
   index: idx,
+  allParticipants,
   getModelById,
   getIdentityById,
   onEditRole,
@@ -30,6 +32,7 @@ function MobileSortableRow({
 }: {
   participant: ConversationParticipant;
   index: number;
+  allParticipants: ConversationParticipant[];
   getModelById: (id: string) => any;
   getIdentityById: (id: string) => any;
   onEditRole: () => void;
@@ -47,7 +50,7 @@ function MobileSortableRow({
   };
   const pModel = getModelById(p.modelId);
   const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
-  const displayName = pModel?.displayName ?? p.modelId;
+  const parts = getParticipantLabelParts(p, allParticipants);
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-2.5 py-2">
       {isSequential && (
@@ -70,7 +73,13 @@ function MobileSortableRow({
         {idx + 1}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-foreground truncate text-[13px] font-medium">{displayName}</p>
+        <p className="text-foreground truncate text-[13px] font-medium">
+          {parts.modelName}
+          {parts.suffix && <span className="text-muted-foreground"> {parts.suffix}</span>}
+        </p>
+        {parts.providerName && (
+          <p className="text-muted-foreground truncate text-[11px]">{parts.providerName}</p>
+        )}
       </div>
       <button
         className="flex-shrink-0 rounded px-2 py-0.5 text-[11px] active:opacity-60"
@@ -133,6 +142,7 @@ export function MobileDndParticipantList({
             key={p.id}
             participant={p}
             index={idx}
+            allParticipants={participants}
             getModelById={getModelById}
             getIdentityById={getIdentityById}
             onEditRole={() => onEditRole(p.id)}

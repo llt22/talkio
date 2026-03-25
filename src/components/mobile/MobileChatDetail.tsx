@@ -16,17 +16,18 @@ import {
   IoEllipsisHorizontal,
   IoCopyOutline,
 } from "../../icons";
-import { ArrowUpDown, Shuffle, Layers, Pin } from "lucide-react";
+import { ArrowUpDown, Shuffle, Layers, Pin, AlertTriangle, ChevronUp, ChevronDown, FileDown } from "lucide-react";
 import { ChatView, type ChatViewHandle } from "../shared/ChatView";
 import { MentionTextarea } from "../shared/MentionTextarea";
 import { ModelPicker } from "../shared/ModelPicker";
 import { useChatStore } from "../../stores/chat-store";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
 import type { Identity } from "../../types";
-import { exportConversationAsMarkdown } from "../../services/export";
+import { MessageStatus } from "../../types";
+import { exportConversationAsMarkdown, exportConversationAsPdf } from "../../services/export";
 import { useConfirm, appAlert } from "../shared/ConfirmDialogProvider";
 import { manualCompress, setManualSummary, getManualSummary } from "../../lib/context-compression";
-import { buildApiMessagesForParticipant, getParticipantLabel } from "../../stores/chat-message-builder";
+import { buildApiMessagesForParticipant, getParticipantLabel, getParticipantLabelParts } from "../../stores/chat-message-builder";
 import { buildProviderHeaders } from "../../services/provider-headers";
 import { useProviderStore } from "../../stores/provider-store";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
@@ -95,10 +96,15 @@ export function MobileChatDetail({
   }, [groupPromptText, conversationId]);
   const participantMentions = useMemo(
     () =>
-      (conv?.participants ?? []).map((p) => ({
-        id: p.id,
-        label: getParticipantLabel(p, conv?.participants ?? []),
-      })),
+      (conv?.participants ?? []).map((p) => {
+        const parts = getParticipantLabelParts(p, conv?.participants ?? []);
+        const secondary = [parts.identityName, parts.providerName].filter(Boolean).join(" \u00b7 ");
+        return {
+          id: p.id,
+          label: getParticipantLabel(p, conv?.participants ?? []),
+          secondaryLabel: secondary || undefined,
+        };
+      }),
     [conv?.participants],
   );
   const chatViewRef = useRef<ChatViewHandle>(null);

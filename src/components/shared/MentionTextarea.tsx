@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect, memo } from "react";
 interface Mention {
   id: string;
   label: string;
+  secondaryLabel?: string;
 }
 
 interface MentionTextareaProps {
@@ -126,7 +127,7 @@ export const MentionTextarea = memo(function MentionTextarea({
       {showMenu && filtered.length > 0 && (
         <div
           ref={menuRef}
-          className="absolute left-0 z-50 mt-1 max-h-[120px] w-full overflow-y-auto rounded-lg py-1 shadow-lg"
+          className="absolute left-0 z-50 mt-1 max-h-[180px] w-full overflow-y-auto rounded-lg py-1 shadow-lg"
           style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
         >
           {filtered.map((m, i) => (
@@ -141,7 +142,14 @@ export const MentionTextarea = memo(function MentionTextarea({
               }}
               onMouseEnter={() => setMenuIndex(i)}
             >
-              @{m.label}
+              <div className="min-w-0">
+                <span className="block truncate">@{m.label}</span>
+                {m.secondaryLabel && (
+                  <span className="text-muted-foreground block truncate text-[10px]">
+                    {m.secondaryLabel}
+                  </span>
+                )}
+              </div>
             </button>
           ))}
         </div>

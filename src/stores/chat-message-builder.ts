@@ -34,6 +34,45 @@ export function resolveTargetParticipants(
 }
 
 /**
+ * Structured parts of a participant label for rich UI rendering.
+ */
+export interface ParticipantLabelParts {
+  modelName: string;
+  identityName: string | null;
+  providerName: string | null;
+  suffix: string | null; // "#1", "#2" etc.
+}
+
+/**
+ * Get structured label parts for a participant, for flexible UI rendering.
+ */
+export function getParticipantLabelParts(
+  participant: ConversationParticipant,
+  allParticipants: ConversationParticipant[],
+): ParticipantLabelParts {
+  const providerStore = useProviderStore.getState();
+  const identityStore = useIdentityStore.getState();
+  const model = providerStore.getModelById(participant.modelId);
+  const modelName = model?.displayName ?? participant.modelId;
+  const identity = participant.identityId
+    ? identityStore.getIdentityById(participant.identityId)
+    : null;
+  const identityName = identity?.name ?? null;
+  const providerName = model
+    ? (providerStore.getProviderById(model.providerId)?.name ?? null)
+    : null;
+
+  let suffix: string | null = null;
+  const sameModelParticipants = allParticipants.filter((p) => p.modelId === participant.modelId);
+  if (sameModelParticipants.length > 1) {
+    const index = sameModelParticipants.findIndex((p) => p.id === participant.id);
+    suffix = `#${index + 1}`;
+  }
+
+  return { modelName, identityName, providerName, suffix };
+}
+
+/**
  * Get a display label for a participant, adding #N suffix for duplicate models.
  */
 export function getParticipantLabel(
@@ -52,10 +91,24 @@ export function getParticipantLabel(
     return `${modelName}（${identity.name}）`;
   }
 
+  // Same modelId added multiple times → append #N
   const sameModelParticipants = allParticipants.filter((p) => p.modelId === participant.modelId);
   if (sameModelParticipants.length > 1) {
     const index = sameModelParticipants.findIndex((p) => p.id === participant.id);
     return `${modelName} #${index + 1}`;
+  }
+
+  // Different modelIds but same displayName (e.g. same model from different providers)
+  const sameNameParticipants = allParticipants.filter((p) => {
+    if (p.modelId === participant.modelId) return false;
+    const m = providerStore.getModelById(p.modelId);
+    return (m?.displayName ?? p.modelId) === modelName;
+  });
+  if (sameNameParticipants.length > 0 && model) {
+    const provider = providerStore.getProviderById(model.providerId);
+    if (provider?.name) {
+      return `${modelName} [${provider.name}]`;
+    }
   }
 
   return modelName;
