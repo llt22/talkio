@@ -470,14 +470,17 @@ function RefreshAllButton() {
     setRefreshing(true);
     let success = 0;
     let failed = 0;
+    const failedNames: string[] = [];
     await Promise.all(
-      providers.map(async (p: { id: string }) => {
+      providers.map(async (p: { id: string; name: string }) => {
         updateProvider(p.id, { status: "pending" });
         try {
           await fetchModels(p.id);
           success++;
-        } catch {
+        } catch (err: any) {
+          console.error(`[RefreshAll] ${p.name} failed:`, err?.message || err);
           updateProvider(p.id, { status: "error" });
+          failedNames.push(`${p.name}: ${err?.message || "unknown"}`);
           failed++;
         }
       }),
@@ -485,9 +488,9 @@ function RefreshAllButton() {
     if (failed === 0) {
       toast.success(t("providers.refreshSuccess", { success }));
     } else if (success === 0) {
-      toast.error(t("providers.refreshFailed"));
+      toast.error(`${t("providers.refreshFailed")}\n${failedNames.join("\n")}`);
     } else {
-      toast.warning(t("providers.refreshPartial", { success, failed }));
+      toast.warning(`${t("providers.refreshPartial", { success, failed })}\n${failedNames.join("\n")}`);
     }
     setRefreshing(false);
   }, [refreshing, providers, fetchModels, updateProvider]);

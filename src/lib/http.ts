@@ -8,19 +8,22 @@
 import { isTauri, isMobile as _isMobile } from "./platform";
 
 let _tauriFetch: typeof globalThis.fetch | null = null;
-let _resolved = false;
+let _resolvePromise: Promise<void> | null = null;
 
-async function resolve(): Promise<void> {
-  if (_resolved) return;
-  _resolved = true;
-  if (isTauri) {
-    try {
-      const mod = await import("@tauri-apps/plugin-http");
-      _tauriFetch = mod.fetch as unknown as typeof globalThis.fetch;
-    } catch {
-      /* plugin not available */
-    }
+function resolve(): Promise<void> {
+  if (!_resolvePromise) {
+    _resolvePromise = (async () => {
+      if (isTauri) {
+        try {
+          const mod = await import("@tauri-apps/plugin-http");
+          _tauriFetch = mod.fetch as unknown as typeof globalThis.fetch;
+        } catch {
+          /* plugin not available */
+        }
+      }
+    })();
   }
+  return _resolvePromise;
 }
 
 export async function appFetch(
