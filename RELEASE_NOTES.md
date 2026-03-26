@@ -1,18 +1,22 @@
-## v2.6.1
+## v2.6.2
 
 ### ✨ 新功能
 - 供应商模型列表新增**单模型健康检测**按钮，支持对单个模型独立进行检测
 - 批量健康检测完成后，异常模型**自动关闭**
 
+### 🐛 Bug 修复
+- 修复供应商列表首次刷新部分失败的问题（HTTP 插件加载竞态条件）
+
 ### 🎨 改进
 - 聊天界面错误消息导航栏新增**关闭按钮**，点击即可隐藏（有新错误时自动重新显示）
+- 供应商刷新失败时显示具体失败的供应商名称和错误原因
 - 模型列表刷新失败时弹出错误提示，不再静默失败
 
 ### ⬇️ 下载
 
 | 平台 | 文件 |
 |------|------|
-| Windows | `Talkio_2.6.1_x64-setup.exe` |
-| macOS | `Talkio_2.6.1_universal.dmg` |
-| Linux | `Talkio_2.6.1_amd64.AppImage` / `.deb` |
-| Android | `Talkio-v2.6.1.apk` |
+| Windows | `Talkio_2.6.2_x64-setup.exe` |
+| macOS | `Talkio_2.6.2_universal.dmg` |
+| Linux | `Talkio_2.6.2_amd64.AppImage` / `.deb` |
+| Android | `Talkio-v2.6.2.apk` |
