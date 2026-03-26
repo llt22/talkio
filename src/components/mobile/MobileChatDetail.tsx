@@ -16,7 +16,7 @@ import {
   IoEllipsisHorizontal,
   IoCopyOutline,
 } from "../../icons";
-import { ArrowUpDown, Shuffle, Layers, Pin, AlertTriangle, ChevronUp, ChevronDown, FileDown } from "lucide-react";
+import { ArrowUpDown, Shuffle, Layers, Pin, AlertTriangle, ChevronUp, ChevronDown, FileDown, X } from "lucide-react";
 import { ChatView, type ChatViewHandle } from "../shared/ChatView";
 import { MentionTextarea } from "../shared/MentionTextarea";
 import { ModelPicker } from "../shared/ModelPicker";
@@ -244,7 +244,14 @@ export function MobileChatDetail({
     () => messages.filter((m) => m.status === MessageStatus.ERROR).map((m) => m.id),
     [messages],
   );
+  // Reset dismissed state when new errors appear
+  const prevErrorCountRef = useRef(errorMessageIds.length);
+  useEffect(() => {
+    if (errorMessageIds.length > prevErrorCountRef.current) setErrorNavDismissed(false);
+    prevErrorCountRef.current = errorMessageIds.length;
+  }, [errorMessageIds.length]);
   const [errorNavIndex, setErrorNavIndex] = useState(0);
+  const [errorNavDismissed, setErrorNavDismissed] = useState(false);
   const navigateError = useCallback(
     (direction: "next" | "prev") => {
       if (errorMessageIds.length === 0) return;
@@ -732,7 +739,7 @@ export function MobileChatDetail({
           participants={conv?.participants ?? []}
         />
         {/* Error message navigator */}
-        {errorMessageIds.length > 0 && (
+        {errorMessageIds.length > 0 && !errorNavDismissed && (
           <div
             className="absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-1.5"
             style={{
@@ -762,6 +769,13 @@ export function MobileChatDetail({
                 <ChevronDown size={14} />
               </button>
             </div>
+            <button
+              onClick={() => setErrorNavDismissed(true)}
+              className="rounded p-0.5 active:opacity-60"
+              style={{ color: "var(--destructive)" }}
+            >
+              <X size={13} />
+            </button>
           </div>
         )}
         {/* Scroll to bottom — floating above input */}

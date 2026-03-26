@@ -42,7 +42,7 @@ export async function fetchProviderModels(provider: Provider): Promise<any[]> {
   const headers = buildProviderHeaders(provider);
   const res = await appFetch(`${baseUrl}/models`, {
     headers,
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`);
   const json = await res.json();

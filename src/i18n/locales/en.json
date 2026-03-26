@@ -289,7 +289,7 @@
     "models": "Models",
     "healthCheck": "Check",
     "healthAllPassed": "All {{count}} models are healthy",
-    "healthResult": "{{passed}} passed, {{failed}} failed"
+    "healthResult": "{{passed}} passed, {{failed}} failed (auto-disabled)"
   },
   "providers": {
     "deleteProvider": "Delete Provider",

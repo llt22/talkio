@@ -3,6 +3,7 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   IoLockClosed,
   IoCheckmarkCircle,
@@ -298,8 +299,8 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
     setPulling(true);
     try {
       await fetchModels(savedProviderId);
-    } catch {
-      /* ignore */
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to refresh models");
     } finally {
       setPulling(false);
     }

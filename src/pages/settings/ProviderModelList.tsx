@@ -104,11 +104,15 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
 
     let passed = 0;
     let failed = 0;
+    const failedIds: string[] = [];
     await Promise.all(
       enabledModels.map(async (m) => {
         const result = await checkModelHealthAction(m.id);
         if (result.ok) passed++;
-        else failed++;
+        else {
+          failed++;
+          failedIds.push(m.id);
+        }
         setHealthResults((prev) => new Map(prev).set(m.id, result));
         setHealthCheckingIds((prev) => {
           const next = new Set(prev);
@@ -118,13 +122,40 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
       }),
     );
 
+    // Auto-disable failed models
+    for (const id of failedIds) {
+      toggleModel(id);
+    }
+
     if (failed === 0) {
       toast.success(t("providerEdit.healthAllPassed", { count: passed }));
     } else {
       toast.warning(t("providerEdit.healthResult", { passed, failed }));
     }
     setHealthChecking(false);
-  }, [healthChecking, enabledModels, checkModelHealthAction, t]);
+  }, [healthChecking, enabledModels, checkModelHealthAction, toggleModel, t]);
+
+  const handleSingleHealthCheck = useCallback(async (modelId: string) => {
+    setHealthCheckingIds((prev) => new Set(prev).add(modelId));
+    setHealthResults((prev) => { const next = new Map(prev); next.delete(modelId); return next; });
+    try {
+      const result = await checkModelHealthAction(modelId);
+      setHealthResults((prev) => new Map(prev).set(modelId, result));
+      if (result.ok) {
+        toast.success(t("providerEdit.healthCheck") + " ✓");
+      } else {
+        toast.error(result.error ?? "Check failed");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Check failed");
+    } finally {
+      setHealthCheckingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(modelId);
+        return next;
+      });
+    }
+  }, [checkModelHealthAction, t]);
 
   return (
     <div className="mt-6">
@@ -247,6 +278,18 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
                 )}
               </div>
               <div className="flex flex-shrink-0 items-center gap-2">
+                <button
+                  onClick={() => handleSingleHealthCheck(m.id)}
+                  disabled={healthCheckingIds.has(m.id)}
+                  className="p-1 active:opacity-60 disabled:opacity-40"
+                  title={t("providerEdit.healthCheck")}
+                >
+                  {healthCheckingIds.has(m.id) ? (
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" style={{ color: "var(--primary)" }} />
+                  ) : (
+                    <IoPulseOutline size={16} color="var(--primary)" />
+                  )}
+                </button>
                 <label className="relative inline-flex cursor-pointer items-center">
                   <input
                     type="checkbox"

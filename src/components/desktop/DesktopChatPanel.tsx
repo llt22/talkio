@@ -23,6 +23,7 @@ import {
   FileSearch,
   AlertTriangle,
   FileDown,
+  X,
 } from "lucide-react";
 import {
   DndContext,
@@ -145,6 +146,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
   const chatViewRef = useRef<ChatViewHandle>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [errorNavIndex, setErrorNavIndex] = useState(0);
+  const [errorNavDismissed, setErrorNavDismissed] = useState(false);
   const {
     conv,
     messages,
@@ -233,6 +235,12 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
     () => messages.filter((m) => m.status === MessageStatus.ERROR).map((m) => m.id),
     [messages],
   );
+  // Reset dismissed state when new errors appear
+  const prevErrorCountRef = useRef(errorMessageIds.length);
+  useEffect(() => {
+    if (errorMessageIds.length > prevErrorCountRef.current) setErrorNavDismissed(false);
+    prevErrorCountRef.current = errorMessageIds.length;
+  }, [errorMessageIds.length]);
   const navigateError = useCallback(
     (direction: "next" | "prev") => {
       if (errorMessageIds.length === 0) return;
@@ -763,7 +771,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
           />
         </div>
         {/* Error message navigator */}
-        {errorMessageIds.length > 0 && (
+        {errorMessageIds.length > 0 && !errorNavDismissed && (
           <div
             className="absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-1.5"
             style={{
@@ -793,6 +801,13 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
                 <ChevronDown size={14} />
               </button>
             </div>
+            <button
+              onClick={() => setErrorNavDismissed(true)}
+              className="rounded p-0.5 active:opacity-60"
+              style={{ color: "var(--destructive)" }}
+            >
+              <X size={13} />
+            </button>
           </div>
         )}
         {/* Scroll to bottom — floating above input */}
