@@ -209,6 +209,87 @@ function AssistantActionBar({
   );
 }
 
+// ── User action bar: edit + copy primary, delete behind ··· overflow menu ──
+
+function UserActionBar({
+  content,
+  message,
+  onCopy,
+  onEdit,
+  onDelete,
+  startEditing,
+  t,
+}: {
+  content: string;
+  message: Message;
+  onCopy?: (c: string) => void;
+  onEdit?: (id: string, newContent: string) => void;
+  onDelete?: (id: string) => void;
+  startEditing: () => void;
+  t: (key: string) => string;
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <div className="mr-1 flex items-center gap-0.5">
+      {onEdit && (
+        <button
+          onClick={startEditing}
+          className="rounded-md p-1.5 active:opacity-60"
+          title={t("common.edit")}
+        >
+          <Pencil size={14} color="var(--muted-foreground)" />
+        </button>
+      )}
+      {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
+      {onDelete && (
+        <div className="relative">
+          <button
+            onClick={() => setShowMenu((v) => !v)}
+            className="rounded-md p-1.5 active:opacity-60"
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--muted-foreground)"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <circle cx="5" cy="12" r="1.5" />
+              <circle cx="12" cy="12" r="1.5" />
+              <circle cx="19" cy="12" r="1.5" />
+            </svg>
+          </button>
+          {showMenu && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setShowMenu(false)} />
+              <div
+                className="absolute bottom-full right-0 z-30 mb-1 min-w-[150px] rounded-xl py-1 shadow-lg"
+                style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
+              >
+                <button
+                  className="flex w-full items-center gap-3 px-3.5 py-2.5 active:opacity-60"
+                  onClick={() => {
+                    setShowMenu(false);
+                    onDelete(message.id);
+                  }}
+                >
+                  <IoTrashOutline size={15} color="var(--destructive)" />
+                  <span className="text-[13px]" style={{ color: "var(--destructive)" }}>
+                    {t("common.delete")}
+                  </span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export const MessageRow = memo(function MessageRow({
   message,
   onCopy,
@@ -370,25 +451,15 @@ export const MessageRow = memo(function MessageRow({
 
         {/* User action bar */}
         {!isEditing && (
-          <div className="mr-1 flex items-center gap-0.5">
-            {onEdit && !isGenerating && (
-              <button
-                onClick={startEditing}
-                className="rounded-md p-1.5 active:opacity-60"
-                title={t("common.edit")}
-              >
-                <Pencil size={14} color="var(--muted-foreground)" />
-              </button>
-            )}
-            {onCopy && <ActionBtn icon="copy-outline" onClick={() => onCopy(content)} />}
-            {onDelete && (
-              <ActionBtn
-                icon="trash-outline"
-                onClick={() => onDelete(message.id)}
-                color="var(--destructive)"
-              />
-            )}
-          </div>
+          <UserActionBar
+            content={content}
+            message={message}
+            onCopy={onCopy}
+            onEdit={!isGenerating ? onEdit : undefined}
+            onDelete={onDelete}
+            startEditing={startEditing}
+            t={t}
+          />
         )}
       </div>
     );
