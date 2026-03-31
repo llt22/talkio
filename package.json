@@ -1,7 +1,7 @@
 {
   "name": "talkio-web",
   "private": true,
-  "version": "2.6.2",
+  "version": "2.6.3",
   "type": "module",
   "scripts": {
     "validate:json": "node scripts/validate-json.js",
