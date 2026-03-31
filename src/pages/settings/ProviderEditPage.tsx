@@ -262,7 +262,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
         id,
         ...providerData,
         apiVersion: undefined,
-        status: "connected" as const,
+        status: (connected ? "connected" : "pending") as Provider["status"],
         createdAt: new Date().toISOString(),
       };
       addProvider(provider);
@@ -428,16 +428,15 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
               <span>{t("providerEdit.connectAndFetch")}</span>
             )}
           </button>
-          {connected && (
-            <button
-              onClick={handleSave}
-              className="flex items-center justify-center gap-1 rounded-xl px-6 py-3.5 text-[15px] font-semibold text-white active:opacity-80"
-              style={{ backgroundColor: "var(--primary)" }}
-            >
-              <IoCheckmarkCircle size={20} />
-              {t("providerEdit.save")}
-            </button>
-          )}
+          <button
+            onClick={handleSave}
+            disabled={testing || pulling || !name.trim() || !baseUrl.trim()}
+            className="flex items-center justify-center gap-1 rounded-xl px-6 py-3.5 text-[15px] font-semibold text-white active:opacity-80 disabled:opacity-50"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+            <IoCheckmarkCircle size={20} />
+            {t("providerEdit.save")}
+          </button>
         </div>
 
         {/* ── Models (existing provider) ── */}
