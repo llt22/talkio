@@ -444,7 +444,7 @@ export function SettingsPage({
               <span className="text-foreground flex-1 text-center text-[17px] font-semibold">
                 {page.title}
               </span>
-              <div className="flex w-12 items-center justify-center">
+              <div className="flex min-w-12 items-center justify-end pr-1">
                 {page.headerRight ?? null}
               </div>
             </div>
