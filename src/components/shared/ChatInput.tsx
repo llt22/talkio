@@ -71,10 +71,14 @@ export const ChatInput = memo(function ChatInput({
 }: ChatInputProps) {
   const { t } = useTranslation();
   const getModelById = useProviderStore((s) => s.getModelById);
+  const enterToSend = useSettingsStore((s) => s.settings.enterToSend);
   const basePlaceholder = placeholder ?? t("chat.message");
+  const isMac = navigator.platform.toLowerCase().includes("mac");
+  const sendKey = enterToSend ? "Enter" : isMac ? "⌘Enter" : "Ctrl+Enter";
+  const newLineKey = enterToSend ? "Shift+Enter" : "Enter";
   const resolvedPlaceholder = isMobile
     ? basePlaceholder
-    : `${basePlaceholder}  (Enter · Shift+Enter ${t("chat.newLine")})`;
+    : `${basePlaceholder}  (${sendKey} · ${newLineKey} ${t("chat.newLine")})`;
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
@@ -219,9 +223,18 @@ export const ChatInput = memo(function ChatInput({
           return;
         }
       }
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
+      if (enterToSend) {
+        // Default mode: Enter sends, Shift+Enter is newline
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          handleSend();
+        }
+      } else {
+        // Newline mode: Cmd/Ctrl+Enter sends, Enter is newline
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault();
+          handleSend();
+        }
       }
     },
     [
@@ -232,6 +245,7 @@ export const ChatInput = memo(function ChatInput({
       participantEntries,
       mentionIndex,
       insertMention,
+      enterToSend,
     ],
   );
 
