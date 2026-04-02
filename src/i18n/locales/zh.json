@@ -235,6 +235,7 @@
     "appearance": "外观",
     "chat": "对话",
     "contextCompression": "上下文压缩",
+    "enterToSend": "Enter 键发送",
     "compressionThreshold": "触发阈值",
     "workspaceDir": "工作目录",
     "selectDir": "选择",

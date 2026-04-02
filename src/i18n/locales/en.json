@@ -233,6 +233,7 @@
     "appearance": "Appearance",
     "chat": "Chat",
     "contextCompression": "Context Compression",
+    "enterToSend": "Enter to Send",
     "compressionThreshold": "Threshold",
     "workspaceDir": "Workspace Directory",
     "selectDir": "Select",
