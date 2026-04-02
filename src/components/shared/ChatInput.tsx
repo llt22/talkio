@@ -28,6 +28,8 @@ import {
   type ParsedFile,
 } from "../../lib/file-parser";
 
+const isMac = navigator.userAgent.toLowerCase().includes("mac");
+
 // ── ChatInput — 1:1 port of RN src/components/chat/ChatInput.tsx ──
 
 interface ChatInputProps {
@@ -73,12 +75,13 @@ export const ChatInput = memo(function ChatInput({
   const getModelById = useProviderStore((s) => s.getModelById);
   const enterToSend = useSettingsStore((s) => s.settings.enterToSend);
   const basePlaceholder = placeholder ?? t("chat.message");
-  const isMac = navigator.platform.toLowerCase().includes("mac");
-  const sendKey = enterToSend ? "Enter" : isMac ? "⌘Enter" : "Ctrl+Enter";
-  const newLineKey = enterToSend ? "Shift+Enter" : "Enter";
   const resolvedPlaceholder = isMobile
     ? basePlaceholder
-    : `${basePlaceholder}  (${sendKey} · ${newLineKey} ${t("chat.newLine")})`;
+    : (() => {
+        const sendKey = enterToSend ? "Enter" : isMac ? "⌘Enter" : "Ctrl+Enter";
+        const newLineKey = enterToSend ? "Shift+Enter" : "Enter";
+        return `${basePlaceholder}  (${sendKey} · ${newLineKey} ${t("chat.newLine")})`;
+      })();
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
@@ -224,13 +227,11 @@ export const ChatInput = memo(function ChatInput({
         }
       }
       if (enterToSend) {
-        // Default mode: Enter sends, Shift+Enter is newline
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           handleSend();
         }
       } else {
-        // Newline mode: Cmd/Ctrl+Enter sends, Enter is newline
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
           e.preventDefault();
           handleSend();
