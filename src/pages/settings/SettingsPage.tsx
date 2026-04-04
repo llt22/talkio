@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { isDesktop } from "../../lib/platform";
 import {
   IoChevronForward,
   IoChevronBack,
@@ -308,7 +309,7 @@ export function SettingsPage({
             </div>
           </div>
           {/* Enter key behavior — desktop only */}
-          {window.innerWidth >= 768 && (
+          {isDesktop && (
             <div
               className="flex w-full items-center gap-4 px-4 py-3"
               style={{ borderTop: "0.5px solid var(--border)" }}

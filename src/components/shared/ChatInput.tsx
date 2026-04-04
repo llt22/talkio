@@ -75,13 +75,11 @@ export const ChatInput = memo(function ChatInput({
   const getModelById = useProviderStore((s) => s.getModelById);
   const enterToSend = useSettingsStore((s) => s.settings.enterToSend);
   const basePlaceholder = placeholder ?? t("chat.message");
+  const sendKey = enterToSend ? "Enter" : isMac ? "⌘Enter" : "Ctrl+Enter";
+  const newLineKey = enterToSend ? "Shift+Enter" : "Enter";
   const resolvedPlaceholder = isMobile
     ? basePlaceholder
-    : (() => {
-        const sendKey = enterToSend ? "Enter" : isMac ? "⌘Enter" : "Ctrl+Enter";
-        const newLineKey = enterToSend ? "Shift+Enter" : "Enter";
-        return `${basePlaceholder}  (${sendKey} · ${newLineKey} ${t("chat.newLine")})`;
-      })();
+    : `${basePlaceholder}  (${sendKey} · ${newLineKey} ${t("chat.newLine")})`;
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
