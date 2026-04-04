@@ -249,7 +249,7 @@ export class ApiClient {
     if (request.max_tokens !== undefined) genConfig.maxOutputTokens = request.max_tokens;
     // Map reasoning_effort to Gemini's thinkingConfig
     if ((request as any).reasoning_effort) {
-      const budgetMap: Record<string, number> = { low: 1024, medium: 8192, high: 24576 };
+      const budgetMap: Record<string, number> = { none: 0, minimal: 512, low: 1024, medium: 8192, high: 24576, xhigh: 65536 };
       genConfig.thinkingConfig = {
         thinkingBudget: budgetMap[(request as any).reasoning_effort] ?? 8192,
       };

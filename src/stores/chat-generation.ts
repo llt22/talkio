@@ -206,7 +206,7 @@ export async function generateForParticipant(
     );
 
     const reasoningEffort =
-      identity?.params?.reasoningEffort ||
+      participant.reasoningEffort ||
       (provider.apiFormat === "anthropic-messages"
         ? undefined
         : model.capabilities?.reasoning

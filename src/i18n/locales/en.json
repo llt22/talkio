@@ -289,7 +289,15 @@
     "models": "Models",
     "healthCheck": "Check",
     "healthAllPassed": "All {{count}} models are healthy",
-    "healthResult": "{{passed}} passed, {{failed}} failed (auto-disabled)"
+    "healthResult": "{{passed}} passed, {{failed}} failed (auto-disabled)",
+    "reasoningEffort": "Reasoning",
+    "reasoningEffort_default": "Default",
+    "reasoningEffort_none": "None",
+    "reasoningEffort_minimal": "Minimal",
+    "reasoningEffort_low": "Low",
+    "reasoningEffort_medium": "Medium",
+    "reasoningEffort_high": "High",
+    "reasoningEffort_xhigh": "XHigh"
   },
   "providers": {
     "deleteProvider": "Delete Provider",

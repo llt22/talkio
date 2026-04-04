@@ -32,6 +32,17 @@ export interface ModelCapabilities {
   streaming: boolean;
 }
 
+export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
+export const REASONING_EFFORT_LEVELS: readonly (ReasoningEffort | undefined)[] = [
+  undefined, "none", "minimal", "low", "medium", "high", "xhigh",
+] as const;
+
+export function nextReasoningEffort(current: ReasoningEffort | undefined): ReasoningEffort | undefined {
+  const idx = REASONING_EFFORT_LEVELS.indexOf(current);
+  return REASONING_EFFORT_LEVELS[(idx + 1) % REASONING_EFFORT_LEVELS.length];
+}
+
 export interface Model {
   id: string;
   providerId: string;
@@ -44,11 +55,8 @@ export interface Model {
   enabled: boolean;
 }
 
-export type ReasoningEffort = "none" | "low" | "medium" | "high" | "auto";
-
 export interface IdentityParams {
   temperature: number;
-  reasoningEffort?: ReasoningEffort;
 }
 
 export interface Identity {
@@ -119,6 +127,7 @@ export interface ConversationParticipant {
   id: string;
   modelId: string;
   identityId: string | null;
+  reasoningEffort?: ReasoningEffort;
 }
 
 export type SpeakingOrder = "sequential" | "random" | "parallel";

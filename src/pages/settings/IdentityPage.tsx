@@ -574,6 +574,7 @@ function IdentityForm({
                 />
               </div>
             </div>
+
           </div>
 
           {/* ── Section: Tool Binding ── */}

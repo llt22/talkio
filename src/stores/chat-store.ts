@@ -4,7 +4,7 @@
  * Generation logic extracted to chat-generation.ts.
  */
 import { create } from "zustand";
-import type { Message, Conversation, SpeakingOrder } from "../types";
+import type { Message, Conversation, SpeakingOrder, ReasoningEffort } from "../types";
 import { getConversation } from "../storage/database";
 import { type StreamingState } from "./chat-generation";
 import { dispatchMessageGeneration, runAutoDiscuss } from "./chat-dispatch";
@@ -33,6 +33,7 @@ import {
   updateGroupSystemPrompt,
   updateParticipantIdentity,
   updateParticipantModel,
+  updateParticipantReasoningEffort,
   updateSpeakingOrder,
 } from "./chat-store-actions";
 
@@ -103,6 +104,11 @@ export interface ChatState {
   updateSpeakingOrder: (conversationId: string, order: SpeakingOrder) => Promise<void>;
   updateGroupSystemPrompt: (conversationId: string, prompt: string) => Promise<void>;
   reorderParticipants: (conversationId: string, participantIds: string[]) => Promise<void>;
+  updateParticipantReasoningEffort: (
+    conversationId: string,
+    participantId: string,
+    reasoningEffort: ReasoningEffort | undefined,
+  ) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -279,6 +285,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   reorderParticipants: async (conversationId: string, participantIds: string[]) => {
     await reorderParticipants(conversationId, participantIds);
+  },
+
+  updateParticipantReasoningEffort: async (
+    conversationId: string,
+    participantId: string,
+    reasoningEffort: ReasoningEffort | undefined,
+  ) => {
+    await updateParticipantReasoningEffort(conversationId, participantId, reasoningEffort);
   },
 
   branchFromMessage: async (messageId: string, messages: Message[]) => {

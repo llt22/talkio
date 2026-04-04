@@ -29,6 +29,7 @@ function MobileSortableRow({
   onEditRole,
   onRemove,
   isSequential,
+  onReasoningEffortCycle,
 }: {
   participant: ConversationParticipant;
   index: number;
@@ -38,6 +39,7 @@ function MobileSortableRow({
   onEditRole: () => void;
   onRemove: () => void;
   isSequential: boolean;
+  onReasoningEffortCycle: () => void;
 }) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -82,6 +84,20 @@ function MobileSortableRow({
         )}
       </div>
       <button
+        className="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] active:opacity-60"
+        style={{
+          backgroundColor: p.reasoningEffort
+            ? "color-mix(in srgb, var(--primary) 10%, transparent)"
+            : "var(--muted)",
+          color: p.reasoningEffort ? "var(--primary)" : "var(--muted-foreground)",
+        }}
+        onClick={onReasoningEffortCycle}
+      >
+        {p.reasoningEffort
+          ? t(`providerEdit.reasoningEffort_${p.reasoningEffort}`)
+          : t("providerEdit.reasoningEffort_default")}
+      </button>
+      <button
         className="flex-shrink-0 rounded px-2 py-0.5 text-[11px] active:opacity-60"
         style={{
           backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
@@ -106,6 +122,7 @@ export function MobileDndParticipantList({
   getIdentityById,
   onEditRole,
   onRemove,
+  onReasoningEffortCycle,
 }: {
   participants: ConversationParticipant[];
   conversationId: string;
@@ -114,6 +131,7 @@ export function MobileDndParticipantList({
   getIdentityById: (id: string) => any;
   onEditRole: (participantId: string) => void;
   onRemove: (participantId: string, displayName: string) => void;
+  onReasoningEffortCycle: (participantId: string) => void;
 }) {
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } });
   const touchSensor = useSensor(TouchSensor, {
@@ -151,6 +169,7 @@ export function MobileDndParticipantList({
               onRemove(p.id, m?.displayName ?? p.modelId);
             }}
             isSequential={isSequential}
+            onReasoningEffortCycle={() => onReasoningEffortCycle(p.id)}
           />
         ))}
       </SortableContext>

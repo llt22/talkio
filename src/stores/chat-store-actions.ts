@@ -1,4 +1,4 @@
-import type { Conversation, ConversationParticipant, Message, SpeakingOrder } from "../types";
+import type { Conversation, ConversationParticipant, Message, SpeakingOrder, ReasoningEffort } from "../types";
 import {
   clearMessages as dbClearMessages,
   deleteMessage as dbDeleteMessage,
@@ -132,6 +132,20 @@ export async function updateParticipantModel(
     participants,
     title: model?.displayName ?? conversation.title,
   });
+  notifyDbChange("conversations");
+}
+
+export async function updateParticipantReasoningEffort(
+  conversationId: string,
+  participantId: string,
+  reasoningEffort: ReasoningEffort | undefined,
+): Promise<void> {
+  const conversation = await getConversation(conversationId);
+  if (!conversation) return;
+  const participants = conversation.participants.map((participant) =>
+    participant.id === participantId ? { ...participant, reasoningEffort } : participant,
+  );
+  await updateConversation(conversationId, { participants });
   notifyDbChange("conversations");
 }
 

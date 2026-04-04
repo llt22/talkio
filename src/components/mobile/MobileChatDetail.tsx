@@ -16,13 +16,14 @@ import {
   IoEllipsisHorizontal,
   IoCopyOutline,
 } from "../../icons";
-import { ArrowUpDown, Shuffle, Layers, Pin, AlertTriangle, ChevronUp, ChevronDown, FileDown, X } from "lucide-react";
+import { ArrowUpDown, Shuffle, Layers, Pin, AlertTriangle, ChevronUp, ChevronDown, FileDown, X, Sparkles } from "lucide-react";
 import { ChatView, type ChatViewHandle } from "../shared/ChatView";
 import { MentionTextarea } from "../shared/MentionTextarea";
 import { ModelPicker } from "../shared/ModelPicker";
 import { useChatStore } from "../../stores/chat-store";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
 import type { Identity } from "../../types";
+import { nextReasoningEffort } from "../../types";
 import { MessageStatus } from "../../types";
 import { exportConversationAsMarkdown, exportConversationAsPdf } from "../../services/export";
 import { useConfirm, appAlert } from "../shared/ConfirmDialogProvider";
@@ -52,6 +53,7 @@ export function MobileChatDetail({
     getIdentityById,
     clearConversationMessages,
     updateParticipantIdentity,
+    updateParticipantReasoningEffort,
     removeParticipant,
     isGroup,
     currentParticipant,
@@ -374,9 +376,30 @@ export function MobileChatDetail({
             <span className="text-primary text-[10px] font-medium">{t("chat.compressing")}</span>
           </div>
         )}
+        {currentParticipant && !isGroup && (
+          <button
+            className="z-10 ml-auto flex items-center gap-1 rounded-lg px-2 py-0.5 active:opacity-60"
+            style={{
+              backgroundColor: currentParticipant.reasoningEffort
+                ? "color-mix(in srgb, var(--primary) 10%, transparent)"
+                : "var(--muted)",
+            }}
+            onClick={() => {
+              updateParticipantReasoningEffort(conversationId, currentParticipant.id, nextReasoningEffort(currentParticipant.reasoningEffort));
+            }}
+          >
+            <Sparkles size={11} className={currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"} />
+            <span className={`text-[9px] font-medium ${currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"}`}>
+              {currentParticipant.reasoningEffort
+                ? t(`providerEdit.reasoningEffort_${currentParticipant.reasoningEffort}`)
+                : t("providerEdit.reasoningEffort")}
+            </span>
+          </button>
+        )}
+
         {hasManualSummary && !isCompressing && (
           <div
-            className="z-10 ml-auto flex items-center gap-1 rounded-lg px-2 py-0.5"
+            className="z-10 flex items-center gap-1 rounded-lg px-2 py-0.5"
             style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)" }}
           >
             <svg
@@ -399,7 +422,7 @@ export function MobileChatDetail({
         )}
 
         {/* Right: single ··· more button */}
-        <div className={`${!isCompressing && !hasManualSummary ? "ml-auto" : ""} relative z-10`}>
+        <div className={`${!isCompressing && !hasManualSummary && !(currentParticipant && !isGroup) ? "ml-auto" : ""} relative z-10`}>
           <button className="p-2 active:opacity-60" onClick={() => setShowMoreMenu((v) => !v)}>
             <IoEllipsisHorizontal size={22} color="var(--primary)" />
           </button>
@@ -632,6 +655,11 @@ export function MobileChatDetail({
                 destructive: true,
               });
               if (ok) removeParticipant(conversationId, pid);
+            }}
+            onReasoningEffortCycle={(pid: string) => {
+              const p = conv.participants.find((pp) => pp.id === pid);
+              if (!p) return;
+              updateParticipantReasoningEffort(conversationId, pid, nextReasoningEffort(p.reasoningEffort));
             }}
           />
           <button

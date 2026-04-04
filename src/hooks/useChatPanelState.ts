@@ -21,6 +21,7 @@ export function useChatPanelState(conversationId: string): {
   clearConversationMessages: ChatState["clearConversationMessages"];
   updateParticipantIdentity: ChatState["updateParticipantIdentity"];
   updateParticipantModel: ChatState["updateParticipantModel"];
+  updateParticipantReasoningEffort: ChatState["updateParticipantReasoningEffort"];
   addParticipant: ChatState["addParticipant"];
   addParticipants: ChatState["addParticipants"];
   removeParticipant: ChatState["removeParticipant"];
@@ -65,6 +66,7 @@ export function useChatPanelState(conversationId: string): {
   const clearConversationMessages = useChatStore((s: ChatState) => s.clearConversationMessages);
   const updateParticipantIdentity = useChatStore((s: ChatState) => s.updateParticipantIdentity);
   const updateParticipantModel = useChatStore((s: ChatState) => s.updateParticipantModel);
+  const updateParticipantReasoningEffort = useChatStore((s: ChatState) => s.updateParticipantReasoningEffort);
   const addParticipant = useChatStore((s: ChatState) => s.addParticipant);
   const addParticipants = useChatStore((s: ChatState) => s.addParticipants);
   const removeParticipant = useChatStore((s: ChatState) => s.removeParticipant);
@@ -125,6 +127,7 @@ export function useChatPanelState(conversationId: string): {
     clearConversationMessages,
     updateParticipantIdentity,
     updateParticipantModel,
+    updateParticipantReasoningEffort,
     addParticipant,
     addParticipants,
     removeParticipant,

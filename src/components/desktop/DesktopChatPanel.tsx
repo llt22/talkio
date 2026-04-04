@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   FileDown,
   X,
+  Sparkles,
 } from "lucide-react";
 import {
   DndContext,
@@ -57,7 +58,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import type { ConversationParticipant, Identity } from "../../types";
+import type { ConversationParticipant, Identity, ReasoningEffort } from "../../types";
+import { nextReasoningEffort, REASONING_EFFORT_LEVELS } from "../../types";
 import { MessageStatus } from "../../types";
 import { exportConversationAsMarkdown, exportConversationAsPdf } from "../../services/export";
 import { useConfirm } from "../shared/ConfirmDialogProvider";
@@ -76,6 +78,7 @@ function SortableParticipantRow({
   onEditRole,
   onRemove,
   isSequential,
+  onReasoningEffortCycle,
 }: {
   participant: ConversationParticipant;
   index: number;
@@ -85,6 +88,7 @@ function SortableParticipantRow({
   onEditRole: () => void;
   onRemove: () => void;
   isSequential: boolean;
+  onReasoningEffortCycle: () => void;
 }) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -122,6 +126,22 @@ function SortableParticipantRow({
         )}
       </div>
       <button
+        className="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] transition-opacity hover:opacity-80"
+        style={{
+          backgroundColor: p.reasoningEffort
+            ? "color-mix(in srgb, var(--primary) 10%, transparent)"
+            : "var(--muted)",
+          color: p.reasoningEffort ? "var(--primary)" : "var(--muted-foreground)",
+        }}
+        onClick={onReasoningEffortCycle}
+        title={t("providerEdit.reasoningEffort")}
+      >
+        <Sparkles size={10} className="inline mr-0.5" />
+        {p.reasoningEffort
+          ? t(`providerEdit.reasoningEffort_${p.reasoningEffort}`)
+          : t("providerEdit.reasoningEffort_default")}
+      </button>
+      <button
         className="flex-shrink-0 rounded px-2 py-0.5 text-[11px] transition-opacity hover:opacity-80"
         style={{
           backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
@@ -155,6 +175,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
     getIdentityById,
     clearConversationMessages,
     updateParticipantIdentity,
+    updateParticipantReasoningEffort,
     removeParticipant,
     isGroup,
     currentParticipant,
@@ -447,6 +468,47 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
             <span className="text-primary text-[10px] font-medium">{t("chat.compressed")}</span>
           </div>
         )}
+
+        {/* Reasoning Effort Selector (single chat only) */}
+        {currentParticipant && !isGroup && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-1 rounded-lg px-2 py-1 transition-opacity hover:opacity-80"
+                style={{
+                  backgroundColor: currentParticipant.reasoningEffort
+                    ? "color-mix(in srgb, var(--primary) 10%, transparent)"
+                    : "var(--muted)",
+                }}
+              >
+                <Sparkles size={11} className={currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"} />
+                <span className={`text-[10px] font-medium ${currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"}`}>
+                  {currentParticipant.reasoningEffort
+                    ? t(`providerEdit.reasoningEffort_${currentParticipant.reasoningEffort}`)
+                    : t("providerEdit.reasoningEffort")}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[120px]">
+              {REASONING_EFFORT_LEVELS.map((level) => (
+                <DropdownMenuItem
+                  key={level ?? "__default__"}
+                  onClick={() => updateParticipantReasoningEffort(conversationId, currentParticipant.id, level)}
+                >
+                  <span className="flex-1">
+                    {level
+                      ? t(`providerEdit.reasoningEffort_${level}`)
+                      : t("providerEdit.reasoningEffort_default")}
+                  </span>
+                  {currentParticipant.reasoningEffort === level && (
+                    <span className="text-primary text-xs font-semibold">✓</span>
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         {conv?.workspaceDir && (
           <button
             className="max-w-[260px] rounded-lg px-2.5 py-1 transition-opacity hover:opacity-80"
@@ -650,6 +712,9 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
                   }}
                   onRemove={() => removeParticipant(conversationId, p.id)}
                   isSequential={(conv.speakingOrder ?? "sequential") === "sequential"}
+                  onReasoningEffortCycle={() => {
+                    updateParticipantReasoningEffort(conversationId, p.id, nextReasoningEffort(p.reasoningEffort));
+                  }}
                 />
               ))}
             </SortableContext>
