@@ -12,6 +12,7 @@ import {
 } from "../../icons";
 import {
   ArrowLeftRight,
+  ArrowUp,
   Wrench,
   Mic,
   Minimize2,
@@ -306,6 +307,41 @@ export function SettingsPage({
               />
             </div>
           </div>
+          {/* Enter key behavior — desktop only */}
+          {window.innerWidth >= 768 && (
+            <div
+              className="flex w-full items-center gap-4 px-4 py-3"
+              style={{ borderTop: "0.5px solid var(--border)" }}
+            >
+              <div
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: "rgba(99,102,241,0.1)" }}
+              >
+                <ArrowUp size={18} color="#6366f1" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-foreground text-[16px] font-medium">
+                  {t("settings.enterToSend")}
+                </span>
+              </div>
+              <div
+                onClick={() => updateSettings({ enterToSend: !settings.enterToSend })}
+                className="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors"
+                style={{
+                  backgroundColor: settings.enterToSend ? "var(--primary)" : "var(--muted)",
+                }}
+              >
+                <span
+                  className="inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform"
+                  style={{
+                    transform: settings.enterToSend
+                      ? "translateX(20px) translateY(2px)"
+                      : "translateX(2px) translateY(2px)",
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Group 3: Appearance ── */}

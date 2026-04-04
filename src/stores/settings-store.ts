@@ -17,6 +17,8 @@ export interface AppSettings {
   contextCompressionEnabled: boolean;
   /** Token threshold to trigger compression (default: 8000) */
   contextCompressionThreshold: number;
+  /** Enter key behavior on desktop: true = Enter sends (default), false = Enter inserts newline */
+  enterToSend: boolean;
 }
 
 interface SettingsState {
@@ -35,6 +37,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   sttModel: "whisper-large-v3-turbo",
   contextCompressionEnabled: false,
   contextCompressionThreshold: 16000,
+  enterToSend: true,
 };
 
 const SETTINGS_KEY = "settings";
