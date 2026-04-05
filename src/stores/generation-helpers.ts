@@ -20,18 +20,28 @@ export function findFirst(str: string, ...tags: string[]): { idx: number; len: n
 
 // ── Stream flusher ──
 
-/** Create rAF-throttled streaming state updater (DRYs the duplicated pattern) */
+/**
+ * Create throttled streaming state updater (DRYs the duplicated pattern).
+ * Uses a 100 ms interval instead of rAF (~16 ms) to reduce DOM churn during
+ * fast SSE streams — mitigates WKWebView GPU-compositing black-screen on
+ * macOS 12 / Apple Silicon and generally improves smoothness on lower-end HW.
+ */
+const STREAM_FLUSH_INTERVAL_MS = 100;
+
 export function createStreamFlusher(
   ctx: GenerationContext,
   messageId: string,
   getContent: () => string,
   getReasoning: () => string,
 ) {
-  let rafPending = false;
+  let timerId: ReturnType<typeof setTimeout> | null = null;
   let dirty = false;
 
   function flush() {
-    rafPending = false;
+    if (timerId !== null) {
+      clearTimeout(timerId);
+      timerId = null;
+    }
     if (!dirty) return;
     dirty = false;
     const sm: StreamingState = { cid: ctx.cid, messageId, content: getContent(), reasoning: getReasoning() };
@@ -44,9 +54,8 @@ export function createStreamFlusher(
 
   function schedule() {
     dirty = true;
-    if (!rafPending) {
-      rafPending = true;
-      requestAnimationFrame(flush);
+    if (timerId === null) {
+      timerId = setTimeout(flush, STREAM_FLUSH_INTERVAL_MS);
     }
   }
 
