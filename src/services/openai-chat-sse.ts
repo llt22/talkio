@@ -11,6 +11,9 @@ export async function consumeOpenAIChatCompletionsSse(
   const decoder = new TextDecoder();
   let buffer = "";
   let usage: SseUsage | null = null;
+  let receivedData = false;
+  let receivedDone = false;
+  let receivedFinishReason = false;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -24,7 +27,10 @@ export async function consumeOpenAIChatCompletionsSse(
       const trimmed = line.trim();
       if (!trimmed || !trimmed.startsWith("data: ")) continue;
       const data = trimmed.slice(6);
-      if (data === "[DONE]") continue;
+      if (data === "[DONE]") {
+        receivedDone = true;
+        continue;
+      }
 
       let parsed: any;
       try {
@@ -38,10 +44,18 @@ export async function consumeOpenAIChatCompletionsSse(
         throw new Error(errMsg);
       }
       if (parsed.usage) usage = parsed.usage;
-      const delta = parsed.choices?.[0]?.delta;
+      const choice = parsed.choices?.[0];
+      if (choice?.finish_reason) receivedFinishReason = true;
+      const delta = choice?.delta;
       if (!delta) continue;
+      receivedData = true;
       onDelta(delta);
     }
+  }
+
+  // Stream interrupted: received data but no completion signal
+  if (receivedData && !receivedDone && !receivedFinishReason && !usage) {
+    throw new Error("Stream interrupted: connection closed unexpectedly before completion");
   }
 
   return usage;

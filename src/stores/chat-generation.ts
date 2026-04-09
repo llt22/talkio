@@ -258,7 +258,7 @@ export async function generateForParticipant(
       ({ usage: sseUsage } = await streamOnce());
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const retryable = /empty response|overloaded|timeout|temporarily|503|502|network/i.test(
+      const retryable = /empty response|overloaded|timeout|temporarily|503|502|network|interrupted/i.test(
         message,
       );
       if (!retryable || ctx.abortController.signal.aborted) throw error;
@@ -345,8 +345,10 @@ export async function generateForParticipant(
     notifyDbChange("conversations");
     return lastContent;
   } catch (err: any) {
+    // Save streaming content before cleanup (needed for AbortError/PAUSED)
+    const sm = ctx.streamingMessages.get(assistantMsgId);
+
     if (err.name === "AbortError") {
-      const sm = ctx.streamingMessages.get(assistantMsgId);
       if (sm) {
         await updateMessage(assistantMsgId, {
           content: sm.content,

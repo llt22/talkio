@@ -24,6 +24,8 @@ export async function consumeAnthropicMessagesSse(
 
   // Track which indices are tool_use blocks
   const toolCallIndices = new Set<number>();
+  let receivedData = false;
+  let receivedMessageStop = false;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -90,6 +92,7 @@ export async function consumeAnthropicMessagesSse(
         case "content_block_delta": {
           const delta = parsed.delta;
           const index = parsed.index ?? 0;
+          receivedData = true;
 
           if (delta?.type === "text_delta" && delta.text) {
             onDelta({ content: delta.text });
@@ -125,10 +128,16 @@ export async function consumeAnthropicMessagesSse(
 
         case "message_stop": {
           // Stream complete
+          receivedMessageStop = true;
           break;
         }
       }
     }
+  }
+
+  // Stream interrupted: received data but no message_stop
+  if (receivedData && !receivedMessageStop) {
+    throw new Error("Stream interrupted: connection closed unexpectedly before completion");
   }
 
   if (inputTokens > 0 || outputTokens > 0) {

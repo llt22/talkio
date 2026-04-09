@@ -31,6 +31,8 @@ export async function consumeOpenAIResponsesSse(
   const decoder = new TextDecoder();
   let buffer = "";
   let usage: SseUsage | null = null;
+  let receivedData = false;
+  let receivedCompleted = false;
 
   // Track function call items by output_index for streaming arguments
   const functionCalls = new Map<number, { id: string; name: string; arguments: string }>();
@@ -79,6 +81,7 @@ export async function consumeOpenAIResponsesSse(
         case "response.output_text.delta": {
           const delta = parsed.delta;
           if (typeof delta === "string" && delta) {
+            receivedData = true;
             onDelta({ content: delta });
           }
           break;
@@ -139,6 +142,7 @@ export async function consumeOpenAIResponsesSse(
         }
 
         case "response.completed": {
+          receivedCompleted = true;
           if (parsed.response?.usage) {
             const u = parsed.response.usage;
             usage = {
@@ -157,6 +161,11 @@ export async function consumeOpenAIResponsesSse(
 
       currentEvent = "";
     }
+  }
+
+  // Stream interrupted: received data but no response.completed
+  if (receivedData && !receivedCompleted) {
+    throw new Error("Stream interrupted: connection closed unexpectedly before completion");
   }
 
   return usage;
