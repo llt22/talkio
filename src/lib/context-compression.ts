@@ -108,10 +108,20 @@ function splitMessages(
     else convMsgs.push(m);
   }
   const keepCount = Math.min(keepRecentCount, convMsgs.length);
+  let cutIdx = convMsgs.length - keepCount;
+  // A `tool` message must be preceded by an assistant `tool_calls`. If the
+  // cut lands such that the kept slice starts with one or more tool messages,
+  // their assistant calls are in the dropped portion — pull the cut forward
+  // so we don't surface an orphan tool result. (Defensive: current callers
+  // pass apiMessages from buildApiMessagesForParticipant, which never emits
+  // tool-role messages, but keep this consistent with injectSummary.)
+  while (cutIdx < convMsgs.length && convMsgs[cutIdx].role === "tool") {
+    cutIdx++;
+  }
   return {
     systemMsgs,
-    toCompress: convMsgs.slice(0, convMsgs.length - keepCount),
-    toKeep: convMsgs.slice(convMsgs.length - keepCount),
+    toCompress: convMsgs.slice(0, cutIdx),
+    toKeep: convMsgs.slice(cutIdx),
   };
 }
 

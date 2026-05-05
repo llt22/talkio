@@ -156,7 +156,15 @@ export function injectSummary(
   const systemMsgs = apiMessages.filter((m) => m.role === "system");
   const convMsgs = apiMessages.filter((m) => m.role !== "system");
   const keepCount = Math.min(6, convMsgs.length);
-  const recent = convMsgs.slice(convMsgs.length - keepCount);
+  let startIdx = convMsgs.length - keepCount;
+  // A tool message must be preceded by an assistant tool_call. If the cut
+  // lands such that the kept slice starts with one or more tool messages,
+  // their assistant calls are in the dropped portion — drop the orphans
+  // too so we don't send a tool-result the model has no context for.
+  while (startIdx < convMsgs.length && convMsgs[startIdx].role === "tool") {
+    startIdx++;
+  }
+  const recent = convMsgs.slice(startIdx);
   return [...systemMsgs, { role: "user", content: summary }, ...recent];
 }
 

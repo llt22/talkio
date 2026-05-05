@@ -209,6 +209,9 @@ export async function removeParticipant(
   const participants = conversation.participants.filter(
     (participant) => participant.id !== participantId,
   );
+  // Refuse to remove the last participant — would leave the conversation
+  // unusable (no target for sendMessage, autoTitle returns empty).
+  if (participants.length === 0) return;
   const isAutoTitle = conversation.title === autoTitle(conversation.participants);
   const updates: Partial<Conversation> = {
     participants,

@@ -30,12 +30,14 @@ function createInMemoryDb() {
     message_blocks: new Map(),
   };
 
-  function parseWhere(sql: string, params: any[]): { table: string; conditions: [string, any][] } {
+  type Condition = { col: string; val: any; op: "eq" | "like" };
+
+  function parseWhere(sql: string, params: any[]): { table: string; conditions: Condition[] } {
     const tableMatch =
       sql.match(/FROM\s+(\w+)/i) || sql.match(/(?:INTO|UPDATE|DELETE FROM)\s+(\w+)/i);
     const table = tableMatch?.[1] ?? "";
     const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER|\s+LIMIT|\s*$)/is);
-    const conditions: [string, any][] = [];
+    const conditions: Condition[] = [];
     if (whereMatch) {
       const parts = whereMatch[1].split(/\s+AND\s+/i);
       let pIdx = 0;
@@ -43,11 +45,17 @@ function createInMemoryDb() {
       const beforeWhere = sql.slice(0, sql.search(/WHERE/i));
       pIdx = (beforeWhere.match(/\$\d+/g) ?? []).length;
       for (const part of parts) {
-        const m = part.match(/(\w+)\s*(?:=|IS)\s*\$\d+/i);
-        if (m) conditions.push([m[1], params[pIdx]]);
-        else {
-          const isNull = part.match(/(\w+)\s+IS\s+NULL/i);
-          if (isNull) conditions.push([isNull[1], null]);
+        const eq = part.match(/(\w+)\s*(?:=|IS)\s*\$\d+/i);
+        if (eq) {
+          conditions.push({ col: eq[1], val: params[pIdx], op: "eq" });
+        } else {
+          const like = part.match(/(\w+)\s+LIKE\s+\$\d+/i);
+          if (like) {
+            conditions.push({ col: like[1], val: params[pIdx], op: "like" });
+          } else {
+            const isNull = part.match(/(\w+)\s+IS\s+NULL/i);
+            if (isNull) conditions.push({ col: isNull[1], val: null, op: "eq" });
+          }
         }
         pIdx++;
       }
@@ -55,8 +63,21 @@ function createInMemoryDb() {
     return { table, conditions };
   }
 
-  function matchRow(row: Record<string, any>, conditions: [string, any][]): boolean {
-    return conditions.every(([col, val]) => {
+  function likePatternToRegex(pattern: string): RegExp {
+    // Escape regex specials, then translate SQL LIKE wildcards.
+    // Use the `s` (dotall) flag so `%` (→ `.*`) and `_` (→ `.`) match newlines,
+    // which matches SQLite's LIKE semantics (`%` and `_` span any character).
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const translated = escaped.replace(/%/g, ".*").replace(/_/g, ".");
+    return new RegExp(`^${translated}$`, "is");
+  }
+
+  function matchRow(row: Record<string, any>, conditions: Condition[]): boolean {
+    return conditions.every(({ col, val, op }) => {
+      if (op === "like") {
+        if (val === null || val === undefined) return false;
+        return likePatternToRegex(String(val)).test(String(row[col] ?? ""));
+      }
       if (val === null || val === undefined) return row[col] === null || row[col] === undefined;
       return String(row[col]) === String(val);
     });

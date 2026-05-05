@@ -81,51 +81,6 @@ export async function generateForParticipant(
     ? new Date(Date.now() + index).toISOString()
     : new Date(Date.parse(ctx.userMsg.createdAt) + 1 + index).toISOString();
 
-  // Unsupported provider type — create error message
-  if (provider.type !== "openai") {
-    const assistantMsgId = generateId();
-    const assistantMsg: Message = {
-      id: assistantMsgId,
-      conversationId: ctx.cid,
-      role: "assistant",
-      senderModelId: model.id,
-      senderName: getParticipantLabel(participant, ctx.conversation.participants),
-      identityId: participant.identityId,
-      participantId: participant.id,
-      content: "",
-      images: [],
-      generatedImages: [],
-      reasoningContent: null,
-      reasoningDuration: null,
-      toolCalls: [],
-      toolResults: [],
-      branchId: ctx.activeBranchId,
-      parentMessageId: null,
-      isStreaming: false,
-      status: MessageStatus.ERROR,
-      errorMessage: [
-        `This provider type is not supported yet: ${provider.type}.`,
-        "",
-        "Talkio currently supports OpenAI-compatible APIs only:",
-        "- GET /models",
-        "- POST /chat/completions (SSE streaming)",
-        "",
-        "How to fix:",
-        "- Use an OpenAI-compatible gateway such as OpenRouter or LiteLLM.",
-        "  Example baseUrl:",
-        "  - https://openrouter.ai/api/v1",
-        "  - http://<your-litellm-host>:4000/v1",
-        "",
-        "See: docs/provider-unified-protocol.md",
-      ].join("\n"),
-      tokenUsage: null,
-      createdAt: msgCreatedAt,
-    };
-    await insertMessage(assistantMsg);
-    notifyDbChange("messages", ctx.cid);
-    return "";
-  }
-
   // Resolve identity and tools
   const identity = participant.identityId
     ? useIdentityStore.getState().getIdentityById(participant.identityId)

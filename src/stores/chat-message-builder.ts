@@ -255,9 +255,20 @@ export function buildApiMessagesForParticipant(
         const isSelf = m.participantId != null && m.participantId === participant.id;
         if (!isSelf) {
           role = "user";
-          // Strip <think>/<thinking> blocks so other models don't see reasoning
+          // Strip <think>/<thinking> blocks so other models don't see reasoning.
+          // Loop with negative-lookahead to handle nested tags correctly:
+          // each pass removes only innermost blocks, then re-runs until stable.
           if (typeof content === "string") {
-            content = content.replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>\s*/g, "").trim();
+            let prev: string;
+            let stripped = content;
+            do {
+              prev = stripped;
+              stripped = stripped.replace(
+                /<think(?:ing)?>(?:(?!<think(?:ing)?>)[\s\S])*?<\/think(?:ing)?>\s*/g,
+                "",
+              );
+            } while (stripped !== prev);
+            content = stripped.trim();
           }
           const prefix = `[${m.senderName} said]: `;
           if (typeof content === "string") content = prefix + content;

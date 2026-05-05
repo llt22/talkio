@@ -44,7 +44,7 @@ export async function preComputeCompression(
   const providerStore = useProviderStore.getState();
   const firstModel = providerStore.getModelById(targets[0].modelId);
   const firstProvider = firstModel ? providerStore.getProviderById(firstModel.providerId) : null;
-  if (!firstModel || !firstProvider || firstProvider.type !== "openai") return null;
+  if (!firstModel || !firstProvider) return null;
 
   const allMsgs = await getRecentMessages(cid, activeBranchId, MAX_HISTORY);
   const filtered = allMsgs.filter(
@@ -261,6 +261,10 @@ export async function runAutoDiscuss(args: {
     await new Promise((resolve) => setTimeout(resolve, 300));
     if (args.autoDiscussRemaining() <= 0) return;
   }
+
+  // Re-check after exiting the wait loop: stopAutoDiscuss may have fired
+  // during the final setTimeout, after the last in-loop check.
+  if (args.autoDiscussRemaining() <= 0) return;
 
   const continuePrompt = i18n.t("chat.continue", { defaultValue: "Continue" });
 

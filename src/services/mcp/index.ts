@@ -4,6 +4,21 @@ import { mcpConnectionManager } from "./connection-manager";
 
 let refreshPromise: Promise<void> | null = null;
 let refreshGeneration = 0;
+let lastRefreshAt = 0;
+let lastRefreshSignature = "";
+// Skip a refresh if the last successful one finished within this window
+// AND the enabled-servers signature hasn't changed. Manual refreshes
+// (settings page, server toggle) should pass `{ force: true }` to bypass.
+const REFRESH_TTL_MS = 60_000;
+
+function buildServersSignature(): string {
+  const servers = useMcpStore.getState().servers;
+  return servers
+    .filter((s) => s.enabled)
+    .map((s) => `${s.id}:${s.type}:${s.url ?? ""}:${s.command ?? ""}:${(s.args ?? []).join(",")}`)
+    .sort()
+    .join("|");
+}
 
 function toSharedServer(server: McpServerConfig): McpServer {
   return {
@@ -51,8 +66,19 @@ export function getMcpToolDefsForIdentity(identity?: Identity | null) {
   }));
 }
 
-export async function refreshMcpConnections(): Promise<void> {
+export async function refreshMcpConnections(opts?: { force?: boolean }): Promise<void> {
   if (refreshPromise) return refreshPromise;
+  // TTL short-circuit: if a refresh succeeded recently AND the set of enabled
+  // servers (and their connection params) is unchanged, skip the round-trip.
+  const signature = buildServersSignature();
+  if (
+    !opts?.force &&
+    lastRefreshAt > 0 &&
+    Date.now() - lastRefreshAt < REFRESH_TTL_MS &&
+    signature === lastRefreshSignature
+  ) {
+    return;
+  }
   const generation = ++refreshGeneration;
   refreshPromise = (async () => {
     const store = useMcpStore.getState();
@@ -92,6 +118,8 @@ export async function refreshMcpConnections(): Promise<void> {
         }
       }),
     );
+    lastRefreshAt = Date.now();
+    lastRefreshSignature = signature;
   })().finally(() => {
     refreshPromise = null;
   });
