@@ -98,12 +98,34 @@ describe("GeminiAdapter", () => {
     const body = JSON.parse((mockAppFetch.mock.calls[0][1] as RequestInit).body as string);
     expect(body.contents[1]).toEqual({
       role: "model",
-      parts: [{ functionCall: { name: "get_weather", args: { city: "NYC" } } }],
+      parts: [{ functionCall: { id: "call_1", name: "get_weather", args: { city: "NYC" } } }],
     });
     expect(body.contents[2]).toEqual({
-      role: "function",
-      parts: [{ functionResponse: { name: "call_1", response: { content: "Sunny" } } }],
+      role: "user",
+      parts: [
+        {
+          functionResponse: {
+            id: "call_1",
+            name: "get_weather",
+            response: { content: "Sunny" },
+          },
+        },
+      ],
     });
+  });
+
+  it("rejects orphaned tool results instead of emitting an invalid Gemini request", async () => {
+    mockAppFetch.mockResolvedValue(sseResponse(["data: [DONE]\n\n"]));
+    const adapter = new GeminiAdapter();
+
+    await expect(
+      adapter.streamChat(
+        makeParams({
+          messages: [{ role: "tool", tool_call_id: "missing", content: "result" }],
+        }),
+      ),
+    ).rejects.toThrow("Missing Gemini function name");
+    expect(mockAppFetch).not.toHaveBeenCalled();
   });
 
   it("maps toolDefs to functionDeclarations", async () => {

@@ -5,7 +5,13 @@ import { basicRendererPlugin } from "@stackflow/plugin-renderer-basic";
 import { basicUIPlugin } from "@stackflow/plugin-basic-ui";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import "@stackflow/plugin-basic-ui/index.css";
-import { IoAdd, IoTrashOutline, IoChevronForward, IoAddCircleOutline, IoRefreshOutline } from "../../icons";
+import {
+  IoAdd,
+  IoTrashOutline,
+  IoChevronForward,
+  IoAddCircleOutline,
+  IoRefreshOutline,
+} from "../../icons";
 import { toast } from "sonner";
 import { useChatStore } from "../../stores/chat-store";
 import { useProviderStore } from "../../stores/provider-store";
@@ -240,12 +246,12 @@ const ProvidersList: ActivityComponentType = () => {
     let failed = 0;
     await Promise.all(
       providers.map(async (p: { id: string }) => {
-        updateProvider(p.id, { status: "pending" });
+        await updateProvider(p.id, { status: "pending" });
         try {
           await fetchModels(p.id);
           success++;
         } catch {
-          updateProvider(p.id, { status: "error" });
+          await updateProvider(p.id, { status: "error" });
           failed++;
         }
       }),
@@ -410,7 +416,7 @@ const ProviderEdit: ActivityComponentType<{ editId?: string }> = ({ params }) =>
                     destructive: true,
                   });
                   if (ok) {
-                    deleteProvider(params.editId!);
+                    await deleteProvider(params.editId!);
                     pop();
                   }
                 }}

@@ -4,7 +4,13 @@
  * Uses web APIs (navigator.clipboard) instead of expo-* modules.
  */
 
-import { readWorkspaceFile, listWorkspaceDir, searchWorkspaceFiles, editWorkspaceFile, isBinaryPath } from "./workspace";
+import {
+  readWorkspaceFile,
+  listWorkspaceDir,
+  searchWorkspaceFiles,
+  editWorkspaceFile,
+  isBinaryPath,
+} from "./workspace";
 import { gitExecute, isGitWriteCommand } from "./git-tools";
 import { appConfirm } from "../components/shared/ConfirmDialogProvider";
 import { isDesktop } from "../lib/platform";
@@ -178,9 +184,7 @@ async function handleGitLog(
   if (typeof ws !== "string") return ws;
   const count = typeof args.count === "number" ? Math.min(args.count, 50) : 10;
   try {
-    const result = await gitExecute(ws, "log", [
-      `--oneline`, `-n`, `${count}`, `--no-color`,
-    ]);
+    const result = await gitExecute(ws, "log", [`--oneline`, `-n`, `${count}`, `--no-color`]);
     return { success: result.success, content: result.stdout || result.stderr };
   } catch (err) {
     return failResult(err instanceof Error ? err.message : "git log failed");
@@ -266,7 +270,8 @@ export const BUILT_IN_TOOLS: BuiltInToolDef[] = [
       properties: {
         path: {
           type: "string",
-          description: "Relative directory path within the workspace (e.g. 'src/components'). Omit or leave empty for workspace root.",
+          description:
+            "Relative directory path within the workspace (e.g. 'src/components'). Omit or leave empty for workspace root.",
         },
       },
     },
@@ -356,8 +361,7 @@ export const BUILT_IN_TOOLS: BuiltInToolDef[] = [
   },
   {
     name: "git_log",
-    description:
-      "Show recent git commit history (oneline format). Default 10 commits, max 50.",
+    description: "Show recent git commit history (oneline format). Default 10 commits, max 50.",
     parameters: {
       type: "object",
       properties: {
@@ -423,14 +427,14 @@ export async function executeBuiltInTool(
  * Get tool definitions formatted for the OpenAI API tools parameter.
  */
 export function getBuiltInToolDefs(context?: ToolContext) {
-  return BUILT_IN_TOOLS
-    .filter((t) => (!t.requiresWorkspace || !!context?.workspaceDir) && (!t.desktopOnly || isDesktop))
-    .map((t) => ({
-      type: "function" as const,
-      function: {
-        name: t.name,
-        description: t.description,
-        parameters: t.parameters,
-      },
-    }));
+  return BUILT_IN_TOOLS.filter(
+    (t) => (!t.requiresWorkspace || !!context?.workspaceDir) && (!t.desktopOnly || isDesktop),
+  ).map((t) => ({
+    type: "function" as const,
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.parameters,
+    },
+  }));
 }

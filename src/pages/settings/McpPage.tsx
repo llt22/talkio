@@ -219,7 +219,9 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
                       className="flex items-center gap-4 px-4 py-3"
                       style={{
                         borderBottom:
-                          idx < visibleBuiltInTools.length - 1 ? "0.5px solid var(--border)" : "none",
+                          idx < visibleBuiltInTools.length - 1
+                            ? "0.5px solid var(--border)"
+                            : "none",
                       }}
                     >
                       <div className="min-w-0 flex-1">

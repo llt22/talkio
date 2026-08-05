@@ -5,10 +5,15 @@
 import { MessageStatus } from "../types";
 import { updateMessage } from "../storage/database";
 import { notifyDbChange } from "../hooks/useDatabase";
-import { executeBuiltInTool, type ToolContext } from "../services/built-in-tools";
+import {
+  executeBuiltInTool,
+  getBuiltInToolDefs,
+  type ToolContext,
+} from "../services/built-in-tools";
 import { executeMcpToolByName } from "../services/mcp";
 import { toolApproval } from "../services/tool-approval";
 import type { ProviderAdapter } from "../services/provider-adapters";
+import { NormalModelRuntime } from "../services/runtime/model-runtime";
 import type { GenerationContext } from "./chat-generation";
 import { createStreamFlusher, parseToolArgs, type ContentAccumulator } from "./generation-helpers";
 
@@ -22,14 +27,32 @@ async function executeOneTool(
   identity: any,
   allowedBuiltInToolNames: Set<string> | null,
   allowedServerIds: string[] | undefined,
-  toolContext?: ToolContext,
+  toolContext: ToolContext | undefined,
+  approvalContext: {
+    conversationId: string;
+    participantName: string;
+    modelName: string;
+    availableTools: Map<string, string | undefined>;
+  },
 ): Promise<{ toolCallId?: string; content: string }> {
-  // User-in-the-loop gate: ask mode waits for approval before any tool runs.
-  // Rejected tools report back to the model so it can adapt.
-  const approved = await toolApproval.request(name, args);
-  if (!approved) {
-    return { content: `Tool call rejected by user: ${name}` };
-  }
+  const description = approvalContext.availableTools.get(name);
+  if (!approvalContext.availableTools.has(name)) return { content: `Tool not found: ${name}` };
+
+  const risk = /^(read_|get_|list_|search_|git_status|git_diff|git_log)/.test(name)
+    ? "read"
+    : /^(edit_|write_|delete_|apply_|git_)/.test(name)
+      ? "write"
+      : "network";
+  const approved = await toolApproval.request({
+    toolName: name,
+    description,
+    args,
+    conversationId: approvalContext.conversationId,
+    participantName: approvalContext.participantName,
+    modelName: approvalContext.modelName,
+    risk,
+  });
+  if (!approved) return { content: `Tool call rejected by user: ${name}` };
 
   const builtInGloballyEnabled = builtInEnabledByName[name] !== false;
   const builtInEnabledForIdentity =
@@ -48,7 +71,6 @@ async function executeOneTool(
       content: `Error: ${error instanceof Error ? error.message : "MCP tool execution failed"}`,
     };
   }
-
   return { content: `Tool not found: ${name}` };
 }
 
@@ -71,7 +93,26 @@ export async function runToolCallLoop(
   tokenUsage: { inputTokens: number; outputTokens: number } | null,
   toolContext?: ToolContext,
 ): Promise<{ content: string; tokenUsage: { inputTokens: number; outputTokens: number } | null }> {
-  // Save initial tool calls
+  const availableTools = new Map<string, string | undefined>();
+  for (const definition of [...getBuiltInToolDefs(toolContext), ...toolDefs]) {
+    const tool = "function" in definition ? definition.function : definition;
+    if (typeof tool?.name === "string") {
+      availableTools.set(
+        tool.name,
+        typeof tool.description === "string" ? tool.description : undefined,
+      );
+    }
+  }
+  const participant = ctx.conversation.participants.find(
+    (candidate) => candidate.modelId === modelId,
+  );
+  const approvalContext = {
+    conversationId: ctx.cid,
+    participantName: participant?.nickname ?? modelId,
+    modelName: modelId,
+    availableTools,
+  };
+
   await updateMessage(assistantMsgId, {
     content: acc.fullContent,
     reasoningContent: fullReasoning || null,
@@ -80,30 +121,37 @@ export async function runToolCallLoop(
   });
   notifyDbChange("messages", ctx.cid);
 
-  // Execute initial tool calls
-  const toolResults: { toolCallId: string; content: string }[] = [];
-  for (const tc of acc.pendingToolCalls) {
-    const result = await executeOneTool(
-      tc.name,
-      parseToolArgs(tc.arguments),
-      builtInEnabledByName,
-      identity,
-      allowedBuiltInToolNames,
-      allowedServerIds,
-      toolContext,
-    );
-    toolResults.push({ toolCallId: tc.id, content: result.content });
-  }
-  await updateMessage(assistantMsgId, { toolResults });
-  notifyDbChange("messages", ctx.cid);
-
+  const allToolCalls = [...acc.pendingToolCalls];
+  const allToolResults: { toolCallId: string; content: string }[] = [];
   let currentToolCalls = acc.pendingToolCalls;
-  let currentToolResults = toolResults;
   let accumulatedContent = acc.fullContent;
   let currentTokenUsage = tokenUsage;
+  const toolMessages = [...apiMessages];
+  const runtime = new NormalModelRuntime(() => adapter);
 
-  // Nothing to continue from — no follow-up stream needed. Callers normally
-  // filter empty pendingToolCalls before invoking; this guards the contract.
+  const executeCalls = async (calls: typeof currentToolCalls) => {
+    const results: { toolCallId: string; content: string }[] = [];
+    for (const call of calls) {
+      const result = await executeOneTool(
+        call.name,
+        parseToolArgs(call.arguments),
+        builtInEnabledByName,
+        identity,
+        allowedBuiltInToolNames,
+        allowedServerIds,
+        toolContext,
+        approvalContext,
+      );
+      results.push({ toolCallId: call.id, content: result.content });
+    }
+    return results;
+  };
+
+  let currentToolResults = await executeCalls(currentToolCalls);
+  allToolResults.push(...currentToolResults);
+  await updateMessage(assistantMsgId, { toolResults: allToolResults });
+  notifyDbChange("messages", ctx.cid);
+
   if (currentToolCalls.length === 0) {
     await updateMessage(assistantMsgId, {
       content: accumulatedContent,
@@ -115,25 +163,23 @@ export async function runToolCallLoop(
   }
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const toolMessages = [
-      ...apiMessages,
+    toolMessages.push(
       {
         role: "assistant" as const,
         content: accumulatedContent || null,
-        tool_calls: currentToolCalls.map((tc) => ({
-          id: tc.id,
+        tool_calls: currentToolCalls.map((call) => ({
+          id: call.id,
           type: "function" as const,
-          function: { name: tc.name, arguments: tc.arguments },
+          function: { name: call.name, arguments: call.arguments },
         })),
       },
-      ...currentToolResults.map((tr) => ({
+      ...currentToolResults.map((result) => ({
         role: "tool" as const,
-        tool_call_id: tr.toolCallId,
-        content: tr.content,
+        tool_call_id: result.toolCallId,
+        content: result.content,
       })),
-    ];
+    );
 
-    // Stream follow-up
     ctx.streamingMessages.set(assistantMsgId, {
       cid: ctx.cid,
       messageId: assistantMsgId,
@@ -141,20 +187,23 @@ export async function runToolCallLoop(
       reasoning: fullReasoning,
     });
     if (ctx.cid === ctx.getCurrentConversationId()) {
-      const all = Array.from(ctx.streamingMessages.values()).filter((s) => s.cid === ctx.cid);
+      const all = Array.from(ctx.streamingMessages.values()).filter(
+        (state) => state.cid === ctx.cid,
+      );
       ctx.setStoreState({ streamingMessages: all });
     }
 
     let toolContent = accumulatedContent;
     const newToolCalls: { id: string; name: string; arguments: string }[] = [];
+    const toolCallIndexById = new Map<string, number>();
     const flusher = createStreamFlusher(
       ctx,
       assistantMsgId,
       () => toolContent,
       () => fullReasoning,
     );
-
-    const { usage: sseUsage } = await adapter.streamChat({
+    for await (const event of runtime.run({
+      runId: `${assistantMsgId}:tool:${round}`,
       baseUrl,
       headers,
       modelId,
@@ -163,72 +212,41 @@ export async function runToolCallLoop(
       reasoningEffort,
       toolDefs,
       signal: ctx.abortController.signal,
-      onDelta: (delta) => {
-        if (delta?.content) {
-          toolContent += delta.content;
-          flusher.schedule();
+    })) {
+      if (event.type === "text-delta") {
+        toolContent += event.text;
+        flusher.schedule();
+      } else if (event.type === "tool-call-started") {
+        toolCallIndexById.set(event.callId, newToolCalls.length);
+        newToolCalls.push({ id: event.callId, name: event.name, arguments: "" });
+      } else if (event.type === "tool-call-arguments-delta") {
+        const index = toolCallIndexById.get(event.callId);
+        if (index === undefined) throw new Error(`Unknown tool call event: ${event.callId}`);
+        newToolCalls[index].arguments += event.delta;
+      } else if (event.type === "usage") {
+        currentTokenUsage = {
+          inputTokens: (currentTokenUsage?.inputTokens ?? 0) + event.usage.inputTokens,
+          outputTokens: (currentTokenUsage?.outputTokens ?? 0) + event.usage.outputTokens,
+        };
+      } else if (event.type === "run-failed") {
+        if (event.error.code === "aborted") {
+          throw new DOMException(event.error.message, "AbortError");
         }
-        if (delta?.tool_calls) {
-          for (const tc of delta.tool_calls) {
-            const idx = tc.index ?? 0;
-            while (newToolCalls.length <= idx)
-              newToolCalls.push({ id: "", name: "", arguments: "" });
-            if (tc.id) newToolCalls[idx].id = tc.id;
-            if (tc.function?.name) newToolCalls[idx].name += tc.function.name;
-            if (tc.function?.arguments) newToolCalls[idx].arguments += tc.function.arguments;
-          }
-        }
-      },
-    });
-    if (sseUsage)
-      currentTokenUsage = {
-        inputTokens: sseUsage.prompt_tokens,
-        outputTokens: sseUsage.completion_tokens,
-      };
+        throw new Error(event.error.message);
+      }
+    }
     flusher.flush();
     accumulatedContent = toolContent;
 
     if (newToolCalls.length === 0) break;
-
-    // Execute new tool calls
-    await updateMessage(assistantMsgId, {
-      content: accumulatedContent,
-      toolCalls: [...currentToolCalls, ...newToolCalls],
-    });
+    allToolCalls.push(...newToolCalls);
+    await updateMessage(assistantMsgId, { content: accumulatedContent, toolCalls: allToolCalls });
     notifyDbChange("messages", ctx.cid);
 
-    const newResults: { toolCallId: string; content: string }[] = [];
-    for (const tc of newToolCalls) {
-      const result = await executeOneTool(
-        tc.name,
-        parseToolArgs(tc.arguments),
-        builtInEnabledByName,
-        identity,
-        allowedBuiltInToolNames,
-        allowedServerIds,
-        toolContext,
-      );
-      newResults.push({ toolCallId: tc.id, content: result.content });
-    }
-    await updateMessage(assistantMsgId, { toolResults: [...currentToolResults, ...newResults] });
+    const newResults = await executeCalls(newToolCalls);
+    allToolResults.push(...newResults);
+    await updateMessage(assistantMsgId, { toolResults: allToolResults });
     notifyDbChange("messages", ctx.cid);
-
-    apiMessages.push(
-      {
-        role: "assistant" as const,
-        content: accumulatedContent || null,
-        tool_calls: newToolCalls.map((tc) => ({
-          id: tc.id,
-          type: "function" as const,
-          function: { name: tc.name, arguments: tc.arguments },
-        })),
-      },
-      ...newResults.map((tr) => ({
-        role: "tool" as const,
-        tool_call_id: tr.toolCallId,
-        content: tr.content,
-      })),
-    );
     currentToolCalls = newToolCalls;
     currentToolResults = newResults;
   }
@@ -239,6 +257,5 @@ export async function runToolCallLoop(
     status: MessageStatus.SUCCESS,
     tokenUsage: currentTokenUsage,
   });
-
   return { content: accumulatedContent, tokenUsage: currentTokenUsage };
 }

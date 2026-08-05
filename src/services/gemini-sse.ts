@@ -20,6 +20,7 @@ export interface SseUsage {
 }
 
 interface GeminiFunctionCall {
+  id?: string;
   name?: string;
   args?: Record<string, unknown>;
 }
@@ -83,6 +84,7 @@ export async function consumeGeminiGenerateContentSse(
         if (typeof part.text === "string") text += part.text;
         if (part.functionCall) {
           toolCalls.push({
+            id: part.functionCall.id,
             index: toolCalls.length,
             function: {
               name: part.functionCall.name ?? "",

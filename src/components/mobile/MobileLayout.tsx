@@ -429,7 +429,7 @@ function ConversationItem({
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center justify-between">
-          <span className="text-foreground flex items-center gap-1 flex-1 truncate text-[16px] font-semibold">
+          <span className="text-foreground flex flex-1 items-center gap-1 truncate text-[16px] font-semibold">
             {conversation.pinned && (
               <svg
                 width="14"

@@ -8,8 +8,6 @@ import { IoLockClosed, IoCheckmarkCircle } from "../../icons";
 import { useProviderStore } from "../../stores/provider-store";
 import type { Provider, ProviderType, ApiFormat, CustomHeader } from "../../types";
 import { generateId } from "../../lib/id";
-import { buildProviderHeadersFromRaw } from "../../services/provider-headers";
-import { appFetch } from "../../lib/http";
 import { appAlert } from "../../components/shared/ConfirmDialogProvider";
 import { PROVIDER_PROFILES } from "../../services/provider-profiles/registry";
 import { ProviderModelList } from "./ProviderModelList";
@@ -23,6 +21,7 @@ type ProviderPreset = {
   type: ProviderType;
   apiFormat?: ApiFormat;
   profileId?: string;
+  apiVersion?: string;
 };
 
 const PROFILE_TO_TYPE: Record<string, ProviderType> = {
@@ -46,6 +45,7 @@ const PROVIDER_PRESETS: Record<string, ProviderPreset> = {
         type: profileType(p.id),
         apiFormat: p.protocol,
         profileId: p.id,
+        apiVersion: p.endpoint.apiVersion,
       },
     ]),
   ),
@@ -78,6 +78,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
   const [providerType, setProviderType] = useState<ProviderType>("openai");
   const [apiFormat, setApiFormat] = useState<ApiFormat>("chat-completions");
   const [customHeaders, setCustomHeaders] = useState<CustomHeader[]>([]);
+  const [apiVersion, setApiVersion] = useState<string | undefined>(undefined);
   const [providerEnabled, setProviderEnabled] = useState(true);
 
   const [testing, setTesting] = useState(false);
@@ -101,7 +102,9 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
         setApiFormat(provider.apiFormat ?? "chat-completions");
         setCustomHeaders(provider.customHeaders ?? []);
         setProviderEnabled(provider.enabled !== false);
-        setConnected(provider.status === "connected" || (provider as any).status === "active");
+        setApiVersion(provider.apiVersion);
+        setSelectedPreset(provider.profileId ?? null);
+        setConnected(provider.status === "connected");
       }
     }
   }, [editId]);
@@ -113,6 +116,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
       setBaseUrl(preset.baseUrl);
       setProviderType(preset.type);
       setApiFormat(preset.apiFormat ?? "chat-completions");
+      setApiVersion(preset.apiVersion);
       setSelectedPreset(key);
       setConnected(null);
     }
@@ -121,10 +125,9 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
   const handleConnect = useCallback(async () => {
     if (!name.trim() || !baseUrl.trim()) return;
 
-    // Check duplicate name for new providers (1:1 RN)
     if (!isEditing && !savedProviderId) {
       const duplicate = providers.find(
-        (p: Provider) => p.name.toLowerCase() === name.trim().toLowerCase(),
+        (provider: Provider) => provider.name.toLowerCase() === name.trim().toLowerCase(),
       );
       if (duplicate) {
         appAlert(t("providerEdit.duplicateName"));
@@ -134,124 +137,57 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
 
     setTesting(true);
     setConnected(null);
-
     try {
-      if (savedProviderId) {
-        // Update existing
-        updateProvider(savedProviderId, {
-          name: name.trim(),
-          baseUrl: baseUrl.trim(),
-          apiKey: apiKey.trim(),
-          type: providerType,
-          apiFormat,
-          customHeaders,
-          enabled: providerEnabled,
-        });
-        const ok = await testConnection(savedProviderId);
-        setConnected(ok);
-        if (ok) {
-          setPulling(true);
-          await fetchModels(savedProviderId);
-          setPulling(false);
-        } else {
-          appAlert(t("providerEdit.connectionFailed", { defaultValue: "Connection failed" }));
-        }
+      const profileId = PROVIDER_PRESETS[selectedPreset ?? ""]?.profileId;
+      const providerData = {
+        name: name.trim(),
+        baseUrl: baseUrl.trim(),
+        apiKey: apiKey.trim(),
+        type: providerType,
+        apiFormat,
+        profileId,
+        apiVersion,
+        customHeaders,
+        enabled: providerEnabled,
+      };
+
+      let providerId = savedProviderId;
+      if (providerId) {
+        await updateProvider(providerId, providerData);
       } else {
-        // New provider: test connection WITHOUT saving (1:1 RN)
-        const url = baseUrl.trim().replace(/\/+$/, "");
-
-        const headers = buildProviderHeadersFromRaw({
-          apiKey: apiKey.trim(),
-          customHeaders,
-          apiFormat,
+        providerId = generateId();
+        await addProvider({
+          id: providerId,
+          ...providerData,
+          status: "pending",
+          createdAt: new Date().toISOString(),
         });
-
-        let ok: boolean;
-        let res: Response;
-
-        if (apiFormat === "anthropic-messages") {
-          // Anthropic Messages API: test with a minimal /v1/messages request
-          res = await appFetch(`${url}/v1/messages`, {
-            method: "POST",
-            headers: { ...headers, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "claude-sonnet-4-20250514",
-              max_tokens: 1,
-              messages: [{ role: "user", content: "hi" }],
-            }),
-            signal: AbortSignal.timeout(15000),
-          });
-          ok = res.ok;
-        } else {
-          res = await appFetch(`${url}/models`, {
-            headers,
-            signal: AbortSignal.timeout(15000),
-          });
-          ok = res.ok;
-        }
-
-        setConnected(ok);
-
-        if (!ok) {
-          const errText = await res.text().catch(() => "");
-          appAlert(
-            t("providerEdit.connectionFailed", { defaultValue: "Connection failed" }) +
-              `\n${res.status}: ${errText.slice(0, 200)}`,
-          );
-        }
-
-        if (ok) {
-          // Auto-save provider on successful connect (no separate Save needed)
-          const newId = generateId();
-          const newProvider: Provider = {
-            id: newId,
-            name: name.trim(),
-            baseUrl: baseUrl.trim(),
-            apiKey: apiKey.trim(),
-            type: providerType,
-            apiFormat,
-            profileId: PROVIDER_PRESETS[selectedPreset ?? ""]?.profileId,
-            customHeaders,
-            enabled: providerEnabled,
-            apiVersion: undefined,
-            status: "connected",
-            createdAt: new Date().toISOString(),
-          };
-          addProvider(newProvider);
-          setSavedProviderId(newId);
-
-          if (apiFormat === "anthropic-messages") {
-            // Anthropic has no /models endpoint — skip model pulling
-            setTestPulledModels([]);
-          } else {
-            setPulling(true);
-            try {
-              const json = await res.json();
-              const modelList: any[] = json.data ?? json ?? [];
-              // Add all models to the saved provider
-              for (const m of modelList) {
-                addModelById(newId, m.id);
-              }
-              setTestPulledModels([]); // No longer needed — already saved
-            } catch {
-              setTestPulledModels([]);
-            }
-            setPulling(false);
-          }
-        } else {
-          setTestPulledModels([]);
-        }
+        setSavedProviderId(providerId);
       }
-    } catch (err: any) {
+
+      const ok = await testConnection(providerId);
+      setConnected(ok);
+      if (!ok) {
+        appAlert(t("providerEdit.connectionFailed", { defaultValue: "Connection failed" }));
+        return;
+      }
+
+      setPulling(true);
+      const models = await fetchModels(providerId);
+      setTestPulledModels([]);
+      if (models.length === 0 && profileId !== "anthropic" && profileId !== "azure-openai") {
+        toast.info(t("providerEdit.noModels", { defaultValue: "No models discovered" }));
+      }
+    } catch (error) {
       setConnected(false);
       setTestPulledModels([]);
-      const msg = err?.message || String(err);
-      console.error("[ProviderEdit] connection error:", err);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[ProviderEdit] connection error:", error);
       appAlert(
-        t("providerEdit.connectionFailed", { defaultValue: "Connection failed" }) +
-          `\n${msg.slice(0, 300)}`,
+        `${t("providerEdit.connectionFailed", { defaultValue: "Connection failed" })}\n${message.slice(0, 300)}`,
       );
     } finally {
+      setPulling(false);
       setTesting(false);
     }
   }, [
@@ -262,6 +198,8 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
     apiFormat,
     customHeaders,
     providerEnabled,
+    apiVersion,
+    selectedPreset,
     isEditing,
     savedProviderId,
     providers,
@@ -269,11 +207,10 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
     fetchModels,
     updateProvider,
     addProvider,
-    addModelById,
     t,
   ]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const providerData = {
       name: name.trim(),
       baseUrl: baseUrl.trim(),
@@ -282,34 +219,35 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
       apiFormat,
       customHeaders,
       enabled: providerEnabled,
+      profileId: PROVIDER_PRESETS[selectedPreset ?? ""]?.profileId,
+      apiVersion,
     };
 
     if (!providerData.name || !providerData.baseUrl) return;
 
-    if (savedProviderId) {
-      updateProvider(savedProviderId, providerData);
-    } else {
-      const id = generateId();
-      const provider: Provider = {
-        id,
-        ...providerData,
-        profileId: PROVIDER_PRESETS[selectedPreset ?? ""]?.profileId,
-        apiVersion: undefined,
-        status: (connected ? "connected" : "pending") as Provider["status"],
-        createdAt: new Date().toISOString(),
-      };
-      addProvider(provider);
-      setSavedProviderId(provider.id);
-
-      // Persist only enabled pulled models
-      const modelsToSave = testPulledModels.filter((m) => !disabledTestModels.has(m.id));
-      for (const m of modelsToSave) {
-        addModelById(provider.id, m.id);
+    try {
+      if (savedProviderId) {
+        await updateProvider(savedProviderId, providerData);
+      } else {
+        const id = generateId();
+        const provider: Provider = {
+          id,
+          ...providerData,
+          status: (connected ? "connected" : "pending") as Provider["status"],
+          createdAt: new Date().toISOString(),
+        };
+        await addProvider(provider);
+        setSavedProviderId(provider.id);
+        // Persist only enabled pulled models
+        const modelsToSave = testPulledModels.filter((m) => !disabledTestModels.has(m.id));
+        for (const m of modelsToSave) addModelById(provider.id, m.id);
+        if (testPulledModels.length > 0) setTestPulledModels([]);
       }
-      if (testPulledModels.length > 0) setTestPulledModels([]);
+      onClose?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      appAlert(message);
     }
-
-    onClose?.();
   }, [
     name,
     baseUrl,
@@ -318,6 +256,8 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
     apiFormat,
     customHeaders,
     providerEnabled,
+    selectedPreset,
+    apiVersion,
     savedProviderId,
     updateProvider,
     addProvider,

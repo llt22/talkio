@@ -206,7 +206,10 @@ function HighlightedCodeBlock({
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <div className="overflow-x-auto" style={{ scrollbarWidth: "thin", backgroundColor: "var(--background)" }}>
+      <div
+        className="overflow-x-auto"
+        style={{ scrollbarWidth: "thin", backgroundColor: "var(--background)" }}
+      >
         {html ? (
           <div
             className="shiki-code text-[13px] leading-relaxed [&_code]:bg-transparent [&_pre]:m-0 [&_pre]:bg-transparent [&_pre]:px-3 [&_pre]:py-2"

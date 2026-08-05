@@ -1,52 +1,40 @@
 /**
- * Secret store — keeps provider API keys out of localStorage on desktop.
+ * Secret store — keeps provider API keys out of browser persistence.
  *
- * Desktop (Tauri): keys live in the OS credential store (macOS Keychain /
- * Windows Credential Manager / Linux Secret Service) via Rust commands.
- * Browser dev mode and Android: fall back to localStorage (Android has no
- * supported keyring backend yet — see src-tauri/src/secrets.rs).
- *
- * A process-lifetime in-memory cache provides synchronous reads for the
- * runtime code paths (ApiClient, adapters) that receive a Provider object.
+ * Desktop Tauri stores keys in the OS credential store. Browser and mobile
+ * WebViews keep keys only in process memory because Web APIs do not expose a
+ * system credential store without introducing an application master password.
+ * Legacy plaintext localStorage entries are deleted when their accounts load.
  */
 import { invoke } from "@tauri-apps/api/core";
 import { isDesktop } from "../lib/platform";
 
-const LOCAL_PREFIX = "talkio:secret:";
+const LEGACY_LOCAL_PREFIX = "talkio:secret:";
 
 const memoryCache = new Map<string, string>();
 
-function localGet(account: string): string | null {
-  return localStorage.getItem(LOCAL_PREFIX + account);
-}
-
-function localSet(account: string, secret: string): void {
-  localStorage.setItem(LOCAL_PREFIX + account, secret);
-}
-
-function localDelete(account: string): void {
-  localStorage.removeItem(LOCAL_PREFIX + account);
+function deleteLegacyLocalSecret(account: string): void {
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(LEGACY_LOCAL_PREFIX + account);
+  }
 }
 
 export const secretStore = {
   /** Persist a secret. Empty string deletes it. */
   async set(account: string, secret: string): Promise<void> {
-    if (secret) {
-      memoryCache.set(account, secret);
-    } else {
-      memoryCache.delete(account);
-    }
     if (isDesktop) {
       if (secret) {
         await invoke("secret_set", { account, secret });
       } else {
         await invoke("secret_delete", { account });
       }
-    } else if (secret) {
-      localSet(account, secret);
     } else {
-      localDelete(account);
+      deleteLegacyLocalSecret(account);
     }
+
+    // Publish to synchronous runtime readers only after persistence succeeds.
+    if (secret) memoryCache.set(account, secret);
+    else memoryCache.delete(account);
   },
 
   /** Load a secret (from cache or the backing store). */
@@ -62,7 +50,7 @@ export const secretStore = {
         value = null;
       }
     } else {
-      value = localGet(account);
+      deleteLegacyLocalSecret(account);
     }
 
     if (value) memoryCache.set(account, value);

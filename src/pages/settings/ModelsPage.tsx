@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useMobileNav } from "../../contexts/MobileNavContext";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import {
   IoSearchOutline,
   IoCloseCircle,
@@ -30,7 +29,6 @@ export function ModelsPage({
   isMobile = false,
 }: ModelsPageProps = {}) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const mobileNav = useMobileNav();
   const models = useProviderStore((s) => s.models);
   const enabledModels = useMemo(() => models.filter((m: Model) => m.enabled), [models]);
@@ -44,10 +42,9 @@ export function ModelsPage({
   const goToChat = useCallback(
     (convId: string) => {
       if (onNavigateToChat) onNavigateToChat(convId);
-      else if (mobileNav) mobileNav.pushChat(convId);
-      else navigate(`/chat/${convId}`);
+      else mobileNav?.pushChat(convId);
     },
-    [onNavigateToChat, mobileNav, navigate],
+    [onNavigateToChat, mobileNav],
   );
 
   const filtered = useMemo(
@@ -174,90 +171,92 @@ export function ModelsPage({
 
       {/* Content */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
-      <div ref={scrollRef} className="h-full overflow-y-auto" style={{ paddingBottom: 24 }}>
-        {sections.length === 0 ? (
-          <EmptyState
-            icon={<IoPeopleOutline size={28} color="var(--muted-foreground)" />}
-            title={t("models.noModels")}
-            subtitle={t("models.configureHint")}
-          />
-        ) : (
-          sections.map((section) => (
-            <div key={section.title} id={`section-${section.title}`}>
-              {/* Section Header */}
-              <div
-                className="sticky top-0 z-10 px-5 py-1.5"
-                style={{ backgroundColor: "var(--secondary)" }}
-              >
-                <p className="text-muted-foreground text-[13px] font-semibold">{section.title}</p>
-              </div>
-              {/* Items */}
-              {section.data.map((model, idx) => {
-                const { color: mColor, initials: mInitials } = getAvatarProps(model.displayName);
-                return (
-                  <button
-                    key={model.id}
-                    onClick={() => handleStartChat(model)}
-                    className="flex w-full items-center gap-4 px-4 py-3 transition-colors active:opacity-70"
-                    style={{
-                      backgroundColor: "var(--background)",
-                      borderBottom:
-                        idx < section.data.length - 1 ? "0.5px solid var(--border)" : "none",
-                    }}
-                  >
-                    {/* Avatar (1:1 RN — rounded-full, 2-char initials) */}
-                    <div
-                      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-                      style={{ backgroundColor: mColor }}
+        <div ref={scrollRef} className="h-full overflow-y-auto" style={{ paddingBottom: 24 }}>
+          {sections.length === 0 ? (
+            <EmptyState
+              icon={<IoPeopleOutline size={28} color="var(--muted-foreground)" />}
+              title={t("models.noModels")}
+              subtitle={t("models.configureHint")}
+            />
+          ) : (
+            sections.map((section) => (
+              <div key={section.title} id={`section-${section.title}`}>
+                {/* Section Header */}
+                <div
+                  className="sticky top-0 z-10 px-5 py-1.5"
+                  style={{ backgroundColor: "var(--secondary)" }}
+                >
+                  <p className="text-muted-foreground text-[13px] font-semibold">{section.title}</p>
+                </div>
+                {/* Items */}
+                {section.data.map((model, idx) => {
+                  const { color: mColor, initials: mInitials } = getAvatarProps(model.displayName);
+                  return (
+                    <button
+                      key={model.id}
+                      onClick={() => handleStartChat(model)}
+                      className="flex w-full items-center gap-4 px-4 py-3 transition-colors active:opacity-70"
+                      style={{
+                        backgroundColor: "var(--background)",
+                        borderBottom:
+                          idx < section.data.length - 1 ? "0.5px solid var(--border)" : "none",
+                      }}
                     >
-                      {mInitials}
-                    </div>
-                    <div className="min-w-0 flex-1 text-left">
-                      <p className="text-foreground truncate text-[16px] font-medium">
-                        {model.displayName}
-                      </p>
-                      <p className="text-muted-foreground truncate text-[13px]">{model.modelId}</p>
-                    </div>
-                    <IoChevronForward
-                      size={18}
-                      color="var(--muted-foreground)"
-                      style={{ opacity: 0.3 }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Initial Index Sidebar — floating overlay */}
-      {indexEntries.length > 1 && (
-        <div
-          className="absolute top-1/2 right-0.5 z-20 flex -translate-y-1/2 flex-col items-center rounded-full py-1 px-[3px]"
-          style={{ backgroundColor: "color-mix(in srgb, var(--card) 80%, transparent)" }}
-        >
-          {indexEntries.map(([initial, sectionTitle]) => {
-            const isActive = activeSection === sectionTitle;
-            return (
-              <button
-                key={initial}
-                onClick={() => handleIndexClick(sectionTitle)}
-                className="flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-bold leading-none transition-colors active:opacity-60"
-                style={{
-                  color: isActive ? "var(--primary)" : "var(--muted-foreground)",
-                  backgroundColor: isActive
-                    ? "color-mix(in srgb, var(--primary) 15%, transparent)"
-                    : "transparent",
-                }}
-                title={sectionTitle}
-              >
-                {initial}
-              </button>
-            );
-          })}
+                      {/* Avatar (1:1 RN — rounded-full, 2-char initials) */}
+                      <div
+                        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+                        style={{ backgroundColor: mColor }}
+                      >
+                        {mInitials}
+                      </div>
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="text-foreground truncate text-[16px] font-medium">
+                          {model.displayName}
+                        </p>
+                        <p className="text-muted-foreground truncate text-[13px]">
+                          {model.modelId}
+                        </p>
+                      </div>
+                      <IoChevronForward
+                        size={18}
+                        color="var(--muted-foreground)"
+                        style={{ opacity: 0.3 }}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            ))
+          )}
         </div>
-      )}
+
+        {/* Initial Index Sidebar — floating overlay */}
+        {indexEntries.length > 1 && (
+          <div
+            className="absolute top-1/2 right-0.5 z-20 flex -translate-y-1/2 flex-col items-center rounded-full px-[3px] py-1"
+            style={{ backgroundColor: "color-mix(in srgb, var(--card) 80%, transparent)" }}
+          >
+            {indexEntries.map(([initial, sectionTitle]) => {
+              const isActive = activeSection === sectionTitle;
+              return (
+                <button
+                  key={initial}
+                  onClick={() => handleIndexClick(sectionTitle)}
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-[12px] leading-none font-bold transition-colors active:opacity-60"
+                  style={{
+                    color: isActive ? "var(--primary)" : "var(--muted-foreground)",
+                    backgroundColor: isActive
+                      ? "color-mix(in srgb, var(--primary) 15%, transparent)"
+                      : "transparent",
+                  }}
+                  title={sectionTitle}
+                >
+                  {initial}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

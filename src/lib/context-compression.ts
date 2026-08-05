@@ -175,7 +175,14 @@ export async function compressIfNeeded(
   if (toCompress.length <= 1) return { messages, compressed: false };
 
   try {
-    const summary = await callCompressionApi(toCompress, baseUrl, headers, model, options.apiFormat, signal);
+    const summary = await callCompressionApi(
+      toCompress,
+      baseUrl,
+      headers,
+      model,
+      options.apiFormat,
+      signal,
+    );
     const originalTokens = estimateMessagesTokens(toCompress);
     const compressedTokens = estimateTokens(summary);
     console.log(

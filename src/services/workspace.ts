@@ -150,7 +150,9 @@ export async function readWorkspaceTree(
       const fullPath = joinPath(dir, name);
       const relativePath = getRelativePath(workspaceDir, fullPath);
       const indent = "  ".repeat(depth);
-      lines.push(`${indent}${entry.isDirectory ? "📁" : "📄"} ${relativePath}${entry.isDirectory ? "/" : ""}`);
+      lines.push(
+        `${indent}${entry.isDirectory ? "📁" : "📄"} ${relativePath}${entry.isDirectory ? "/" : ""}`,
+      );
       if (entry.isDirectory && depth + 1 < maxDepth) {
         await walk(fullPath, depth + 1);
       }
@@ -205,7 +207,9 @@ function extractPathsFromText(text: string): string[] {
 }
 
 function shouldIncludeDefaultContext(text: string): boolean {
-  return /项目|project|code review|review|架构|结构|代码|仓库|repo|看看|分析|analy[sz]e/i.test(text);
+  return /项目|project|code review|review|架构|结构|代码|仓库|repo|看看|分析|analy[sz]e/i.test(
+    text,
+  );
 }
 
 export async function buildWorkspaceContextBundle(
@@ -300,19 +304,56 @@ export async function editWorkspaceFile(
   }
 
   // Exact match found — simple string replacement (first occurrence only)
-  const result = fileContent.slice(0, idx) + newContent + fileContent.slice(idx + oldContent.length);
+  const result =
+    fileContent.slice(0, idx) + newContent + fileContent.slice(idx + oldContent.length);
   await writeTextFile(fullPath, result);
   return { path: safePath, applied: true };
 }
 
 const BINARY_EXTENSIONS = new Set([
-  "png", "jpg", "jpeg", "gif", "bmp", "webp", "ico", "svg",
-  "mp3", "mp4", "wav", "ogg", "flac", "avi", "mov", "mkv",
-  "zip", "tar", "gz", "bz2", "7z", "rar",
-  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
-  "exe", "dll", "so", "dylib", "bin", "dat",
-  "woff", "woff2", "ttf", "otf", "eot",
-  "lock", "sqlite", "db",
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "bmp",
+  "webp",
+  "ico",
+  "svg",
+  "mp3",
+  "mp4",
+  "wav",
+  "ogg",
+  "flac",
+  "avi",
+  "mov",
+  "mkv",
+  "zip",
+  "tar",
+  "gz",
+  "bz2",
+  "7z",
+  "rar",
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "exe",
+  "dll",
+  "so",
+  "dylib",
+  "bin",
+  "dat",
+  "woff",
+  "woff2",
+  "ttf",
+  "otf",
+  "eot",
+  "lock",
+  "sqlite",
+  "db",
 ]);
 
 export function isBinaryPath(filePath: string): boolean {

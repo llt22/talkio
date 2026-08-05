@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMobileNav } from "../../contexts/MobileNavContext";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
 import { Store } from "lucide-react";
 import {
   IoPersonOutline,
@@ -35,7 +34,6 @@ type IdentityStoreState = ReturnType<typeof useIdentityStore.getState>;
 export function IdentityPage() {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
-  const navigate = useNavigate();
   const mobileNav = useMobileNav();
   const identities = useIdentityStore((s: IdentityStoreState) => s.identities);
   const deleteIdentity = useIdentityStore((s: IdentityStoreState) => s.deleteIdentity);
@@ -207,15 +205,9 @@ export function IdentityPage() {
 
 // ── Identity Edit Page (full-screen route) ──
 
-export function IdentityEditPage({
-  id: idProp,
-  onClose: onCloseProp,
-}: { id?: string; onClose?: () => void } = {}) {
+export function IdentityEditPage({ id, onClose }: { id?: string; onClose?: () => void } = {}) {
   const { t } = useTranslation();
-  const { id: routeId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const id = idProp ?? routeId;
-  const goBack = onCloseProp ?? (() => navigate(-1));
+  const goBack = onClose ?? (() => window.history.back());
   const getIdentityById = useIdentityStore((s) => s.getIdentityById);
   const addIdentity = useIdentityStore((s) => s.addIdentity);
   const updateIdentity = useIdentityStore((s) => s.updateIdentity);

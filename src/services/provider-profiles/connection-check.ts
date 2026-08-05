@@ -1,13 +1,13 @@
-/**
- * Structured connection check — separates failure domains so the UI can show
- * exactly which part of a provider connection is broken (endpoint reachable?
- * credentials valid? model discovery works? protocol compatible?).
- */
 import type { Provider } from "../../types";
 import { appFetch } from "../../lib/http";
 import { buildProviderHeaders } from "../provider-headers";
+import {
+  appendResourcePath,
+  isAzureOpenAIProvider,
+  resolveProviderResourceUrl,
+} from "../provider-request";
 import { getProfile } from "./registry";
-import type { CheckResult, ConnectionCheck } from "./types";
+import type { CheckResult, ConnectionCheck, ModelDiscoveryConfig } from "./types";
 
 function ok(detail?: string): CheckResult {
   return { status: "ok", detail };
@@ -21,104 +21,141 @@ function skipped(detail?: string): CheckResult {
   return { status: "skipped", detail };
 }
 
-/** Base URL without trailing slash: user-configured value, else profile default. */
-function effectiveBaseUrl(provider: Provider): string {
-  if (provider.baseUrl) return provider.baseUrl.replace(/\/+$/, "");
-  const profile = provider.profileId ? getProfile(provider.profileId) : undefined;
-  return (profile?.endpoint.baseUrl ?? "").replace(/\/+$/, "");
+function discoveryPath(discovery: ModelDiscoveryConfig): string | null {
+  if (discovery.type === "openai-models") return discovery.path ?? "/models";
+  if (discovery.type === "gemini-models") return "/models";
+  if (discovery.type === "ollama-tags") return "/api/tags";
+  return null;
 }
 
-/**
- * Run the full connection check. Every stage is attempted independently so a
- * failure in one domain doesn't hide the state of the others.
- */
-export async function checkProviderConnection(provider: Provider): Promise<ConnectionCheck> {
-  const baseUrl = effectiveBaseUrl(provider);
-  const isGemini = provider.apiFormat === "gemini-generate-content";
+function modelCount(discovery: ModelDiscoveryConfig, payload: unknown): number {
+  if (!payload || typeof payload !== "object") return 0;
+  const object = payload as Record<string, unknown>;
+  const candidate =
+    discovery.type === "openai-models"
+      ? object.data
+      : discovery.type === "gemini-models" || discovery.type === "ollama-tags"
+        ? object.models
+        : discovery.type === "static"
+          ? discovery.models
+          : [];
+  return Array.isArray(candidate) ? candidate.length : 0;
+}
+
+export async function checkProviderConnection(
+  provider: Provider,
+  selectedModelId?: string,
+): Promise<ConnectionCheck> {
+  const profile = provider.profileId ? getProfile(provider.profileId) : undefined;
+  const discovery =
+    profile?.modelDiscovery ??
+    (provider.apiFormat === "gemini-generate-content"
+      ? ({ type: "gemini-models" } as const)
+      : ({ type: "openai-models" } as const));
+  const path = discoveryPath(discovery);
   const headers = buildProviderHeaders(provider);
 
-  // 1. Endpoint reachability — bare OPTIONS/GET on the origin.
   const endpoint: CheckResult = await (async () => {
+    if (!path) return skipped("Provider has no discovery endpoint");
     try {
-      const res = await appFetch(`${baseUrl}/models`, {
+      const res = await appFetch(resolveProviderResourceUrl(provider, path), {
         method: "GET",
         signal: AbortSignal.timeout(10000),
       });
-      return ok(`${res.status} ${res.statusText}`);
-    } catch (err) {
-      return fail(err instanceof Error ? err.message : String(err));
+      if (res.status >= 500) return fail(`Endpoint unavailable (HTTP ${res.status})`);
+      return ok(`${res.status} ${res.statusText}`.trim());
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
     }
   })();
 
-  // 2. Authentication — same request with credentials attached.
   const authentication: CheckResult = await (async () => {
+    if (!path) {
+      return provider.apiKey ? ok("Credentials configured") : fail("Credentials missing");
+    }
     try {
-      const res = await appFetch(isGemini ? `${baseUrl}/models` : `${baseUrl}/models`, {
+      const res = await appFetch(resolveProviderResourceUrl(provider, path), {
         headers,
         signal: AbortSignal.timeout(10000),
       });
       if (res.status === 401 || res.status === 403) {
         return fail(`Credentials rejected (HTTP ${res.status})`);
       }
+      if (!res.ok) return fail(`Authentication check failed (HTTP ${res.status})`);
       return ok(`Credentials accepted (HTTP ${res.status})`);
-    } catch (err) {
-      return fail(err instanceof Error ? err.message : String(err));
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
     }
   })();
 
-  // 3. Model discovery.
   const modelDiscovery: CheckResult = await (async () => {
-    const profile = provider.profileId ? getProfile(provider.profileId) : undefined;
-    const discovery = profile?.modelDiscovery ?? { type: "openai-models" as const };
-    if (discovery.type === "manual") {
-      return skipped("Manual model configuration — nothing to discover");
-    }
+    if (discovery.type === "manual") return skipped("Models are configured manually");
+    if (discovery.type === "static") return ok(`${discovery.models.length} static models`);
+    if (!path) return skipped("Provider has no discovery endpoint");
     try {
-      const res = await appFetch(`${baseUrl}/models`, {
+      const res = await appFetch(resolveProviderResourceUrl(provider, path), {
         headers,
         signal: AbortSignal.timeout(10000),
       });
       if (!res.ok) return fail(`Model list failed (HTTP ${res.status})`);
-      const json = await res.json();
-      const models = isGemini
-        ? (json.models ?? [])
-        : Array.isArray(json.data)
-          ? json.data
-          : Array.isArray(json)
-            ? json
-            : [];
-      if (models.length === 0) return fail("Model list returned no models");
-      return ok(`${models.length} models discoverable`);
-    } catch (err) {
-      return fail(err instanceof Error ? err.message : String(err));
+      const count = modelCount(discovery, await res.json());
+      if (count === 0) return fail("Model list returned no models");
+      return ok(`${count} models discoverable`);
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
     }
   })();
 
-  // 4. Selected model access — skip when no model is attached to the provider.
-  const selectedModelAccess: CheckResult = (() => {
-    return skipped("Checked when a model is selected");
-  })();
+  const selectedModelAccess: CheckResult = selectedModelId
+    ? skipped("Verified by protocol compatibility request")
+    : skipped("No model selected");
 
-  // 5. Protocol compatibility — one minimal streaming-style request shape.
   const protocolCompatibility: CheckResult = await (async () => {
+    if (!selectedModelId) return skipped("No model selected");
     try {
-      const url = isGemini
-        ? `${baseUrl}/models/gemini-2.0-flash:generateContent`
-        : `${baseUrl}/chat/completions`;
+      let url: string;
+      let body: Record<string, unknown>;
+      if (provider.apiFormat === "gemini-generate-content") {
+        url = `${provider.baseUrl.replace(/\/+$/, "")}/models/${encodeURIComponent(selectedModelId)}:generateContent`;
+        body = { contents: [{ role: "user", parts: [{ text: "hi" }] }] };
+      } else if (provider.apiFormat === "anthropic-messages") {
+        url = resolveProviderResourceUrl(provider, "/v1/messages");
+        body = {
+          model: selectedModelId,
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hi" }],
+        };
+      } else {
+        const baseUrl = isAzureOpenAIProvider(provider)
+          ? `${provider.baseUrl.replace(/\/+$/, "")}/deployments/${encodeURIComponent(selectedModelId)}?api-version=${encodeURIComponent(provider.apiVersion ?? "2024-10-21")}`
+          : provider.baseUrl.replace(/\/+$/, "");
+        url = appendResourcePath(
+          baseUrl,
+          provider.apiFormat === "responses" ? "/responses" : "/chat/completions",
+        );
+        body =
+          provider.apiFormat === "responses"
+            ? { model: selectedModelId, input: "hi", max_output_tokens: 1 }
+            : {
+                model: selectedModelId,
+                messages: [{ role: "user", content: "hi" }],
+                max_tokens: 1,
+              };
+      }
+
       const res = await appFetch(url, {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify(
-          isGemini
-            ? { contents: [{ role: "user", parts: [{ text: "hi" }] }] }
-            : { model: "probe", messages: [{ role: "user", content: "hi" }], max_tokens: 1 },
-        ),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(10000),
       });
-      // Any HTTP response (even 4xx) proves the endpoint speaks the protocol.
-      return ok(`Protocol responded (HTTP ${res.status})`);
-    } catch (err) {
-      return fail(err instanceof Error ? err.message : String(err));
+      if (res.ok) return ok(`Protocol accepted request (HTTP ${res.status})`);
+      if (res.status === 400 || res.status === 422) {
+        return ok(`Protocol recognized request (HTTP ${res.status})`);
+      }
+      return fail(`Protocol check failed (HTTP ${res.status})`);
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
     }
   })();
 

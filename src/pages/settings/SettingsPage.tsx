@@ -548,13 +548,13 @@ function RefreshAllButton() {
     const failedNames: string[] = [];
     await Promise.all(
       providers.map(async (p: { id: string; name: string }) => {
-        updateProvider(p.id, { status: "pending" });
+        await updateProvider(p.id, { status: "pending" });
         try {
           await fetchModels(p.id);
           success++;
         } catch (err: any) {
           console.error(`[RefreshAll] ${p.name} failed:`, err?.message || err);
-          updateProvider(p.id, { status: "error" });
+          await updateProvider(p.id, { status: "error" });
           failedNames.push(`${p.name}: ${err?.message || "unknown"}`);
           failed++;
         }
@@ -655,7 +655,7 @@ export function ProvidersListPage({
                                 destructive: true,
                               });
                               if (ok) {
-                                deleteProvider(provider.id);
+                                await deleteProvider(provider.id);
                                 onPop();
                               }
                             }}

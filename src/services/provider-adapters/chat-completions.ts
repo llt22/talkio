@@ -7,6 +7,7 @@ import type {
   ProbeResult,
 } from "./types";
 import { consumeOpenAIChatCompletionsSse } from "../openai-chat-sse";
+import { appendResourcePath } from "../provider-request";
 import { appFetch } from "../../lib/http";
 
 function buildRequestBody(
@@ -39,7 +40,7 @@ export class ChatCompletionsAdapter implements ProviderAdapter {
       params.toolDefs ?? [],
     );
 
-    const response = await appFetch(`${params.baseUrl}/chat/completions`, {
+    const response = await appFetch(appendResourcePath(params.baseUrl, "/chat/completions"), {
       method: "POST",
       headers: params.headers,
       body: JSON.stringify(body),
@@ -54,7 +55,7 @@ export class ChatCompletionsAdapter implements ProviderAdapter {
   }
 
   async chat(params: ChatParams): Promise<string> {
-    const response = await appFetch(`${params.baseUrl}/chat/completions`, {
+    const response = await appFetch(appendResourcePath(params.baseUrl, "/chat/completions"), {
       method: "POST",
       headers: params.headers,
       body: JSON.stringify({
@@ -78,7 +79,7 @@ export class ChatCompletionsAdapter implements ProviderAdapter {
 
     // Probe vision
     try {
-      const res = await appFetch(`${params.baseUrl}/chat/completions`, {
+      const res = await appFetch(appendResourcePath(params.baseUrl, "/chat/completions"), {
         method: "POST",
         headers: params.headers,
         signal: AbortSignal.timeout(15000),
@@ -108,7 +109,7 @@ export class ChatCompletionsAdapter implements ProviderAdapter {
 
     // Probe tool call
     try {
-      const res = await appFetch(`${params.baseUrl}/chat/completions`, {
+      const res = await appFetch(appendResourcePath(params.baseUrl, "/chat/completions"), {
         method: "POST",
         headers: params.headers,
         signal: AbortSignal.timeout(15000),

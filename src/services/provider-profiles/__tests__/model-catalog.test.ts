@@ -40,8 +40,11 @@ describe("model catalog", () => {
   });
 
   it("user override wins over the built-in entry", () => {
-    setModelOverride("gpt-4o", { contextWindow: 999999, displayName: "Custom GPT-4o" });
-    const resolved = resolveModelDescriptor("gpt-4o")!;
+    setModelOverride("openai", "gpt-4o", {
+      contextWindow: 999999,
+      displayName: "Custom GPT-4o",
+    });
+    const resolved = resolveModelDescriptor("openai", "gpt-4o")!;
     expect(resolved.contextWindow).toBe(999999);
     expect(resolved.displayName).toBe("Custom GPT-4o");
     // Non-overridden fields still come from the catalog.
@@ -49,23 +52,35 @@ describe("model catalog", () => {
   });
 
   it("an override alone creates a descriptor for an unknown model", () => {
-    setModelOverride("custom-model", { contextWindow: 8192, displayName: "Custom" });
-    const resolved = resolveModelDescriptor("custom-model")!;
+    setModelOverride("custom", "custom-model", { contextWindow: 8192, displayName: "Custom" });
+    const resolved = resolveModelDescriptor("custom", "custom-model")!;
     expect(resolved.displayName).toBe("Custom");
     expect(resolved.contextWindow).toBe(8192);
     expect(resolved.modelId).toBe("custom-model");
   });
 
   it("an empty patch removes the override", () => {
-    setModelOverride("gpt-4o", { contextWindow: 1 });
-    setModelOverride("gpt-4o", {});
-    expect(resolveModelDescriptor("gpt-4o")?.contextWindow).toBe(128000);
+    setModelOverride("openai", "gpt-4o", { contextWindow: 1 });
+    setModelOverride("openai", "gpt-4o", {});
+    expect(resolveModelDescriptor("openai", "gpt-4o")?.contextWindow).toBe(128000);
   });
 
   it("getAllModelDescriptors applies overrides to the full catalog", () => {
-    setModelOverride("gpt-4o", { contextWindow: 1234 });
-    const all = getAllModelDescriptors();
+    setModelOverride("openai", "gpt-4o", { contextWindow: 1234 });
+    setModelOverride("openai", "custom-model", { displayName: "Custom" });
+    const all = getAllModelDescriptors("openai");
     expect(all.find((m) => m.modelId === "gpt-4o")?.contextWindow).toBe(1234);
-    expect(all.length).toBe(MODEL_CATALOG.length);
+    expect(all.find((m) => m.modelId === "custom-model")?.displayName).toBe("Custom");
+    expect(all.length).toBe(MODEL_CATALOG.length + 1);
+  });
+
+  it("isolates overrides for the same model id across providers", () => {
+    setModelOverride("openai", "shared-model", { displayName: "OpenAI Shared" });
+    setModelOverride("openrouter", "shared-model", { displayName: "OpenRouter Shared" });
+
+    expect(resolveModelDescriptor("openai", "shared-model")?.displayName).toBe("OpenAI Shared");
+    expect(resolveModelDescriptor("openrouter", "shared-model")?.displayName).toBe(
+      "OpenRouter Shared",
+    );
   });
 });

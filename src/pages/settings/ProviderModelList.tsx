@@ -43,7 +43,9 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
   const [probingModelIds, setProbingModelIds] = useState<Set<string>>(new Set());
   const [healthChecking, setHealthChecking] = useState(false);
   const [healthCheckingIds, setHealthCheckingIds] = useState<Set<string>>(new Set());
-  const [healthResults, setHealthResults] = useState<Map<string, { ok: boolean; error?: string }>>(new Map());
+  const [healthResults, setHealthResults] = useState<Map<string, { ok: boolean; error?: string }>>(
+    new Map(),
+  );
   const [modelOrder, setModelOrder] = useState<{ providerId: string; ids: string[] }>(() => {
     const initial = useProviderStore.getState().models.filter((m) => m.providerId === providerId);
     return { providerId, ids: sortEnabledFirst(initial).map((m) => m.id) };
@@ -86,8 +88,7 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
     if (!modelSearch) return orderedModels;
     const query = modelSearch.toLowerCase();
     return orderedModels.filter(
-      (m) =>
-        m.displayName.toLowerCase().includes(query) || m.modelId.toLowerCase().includes(query),
+      (m) => m.displayName.toLowerCase().includes(query) || m.modelId.toLowerCase().includes(query),
     );
   }, [orderedModels, modelSearch]);
 
@@ -135,27 +136,34 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
     setHealthChecking(false);
   }, [healthChecking, enabledModels, checkModelHealthAction, toggleModel, t]);
 
-  const handleSingleHealthCheck = useCallback(async (modelId: string) => {
-    setHealthCheckingIds((prev) => new Set(prev).add(modelId));
-    setHealthResults((prev) => { const next = new Map(prev); next.delete(modelId); return next; });
-    try {
-      const result = await checkModelHealthAction(modelId);
-      setHealthResults((prev) => new Map(prev).set(modelId, result));
-      if (result.ok) {
-        toast.success(t("providerEdit.healthCheck") + " ✓");
-      } else {
-        toast.error(result.error ?? "Check failed");
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Check failed");
-    } finally {
-      setHealthCheckingIds((prev) => {
-        const next = new Set(prev);
+  const handleSingleHealthCheck = useCallback(
+    async (modelId: string) => {
+      setHealthCheckingIds((prev) => new Set(prev).add(modelId));
+      setHealthResults((prev) => {
+        const next = new Map(prev);
         next.delete(modelId);
         return next;
       });
-    }
-  }, [checkModelHealthAction, t]);
+      try {
+        const result = await checkModelHealthAction(modelId);
+        setHealthResults((prev) => new Map(prev).set(modelId, result));
+        if (result.ok) {
+          toast.success(t("providerEdit.healthCheck") + " ✓");
+        } else {
+          toast.error(result.error ?? "Check failed");
+        }
+      } catch (err: any) {
+        toast.error(err?.message || "Check failed");
+      } finally {
+        setHealthCheckingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(modelId);
+          return next;
+        });
+      }
+    },
+    [checkModelHealthAction, t],
+  );
 
   return (
     <div className="mt-6">
@@ -245,133 +253,149 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
 
       <div className="mt-3 flex flex-col gap-2">
         <AnimatePresence initial={false}>
-        {filteredModels.map((m) => (
-          <motion.div
-            key={m.id}
-            layout
-            transition={{ type: "spring", stiffness: 500, damping: 35 }}
-            className="rounded-xl px-4 py-3"
-            style={{ backgroundColor: "var(--card)" }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="mr-3 min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p
-                    className={`truncate text-[15px] font-semibold ${m.enabled ? "text-foreground" : "text-muted-foreground/40"}`}
-                  >
-                    {m.displayName}
-                  </p>
-                  {healthCheckingIds.has(m.id) && (
-                    <span className="inline-block h-3.5 w-3.5 flex-shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" style={{ color: "var(--primary)" }} />
-                  )}
-                  {!healthCheckingIds.has(m.id) && healthResults.has(m.id) && (
-                    healthResults.get(m.id)!.ok ? (
-                      <IoCheckmarkCircle size={15} color="var(--success)" className="flex-shrink-0" />
-                    ) : (
-                      <IoCloseCircle size={15} color="var(--destructive)" className="flex-shrink-0" />
-                    )
-                  )}
+          {filteredModels.map((m) => (
+            <motion.div
+              key={m.id}
+              layout
+              transition={{ type: "spring", stiffness: 500, damping: 35 }}
+              className="rounded-xl px-4 py-3"
+              style={{ backgroundColor: "var(--card)" }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="mr-3 min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p
+                      className={`truncate text-[15px] font-semibold ${m.enabled ? "text-foreground" : "text-muted-foreground/40"}`}
+                    >
+                      {m.displayName}
+                    </p>
+                    {healthCheckingIds.has(m.id) && (
+                      <span
+                        className="inline-block h-3.5 w-3.5 flex-shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+                        style={{ color: "var(--primary)" }}
+                      />
+                    )}
+                    {!healthCheckingIds.has(m.id) &&
+                      healthResults.has(m.id) &&
+                      (healthResults.get(m.id)!.ok ? (
+                        <IoCheckmarkCircle
+                          size={15}
+                          color="var(--success)"
+                          className="flex-shrink-0"
+                        />
+                      ) : (
+                        <IoCloseCircle
+                          size={15}
+                          color="var(--destructive)"
+                          className="flex-shrink-0"
+                        />
+                      ))}
+                  </div>
+                  <p className="text-muted-foreground truncate text-[12px]">{m.modelId}</p>
+                  {healthResults.has(m.id) &&
+                    !healthResults.get(m.id)!.ok &&
+                    healthResults.get(m.id)!.error && (
+                      <p className="text-destructive mt-0.5 truncate text-[11px]">
+                        {healthResults.get(m.id)!.error}
+                      </p>
+                    )}
                 </div>
-                <p className="text-muted-foreground truncate text-[12px]">{m.modelId}</p>
-                {healthResults.has(m.id) && !healthResults.get(m.id)!.ok && healthResults.get(m.id)!.error && (
-                  <p className="text-destructive mt-0.5 truncate text-[11px]">{healthResults.get(m.id)!.error}</p>
-                )}
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => handleSingleHealthCheck(m.id)}
+                    disabled={healthCheckingIds.has(m.id)}
+                    className="p-1 active:opacity-60 disabled:opacity-40"
+                    title={t("providerEdit.healthCheck")}
+                  >
+                    {healthCheckingIds.has(m.id) ? (
+                      <span
+                        className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                        style={{ color: "var(--primary)" }}
+                      />
+                    ) : (
+                      <IoPulseOutline size={16} color="var(--primary)" />
+                    )}
+                  </button>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={m.enabled}
+                      onChange={() => toggleModel(m.id)}
+                      className="peer sr-only"
+                    />
+                    <div className="peer-checked:bg-primary bg-muted-foreground/30 h-6 w-11 rounded-full after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
+                  </label>
+                  <button
+                    onClick={() => deleteModel(m.id)}
+                    className="p-1 active:opacity-60"
+                    title={t("common.delete")}
+                  >
+                    <IoTrashOutline size={16} color="var(--destructive)" />
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-shrink-0 items-center gap-2">
-                <button
-                  onClick={() => handleSingleHealthCheck(m.id)}
-                  disabled={healthCheckingIds.has(m.id)}
-                  className="p-1 active:opacity-60 disabled:opacity-40"
-                  title={t("providerEdit.healthCheck")}
-                >
-                  {healthCheckingIds.has(m.id) ? (
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" style={{ color: "var(--primary)" }} />
-                  ) : (
-                    <IoPulseOutline size={16} color="var(--primary)" />
-                  )}
-                </button>
-                <label className="relative inline-flex cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    checked={m.enabled}
-                    onChange={() => toggleModel(m.id)}
-                    className="peer sr-only"
-                  />
-                  <div className="peer-checked:bg-primary bg-muted-foreground/30 h-6 w-11 rounded-full after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
-                </label>
-                <button
-                  onClick={() => deleteModel(m.id)}
-                  className="p-1 active:opacity-60"
-                  title={t("common.delete")}
-                >
-                  <IoTrashOutline size={16} color="var(--destructive)" />
-                </button>
-              </div>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {[
-                {
-                  key: "vision",
-                  label: t("providerEdit.vision"),
-                  on: m.capabilities?.vision,
-                  icon: <IoEyeOutline size={12} />,
-                },
-                {
-                  key: "tools",
-                  label: t("providerEdit.tools"),
-                  on: m.capabilities?.toolCall,
-                  icon: <IoConstructOutline size={12} />,
-                },
-                {
-                  key: "reasoning",
-                  label: t("providerEdit.reasoning"),
-                  on: m.capabilities?.reasoning,
-                  icon: <IoBulbOutline size={12} />,
-                },
-              ].map((cap) => (
-                <span
-                  key={cap.key}
-                  className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] ${!cap.on ? "opacity-30" : ""}`}
-                  style={{
-                    backgroundColor: "var(--muted)",
-                    color: cap.on ? "var(--foreground)" : "var(--muted-foreground)",
-                  }}
-                >
-                  <span style={{ color: cap.on ? "var(--primary)" : "inherit" }}>
-                    {cap.icon}
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {[
+                  {
+                    key: "vision",
+                    label: t("providerEdit.vision"),
+                    on: m.capabilities?.vision,
+                    icon: <IoEyeOutline size={12} />,
+                  },
+                  {
+                    key: "tools",
+                    label: t("providerEdit.tools"),
+                    on: m.capabilities?.toolCall,
+                    icon: <IoConstructOutline size={12} />,
+                  },
+                  {
+                    key: "reasoning",
+                    label: t("providerEdit.reasoning"),
+                    on: m.capabilities?.reasoning,
+                    icon: <IoBulbOutline size={12} />,
+                  },
+                ].map((cap) => (
+                  <span
+                    key={cap.key}
+                    className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] ${!cap.on ? "opacity-30" : ""}`}
+                    style={{
+                      backgroundColor: "var(--muted)",
+                      color: cap.on ? "var(--foreground)" : "var(--muted-foreground)",
+                    }}
+                  >
+                    <span style={{ color: cap.on ? "var(--primary)" : "inherit" }}>{cap.icon}</span>
+                    {cap.label}
                   </span>
-                  {cap.label}
-                </span>
-              ))}
-              <button
-                onClick={async () => {
-                  setProbingModelIds((prev) => new Set(prev).add(m.id));
-                  try {
-                    await probeModelCapabilities(m.id);
-                  } catch {
-                    /* ignore */
-                  } finally {
-                    setProbingModelIds((prev) => {
-                      const next = new Set(prev);
-                      next.delete(m.id);
-                      return next;
-                    });
-                  }
-                }}
-                disabled={probingModelIds.has(m.id)}
-                className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium active:opacity-60 disabled:opacity-40"
-                style={{ backgroundColor: "var(--muted)", color: "var(--primary)" }}
-              >
-                {probingModelIds.has(m.id) ? (
-                  <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-                ) : (
-                  <IoPulseOutline size={12} />
-                )}
-                {t("providerEdit.probe")}
-              </button>
-            </div>
-          </motion.div>
-        ))}
+                ))}
+                <button
+                  onClick={async () => {
+                    setProbingModelIds((prev) => new Set(prev).add(m.id));
+                    try {
+                      await probeModelCapabilities(m.id);
+                    } catch {
+                      /* ignore */
+                    } finally {
+                      setProbingModelIds((prev) => {
+                        const next = new Set(prev);
+                        next.delete(m.id);
+                        return next;
+                      });
+                    }
+                  }}
+                  disabled={probingModelIds.has(m.id)}
+                  className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium active:opacity-60 disabled:opacity-40"
+                  style={{ backgroundColor: "var(--muted)", color: "var(--primary)" }}
+                >
+                  {probingModelIds.has(m.id) ? (
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                  ) : (
+                    <IoPulseOutline size={12} />
+                  )}
+                  {t("providerEdit.probe")}
+                </button>
+              </div>
+            </motion.div>
+          ))}
         </AnimatePresence>
       </div>
     </div>

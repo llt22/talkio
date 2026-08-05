@@ -37,7 +37,7 @@ describe("consumeGeminiGenerateContentSse", () => {
     const deltas: StreamDelta[] = [];
     await consumeGeminiGenerateContentSse(
       sseReader([
-        'data: {"candidates":[{"content":{"parts":[{"functionCall":{"name":"get_weather","args":{"city":"NYC"}}}]},"index":0}]}\n\n',
+        'data: {"candidates":[{"content":{"parts":[{"functionCall":{"id":"call_1","name":"get_weather","args":{"city":"NYC"}}}]},"index":0}]}\n\n',
         "data: [DONE]\n\n",
       ]),
       (d) => deltas.push(d),
@@ -49,6 +49,7 @@ describe("consumeGeminiGenerateContentSse", () => {
         tool_calls: [
           {
             index: 0,
+            id: "call_1",
             function: { name: "get_weather", arguments: '{"city":"NYC"}' },
           },
         ],

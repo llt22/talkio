@@ -24,16 +24,34 @@ export default defineConfig(async () => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/react-dom')) return 'react-vendor';
-          if (id.includes('node_modules/react/') || id.includes('node_modules/react-router')) return 'react-vendor';
-          if (id.includes('node_modules/radix-ui') || id.includes('node_modules/@radix-ui')) return 'ui-vendor';
-          if (id.includes('node_modules/lucide-react')) return 'ui-vendor';
-          if (id.includes('node_modules/react-markdown') || id.includes('node_modules/remark-') || id.includes('node_modules/rehype-')) return 'markdown';
-          if (id.includes('node_modules/mermaid')) return 'mermaid-core';
-          if (id.includes('node_modules/katex')) return 'katex';
-          if (id.includes('node_modules/pdfjs-dist')) return 'pdf';
-          if (id.includes('node_modules/cytoscape')) return 'cytoscape';
-          if (id.includes('node_modules/shiki')) return 'shiki';
+          if (id.includes("node_modules/react-dom")) return "react-vendor";
+          if (id.includes("node_modules/react/") || id.includes("node_modules/react-router"))
+            return "react-vendor";
+          if (id.includes("node_modules/radix-ui") || id.includes("node_modules/@radix-ui"))
+            return "ui-vendor";
+          if (id.includes("node_modules/lucide-react")) return "ui-vendor";
+          if (id.includes("node_modules/framer-motion") || id.includes("node_modules/motion-dom"))
+            return "motion";
+          if (id.includes("node_modules/@stackflow")) return "mobile-navigation";
+          if (id.includes("node_modules/@dnd-kit")) return "drag-drop";
+          if (id.includes("node_modules/@modelcontextprotocol")) return "mcp";
+          if (id.includes("node_modules/@tauri-apps")) return "tauri";
+          if (id.includes("node_modules/zustand")) return "state";
+          if (id.includes("node_modules/i18next") || id.includes("node_modules/react-i18next"))
+            return "i18n";
+          if (id.includes("node_modules/react-hook-form")) return "forms";
+          if (id.includes("node_modules/framer-motion")) return "motion";
+          if (id.includes("node_modules/date-fns")) return "dates";
+          if (id.includes("node_modules/sonner")) return "notifications";
+          if (
+            id.includes("node_modules/react-markdown") ||
+            id.includes("node_modules/remark-") ||
+            id.includes("node_modules/rehype-")
+          )
+            return "markdown";
+          if (id.includes("node_modules/katex")) return "katex";
+          if (id.includes("node_modules/pdfjs-dist")) return "pdf";
+          if (id.includes("node_modules/cytoscape")) return "cytoscape";
         },
       },
     },

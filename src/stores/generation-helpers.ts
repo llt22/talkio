@@ -44,7 +44,12 @@ export function createStreamFlusher(
     }
     if (!dirty) return;
     dirty = false;
-    const sm: StreamingState = { cid: ctx.cid, messageId, content: getContent(), reasoning: getReasoning() };
+    const sm: StreamingState = {
+      cid: ctx.cid,
+      messageId,
+      content: getContent(),
+      reasoning: getReasoning(),
+    };
     ctx.streamingMessages.set(messageId, sm);
     if (ctx.cid === ctx.getCurrentConversationId()) {
       const all = Array.from(ctx.streamingMessages.values()).filter((s) => s.cid === ctx.cid);

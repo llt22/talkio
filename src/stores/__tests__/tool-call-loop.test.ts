@@ -6,6 +6,7 @@ const {
   mockUpdateMessage,
   mockNotifyDbChange,
   mockExecuteBuiltInTool,
+  mockGetBuiltInToolDefs,
   mockExecuteMcpToolByName,
   mockCreateStreamFlusher,
   mockUseSettingsStore,
@@ -13,6 +14,7 @@ const {
   mockUpdateMessage: vi.fn(),
   mockNotifyDbChange: vi.fn(),
   mockExecuteBuiltInTool: vi.fn(),
+  mockGetBuiltInToolDefs: vi.fn(),
   mockExecuteMcpToolByName: vi.fn(),
   mockCreateStreamFlusher: vi.fn(),
   mockUseSettingsStore: {
@@ -34,6 +36,7 @@ vi.mock("../../hooks/useDatabase", () => ({
 
 vi.mock("../../services/built-in-tools", () => ({
   executeBuiltInTool: mockExecuteBuiltInTool,
+  getBuiltInToolDefs: mockGetBuiltInToolDefs,
 }));
 
 vi.mock("../../services/mcp", () => ({
@@ -138,6 +141,21 @@ describe("runToolCallLoop", () => {
     (mockUseSettingsStore.getState as Mock).mockReturnValue({
       settings: { toolApprovalMode: "auto" as const },
     });
+    mockGetBuiltInToolDefs.mockReturnValue(
+      [
+        "get_weather",
+        "remote_search",
+        "failing_tool",
+        "remote_fail",
+        "step1",
+        "step2",
+        "init",
+        "loop_tool",
+        "t1",
+        "t2",
+        "test_tool",
+      ].map((name) => ({ name, description: `${name} description` })),
+    );
   });
 
   describe("no tool calls — immediate return", () => {
@@ -667,6 +685,85 @@ describe("runToolCallLoop", () => {
         isStreaming: false,
         status: MessageStatus.SUCCESS,
       });
+    });
+
+    it("sends each tool turn once and accumulates records and usage", async () => {
+      const ctx = makeGenerationContext();
+      const acc = makeContentAccumulator({
+        pendingToolCalls: [{ id: "tc-1", name: "t1", arguments: "{}" }],
+      });
+      const adapter = makeMockAdapter();
+      mockExecuteBuiltInTool.mockResolvedValue({ success: true, content: "ok" });
+
+      let callCount = 0;
+      (adapter.streamChat as Mock).mockImplementation(
+        async (params: {
+          messages: Array<{ role: string; tool_calls?: Array<{ id: string }> }>;
+          onDelta: (delta: Record<string, unknown>) => void;
+        }) => {
+          callCount++;
+          if (callCount < 3) {
+            params.onDelta({
+              tool_calls: [
+                {
+                  index: 0,
+                  id: `tc-${callCount + 1}`,
+                  function: { name: `t${callCount + 1}`, arguments: "{}" },
+                },
+              ],
+            });
+          }
+          const ids = params.messages.flatMap((message) =>
+            (message.tool_calls ?? []).map((toolCall) => toolCall.id),
+          );
+          expect(new Set(ids).size).toBe(ids.length);
+          return {
+            usage: { prompt_tokens: callCount * 10, completion_tokens: callCount },
+          };
+        },
+      );
+
+      const result = await runToolCallLoop(
+        ctx,
+        "msg-1",
+        acc,
+        "",
+        [],
+        adapter,
+        "https://api.example.com",
+        {},
+        "gpt-4",
+        null,
+        undefined,
+        [],
+        {},
+        null,
+        undefined,
+        { inputTokens: 5, outputTokens: 2 },
+        undefined,
+      );
+
+      expect(result.tokenUsage).toEqual({ inputTokens: 65, outputTokens: 8 });
+      expect(mockUpdateMessage).toHaveBeenCalledWith(
+        "msg-1",
+        expect.objectContaining({
+          toolCalls: [
+            expect.objectContaining({ id: "tc-1" }),
+            expect.objectContaining({ id: "tc-2" }),
+            expect.objectContaining({ id: "tc-3" }),
+          ],
+        }),
+      );
+      expect(mockUpdateMessage).toHaveBeenCalledWith(
+        "msg-1",
+        expect.objectContaining({
+          toolResults: [
+            expect.objectContaining({ toolCallId: "tc-1" }),
+            expect.objectContaining({ toolCallId: "tc-2" }),
+            expect.objectContaining({ toolCallId: "tc-3" }),
+          ],
+        }),
+      );
     });
   });
 

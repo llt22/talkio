@@ -479,7 +479,8 @@ export const ChatInput = memo(function ChatInput({
                   </div>
                   <div className="min-w-0 flex-1">
                     <span className="text-foreground block truncate text-[15px] font-medium">
-                      {modelName}{suffix && <span className="text-muted-foreground"> {suffix}</span>}
+                      {modelName}
+                      {suffix && <span className="text-muted-foreground"> {suffix}</span>}
                     </span>
                     {secondLine && (
                       <span className="text-muted-foreground block truncate text-[12px]">

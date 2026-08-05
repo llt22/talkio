@@ -25,6 +25,9 @@ import { getMcpToolDefsForIdentity, refreshMcpConnections } from "../services/mc
 import { generateId } from "../lib/id";
 import { buildProviderHeaders } from "../services/provider-headers";
 import { getAdapter } from "../services/provider-adapters";
+import { resolveAdapterBaseUrl } from "../services/provider-request";
+import { NormalModelRuntime } from "../services/runtime/model-runtime";
+import type { GenerationEvent } from "../services/runtime/events";
 import {
   createStreamFlusher,
   processSseDelta,
@@ -59,6 +62,42 @@ export interface GenerationContext {
   workspaceTree?: string;
   workspaceFiles?: Array<{ path: string; content: string }>;
   isRetry?: boolean;
+}
+
+export function applyRuntimeEvent(
+  event: GenerationEvent,
+  acc: ContentAccumulator,
+  toolCallIndexById: Map<string, number>,
+): void {
+  if (event.type === "text-delta") {
+    processSseDelta(acc, { content: event.text });
+    return;
+  }
+  if (event.type === "thinking-delta") {
+    processSseDelta(acc, { reasoning_content: event.text });
+    return;
+  }
+  if (event.type === "tool-call-started") {
+    const index = acc.pendingToolCalls.length;
+    toolCallIndexById.set(event.callId, index);
+    processSseDelta(acc, {
+      tool_calls: [
+        {
+          index,
+          id: event.callId,
+          function: { name: event.name, arguments: "" },
+        },
+      ],
+    });
+    return;
+  }
+  if (event.type === "tool-call-arguments-delta") {
+    const index = toolCallIndexById.get(event.callId);
+    if (index === undefined) throw new Error(`Unknown tool call event: ${event.callId}`);
+    processSseDelta(acc, {
+      tool_calls: [{ index, function: { arguments: event.delta } }],
+    });
+  }
 }
 
 // ── Main generation function ──
@@ -117,7 +156,7 @@ export async function generateForParticipant(
     ctx.setStoreState({ streamingMessages: all });
   }
 
-  const baseUrl = provider.baseUrl.replace(/\/+$/, "");
+  const baseUrl = resolveAdapterBaseUrl(provider, model.modelId);
   const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
   await refreshMcpConnections().catch((err) =>
     console.warn("[chat-generation] MCP refresh failed:", err),
@@ -144,8 +183,8 @@ export async function generateForParticipant(
         m.status === MessageStatus.PAUSED ||
         m.id === ctx.userMsg.id,
     );
-
     const adapter = getAdapter(provider.apiFormat);
+    const runtime = new NormalModelRuntime(() => adapter);
 
     let apiMessages = buildApiMessagesForParticipant(filtered, participant, ctx.conversation, {
       workspaceTree: ctx.workspaceTree,
@@ -183,9 +222,13 @@ export async function generateForParticipant(
       () => acc.fullContent,
       () => acc.fullReasoning,
     );
-
-    const streamOnce = () =>
-      adapter.streamChat({
+    const streamOnce = async () => {
+      let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | null =
+        null;
+      const toolCallIndexById = new Map<string, number>();
+      for await (const event of runtime.run({
+        runId: assistantMsgId,
+        apiFormat: provider.apiFormat,
         baseUrl,
         headers,
         modelId: model.modelId,
@@ -194,11 +237,24 @@ export async function generateForParticipant(
         reasoningEffort,
         toolDefs,
         signal: ctx.abortController.signal,
-        onDelta: (delta) => {
-          processSseDelta(acc, delta);
-          flusher.schedule();
-        },
-      });
+      })) {
+        applyRuntimeEvent(event, acc, toolCallIndexById);
+        if (event.type === "text-delta" || event.type === "thinking-delta") flusher.schedule();
+        if (event.type === "usage") {
+          usage = {
+            prompt_tokens: event.usage.inputTokens,
+            completion_tokens: event.usage.outputTokens,
+            total_tokens: event.usage.inputTokens + event.usage.outputTokens,
+          };
+        }
+        if (event.type === "run-failed") {
+          if (event.error.code === "aborted")
+            throw new DOMException(event.error.message, "AbortError");
+          throw new Error(event.error.message);
+        }
+      }
+      return { usage };
+    };
 
     const resetAcc = () => {
       acc.fullContent = "";
@@ -213,9 +269,8 @@ export async function generateForParticipant(
       ({ usage: sseUsage } = await streamOnce());
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const retryable = /empty response|overloaded|timeout|temporarily|503|502|network|interrupted/i.test(
-        message,
-      );
+      const retryable =
+        /empty response|overloaded|timeout|temporarily|503|502|network|interrupted/i.test(message);
       if (!retryable || ctx.abortController.signal.aborted) throw error;
       resetAcc();
       ({ usage: sseUsage } = await streamOnce());

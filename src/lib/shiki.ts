@@ -1,56 +1,77 @@
-import { createHighlighter, type Highlighter } from "shiki";
+import { createHighlighterCore, type HighlighterCore } from "shiki/core";
+import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
+import githubDark from "@shikijs/themes/github-dark";
+import githubLight from "@shikijs/themes/github-light";
 
-let highlighterPromise: Promise<Highlighter> | null = null;
+const LANGUAGE_LOADERS = {
+  bash: () => import("@shikijs/langs/bash"),
+  c: () => import("@shikijs/langs/c"),
+  css: () => import("@shikijs/langs/css"),
+  dart: () => import("@shikijs/langs/dart"),
+  go: () => import("@shikijs/langs/go"),
+  html: () => import("@shikijs/langs/html"),
+  java: () => import("@shikijs/langs/java"),
+  javascript: () => import("@shikijs/langs/javascript"),
+  json: () => import("@shikijs/langs/json"),
+  jsx: () => import("@shikijs/langs/jsx"),
+  kotlin: () => import("@shikijs/langs/kotlin"),
+  markdown: () => import("@shikijs/langs/markdown"),
+  python: () => import("@shikijs/langs/python"),
+  rust: () => import("@shikijs/langs/rust"),
+  shell: () => import("@shikijs/langs/shellscript"),
+  sql: () => import("@shikijs/langs/sql"),
+  swift: () => import("@shikijs/langs/swift"),
+  toml: () => import("@shikijs/langs/toml"),
+  tsx: () => import("@shikijs/langs/tsx"),
+  typescript: () => import("@shikijs/langs/typescript"),
+  yaml: () => import("@shikijs/langs/yaml"),
+} as const;
 
-const PRELOADED_LANGS = [
-  "javascript",
-  "typescript",
-  "jsx",
-  "tsx",
-  "python",
-  "rust",
-  "go",
-  "java",
-  "c",
-  "cpp",
-  "html",
-  "css",
-  "json",
-  "yaml",
-  "toml",
-  "bash",
-  "shell",
-  "sql",
-  "markdown",
-  "swift",
-  "kotlin",
-  "dart",
-];
+type SupportedLanguage = keyof typeof LANGUAGE_LOADERS;
+type CodeTheme = "github-dark" | "github-light";
 
-export function getHighlighter(): Promise<Highlighter> {
+const LANGUAGE_ALIASES: Record<string, SupportedLanguage> = {
+  js: "javascript",
+  py: "python",
+  sh: "bash",
+  ts: "typescript",
+  yml: "yaml",
+};
+
+let highlighterPromise: Promise<HighlighterCore> | null = null;
+
+function getHighlighter(): Promise<HighlighterCore> {
   if (!highlighterPromise) {
-    highlighterPromise = createHighlighter({
-      themes: ["github-dark", "github-light"],
-      langs: PRELOADED_LANGS,
+    highlighterPromise = createHighlighterCore({
+      themes: [githubDark, githubLight],
+      langs: [],
+      engine: createJavaScriptRegexEngine({ forgiving: true }),
     });
   }
   return highlighterPromise;
 }
 
+function escapeHtml(code: string): string {
+  return code.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function renderPlaintext(code: string, theme: CodeTheme): string {
+  return `<pre class="shiki ${theme}" style="background-color:transparent;color:inherit" tabindex="0"><code>${escapeHtml(code)}</code></pre>`;
+}
+
 export async function highlightCode(
   code: string,
   lang: string,
-  theme: "github-dark" | "github-light" = "github-dark",
+  theme: CodeTheme = "github-dark",
 ): Promise<string> {
+  const normalized = LANGUAGE_ALIASES[lang] ?? lang;
+  if (!(normalized in LANGUAGE_LOADERS)) return renderPlaintext(code, theme);
+
+  const language = normalized as SupportedLanguage;
   const highlighter = await getHighlighter();
-  const loadedLangs = highlighter.getLoadedLanguages();
-  if (!loadedLangs.includes(lang as any)) {
-    try {
-      await highlighter.loadLanguage(lang as any);
-    } catch {
-      // Language not supported, fall back to plaintext
-      return highlighter.codeToHtml(code, { lang: "text", theme });
-    }
+  if (!highlighter.getLoadedLanguages().includes(language)) {
+    const module = await LANGUAGE_LOADERS[language]();
+    await highlighter.loadLanguage(...module.default);
   }
-  return highlighter.codeToHtml(code, { lang, theme });
+  return highlighter.codeToHtml(code, { lang: language, theme });
 }

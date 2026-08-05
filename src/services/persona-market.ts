@@ -12,8 +12,7 @@ const CACHE_KEY = "persona_market_cache";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 h
 
 /** URL to the hosted personas list on GitHub (updated without releasing). */
-const REMOTE_URL =
-  "https://raw.githubusercontent.com/llt22/talkio/main/public/personas.json";
+const REMOTE_URL = "https://raw.githubusercontent.com/llt22/talkio/main/public/personas.json";
 export interface MarketPersonaParams {
   temperature?: number;
   topP?: number;
@@ -85,7 +84,7 @@ export async function fetchPersonaMarket(): Promise<PersonaMarketData> {
     // Use globalThis.fetch (not appFetch) because local assets are served by
     // the webview and accessible via same-origin fetch on both desktop and mobile.
     try {
-      const res = await globalThis.fetch('/personas.json');
+      const res = await globalThis.fetch("/personas.json");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const local: PersonaMarketData = await res.json();
       if (!Array.isArray(local.personas)) throw new Error("Invalid format");

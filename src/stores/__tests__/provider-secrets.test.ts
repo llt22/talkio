@@ -16,8 +16,8 @@ vi.hoisted(() => {
   (globalThis as unknown as { localStorage: typeof storage }).localStorage = storage;
 });
 
-// Node environment: platform.ts resolves isDesktop=false → secret-store uses
-// the localStorage fallback, which is exactly what we want to exercise here.
+// Node environment resolves isDesktop=false, so secrets must remain in process
+// memory and legacy plaintext localStorage entries must be removed.
 
 function resetStorage() {
   localStorage.clear();
@@ -36,7 +36,7 @@ describe("provider secret persistence", () => {
 
   it("never persists apiKey in the providers blob", async () => {
     const store = await loadStore();
-    store.getState().addProvider({
+    await store.getState().addProvider({
       id: "p1",
       name: "OpenAI",
       type: "openai",
@@ -55,9 +55,9 @@ describe("provider secret persistence", () => {
     expect(stored[0].id).toBe("p1");
   });
 
-  it("stores the secret under talkio:secret:<providerId>", async () => {
+  it("does not persist the secret in browser storage", async () => {
     const store = await loadStore();
-    store.getState().addProvider({
+    await store.getState().addProvider({
       id: "p1",
       name: "OpenAI",
       type: "openai",
@@ -70,11 +70,11 @@ describe("provider secret persistence", () => {
       createdAt: new Date().toISOString(),
     });
 
-    expect(localStorage.getItem("talkio:secret:p1")).toBe("sk-secret-123");
+    expect(localStorage.getItem("talkio:secret:p1")).toBeNull();
+    expect(store.getState().getProviderById("p1")?.apiKey).toBe("sk-secret-123");
   });
 
-  it("hydrates apiKey back into the in-memory provider on load", async () => {
-    // Seed storage like an older build would (key in blob) plus the secret.
+  it("removes legacy browser secrets instead of hydrating them", async () => {
     localStorage.setItem(
       "talkio:providers",
       JSON.stringify([
@@ -83,7 +83,6 @@ describe("provider secret persistence", () => {
           name: "OpenAI",
           type: "openai",
           baseUrl: "https://api.openai.com/v1",
-          apiKey: "sk-legacy",
           customHeaders: [],
           enabled: true,
           status: "connected",
@@ -91,16 +90,14 @@ describe("provider secret persistence", () => {
         },
       ]),
     );
+    localStorage.setItem("talkio:secret:p1", "sk-legacy");
 
     const store = await loadStore();
-    // Wait for the async hydrate (queueMicrotask + secret reads).
-    await vi.waitFor(() => {
-      const p = store.getState().getProviderById("p1");
-      expect(p?.apiKey).toBe("sk-legacy");
-    });
+    await vi.waitFor(() => expect(localStorage.getItem("talkio:secret:p1")).toBeNull());
+    expect(store.getState().getProviderById("p1")?.apiKey).toBe("");
   });
 
-  it("migrates legacy blob keys into the secret store and strips the blob", async () => {
+  it("migrates legacy blob keys into memory and strips the blob", async () => {
     localStorage.setItem(
       "talkio:providers",
       JSON.stringify([
@@ -120,16 +117,16 @@ describe("provider secret persistence", () => {
 
     const store = await loadStore();
     await vi.waitFor(() => {
-      expect(localStorage.getItem("talkio:secret:p1")).toBe("sk-legacy");
+      expect(store.getState().getProviderById("p1")?.apiKey).toBe("sk-legacy");
     });
     const blob = JSON.parse(localStorage.getItem("talkio:providers") ?? "[]");
     expect(blob[0].apiKey).toBeUndefined();
-    expect(store.getState().getProviderById("p1")?.apiKey).toBe("sk-legacy");
+    expect(localStorage.getItem("talkio:secret:p1")).toBeNull();
   });
 
   it("deletes the secret when the provider is removed", async () => {
     const store = await loadStore();
-    store.getState().addProvider({
+    await store.getState().addProvider({
       id: "p1",
       name: "OpenAI",
       type: "openai",
@@ -140,15 +137,15 @@ describe("provider secret persistence", () => {
       status: "connected",
       createdAt: new Date().toISOString(),
     });
-    expect(localStorage.getItem("talkio:secret:p1")).toBe("sk-secret-123");
+    expect(store.getState().getProviderById("p1")?.apiKey).toBe("sk-secret-123");
 
-    store.getState().deleteProvider("p1");
-    expect(localStorage.getItem("talkio:secret:p1")).toBeNull();
+    await store.getState().deleteProvider("p1");
+    expect(store.getState().getProviderById("p1")).toBeUndefined();
   });
 
   it("clears the secret when updateProvider receives an empty apiKey", async () => {
     const store = await loadStore();
-    store.getState().addProvider({
+    await store.getState().addProvider({
       id: "p1",
       name: "OpenAI",
       type: "openai",
@@ -159,7 +156,54 @@ describe("provider secret persistence", () => {
       status: "connected",
       createdAt: new Date().toISOString(),
     });
-    store.getState().updateProvider("p1", { apiKey: "" });
+    await store.getState().updateProvider("p1", { apiKey: "" });
     expect(localStorage.getItem("talkio:secret:p1")).toBeNull();
+  });
+
+  it("does not add a provider when secret persistence fails", async () => {
+    const store = await loadStore();
+    const { secretStore } = await import("../../services/secret-store");
+    vi.spyOn(secretStore, "set").mockRejectedValueOnce(new Error("Keychain unavailable"));
+
+    await expect(
+      store.getState().addProvider({
+        id: "p-fail",
+        name: "OpenAI",
+        type: "openai",
+        apiFormat: "chat-completions",
+        baseUrl: "https://api.openai.com/v1",
+        apiKey: "sk-secret",
+        customHeaders: [],
+        enabled: true,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      }),
+    ).rejects.toThrow("Keychain unavailable");
+
+    expect(store.getState().getProviderById("p-fail")).toBeUndefined();
+    expect(JSON.parse(localStorage.getItem("talkio:providers") ?? "[]")).toEqual([]);
+  });
+
+  it("keeps existing provider data when secret update fails", async () => {
+    const store = await loadStore();
+    await store.getState().addProvider({
+      id: "p1",
+      name: "OpenAI",
+      type: "openai",
+      apiFormat: "chat-completions",
+      baseUrl: "https://api.openai.com/v1",
+      apiKey: "old-secret",
+      customHeaders: [],
+      enabled: true,
+      status: "connected",
+      createdAt: new Date().toISOString(),
+    });
+    const { secretStore } = await import("../../services/secret-store");
+    vi.spyOn(secretStore, "set").mockRejectedValueOnce(new Error("Keychain unavailable"));
+
+    await expect(
+      store.getState().updateProvider("p1", { name: "Changed", apiKey: "new-secret" }),
+    ).rejects.toThrow("Keychain unavailable");
+    expect(store.getState().getProviderById("p1")?.name).toBe("OpenAI");
   });
 });

@@ -1,11 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
-import { BrowserRouter } from "react-router-dom";
+import { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { ConfirmDialogProvider, appAlert } from "./components/shared/ConfirmDialogProvider";
 import { ToolApprovalDialog } from "./components/shared/ToolApprovalDialog";
-import { MobileLayout } from "./components/mobile/MobileLayout";
-import { DesktopLayout } from "./components/desktop/DesktopLayout";
 import { initDatabase } from "./storage/database";
 import { useProviderStore } from "./stores/provider-store";
 import { useIdentityStore } from "./stores/identity-store";
@@ -14,6 +11,16 @@ import { useSettingsStore } from "./stores/settings-store";
 import { useBuiltInToolsStore } from "./stores/built-in-tools-store";
 import { refreshMcpConnections } from "./services/mcp";
 import i18n from "./i18n";
+const MobileLayout = lazy(() =>
+  import("./components/mobile/MobileLayout").then((module) => ({
+    default: module.MobileLayout,
+  })),
+);
+const DesktopLayout = lazy(() =>
+  import("./components/desktop/DesktopLayout").then((module) => ({
+    default: module.DesktopLayout,
+  })),
+);
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => {
@@ -100,29 +107,25 @@ export default function App() {
     refreshMcpConnections().catch((err) => console.warn("[App] MCP refresh failed:", err));
   }, [ready, enabledMcpSignature]);
 
+  const loading = (
+    <div className="flex h-full items-center justify-center">
+      <div className="text-muted-foreground text-sm">Loading...</div>
+    </div>
+  );
+
   return (
-    <BrowserRouter>
-      <ConfirmDialogProvider>
-        <TooltipProvider>
-          <div className="bg-background text-foreground flex h-screen w-screen flex-col overflow-hidden antialiased">
-            <div className="relative min-h-0 flex-1">
-              {ready ? (
-                isMobile ? (
-                  <MobileLayout />
-                ) : (
-                  <DesktopLayout />
-                )
-              ) : (
-                <div className="flex h-full items-center justify-center">
-                  <div className="text-muted-foreground text-sm">Loading...</div>
-                </div>
-              )}
-            </div>
+    <ConfirmDialogProvider>
+      <TooltipProvider>
+        <div className="bg-background text-foreground flex h-screen w-screen flex-col overflow-hidden antialiased">
+          <div className="relative min-h-0 flex-1">
+            <Suspense fallback={loading}>
+              {ready ? isMobile ? <MobileLayout /> : <DesktopLayout /> : loading}
+            </Suspense>
           </div>
-          <Toaster position={isMobile ? "top-center" : "bottom-right"} richColors />
-          <ToolApprovalDialog />
-        </TooltipProvider>
-      </ConfirmDialogProvider>
-    </BrowserRouter>
+        </div>
+        <Toaster position={isMobile ? "top-center" : "bottom-right"} richColors />
+        <ToolApprovalDialog />
+      </TooltipProvider>
+    </ConfirmDialogProvider>
   );
 }

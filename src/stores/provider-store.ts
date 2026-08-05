@@ -14,6 +14,7 @@ import {
   testProviderConnection,
   checkModelHealth,
 } from "../services/provider-service";
+import { resolveModelDescriptor } from "../services/provider-profiles/model-catalog";
 
 const PROVIDERS_KEY = "providers";
 const MODELS_KEY = "models";
@@ -29,9 +30,9 @@ interface ProviderState {
   getEnabledModels: () => Model[];
 
   // Actions
-  addProvider: (provider: Provider) => void;
-  updateProvider: (id: string, updates: Partial<Provider>) => void;
-  deleteProvider: (id: string) => void;
+  addProvider: (provider: Provider) => Promise<void>;
+  updateProvider: (id: string, updates: Partial<Provider>) => Promise<void>;
+  deleteProvider: (id: string) => Promise<void>;
   addModel: (model: Model) => void;
   addModelById: (providerId: string, modelId: string) => Model;
   updateModel: (id: string, updates: Partial<Model>) => void;
@@ -133,8 +134,8 @@ export const useProviderStore = create<ProviderState>((set, get) => {
     getModelsByProvider: (providerId) => get().models.filter((m) => m.providerId === providerId),
     getEnabledModels: () => get().models.filter((m) => m.enabled),
 
-    addProvider: (provider) => {
-      void secretStore.set(provider.id, provider.apiKey);
+    addProvider: async (provider) => {
+      await secretStore.set(provider.id, provider.apiKey);
       set((s) => {
         const providers = [...s.providers, provider];
         persistProviders(providers);
@@ -142,9 +143,9 @@ export const useProviderStore = create<ProviderState>((set, get) => {
       });
     },
 
-    updateProvider: (id, updates) => {
+    updateProvider: async (id, updates) => {
       if (updates.apiKey !== undefined) {
-        void secretStore.set(id, updates.apiKey ?? "");
+        await secretStore.set(id, updates.apiKey ?? "");
       }
       set((s) => {
         const providers = s.providers.map((p) => (p.id === id ? { ...p, ...updates } : p));
@@ -153,8 +154,8 @@ export const useProviderStore = create<ProviderState>((set, get) => {
       });
     },
 
-    deleteProvider: (id) => {
-      void secretStore.delete(id);
+    deleteProvider: async (id) => {
+      await secretStore.delete(id);
       set((s) => {
         const providers = s.providers.filter((p) => p.id !== id);
         const models = s.models.filter((m) => m.providerId !== id);
@@ -261,28 +262,41 @@ export const useProviderStore = create<ProviderState>((set, get) => {
 
       // Anthropic has no /models endpoint — keep existing models intact
       if (modelList.length === 0) {
-        get().updateProvider(providerId, { status: "connected" });
+        await get().updateProvider(providerId, { status: "connected" });
         return get().models.filter((m) => m.providerId === providerId);
       }
 
       const existingOther = get().models.filter((m) => m.providerId !== providerId);
       const existingForProvider = get().models.filter((m) => m.providerId === providerId);
 
-      const newModels: Model[] = modelList.map((m: any) => {
-        const existing = existingForProvider.find((e) => e.modelId === m.id);
-        return createModelFromProviderPayload(
-          existing?.id ?? generateId(),
+      const newModels: Model[] = modelList.map((payload) => {
+        const existing = existingForProvider.find((model) => model.modelId === payload.id);
+        if (existing) return existing;
+        const descriptor = resolveModelDescriptor(provider.profileId ?? provider.id, payload.id);
+        const model = createModelFromProviderPayload(
+          generateId(),
           providerId,
-          m.id,
-          existing,
-          m.context_length ?? 128000,
+          payload.id,
+          undefined,
+          descriptor?.contextWindow ?? payload.context_length ?? 128000,
         );
+        if (descriptor?.displayName) model.displayName = descriptor.displayName;
+        if (descriptor?.capabilities) {
+          model.capabilities = {
+            vision: descriptor.inputModalities.includes("image"),
+            toolCall: descriptor.capabilities.tools === true,
+            reasoning: descriptor.capabilities.reasoning === true,
+            streaming: descriptor.capabilities.streaming !== false,
+          };
+          model.capabilitiesVerified = true;
+        }
+        return model;
       });
 
       const allModels = [...existingOther, ...newModels];
       set({ models: allModels });
       persistModels(allModels);
-      get().updateProvider(providerId, { status: "connected" });
+      await get().updateProvider(providerId, { status: "connected" });
 
       return newModels;
     },
@@ -293,10 +307,10 @@ export const useProviderStore = create<ProviderState>((set, get) => {
 
       try {
         const ok = await testProviderConnection(provider);
-        get().updateProvider(providerId, { status: ok ? "connected" : "error" });
+        await get().updateProvider(providerId, { status: ok ? "connected" : "error" });
         return ok;
       } catch {
-        get().updateProvider(providerId, { status: "error" });
+        await get().updateProvider(providerId, { status: "error" });
         return false;
       }
     },

@@ -17,12 +17,16 @@ import { appFetch } from "../../lib/http";
 interface GeminiPart {
   text?: string;
   inlineData?: { mimeType: string; data: string };
-  functionCall?: { name: string; args: Record<string, unknown> };
-  functionResponse?: { name: string; response: Record<string, unknown> };
+  functionCall?: { id?: string; name: string; args: Record<string, unknown> };
+  functionResponse?: {
+    id?: string;
+    name: string;
+    response: Record<string, unknown>;
+  };
 }
 
 interface GeminiMessage {
-  role: "user" | "model" | "function";
+  role: "user" | "model";
   parts: GeminiPart[];
 }
 
@@ -35,6 +39,7 @@ function toGeminiContents(
 } {
   let system: string | undefined;
   const contents: GeminiMessage[] = [];
+  const functionNamesByCallId = new Map<string, string>();
 
   for (const msg of messages) {
     if (msg.role === "system") {
@@ -42,11 +47,16 @@ function toGeminiContents(
       continue;
     }
     if (msg.role === "tool") {
-      // Function response for a previous model turn.
+      const callId = msg.tool_call_id ?? "";
+      const functionName = functionNamesByCallId.get(callId);
+      if (!functionName) {
+        throw new Error(`Missing Gemini function name for tool call ${callId || "<empty>"}`);
+      }
       const parts: GeminiPart[] = [
         {
           functionResponse: {
-            name: msg.tool_call_id ?? "",
+            id: callId || undefined,
+            name: functionName,
             response: {
               content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content),
             },
@@ -54,8 +64,8 @@ function toGeminiContents(
         },
       ];
       const last = contents[contents.length - 1];
-      if (last && last.role === "function") last.parts.push(...parts);
-      else contents.push({ role: "function", parts });
+      if (last && last.role === "user") last.parts.push(...parts);
+      else contents.push({ role: "user", parts });
       continue;
     }
 
@@ -83,6 +93,9 @@ function toGeminiContents(
       | undefined;
     if (toolCalls) {
       for (const tc of toolCalls) {
+        const callId = tc.id ?? "";
+        const functionName = tc.function?.name ?? "";
+        if (callId && functionName) functionNamesByCallId.set(callId, functionName);
         let args: Record<string, unknown> = {};
         try {
           args = tc.function?.arguments ? JSON.parse(tc.function.arguments) : {};
@@ -90,7 +103,7 @@ function toGeminiContents(
           args = { raw: tc.function?.arguments ?? "" };
         }
         parts.push({
-          functionCall: { name: tc.function?.name ?? "", args },
+          functionCall: { id: callId || undefined, name: functionName, args },
         });
       }
     }

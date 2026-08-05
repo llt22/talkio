@@ -442,10 +442,7 @@ function DesktopConversationItem({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-40">
-        <ContextMenuItem
-          className="text-xs"
-          onClick={onTogglePin}
-        >
+        <ContextMenuItem className="text-xs" onClick={onTogglePin}>
           <Pin size={14} className="mr-2" />
           {conversation.pinned ? t("chat.unpinConversation") : t("chat.pinConversation")}
         </ContextMenuItem>

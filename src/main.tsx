@@ -13,7 +13,10 @@ try {
       writable: true,
       value: (ms: number): AbortSignal => {
         const controller = new AbortController();
-        setTimeout(() => controller.abort(new DOMException("signal timed out", "TimeoutError")), ms);
+        setTimeout(
+          () => controller.abort(new DOMException("signal timed out", "TimeoutError")),
+          ms,
+        );
         return controller.signal;
       },
     });

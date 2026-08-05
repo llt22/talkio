@@ -2,6 +2,28 @@ import type { Model, ModelCapabilities, Provider } from "../types";
 import { appFetch } from "../lib/http";
 import { buildProviderHeaders } from "./provider-headers";
 import { getAdapter } from "./provider-adapters";
+import {
+  appendResourcePath,
+  isAzureOpenAIProvider,
+  resolveAdapterBaseUrl,
+  resolveProviderResourceUrl,
+} from "./provider-request";
+
+export interface ProviderModelPayload {
+  id: string;
+  object?: string;
+  context_length?: number;
+}
+
+function objectArray(value: unknown, key?: string): Record<string, unknown>[] {
+  if (!value || typeof value !== "object") return [];
+  const candidate = key ? (value as Record<string, unknown>)[key] : value;
+  return Array.isArray(candidate)
+    ? candidate.filter(
+        (item): item is Record<string, unknown> => Boolean(item) && typeof item === "object",
+      )
+    : [];
+}
 
 function defaultCapabilities(): ModelCapabilities {
   return {
@@ -33,42 +55,56 @@ export function createModelFromProviderPayload(
   } as Model;
 }
 
-export async function fetchProviderModels(provider: Provider): Promise<any[]> {
-  if (provider.apiFormat === "anthropic-messages") {
-    // Anthropic has no /models endpoint — models are added manually
+export async function fetchProviderModels(provider: Provider): Promise<ProviderModelPayload[]> {
+  if (provider.apiFormat === "anthropic-messages" || isAzureOpenAIProvider(provider)) {
+    // Anthropic and Azure deployments are configured manually.
     return [];
   }
   const baseUrl = provider.baseUrl.replace(/\/+$/, "");
   const headers = buildProviderHeaders(provider);
-  if (provider.apiFormat === "gemini-generate-content") {
-    // Gemini native list endpoint returns { models: [{ name: "models/..." }] }
-    const res = await appFetch(`${baseUrl}/models`, {
-      headers,
-      signal: AbortSignal.timeout(30000),
-    });
-    if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`);
-    const json = await res.json();
-    return (json.models ?? []).map((m: any) => ({
-      id: (m.name ?? "").replace(/^models\//, ""),
-      object: "model",
-    }));
-  }
-  const res = await appFetch(`${baseUrl}/models`, {
+  const profileId = provider.profileId;
+  const path = profileId === "ollama" ? "/api/tags" : "/models";
+  const res = await appFetch(`${baseUrl}${path}`, {
     headers,
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`);
-  const json = await res.json();
-  return json.data ?? json ?? [];
+  const json: unknown = await res.json();
+  if (provider.apiFormat === "gemini-generate-content") {
+    return objectArray(json, "models")
+      .map((model) => (typeof model.name === "string" ? model.name.replace(/^models\//, "") : ""))
+      .filter(Boolean)
+      .map((id) => ({ id, object: "model" }));
+  }
+  if (profileId === "ollama") {
+    return objectArray(json, "models")
+      .map((model) =>
+        typeof model.name === "string"
+          ? model.name
+          : typeof model.model === "string"
+            ? model.model
+            : "",
+      )
+      .filter(Boolean)
+      .map((id) => ({ id, object: "model" }));
+  }
+  const models =
+    objectArray(json, "data").length > 0 ? objectArray(json, "data") : objectArray(json);
+  return models
+    .filter((model) => typeof model.id === "string")
+    .map((model) => ({
+      id: model.id as string,
+      object: typeof model.object === "string" ? model.object : undefined,
+      context_length: typeof model.context_length === "number" ? model.context_length : undefined,
+    }));
 }
 
 export async function testProviderConnection(provider: Provider): Promise<boolean> {
-  const baseUrl = provider.baseUrl.replace(/\/+$/, "");
+  const headers = buildProviderHeaders(provider);
   if (provider.apiFormat === "anthropic-messages") {
-    const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
-    const res = await appFetch(`${baseUrl}/v1/messages`, {
+    const res = await appFetch(resolveProviderResourceUrl(provider, "/v1/messages"), {
       method: "POST",
-      headers,
+      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1,
@@ -78,8 +114,14 @@ export async function testProviderConnection(provider: Provider): Promise<boolea
     });
     return res.ok;
   }
-  const res = await appFetch(`${baseUrl}/models`, {
-    headers: buildProviderHeaders(provider),
+  if (isAzureOpenAIProvider(provider)) {
+    // A deployment name is a model id in Talkio; connection is verified when
+    // that model is selected or health-checked.
+    return Boolean(provider.baseUrl && provider.apiKey);
+  }
+  const path = provider.profileId === "ollama" ? "/api/tags" : "/models";
+  const res = await appFetch(resolveProviderResourceUrl(provider, path), {
+    headers,
     signal: AbortSignal.timeout(10000),
   });
   return res.ok;
@@ -89,7 +131,7 @@ export async function probeProviderModelCapabilities(
   provider: Provider,
   modelId: string,
 ): Promise<ModelCapabilities> {
-  const baseUrl = provider.baseUrl.replace(/\/+$/, "");
+  const baseUrl = resolveAdapterBaseUrl(provider, modelId);
   const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
   const adapter = getAdapter(provider.apiFormat);
   return adapter.probeCapabilities({ baseUrl, headers, modelId });
@@ -103,7 +145,7 @@ export async function checkModelHealth(
   provider: Provider,
   modelId: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  const baseUrl = provider.baseUrl.replace(/\/+$/, "");
+  const baseUrl = resolveAdapterBaseUrl(provider, modelId);
   const headers = buildProviderHeaders(provider, { "Content-Type": "application/json" });
 
   try {
@@ -124,7 +166,9 @@ export async function checkModelHealth(
     }
 
     const endpoint =
-      provider.apiFormat === "responses" ? `${baseUrl}/responses` : `${baseUrl}/chat/completions`;
+      provider.apiFormat === "responses"
+        ? appendResourcePath(baseUrl, "/responses")
+        : appendResourcePath(baseUrl, "/chat/completions");
 
     const body =
       provider.apiFormat === "responses"

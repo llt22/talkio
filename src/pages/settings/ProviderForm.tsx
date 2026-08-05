@@ -56,42 +56,42 @@ export function ProviderForm({ provider, onClose }: ProviderFormProps) {
   const [fetchResult, setFetchResult] = useState<string | null>(null);
   const fetchModels = useProviderStore((s) => s.fetchModels);
 
-  const doSave = useCallback((): string => {
+  const doSave = useCallback(async (): Promise<string> => {
     if (!name.trim() || !baseUrl.trim() || !apiKey.trim()) return "";
 
     if (provider) {
-      updateProvider(provider.id, {
+      await updateProvider(provider.id, {
         name: name.trim(),
         type,
         baseUrl: baseUrl.trim(),
         apiKey: apiKey.trim(),
       });
       return provider.id;
-    } else {
-      const id = generateId();
-      addProvider({
-        id,
-        name: name.trim(),
-        type,
-        baseUrl: baseUrl.trim(),
-        apiKey: apiKey.trim(),
-        apiVersion: undefined,
-        customHeaders: [],
-        enabled: true,
-        status: "pending",
-        createdAt: new Date().toISOString(),
-      });
-      return id;
     }
+
+    const id = generateId();
+    await addProvider({
+      id,
+      name: name.trim(),
+      type,
+      baseUrl: baseUrl.trim(),
+      apiKey: apiKey.trim(),
+      apiVersion: undefined,
+      customHeaders: [],
+      enabled: true,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    });
+    return id;
   }, [name, type, baseUrl, apiKey, provider, addProvider, updateProvider]);
 
-  const handleSave = useCallback(() => {
-    doSave();
-    onClose();
+  const handleSave = useCallback(async () => {
+    const providerId = await doSave();
+    if (providerId) onClose();
   }, [doSave, onClose]);
 
   const handleSaveAndFetch = useCallback(async () => {
-    const providerId = doSave();
+    const providerId = await doSave();
     if (!providerId) return;
     setFetchingModels(true);
     setFetchResult(null);

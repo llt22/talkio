@@ -105,12 +105,14 @@ export async function* streamChatToEvents(
             let entry = pending.get(index);
             if (!entry) {
               const callId = tc.id ?? `tc-${index}`;
-              entry = { callId, name: tc.function?.name ?? "" };
+              entry = { callId, name: "" };
               pending.set(index, entry);
+              if (tc.function?.name) entry.name += tc.function.name;
               queue.push({ type: "tool-call-started", callId, name: entry.name });
               wake();
+            } else if (tc.function?.name) {
+              entry.name += tc.function.name;
             }
-            if (tc.function?.name) entry.name += tc.function.name;
             if (tc.function?.arguments) {
               queue.push({
                 type: "tool-call-arguments-delta",

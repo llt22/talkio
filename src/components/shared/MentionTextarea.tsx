@@ -32,9 +32,7 @@ export const MentionTextarea = memo(function MentionTextarea({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const filtered = mentions.filter((m) =>
-    m.label.toLowerCase().includes(menuFilter.toLowerCase()),
-  );
+  const filtered = mentions.filter((m) => m.label.toLowerCase().includes(menuFilter.toLowerCase()));
 
   const insertMention = useCallback(
     (mention: Mention) => {

@@ -12,12 +12,16 @@ export interface GitResult {
 }
 
 const READ_SUBCOMMANDS = new Set([
-  "status", "log", "diff", "branch", "show", "rev-parse", "remote",
+  "status",
+  "log",
+  "diff",
+  "branch",
+  "show",
+  "rev-parse",
+  "remote",
 ]);
 
-const WRITE_SUBCOMMANDS = new Set([
-  "add", "commit", "checkout", "stash", "pull", "push",
-]);
+const WRITE_SUBCOMMANDS = new Set(["add", "commit", "checkout", "stash", "pull", "push"]);
 
 export function isGitReadCommand(subcommand: string): boolean {
   return READ_SUBCOMMANDS.has(subcommand);

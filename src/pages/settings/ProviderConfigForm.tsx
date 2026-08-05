@@ -41,10 +41,7 @@ export function ProviderConfigForm(props: ProviderConfigFormProps) {
     <>
       {/* Name / URL / Type */}
       {props.showBaseFields && (
-        <div
-          className="mb-4 overflow-hidden rounded-xl"
-          style={{ backgroundColor: "var(--card)" }}
-        >
+        <div className="mb-4 overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
           <FormRow label={t("providerEdit.name")}>
             <input
               className="text-foreground flex-1 bg-transparent text-[16px] outline-none"
@@ -88,16 +85,9 @@ export function ProviderConfigForm(props: ProviderConfigFormProps) {
       )}
 
       {/* API Key */}
-      <div
-        className="mb-4 overflow-hidden rounded-xl"
-        style={{ backgroundColor: "var(--card)" }}
-      >
+      <div className="mb-4 overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
         <div className="flex items-center px-4 py-3.5">
-          <IoKeyOutline
-            size={18}
-            color="var(--muted-foreground)"
-            className="mr-3 flex-shrink-0"
-          />
+          <IoKeyOutline size={18} color="var(--muted-foreground)" className="mr-3 flex-shrink-0" />
           <input
             type={showApiKey ? "text" : "password"}
             className="text-foreground flex-1 bg-transparent text-[16px] outline-none"
@@ -105,10 +95,7 @@ export function ProviderConfigForm(props: ProviderConfigFormProps) {
             onChange={(e) => props.onApiKeyChange(e.target.value)}
             placeholder={t("providerEdit.apiKeyPlaceholder")}
           />
-          <button
-            onClick={() => setShowApiKey(!showApiKey)}
-            className="ml-2 p-1 active:opacity-60"
-          >
+          <button onClick={() => setShowApiKey(!showApiKey)} className="ml-2 p-1 active:opacity-60">
             {showApiKey ? (
               <IoEyeOffOutline size={20} color="var(--muted-foreground)" />
             ) : (
@@ -134,10 +121,7 @@ export function ProviderConfigForm(props: ProviderConfigFormProps) {
       </button>
 
       {showAdvanced && (
-        <div
-          className="mb-4 overflow-hidden rounded-xl"
-          style={{ backgroundColor: "var(--card)" }}
-        >
+        <div className="mb-4 overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)" }}>
           {/* Enabled toggle */}
           <div
             className="flex items-center justify-between px-4 py-3.5"
@@ -158,9 +142,7 @@ export function ProviderConfigForm(props: ProviderConfigFormProps) {
           {/* Custom Headers */}
           <div className="px-4 py-3.5">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-foreground text-[14px]">
-                {t("providerEdit.customHeaders")}
-              </span>
+              <span className="text-foreground text-[14px]">{t("providerEdit.customHeaders")}</span>
               <button
                 onClick={() =>
                   props.onCustomHeadersChange([...props.customHeaders, { name: "", value: "" }])

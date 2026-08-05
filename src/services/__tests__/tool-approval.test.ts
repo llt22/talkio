@@ -22,7 +22,11 @@ describe("toolApproval", () => {
   });
 
   it("auto mode resolves immediately without approval", async () => {
-    const decided = await toolApproval.request("read_file", { path: "/tmp/x" });
+    const decided = await toolApproval.request({
+      toolName: "read_file",
+      args: { path: "/tmp/x" },
+      risk: "read",
+    });
     expect(decided).toBe(true);
     expect(toolApproval.getPending()).toHaveLength(0);
   });
@@ -30,9 +34,11 @@ describe("toolApproval", () => {
   it("ask mode parks the request until resolved", async () => {
     setMode("ask");
     let decided: boolean | null = null;
-    const promise = toolApproval.request("write_file", { path: "/tmp/x" }).then((ok) => {
-      decided = ok;
-    });
+    const promise = toolApproval
+      .request({ toolName: "write_file", args: { path: "/tmp/x" }, risk: "write" })
+      .then((ok) => {
+        decided = ok;
+      });
 
     // Nothing decided yet, one pending entry.
     await Promise.resolve();
@@ -50,9 +56,11 @@ describe("toolApproval", () => {
   it("reject resolves the request as false", async () => {
     setMode("ask");
     let decided: boolean | null = null;
-    const promise = toolApproval.request("delete_file", { path: "/tmp/x" }).then((ok) => {
-      decided = ok;
-    });
+    const promise = toolApproval
+      .request({ toolName: "delete_file", args: { path: "/tmp/x" }, risk: "write" })
+      .then((ok) => {
+        decided = ok;
+      });
     toolApproval.resolve(toolApproval.getPending()[0].id, false);
     await promise;
     expect(decided).toBe(false);
@@ -61,8 +69,12 @@ describe("toolApproval", () => {
   it("rejectAll unblocks every pending request as rejected", async () => {
     setMode("ask");
     const results: boolean[] = [];
-    const p1 = toolApproval.request("a", {}).then((ok) => results.push(ok));
-    const p2 = toolApproval.request("b", {}).then((ok) => results.push(ok));
+    const p1 = toolApproval
+      .request({ toolName: "a", args: {}, risk: "unknown" })
+      .then((ok) => results.push(ok));
+    const p2 = toolApproval
+      .request({ toolName: "b", args: {}, risk: "unknown" })
+      .then((ok) => results.push(ok));
     expect(toolApproval.getPending()).toHaveLength(2);
 
     toolApproval.rejectAll();
@@ -78,12 +90,12 @@ describe("toolApproval", () => {
       notified.push(toolApproval.getPending().length),
     );
 
-    void toolApproval.request("a", {});
+    void toolApproval.request({ toolName: "a", args: {}, risk: "unknown" });
     expect(notified[notified.length - 1]).toBe(1);
     toolApproval.rejectAll();
     expect(notified[notified.length - 1]).toBe(0);
     unsubscribe();
-    void toolApproval.request("b", {});
+    void toolApproval.request({ toolName: "b", args: {}, risk: "unknown" });
     expect(notified[notified.length - 1]).toBe(0);
   });
 

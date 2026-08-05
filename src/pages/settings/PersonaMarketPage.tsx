@@ -150,9 +150,7 @@ export function PersonaMarketPage({ onClose }: { onClose: () => void }) {
   );
 
   const filtered =
-    activeCategory === "all"
-      ? personas
-      : personas.filter((p) => p.category === activeCategory);
+    activeCategory === "all" ? personas : personas.filter((p) => p.category === activeCategory);
 
   const title = isZh ? "角色市场" : "Persona Market";
   const refreshLabel = isZh ? "刷新" : "Refresh";
@@ -160,10 +158,7 @@ export function PersonaMarketPage({ onClose }: { onClose: () => void }) {
   const emptyLabel = isZh ? "暂无角色" : "No personas";
 
   return (
-    <div
-      className="flex h-full flex-col"
-      style={{ backgroundColor: "var(--background)" }}
-    >
+    <div className="flex h-full flex-col" style={{ backgroundColor: "var(--background)" }}>
       {/* Header */}
       <div className="flex flex-shrink-0 items-center gap-2 px-4 pt-2 pb-2">
         <button
@@ -192,10 +187,7 @@ export function PersonaMarketPage({ onClose }: { onClose: () => void }) {
               onClick={() => setActiveCategory(cat.key)}
               className="flex-shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors active:opacity-70"
               style={{
-                backgroundColor:
-                  activeCategory === cat.key
-                    ? "var(--primary)"
-                    : "var(--secondary)",
+                backgroundColor: activeCategory === cat.key ? "var(--primary)" : "var(--secondary)",
                 color: activeCategory === cat.key ? "white" : "var(--foreground)",
               }}
             >

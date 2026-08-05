@@ -42,7 +42,10 @@ export const PROVIDER_PROFILES: ProviderProfile[] = [
     id: "azure-openai",
     name: "Azure OpenAI",
     protocol: "chat-completions",
-    endpoint: { baseUrl: "https://YOUR-RESOURCE.openai.azure.com/openai" },
+    endpoint: {
+      baseUrl: "https://YOUR-RESOURCE.openai.azure.com/openai",
+      apiVersion: "2024-10-21",
+    },
     auth: { type: "azure-api-key", secretRef: "" },
     modelDiscovery: { type: "manual" },
     defaultOptions: {

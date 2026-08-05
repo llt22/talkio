@@ -268,7 +268,7 @@ function UserActionBar({
             <>
               <div className="fixed inset-0 z-20" onClick={() => setShowMenu(false)} />
               <div
-                className="absolute bottom-full right-0 z-30 mb-1 min-w-[150px] rounded-xl py-1 shadow-lg"
+                className="absolute right-0 bottom-full z-30 mb-1 min-w-[150px] rounded-xl py-1 shadow-lg"
                 style={{ backgroundColor: "var(--card)", border: "0.5px solid var(--border)" }}
               >
                 <button

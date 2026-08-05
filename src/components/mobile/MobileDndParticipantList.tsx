@@ -16,10 +16,11 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IoTrashOutline } from "../../icons";
-import { Pencil, Volume2, VolumeX } from "lucide-react";
+import { Activity, Pencil, Volume2, VolumeX } from "lucide-react";
 import { useChatStore } from "../../stores/chat-store";
 import type { ConversationParticipant } from "../../types";
 import { getParticipantLabelParts } from "../../stores/chat-message-builder";
+import { formatTokenCount, type ParticipantStats } from "../../lib/participant-stats";
 
 function MobileSortableRow({
   participant: p,
@@ -32,6 +33,7 @@ function MobileSortableRow({
   onRemove,
   onToggleMute,
   isSequential,
+  stats,
   onReasoningEffortCycle,
 }: {
   participant: ConversationParticipant;
@@ -44,6 +46,7 @@ function MobileSortableRow({
   onRemove: () => void;
   onToggleMute: () => void;
   isSequential: boolean;
+  stats?: ParticipantStats;
   onReasoningEffortCycle: () => void;
 }) {
   const { t } = useTranslation();
@@ -88,6 +91,13 @@ function MobileSortableRow({
             .filter(Boolean)
             .join(" · ")}
         </p>
+        {stats && stats.messageCount > 0 && (
+          <p className="text-muted-foreground/60 flex items-center gap-1 text-[10px]">
+            <Activity size={9} />
+            {formatTokenCount(stats.inputTokens)} in · {formatTokenCount(stats.outputTokens)} out
+            {stats.toolCalls > 0 && ` · ${stats.toolCalls} tools`}
+          </p>
+        )}
       </div>
       <button
         className="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] active:opacity-60"
@@ -148,6 +158,7 @@ export function MobileDndParticipantList({
   onEditNickname,
   onRemove,
   onReasoningEffortCycle,
+  statsByParticipant,
 }: {
   participants: ConversationParticipant[];
   conversationId: string;
@@ -158,6 +169,7 @@ export function MobileDndParticipantList({
   onRemove: (participantId: string, displayName: string) => void;
   onEditNickname: (participantId: string) => void;
   onReasoningEffortCycle: (participantId: string) => void;
+  statsByParticipant: Map<string, ParticipantStats>;
 }) {
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } });
   const touchSensor = useSensor(TouchSensor, {
@@ -199,6 +211,7 @@ export function MobileDndParticipantList({
               useChatStore.getState().toggleParticipantMuted(conversationId, p.id)
             }
             isSequential={isSequential}
+            stats={statsByParticipant.get(p.id)}
             onReasoningEffortCycle={() => onReasoningEffortCycle(p.id)}
           />
         ))}

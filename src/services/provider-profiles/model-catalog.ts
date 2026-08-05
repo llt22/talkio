@@ -12,6 +12,11 @@ import type { ModelDescriptor } from "./types";
 
 export const MODEL_CATALOG_VERSION = 1;
 const OVERRIDES_KEY = "model-catalog-overrides";
+const DEFAULT_PROFILE_ID = "global";
+
+function overrideKey(providerProfileId: string, modelId: string): string {
+  return `${providerProfileId}:${modelId}`;
+}
 
 export const MODEL_CATALOG: ModelDescriptor[] = [
   // OpenAI (Responses)
@@ -498,19 +503,21 @@ function persistOverrides(overrides: Record<string, Partial<ModelDescriptor>>): 
   } satisfies ModelCatalogState);
 }
 
-/**
- * Resolve metadata for a model id: user override wins, then built-in catalog.
- * Returns undefined when neither knows the model.
- */
-export function resolveModelDescriptor(modelId: string): ModelDescriptor | undefined {
+/** Resolve metadata for a provider/model pair. */
+export function resolveModelDescriptor(
+  providerProfileId: string,
+  modelId?: string,
+): ModelDescriptor | undefined {
+  const resolvedModelId = modelId ?? providerProfileId;
+  const resolvedProfileId = modelId ? providerProfileId : DEFAULT_PROFILE_ID;
   const overrides = loadOverrides();
-  const override = overrides[modelId];
-  const base = MODEL_CATALOG.find((m) => m.modelId === modelId);
+  const override = overrides[overrideKey(resolvedProfileId, resolvedModelId)];
+  const base = MODEL_CATALOG.find((model) => model.modelId === resolvedModelId);
   if (!override) return base;
   if (!base) {
     return {
-      modelId,
-      displayName: modelId,
+      modelId: resolvedModelId,
+      displayName: resolvedModelId,
       inputModalities: ["text"],
       outputModalities: ["text"],
       ...override,
@@ -519,20 +526,42 @@ export function resolveModelDescriptor(modelId: string): ModelDescriptor | undef
   return { ...base, ...override };
 }
 
-/** All built-in catalog entries, merged with user overrides. */
-export function getAllModelDescriptors(): ModelDescriptor[] {
+/** All catalog entries for one provider profile, including override-only models. */
+export function getAllModelDescriptors(
+  providerProfileId: string = DEFAULT_PROFILE_ID,
+): ModelDescriptor[] {
   const overrides = loadOverrides();
-  return MODEL_CATALOG.map((m) => (overrides[m.modelId] ? { ...m, ...overrides[m.modelId] } : m));
+  const prefix = `${providerProfileId}:`;
+  const merged = MODEL_CATALOG.map((model) => ({
+    ...model,
+    ...(overrides[overrideKey(providerProfileId, model.modelId)] ?? {}),
+  }));
+  const builtInIds = new Set(MODEL_CATALOG.map((model) => model.modelId));
+  for (const [key, override] of Object.entries(overrides)) {
+    if (!key.startsWith(prefix)) continue;
+    const modelId = key.slice(prefix.length);
+    if (builtInIds.has(modelId)) continue;
+    merged.push({
+      modelId,
+      displayName: modelId,
+      inputModalities: ["text"],
+      outputModalities: ["text"],
+      ...override,
+    });
+  }
+  return merged;
 }
 
-/** Upsert a per-model override (empty patch removes it). */
-export function setModelOverride(modelId: string, patch: Partial<ModelDescriptor>): void {
+/** Upsert a provider-scoped model override; an empty patch removes it. */
+export function setModelOverride(
+  providerProfileId: string,
+  modelId: string,
+  patch: Partial<ModelDescriptor>,
+): void {
   const overrides = loadOverrides();
-  if (Object.keys(patch).length === 0) {
-    delete overrides[modelId];
-  } else {
-    overrides[modelId] = patch;
-  }
+  const key = overrideKey(providerProfileId, modelId);
+  if (Object.keys(patch).length === 0) delete overrides[key];
+  else overrides[key] = patch;
   persistOverrides(overrides);
 }
 

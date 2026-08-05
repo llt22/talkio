@@ -11,10 +11,18 @@ import { useSettingsStore } from "../stores/settings-store";
 
 export type ToolApprovalMode = "auto" | "ask";
 
+export type ApprovalRisk = "read" | "write" | "network" | "execute" | "unknown";
+
 export interface PendingApproval {
   id: string;
+  toolCallId?: string;
   toolName: string;
+  description?: string;
   args: Record<string, unknown>;
+  conversationId?: string;
+  participantName?: string;
+  modelName?: string;
+  risk: ApprovalRisk;
 }
 
 type ApprovalListener = () => void;
@@ -42,17 +50,16 @@ export const toolApproval = {
    * - auto: resolves true immediately.
    * - ask: resolves when the user decides (or false when the run is stopped).
    */
-  request(toolName: string, args: Record<string, unknown>): Promise<boolean> {
+  request(request: Omit<PendingApproval, "id">): Promise<boolean> {
     if (currentMode() === "auto") return Promise.resolve(true);
-    return new Promise((resolve) => {
-      const approval: PendingApproval = {
-        id: `approval-${++idCounter}`,
-        toolName,
-        args,
-      };
-      pending.set(approval.id, { approval, resolve });
-      emit();
-    });
+    const { promise, resolve } = Promise.withResolvers<boolean>();
+    const approval: PendingApproval = {
+      id: `approval-${++idCounter}`,
+      ...request,
+    };
+    pending.set(approval.id, { approval, resolve });
+    emit();
+    return promise;
   },
 
   /** Resolve a pending approval from the UI. */

@@ -16,7 +16,18 @@ import {
   IoEllipsisHorizontal,
   IoCopyOutline,
 } from "../../icons";
-import { ArrowUpDown, Shuffle, Layers, Pin, AlertTriangle, ChevronUp, ChevronDown, FileDown, X, Sparkles } from "lucide-react";
+import {
+  ArrowUpDown,
+  Shuffle,
+  Layers,
+  Pin,
+  AlertTriangle,
+  ChevronUp,
+  ChevronDown,
+  FileDown,
+  X,
+  Sparkles,
+} from "lucide-react";
 import { ChatView, type ChatViewHandle } from "../shared/ChatView";
 import { MentionTextarea } from "../shared/MentionTextarea";
 import { ModelPicker } from "../shared/ModelPicker";
@@ -28,12 +39,17 @@ import { MessageStatus } from "../../types";
 import { exportConversationAsMarkdown, exportConversationAsPdf } from "../../services/export";
 import { useConfirm, appAlert } from "../shared/ConfirmDialogProvider";
 import { manualCompress, setManualSummary, getManualSummary } from "../../lib/context-compression";
-import { buildApiMessagesForParticipant, getParticipantLabel, getParticipantLabelParts } from "../../stores/chat-message-builder";
+import {
+  buildApiMessagesForParticipant,
+  getParticipantLabel,
+  getParticipantLabelParts,
+} from "../../stores/chat-message-builder";
 import { buildProviderHeaders } from "../../services/provider-headers";
 import { useProviderStore } from "../../stores/provider-store";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 import { MobileDndParticipantList } from "./MobileDndParticipantList";
 import { ParticipantNicknameDialog } from "../shared/ParticipantNicknameDialog";
+import { computeParticipantStats } from "../../lib/participant-stats";
 
 export function MobileChatDetail({
   conversationId,
@@ -111,6 +127,7 @@ export function MobileChatDetail({
       }),
     [conv?.participants],
   );
+  const statsByParticipant = useMemo(() => computeParticipantStats(messages), [messages]);
   const nicknameParticipant = conv?.participants.find(
     (participant) => participant.id === nicknameParticipantId,
   );
@@ -390,11 +407,22 @@ export function MobileChatDetail({
                 : "var(--muted)",
             }}
             onClick={() => {
-              updateParticipantReasoningEffort(conversationId, currentParticipant.id, nextReasoningEffort(currentParticipant.reasoningEffort));
+              updateParticipantReasoningEffort(
+                conversationId,
+                currentParticipant.id,
+                nextReasoningEffort(currentParticipant.reasoningEffort),
+              );
             }}
           >
-            <Sparkles size={11} className={currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"} />
-            <span className={`text-[9px] font-medium ${currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"}`}>
+            <Sparkles
+              size={11}
+              className={
+                currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"
+              }
+            />
+            <span
+              className={`text-[9px] font-medium ${currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"}`}
+            >
               {currentParticipant.reasoningEffort
                 ? t(`providerEdit.reasoningEffort_${currentParticipant.reasoningEffort}`)
                 : t("providerEdit.reasoningEffort")}
@@ -427,7 +455,9 @@ export function MobileChatDetail({
         )}
 
         {/* Right: single ··· more button */}
-        <div className={`${!isCompressing && !hasManualSummary && !(currentParticipant && !isGroup) ? "ml-auto" : ""} relative z-10`}>
+        <div
+          className={`${!isCompressing && !hasManualSummary && !(currentParticipant && !isGroup) ? "ml-auto" : ""} relative z-10`}
+        >
           <button className="p-2 active:opacity-60" onClick={() => setShowMoreMenu((v) => !v)}>
             <IoEllipsisHorizontal size={22} color="var(--primary)" />
           </button>
@@ -646,6 +676,7 @@ export function MobileChatDetail({
             participants={conv.participants}
             conversationId={conversationId}
             isSequential={(conv.speakingOrder ?? "sequential") === "sequential"}
+            statsByParticipant={statsByParticipant}
             getModelById={getModelById}
             getIdentityById={getIdentityById}
             onEditRole={(pid: string) => {
@@ -665,9 +696,12 @@ export function MobileChatDetail({
             onReasoningEffortCycle={(pid: string) => {
               const p = conv.participants.find((pp) => pp.id === pid);
               if (!p) return;
-              updateParticipantReasoningEffort(conversationId, pid, nextReasoningEffort(p.reasoningEffort));
+              updateParticipantReasoningEffort(
+                conversationId,
+                pid,
+                nextReasoningEffort(p.reasoningEffort),
+              );
             }}
-
           />
           <button
             className="mt-1 mb-1 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-2.5 active:opacity-60"
