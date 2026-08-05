@@ -1,4 +1,5 @@
 import type { SseUsage } from "./openai-chat-sse";
+import { readWithAbort } from "./sse-utils";
 
 export interface ResponsesDelta {
   content?: string;
@@ -27,6 +28,7 @@ export interface ResponsesDelta {
 export async function consumeOpenAIResponsesSse(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   onDelta: (delta: ResponsesDelta) => void,
+  signal: AbortSignal,
 ): Promise<SseUsage | null> {
   const decoder = new TextDecoder();
   let buffer = "";
@@ -38,7 +40,7 @@ export async function consumeOpenAIResponsesSse(
   const functionCalls = new Map<number, { id: string; name: string; arguments: string }>();
 
   while (true) {
-    const { done, value } = await reader.read();
+    const { done, value } = await readWithAbort(reader, signal);
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
@@ -115,11 +117,13 @@ export async function consumeOpenAIResponsesSse(
             });
             // Emit initial tool call delta with id and name
             onDelta({
-              tool_calls: [{
-                index: idx,
-                id: item.call_id || item.id || "",
-                function: { name: item.name || "" },
-              }],
+              tool_calls: [
+                {
+                  index: idx,
+                  id: item.call_id || item.id || "",
+                  function: { name: item.name || "" },
+                },
+              ],
             });
           }
           break;
@@ -132,10 +136,12 @@ export async function consumeOpenAIResponsesSse(
             const fc = functionCalls.get(idx);
             if (fc) fc.arguments += delta;
             onDelta({
-              tool_calls: [{
-                index: idx,
-                function: { arguments: delta },
-              }],
+              tool_calls: [
+                {
+                  index: idx,
+                  function: { arguments: delta },
+                },
+              ],
             });
           }
           break;
@@ -170,4 +176,3 @@ export async function consumeOpenAIResponsesSse(
 
   return usage;
 }
-

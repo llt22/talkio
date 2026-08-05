@@ -1,5 +1,6 @@
 import type { StreamDelta } from "./provider-adapters/types";
 import type { SseUsage } from "./openai-chat-sse";
+import { readWithAbort } from "./sse-utils";
 
 /**
  * Consume an Anthropic Messages SSE stream, emitting normalized StreamDelta
@@ -16,6 +17,7 @@ import type { SseUsage } from "./openai-chat-sse";
 export async function consumeAnthropicMessagesSse(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   onDelta: (delta: StreamDelta) => void,
+  signal: AbortSignal,
 ): Promise<SseUsage | null> {
   const decoder = new TextDecoder();
   let buffer = "";
@@ -28,7 +30,7 @@ export async function consumeAnthropicMessagesSse(
   let receivedMessageStop = false;
 
   while (true) {
-    const { done, value } = await reader.read();
+    const { done, value } = await readWithAbort(reader, signal);
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });

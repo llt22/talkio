@@ -110,9 +110,11 @@ export function IdentityPage() {
             className="absolute inset-0 z-10"
             style={{ backgroundColor: "var(--background)" }}
           >
-            <PersonaMarketPage onClose={() => {
-              window.history.back();
-            }} />
+            <PersonaMarketPage
+              onClose={() => {
+                window.history.back();
+              }}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -248,27 +250,41 @@ function IdentityItem({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const { color: avatarColor, initials } = getAvatarProps(identity.name);
   return (
-    <button
-      onClick={onEdit}
-      className="flex w-full items-center gap-4 px-4 py-3 text-left transition-colors active:bg-black/5"
+    <div
+      className="flex w-full items-center transition-colors active:bg-black/5"
       style={{ borderBottom: isLast ? "none" : "0.5px solid var(--border)" }}
     >
-      <div
-        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-        style={{ backgroundColor: avatarColor }}
+      <button
+        onClick={onEdit}
+        className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3 text-left"
       >
-        {initials}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-foreground truncate text-[16px] font-medium">{identity.name}</p>
-        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[13px] leading-relaxed">
-          {identity.systemPrompt}
-        </p>
-      </div>
-      <IoChevronForward size={18} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
-    </button>
+        <div
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+          style={{ backgroundColor: avatarColor }}
+        >
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-foreground truncate text-[16px] font-medium">{identity.name}</p>
+          <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[13px] leading-relaxed">
+            {identity.systemPrompt}
+          </p>
+        </div>
+        <IoChevronForward size={18} color="var(--muted-foreground)" style={{ opacity: 0.3 }} />
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        className="mr-3 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full active:opacity-60"
+        title={t("common.delete")}
+        aria-label={`${t("common.delete")} ${identity.name}`}
+      >
+        <IoTrashOutline size={19} color="var(--destructive)" />
+      </button>
+    </div>
   );
 }
 
@@ -574,7 +590,6 @@ function IdentityForm({
                 />
               </div>
             </div>
-
           </div>
 
           {/* ── Section: Tool Binding ── */}

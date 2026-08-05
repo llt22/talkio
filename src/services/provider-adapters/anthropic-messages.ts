@@ -12,9 +12,10 @@ import { appFetch } from "../../lib/http";
 // ── Helpers ──
 
 /** Convert OpenAI-style messages to Anthropic format, extracting system separately */
-function toAnthropicMessages(
-  messages: Array<{ role: string; content: unknown }>,
-): { system: string | undefined; messages: Array<{ role: string; content: unknown }> } {
+function toAnthropicMessages(messages: Array<{ role: string; content: unknown }>): {
+  system: string | undefined;
+  messages: Array<{ role: string; content: unknown }>;
+} {
   let system: string | undefined;
   const out: Array<{ role: string; content: unknown }> = [];
 
@@ -33,8 +34,7 @@ function toAnthropicMessages(
         if (part.type === "image_url") {
           const url = part.image_url?.url ?? "";
           const m = url.match(/^data:([^;]+);base64,(.+)$/);
-          if (m)
-            return { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } };
+          if (m) return { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } };
           return { type: "image", source: { type: "url", url } };
         }
         return part;
@@ -101,7 +101,7 @@ export class AnthropicMessagesAdapter implements ProviderAdapter {
     const reader = response.body?.getReader();
     if (!reader) throw new Error("No response body");
 
-    const usage = await consumeAnthropicMessagesSse(reader, params.onDelta);
+    const usage = await consumeAnthropicMessagesSse(reader, params.onDelta, params.signal);
     return { usage };
   }
 
@@ -127,9 +127,7 @@ export class AnthropicMessagesAdapter implements ProviderAdapter {
     });
     if (!response.ok) throw new Error(`API error ${response.status}`);
     const data = await response.json();
-    const content = data.content
-      ?.find((b: any) => b.type === "text")
-      ?.text?.trim();
+    const content = data.content?.find((b: any) => b.type === "text")?.text?.trim();
     if (!content) throw new Error("Empty response");
     return content;
   }

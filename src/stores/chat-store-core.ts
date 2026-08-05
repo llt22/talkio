@@ -1,5 +1,9 @@
 import type { Conversation, ConversationParticipant } from "../types";
-import { deleteConversation as dbDeleteConversation, deleteAllConversations as dbDeleteAllConversations, insertConversation } from "../storage/database";
+import {
+  deleteConversation as dbDeleteConversation,
+  deleteAllConversations as dbDeleteAllConversations,
+  insertConversation,
+} from "../storage/database";
 import { notifyDbChange } from "../hooks/useDatabase";
 import { useProviderStore } from "./provider-store";
 import { generateId } from "../lib/id";
@@ -9,7 +13,8 @@ import type { StreamingState } from "./chat-generation";
 export function autoTitle(participants: ConversationParticipant[]): string {
   const providerStore = useProviderStore.getState();
   const names = participants.map(
-    (participant) => providerStore.getModelById(participant.modelId)?.displayName ?? participant.modelId,
+    (participant) =>
+      providerStore.getModelById(participant.modelId)?.displayName ?? participant.modelId,
   );
   if (names.length <= 1) return names[0] ?? "";
   return names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")}...`;
@@ -74,12 +79,18 @@ export function deriveConversationViewState(
   currentConversationId: string | null,
   abortControllers: Map<string, AbortController>,
   streamingMessages: Map<string, StreamingState>,
-): { currentConversationId: string | null; isGenerating: boolean; streamingMessages: StreamingState[] } | null {
+): {
+  currentConversationId: string | null;
+  isGenerating: boolean;
+  streamingMessages: StreamingState[];
+} | null {
   if (id === currentConversationId) return null;
   return {
     currentConversationId: id,
     isGenerating: id ? abortControllers.has(id) : false,
-    streamingMessages: id ? Array.from(streamingMessages.values()).filter((state) => state.cid === id) : [],
+    streamingMessages: id
+      ? Array.from(streamingMessages.values()).filter((state) => state.cid === id)
+      : [],
   };
 }
 
@@ -91,6 +102,5 @@ export function stopConversationGeneration(
   const controller = abortControllers.get(currentConversationId);
   if (!controller) return null;
   controller.abort();
-  abortControllers.delete(currentConversationId);
   return { autoDiscussRemaining: 0 };
 }

@@ -1,3 +1,6 @@
+import type { StreamDelta } from "./provider-adapters/types";
+import { readWithAbort } from "./sse-utils";
+
 export interface SseUsage {
   prompt_tokens: number;
   completion_tokens: number;
@@ -6,7 +9,8 @@ export interface SseUsage {
 
 export async function consumeOpenAIChatCompletionsSse(
   reader: ReadableStreamDefaultReader<Uint8Array>,
-  onDelta: (delta: any) => void,
+  onDelta: (delta: StreamDelta) => void,
+  signal: AbortSignal,
 ): Promise<SseUsage | null> {
   const decoder = new TextDecoder();
   let buffer = "";
@@ -16,7 +20,7 @@ export async function consumeOpenAIChatCompletionsSse(
   let receivedFinishReason = false;
 
   while (true) {
-    const { done, value } = await reader.read();
+    const { done, value } = await readWithAbort(reader, signal);
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });

@@ -217,12 +217,14 @@ export async function dispatchMessageGeneration(args: {
       );
     }
   } finally {
-    abortControllers.delete(cid);
-    for (const [key, value] of streamingMessages) {
-      if (value.cid === cid) streamingMessages.delete(key);
-    }
-    if (cid === getCurrentConversationId()) {
-      setStoreState({ isGenerating: false, streamingMessages: [] });
+    if (abortControllers.get(cid) === abortController) {
+      abortControllers.delete(cid);
+      if (cid === getCurrentConversationId()) {
+        const activeStreams = Array.from(streamingMessages.values()).filter(
+          (state) => state.cid === cid,
+        );
+        setStoreState({ isGenerating: false, streamingMessages: activeStreams });
+      }
     }
   }
 }
@@ -231,8 +233,10 @@ export async function runAutoDiscuss(args: {
   rounds: number;
   topicText?: string;
   currentConversationId: string | null;
+  activeBranchId: string | null;
   isGenerating: () => boolean;
   autoDiscussRemaining: () => number;
+  isSessionActive: () => boolean;
   setStoreState: (partial: {
     autoDiscussRemaining?: number;
     autoDiscussTotalRounds?: number;
@@ -244,6 +248,8 @@ export async function runAutoDiscuss(args: {
       reuseUserMessageId?: string;
       mentionedParticipantIds?: string[];
       targetParticipantIds?: string[];
+      conversationId?: string;
+      activeBranchId?: string | null;
     },
   ) => Promise<void>;
 }): Promise<void> {
@@ -257,27 +263,39 @@ export async function runAutoDiscuss(args: {
 
   args.setStoreState({ autoDiscussRemaining: rounds, autoDiscussTotalRounds: rounds });
 
-  while (args.isGenerating()) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    if (args.autoDiscussRemaining() <= 0) return;
+  const isActive = () => args.isSessionActive() && args.autoDiscussRemaining() > 0;
+
+  try {
+    while (args.isGenerating()) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      if (!isActive()) return;
+    }
+
+    if (!isActive()) return;
+
+    const continuePrompt = i18n.t("chat.continue", { defaultValue: "Continue" });
+
+    if (topicText?.trim()) {
+      await args.sendMessage(topicText.trim(), undefined, {
+        conversationId: convId,
+        activeBranchId: args.activeBranchId,
+      });
+      if (!isActive()) return;
+    }
+    args.setStoreState({ autoDiscussRemaining: rounds - 1 });
+
+    for (let round = 1; round < rounds; round++) {
+      if (!isActive()) break;
+      await args.sendMessage(continuePrompt, undefined, {
+        conversationId: convId,
+        activeBranchId: args.activeBranchId,
+      });
+      if (!isActive()) break;
+      args.setStoreState({ autoDiscussRemaining: Math.max(0, rounds - round - 1) });
+    }
+  } finally {
+    if (args.isSessionActive()) {
+      args.setStoreState({ autoDiscussRemaining: 0, autoDiscussTotalRounds: 0 });
+    }
   }
-
-  // Re-check after exiting the wait loop: stopAutoDiscuss may have fired
-  // during the final setTimeout, after the last in-loop check.
-  if (args.autoDiscussRemaining() <= 0) return;
-
-  const continuePrompt = i18n.t("chat.continue", { defaultValue: "Continue" });
-
-  if (topicText?.trim()) {
-    await args.sendMessage(topicText.trim());
-  }
-  args.setStoreState({ autoDiscussRemaining: rounds - 1 });
-
-  for (let round = 1; round < rounds; round++) {
-    if (args.autoDiscussRemaining() <= 0) break;
-    await args.sendMessage(continuePrompt);
-    args.setStoreState({ autoDiscussRemaining: Math.max(0, rounds - round - 1) });
-  }
-
-  args.setStoreState({ autoDiscussRemaining: 0, autoDiscussTotalRounds: 0 });
 }

@@ -49,7 +49,7 @@ export class ChatCompletionsAdapter implements ProviderAdapter {
     const reader = response.body?.getReader();
     if (!reader) throw new Error("No response body");
 
-    const usage = await consumeOpenAIChatCompletionsSse(reader, params.onDelta);
+    const usage = await consumeOpenAIChatCompletionsSse(reader, params.onDelta, params.signal);
     return { usage };
   }
 

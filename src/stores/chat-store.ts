@@ -40,6 +40,8 @@ import {
 // Per-conversation generation tracking (module-level to avoid zustand serialization)
 const _abortControllers = new Map<string, AbortController>();
 const _streamingMessages = new Map<string, StreamingState>();
+let _autoDiscussSession = 0;
+let _autoDiscussConversationId: string | null = null;
 
 export interface ChatState {
   currentConversationId: string | null;
@@ -66,6 +68,8 @@ export interface ChatState {
       reuseUserMessageId?: string;
       mentionedParticipantIds?: string[];
       targetParticipantIds?: string[];
+      conversationId?: string;
+      activeBranchId?: string | null;
     },
   ) => Promise<void>;
   stopGeneration: () => void;
@@ -162,16 +166,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       reuseUserMessageId?: string;
       mentionedParticipantIds?: string[];
       targetParticipantIds?: string[];
+      conversationId?: string;
+      activeBranchId?: string | null;
     },
   ) => {
-    const conversationId = get().currentConversationId;
+    const {
+      conversationId: requestedConversationId,
+      activeBranchId: requestedBranchId,
+      ...dispatchOptions
+    } = options ?? {};
+    const conversationId = requestedConversationId ?? get().currentConversationId;
     if (!conversationId) return;
     await dispatchMessageGeneration({
       conversationId,
       text,
       images,
-      options,
-      activeBranchId: get().activeBranchId,
+      options: dispatchOptions,
+      activeBranchId: requestedBranchId === undefined ? get().activeBranchId : requestedBranchId,
       getCurrentConversationId: () => get().currentConversationId,
       abortControllers: _abortControllers,
       streamingMessages: _streamingMessages,
@@ -185,20 +196,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   startAutoDiscuss: async (rounds: number, topicText?: string) => {
-    await runAutoDiscuss({
-      rounds,
-      topicText,
-      currentConversationId: get().currentConversationId,
-      isGenerating: () => get().isGenerating,
-      autoDiscussRemaining: () => get().autoDiscussRemaining,
-      setStoreState: (partial) => set(partial),
-      sendMessage: get().sendMessage,
-    });
+    const session = ++_autoDiscussSession;
+    const conversationId = get().currentConversationId;
+    const activeBranchId = get().activeBranchId;
+    _autoDiscussConversationId = conversationId;
+    try {
+      await runAutoDiscuss({
+        rounds,
+        topicText,
+        currentConversationId: conversationId,
+        activeBranchId,
+        isGenerating: () => !!conversationId && _abortControllers.has(conversationId),
+        autoDiscussRemaining: () => get().autoDiscussRemaining,
+        isSessionActive: () => _autoDiscussSession === session,
+        setStoreState: (partial) => set(partial),
+        sendMessage: get().sendMessage,
+      });
+    } finally {
+      if (_autoDiscussSession === session) _autoDiscussConversationId = null;
+    }
   },
 
   stopAutoDiscuss: () => {
-    set({ autoDiscussRemaining: 0 });
-    get().stopGeneration();
+    _autoDiscussSession++;
+    set({ autoDiscussRemaining: 0, autoDiscussTotalRounds: 0 });
+    const controller = _autoDiscussConversationId
+      ? _abortControllers.get(_autoDiscussConversationId)
+      : undefined;
+    controller?.abort();
+    _autoDiscussConversationId = null;
   },
 
   regenerateMessage: async (messageId: string) => {

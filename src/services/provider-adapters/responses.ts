@@ -106,7 +106,7 @@ export class ResponsesAdapter implements ProviderAdapter {
     const reader = response.body?.getReader();
     if (!reader) throw new Error("No response body");
 
-    const usage = await consumeOpenAIResponsesSse(reader, params.onDelta);
+    const usage = await consumeOpenAIResponsesSse(reader, params.onDelta, params.signal);
     return { usage };
   }
 
