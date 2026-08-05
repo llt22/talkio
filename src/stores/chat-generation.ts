@@ -29,6 +29,12 @@ import { resolveAdapterBaseUrl } from "../services/provider-request";
 import { NormalModelRuntime } from "../services/runtime/model-runtime";
 import type { GenerationEvent } from "../services/runtime/events";
 import {
+  GenerationRunError,
+  generationErrorFromUnknown,
+  logGenerationRun,
+  userVisibleGenerationError,
+} from "../services/runtime/generation-run";
+import {
   createStreamFlusher,
   processSseDelta,
   applyCompression,
@@ -174,6 +180,7 @@ export async function generateForParticipant(
   })();
   const toolDefs = [...builtInToolDefs, ...getMcpToolDefsForIdentity(identity)];
 
+  const generationStartedAt = Date.now();
   try {
     // Build API messages with compression
     const allMessages = await getRecentMessages(ctx.cid, ctx.activeBranchId, MAX_HISTORY);
@@ -215,7 +222,14 @@ export async function generateForParticipant(
       inThinkTag: false,
       pendingToolCalls: [],
     };
-    const startTime = Date.now();
+    const startTime = generationStartedAt;
+    const runContext = {
+      runId: assistantMsgId,
+      providerId: provider.id,
+      modelId: model.modelId,
+      round: 0,
+    };
+    logGenerationRun({ ...runContext, event: "started" });
     const flusher = createStreamFlusher(
       ctx,
       assistantMsgId,
@@ -248,9 +262,10 @@ export async function generateForParticipant(
           };
         }
         if (event.type === "run-failed") {
-          if (event.error.code === "aborted")
+          if (event.error.code === "aborted") {
             throw new DOMException(event.error.message, "AbortError");
-          throw new Error(event.error.message);
+          }
+          throw new GenerationRunError(event.error);
         }
       }
       return { usage };
@@ -303,6 +318,7 @@ export async function generateForParticipant(
         allowedServerIds,
         tokenUsage,
         toolContext,
+        provider.id,
       );
       lastContent = result.content;
     } else if (!acc.fullContent && !acc.fullReasoning) {
@@ -353,12 +369,14 @@ export async function generateForParticipant(
     });
     notifyDbChange("messages", ctx.cid);
     notifyDbChange("conversations");
+    logGenerationRun({ ...runContext, event: "completed", durationMs: Date.now() - startTime });
     return lastContent;
-  } catch (err: any) {
+  } catch (error: unknown) {
     // Save streaming content before cleanup (needed for AbortError/PAUSED)
     const sm = ctx.streamingMessages.get(assistantMsgId);
+    const generationError = generationErrorFromUnknown(error);
 
-    if (err.name === "AbortError") {
+    if (generationError.code === "aborted") {
       if (sm) {
         await updateMessage(assistantMsgId, {
           content: sm.content,
@@ -369,13 +387,20 @@ export async function generateForParticipant(
         notifyDbChange("messages", ctx.cid);
       }
     } else {
-      console.error("[chat-generation] error:", err);
-      const errMsg =
-        err?.message || (typeof err === "string" ? err : JSON.stringify(err)) || "Unknown error";
+      logGenerationRun({
+        runId: assistantMsgId,
+        providerId: provider.id,
+        modelId: model.modelId,
+        round: 0,
+        event: "failed",
+        durationMs: Date.now() - generationStartedAt,
+        errorCode: generationError.code,
+        retryable: generationError.retryable,
+      });
       await updateMessage(assistantMsgId, {
         isStreaming: false,
         status: MessageStatus.ERROR,
-        errorMessage: errMsg,
+        errorMessage: userVisibleGenerationError(generationError),
       });
       notifyDbChange("messages", ctx.cid);
     }

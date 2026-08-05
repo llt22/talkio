@@ -14,6 +14,7 @@ import { executeMcpToolByName } from "../services/mcp";
 import { toolApproval } from "../services/tool-approval";
 import type { ProviderAdapter } from "../services/provider-adapters";
 import { NormalModelRuntime } from "../services/runtime/model-runtime";
+import { GenerationRunError, logGenerationRun } from "../services/runtime/generation-run";
 import type { GenerationContext } from "./chat-generation";
 import { createStreamFlusher, parseToolArgs, type ContentAccumulator } from "./generation-helpers";
 
@@ -92,6 +93,7 @@ export async function runToolCallLoop(
   allowedServerIds: string[] | undefined,
   tokenUsage: { inputTokens: number; outputTokens: number } | null,
   toolContext?: ToolContext,
+  providerId = "unknown-provider",
 ): Promise<{ content: string; tokenUsage: { inputTokens: number; outputTokens: number } | null }> {
   const availableTools = new Map<string, string | undefined>();
   for (const definition of [...getBuiltInToolDefs(toolContext), ...toolDefs]) {
@@ -202,8 +204,12 @@ export async function runToolCallLoop(
       () => toolContent,
       () => fullReasoning,
     );
+    const runId = `${assistantMsgId}:tool:${round + 1}`;
+    const runStartedAt = Date.now();
+    const runContext = { runId, providerId, modelId, round: round + 1 };
+    logGenerationRun({ ...runContext, event: "started" });
     for await (const event of runtime.run({
-      runId: `${assistantMsgId}:tool:${round}`,
+      runId,
       baseUrl,
       headers,
       modelId,
@@ -232,10 +238,22 @@ export async function runToolCallLoop(
         if (event.error.code === "aborted") {
           throw new DOMException(event.error.message, "AbortError");
         }
-        throw new Error(event.error.message);
+        logGenerationRun({
+          ...runContext,
+          event: "failed",
+          durationMs: Date.now() - runStartedAt,
+          errorCode: event.error.code,
+          retryable: event.error.retryable,
+        });
+        throw new GenerationRunError(event.error);
       }
     }
     flusher.flush();
+    logGenerationRun({
+      ...runContext,
+      event: "completed",
+      durationMs: Date.now() - runStartedAt,
+    });
     accumulatedContent = toolContent;
 
     if (newToolCalls.length === 0) break;

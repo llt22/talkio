@@ -318,6 +318,7 @@ export function ProviderModelList({ providerId, pulling, onRefresh }: ProviderMo
                   </button>
                   <label className="relative inline-flex cursor-pointer items-center">
                     <input
+                      aria-label={`${m.displayName} ${t("providerEdit.enabled")}`}
                       type="checkbox"
                       checked={m.enabled}
                       onChange={() => toggleModel(m.id)}

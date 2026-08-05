@@ -12,6 +12,7 @@ import java.io.InputStreamReader
 
 class MainActivity : TauriActivity() {
   private val shareHelper by lazy { ShareHelper(this) }
+  private val secretStoreBridge by lazy { SecretStoreBridge(this) }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -64,6 +65,7 @@ class MainActivity : TauriActivity() {
   override fun onWebViewCreate(webView: WebView) {
     super.onWebViewCreate(webView)
     webView.addJavascriptInterface(shareHelper, "NativeShare")
+    webView.addJavascriptInterface(secretStoreBridge, "TalkioSecretStore")
   }
 
   private fun findWebView(view: View): WebView? {

@@ -118,6 +118,8 @@ export function DesktopLayout() {
             <TooltipTrigger asChild>
               <button
                 onClick={() => setActiveSection(id)}
+                aria-label={label}
+                data-testid={`desktop-nav-${id}`}
                 className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
                   activeSection === id
                     ? "bg-primary text-primary-foreground shadow-sm"
@@ -137,6 +139,8 @@ export function DesktopLayout() {
           <TooltipTrigger asChild>
             <button
               onClick={() => setActiveSection("settings")}
+              aria-label={t("tabs.settings")}
+              data-testid="desktop-nav-settings"
               className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
                 activeSection === "settings"
                   ? "bg-primary text-primary-foreground shadow-sm"

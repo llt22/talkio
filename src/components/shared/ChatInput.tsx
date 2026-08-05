@@ -628,6 +628,8 @@ export const ChatInput = memo(function ChatInput({
                 }}
               >
                 <textarea
+                  aria-label={t("chat.message")}
+                  data-testid="chat-input"
                   ref={textareaRef}
                   value={text}
                   onChange={(e) => {

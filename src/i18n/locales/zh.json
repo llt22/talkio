@@ -71,6 +71,15 @@
     "export": "导出",
     "exportPdf": "导出 PDF",
     "errorCount": "{{count}} 条失败消息",
+    "generationErrors": {
+      "aborted": "已取消生成。",
+      "auth": "认证失败，请检查供应商 API 密钥和访问权限。",
+      "rate-limit": "已达到供应商限流，请稍后重试。",
+      "invalid-request": "供应商拒绝了请求，请检查模型和供应商配置。",
+      "api": "供应商服务暂时不可用，请稍后重试。",
+      "tool": "工具调用失败，请检查工具结果或审批设置。",
+      "unknown": "生成失败，请检查网络连接或供应商状态。"
+    },
     "compressContext": "压缩上下文",
     "recompress": "重新压缩",
     "compressing": "压缩中...",

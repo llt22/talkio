@@ -11,5 +11,11 @@ declare global {
     __stackflowBack?: () => boolean;
     /** Tauri internals — present when running inside Tauri webview */
     __TAURI_INTERNALS__?: Record<string, unknown>;
+    /** Android Keystore-backed provider secret bridge */
+    TalkioSecretStore?: {
+      set(account: string, secret: string): string;
+      get(account: string): string;
+      delete(account: string): string;
+    };
   }
 }

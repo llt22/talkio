@@ -71,6 +71,15 @@
     "export": "Export",
     "exportPdf": "Export PDF",
     "errorCount": "{{count}} failed",
+    "generationErrors": {
+      "aborted": "Generation cancelled.",
+      "auth": "Authentication failed. Check the provider API key and access permissions.",
+      "rate-limit": "The provider rate limit was reached. Wait and try again.",
+      "invalid-request": "The provider rejected the request. Check the model and provider configuration.",
+      "api": "The provider service is temporarily unavailable. Try again later.",
+      "tool": "A tool call failed. Review the tool result or approval settings.",
+      "unknown": "Generation failed due to a connection or provider error."
+    },
     "compressContext": "Compress Context",
     "recompress": "Re-compress",
     "compressing": "Compressing...",

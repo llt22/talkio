@@ -45,6 +45,7 @@ export function ProviderConfigForm(props: ProviderConfigFormProps) {
           <FormRow label={t("providerEdit.name")}>
             <input
               className="text-foreground flex-1 bg-transparent text-[16px] outline-none"
+              aria-label={t("providerEdit.name")}
               value={props.name}
               onChange={(e) => props.onNameChange(e.target.value)}
               placeholder="e.g. OpenRouter"
@@ -53,6 +54,7 @@ export function ProviderConfigForm(props: ProviderConfigFormProps) {
           <FormRow label={t("providerEdit.baseUrl")} isLast={!props.showApiFormatSelector}>
             <input
               className="text-foreground flex-1 bg-transparent text-[16px] outline-none"
+              aria-label={t("providerEdit.baseUrl")}
               value={props.baseUrl}
               onChange={(e) => props.onBaseUrlChange(e.target.value)}
               placeholder="https://api.example.com/v1"
@@ -90,6 +92,7 @@ export function ProviderConfigForm(props: ProviderConfigFormProps) {
           <IoKeyOutline size={18} color="var(--muted-foreground)" className="mr-3 flex-shrink-0" />
           <input
             type={showApiKey ? "text" : "password"}
+            aria-label={t("providerEdit.apiKey")}
             className="text-foreground flex-1 bg-transparent text-[16px] outline-none"
             value={props.apiKey}
             onChange={(e) => props.onApiKeyChange(e.target.value)}

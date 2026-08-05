@@ -11,7 +11,9 @@
     "tauri": "tauri",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:live-providers": "vitest run src/services/runtime/__tests__/provider-live.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.30",
@@ -72,6 +74,7 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.1.7",
     "@tauri-apps/cli": "^2.6.2",
     "@types/katex": "^0.16.7",

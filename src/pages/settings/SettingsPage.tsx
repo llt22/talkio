@@ -205,6 +205,8 @@ export function SettingsPage({
                           component: <ProviderEditPage onClose={pop} />,
                         })
                       }
+                      aria-label={t("settings.addProvider")}
+                      data-testid="add-provider"
                       className="p-2 active:opacity-60"
                     >
                       <IoAdd size={22} color="var(--primary)" />
