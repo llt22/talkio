@@ -11,27 +11,50 @@ import { generateId } from "../../lib/id";
 import { buildProviderHeadersFromRaw } from "../../services/provider-headers";
 import { appFetch } from "../../lib/http";
 import { appAlert } from "../../components/shared/ConfirmDialogProvider";
+import { PROVIDER_PROFILES } from "../../services/provider-profiles/registry";
 import { ProviderModelList } from "./ProviderModelList";
 import { ProviderConfigForm } from "./ProviderConfigForm";
 
 type ProviderStoreState = ReturnType<typeof useProviderStore.getState>;
 
-const PROVIDER_PRESETS: Record<
-  string,
-  { name: string; baseUrl: string; type: ProviderType; apiFormat?: ApiFormat }
-> = {
-  deepseek: { name: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", type: "openai" },
-  openai: { name: "OpenAI", baseUrl: "https://api.openai.com/v1", type: "openai" },
-  anthropic: {
-    name: "Anthropic",
-    baseUrl: "https://api.anthropic.com",
+type ProviderPreset = {
+  name: string;
+  baseUrl: string;
+  type: ProviderType;
+  apiFormat?: ApiFormat;
+  profileId?: string;
+};
+
+const PROFILE_TO_TYPE: Record<string, ProviderType> = {
+  anthropic: "anthropic",
+  gemini: "gemini",
+  "azure-openai": "azure-openai",
+};
+
+function profileType(id: string): ProviderType {
+  return PROFILE_TO_TYPE[id] ?? "openai";
+}
+
+/** Data-driven presets — registry entries plus a couple of UI conveniences. */
+const PROVIDER_PRESETS: Record<string, ProviderPreset> = {
+  ...Object.fromEntries(
+    PROVIDER_PROFILES.map((p) => [
+      p.id,
+      {
+        name: p.name,
+        baseUrl: p.endpoint.baseUrl,
+        type: profileType(p.id),
+        apiFormat: p.protocol,
+        profileId: p.id,
+      },
+    ]),
+  ),
+  "ollama-cloud": {
+    name: "Ollama Cloud",
+    baseUrl: "https://ollama.com/v1",
     type: "openai",
-    apiFormat: "anthropic-messages",
+    apiFormat: "chat-completions",
   },
-  openrouter: { name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", type: "openai" },
-  groq: { name: "Groq", baseUrl: "https://api.groq.com/openai/v1", type: "openai" },
-  ollama: { name: "Ollama", baseUrl: "http://localhost:11434/v1", type: "openai" },
-  "ollama-cloud": { name: "Ollama Cloud", baseUrl: "https://ollama.com/v1", type: "openai" },
 };
 
 export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose?: () => void }) {
@@ -187,6 +210,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
             apiKey: apiKey.trim(),
             type: providerType,
             apiFormat,
+            profileId: PROVIDER_PRESETS[selectedPreset ?? ""]?.profileId,
             customHeaders,
             enabled: providerEnabled,
             apiVersion: undefined,
@@ -269,6 +293,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
       const provider: Provider = {
         id,
         ...providerData,
+        profileId: PROVIDER_PRESETS[selectedPreset ?? ""]?.profileId,
         apiVersion: undefined,
         status: (connected ? "connected" : "pending") as Provider["status"],
         createdAt: new Date().toISOString(),

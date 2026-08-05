@@ -10,6 +10,8 @@ function build(
   if (apiFormat === "anthropic-messages") {
     headers["x-api-key"] = apiKey;
     headers["anthropic-version"] = "2023-06-01";
+  } else if (apiFormat === "gemini-generate-content") {
+    headers["x-goog-api-key"] = apiKey;
   } else {
     headers["Authorization"] = `Bearer ${apiKey}`;
   }
@@ -23,7 +25,12 @@ export function buildProviderHeaders(
   provider: Provider,
   extra?: Record<string, string>,
 ): Record<string, string> {
-  return build(provider.apiKey, (provider.customHeaders ?? []) as CustomHeader[], extra, provider.apiFormat);
+  return build(
+    provider.apiKey,
+    (provider.customHeaders ?? []) as CustomHeader[],
+    extra,
+    provider.apiFormat,
+  );
 }
 
 export function buildProviderHeadersFromRaw(args: {

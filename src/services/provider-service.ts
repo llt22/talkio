@@ -40,6 +40,19 @@ export async function fetchProviderModels(provider: Provider): Promise<any[]> {
   }
   const baseUrl = provider.baseUrl.replace(/\/+$/, "");
   const headers = buildProviderHeaders(provider);
+  if (provider.apiFormat === "gemini-generate-content") {
+    // Gemini native list endpoint returns { models: [{ name: "models/..." }] }
+    const res = await appFetch(`${baseUrl}/models`, {
+      headers,
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`);
+    const json = await res.json();
+    return (json.models ?? []).map((m: any) => ({
+      id: (m.name ?? "").replace(/^models\//, ""),
+      object: "model",
+    }));
+  }
   const res = await appFetch(`${baseUrl}/models`, {
     headers,
     signal: AbortSignal.timeout(30000),
@@ -56,7 +69,11 @@ export async function testProviderConnection(provider: Provider): Promise<boolea
     const res = await appFetch(`${baseUrl}/v1/messages`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1, messages: [{ role: "user", content: "hi" }] }),
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1,
+        messages: [{ role: "user", content: "hi" }],
+      }),
       signal: AbortSignal.timeout(10000),
     });
     return res.ok;
@@ -94,7 +111,11 @@ export async function checkModelHealth(
       const res = await appFetch(`${baseUrl}/v1/messages`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ model: modelId, max_tokens: 1, messages: [{ role: "user", content: "hi" }] }),
+        body: JSON.stringify({
+          model: modelId,
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hi" }],
+        }),
         signal: AbortSignal.timeout(15000),
       });
       if (res.ok) return { ok: true };
@@ -102,13 +123,13 @@ export async function checkModelHealth(
       return { ok: false, error: `${res.status}${text ? ": " + text.slice(0, 120) : ""}` };
     }
 
-    const endpoint = provider.apiFormat === "responses"
-      ? `${baseUrl}/responses`
-      : `${baseUrl}/chat/completions`;
+    const endpoint =
+      provider.apiFormat === "responses" ? `${baseUrl}/responses` : `${baseUrl}/chat/completions`;
 
-    const body = provider.apiFormat === "responses"
-      ? { model: modelId, input: "hi", max_output_tokens: 1 }
-      : { model: modelId, max_tokens: 1, messages: [{ role: "user", content: "hi" }] };
+    const body =
+      provider.apiFormat === "responses"
+        ? { model: modelId, input: "hi", max_output_tokens: 1 }
+        : { model: modelId, max_tokens: 1, messages: [{ role: "user", content: "hi" }] };
 
     const res = await appFetch(endpoint, {
       method: "POST",
