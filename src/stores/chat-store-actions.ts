@@ -122,6 +122,34 @@ export async function updateParticipantIdentity(
   notifyDbChange("conversations");
 }
 
+export async function updateParticipantNickname(
+  conversationId: string,
+  participantId: string,
+  nickname: string,
+): Promise<void> {
+  const conversation = await getConversation(conversationId);
+  if (!conversation) throw new Error("Conversation not found");
+  const trimmed = nickname.trim();
+  if (
+    trimmed &&
+    conversation.participants.some(
+      (participant) =>
+        participant.id !== participantId &&
+        participant.nickname?.trim().toLocaleLowerCase() === trimmed.toLocaleLowerCase(),
+    )
+  ) {
+    throw new Error("Participant nickname already exists");
+  }
+  const participants = conversation.participants.map((participant) => {
+    if (participant.id !== participantId) return participant;
+    if (trimmed) return { ...participant, nickname: trimmed };
+    const { nickname: _nickname, ...rest } = participant;
+    return rest;
+  });
+  await updateConversation(conversationId, { participants });
+  notifyDbChange("conversations");
+}
+
 export async function updateParticipantModel(
   conversationId: string,
   participantId: string,

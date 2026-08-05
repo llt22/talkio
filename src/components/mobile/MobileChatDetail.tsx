@@ -33,6 +33,7 @@ import { buildProviderHeaders } from "../../services/provider-headers";
 import { useProviderStore } from "../../stores/provider-store";
 import { useKeyboardHeight } from "../../hooks/useKeyboardHeight";
 import { MobileDndParticipantList } from "./MobileDndParticipantList";
+import { ParticipantNicknameDialog } from "../shared/ParticipantNicknameDialog";
 
 export function MobileChatDetail({
   conversationId,
@@ -79,6 +80,7 @@ export function MobileChatDetail({
   const renameConversation = useChatStore((s) => s.renameConversation);
   const togglePinConversation = useChatStore((s) => s.togglePinConversation);
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
+  const [nicknameParticipantId, setNicknameParticipantId] = useState<string | null>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const hasManualSummary = !!getManualSummary(conversationId);
@@ -108,6 +110,9 @@ export function MobileChatDetail({
         };
       }),
     [conv?.participants],
+  );
+  const nicknameParticipant = conv?.participants.find(
+    (participant) => participant.id === nicknameParticipantId,
   );
   const chatViewRef = useRef<ChatViewHandle>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -648,6 +653,7 @@ export function MobileChatDetail({
               setShowParticipants(false);
               setShowIdentityPanel(true);
             }}
+            onEditNickname={setNicknameParticipantId}
             onRemove={async (pid: string, name: string) => {
               const ok = await confirm({
                 title: t("common.areYouSure"),
@@ -661,6 +667,7 @@ export function MobileChatDetail({
               if (!p) return;
               updateParticipantReasoningEffort(conversationId, pid, nextReasoningEffort(p.reasoningEffort));
             }}
+
           />
           <button
             className="mt-1 mb-1 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-2.5 active:opacity-60"
@@ -730,6 +737,24 @@ export function MobileChatDetail({
           ))}
         </div>
       )}
+
+      <ParticipantNicknameDialog
+        open={nicknameParticipantId !== null}
+        participantName={
+          nicknameParticipant
+            ? getParticipantLabel(nicknameParticipant, conv?.participants ?? [])
+            : ""
+        }
+        initialNickname={nicknameParticipant?.nickname ?? ""}
+        onOpenChange={(open) => {
+          if (!open) setNicknameParticipantId(null);
+        }}
+        onSave={(nickname) =>
+          useChatStore
+            .getState()
+            .updateParticipantNickname(conversationId, nicknameParticipantId!, nickname)
+        }
+      />
 
       {/* ModelPicker */}
       <ModelPicker

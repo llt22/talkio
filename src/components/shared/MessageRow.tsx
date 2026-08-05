@@ -25,12 +25,13 @@ import {
   Save,
 } from "lucide-react";
 import { MessageContent } from "./MessageContent";
-import type { Message } from "../../types";
+import type { ConversationParticipant, Message } from "../../types";
 import { MessageStatus } from "../../types";
 import type { WrittenFile, WorkspaceFileStatus } from "../../services/file-writer";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { useProviderStore } from "../../stores/provider-store";
 import { useIdentityStore } from "../../stores/identity-store";
+import { getParticipantLabel, getParticipantLabelParts } from "../../stores/chat-message-builder";
 
 // ── Ionicons-style action button (1:1 RN ActionButton) ──
 
@@ -76,6 +77,7 @@ function formatTime(iso: string): string {
 
 export interface MessageRowProps {
   message: Message;
+  participants?: ConversationParticipant[];
   onCopy?: (content: string) => void;
   onRegenerate?: (messageId: string) => void;
   onBranch?: (messageId: string) => void;
@@ -292,6 +294,7 @@ function UserActionBar({
 
 export const MessageRow = memo(function MessageRow({
   message,
+  participants = [],
   onCopy,
   onRegenerate,
   onBranch,
@@ -466,31 +469,40 @@ export const MessageRow = memo(function MessageRow({
   }
 
   // ── AI message ──
-  const senderName = message.senderName ?? "AI";
+  const senderParticipant = message.participantId
+    ? participants.find((participant) => participant.id === message.participantId)
+    : undefined;
+  const senderName = senderParticipant
+    ? getParticipantLabel(senderParticipant, participants)
+    : (message.senderName ?? "AI");
   const { color: senderColor } = getAvatarProps(senderName);
 
-  // Structured label parts for rich display
+  // Prefer current participant metadata so nickname changes also update historical messages.
   const labelParts = useMemo(() => {
+    if (senderParticipant) return getParticipantLabelParts(senderParticipant, participants);
     if (!message.senderModelId) return null;
     const providerStore = useProviderStore.getState();
     const identityStore = useIdentityStore.getState();
     const model = providerStore.getModelById(message.senderModelId);
     if (!model) return null;
     const modelName = model.displayName ?? message.senderModelId;
-    const identity = message.identityId
-      ? identityStore.getIdentityById(message.identityId)
-      : null;
+    const identity = message.identityId ? identityStore.getIdentityById(message.identityId) : null;
     const identityName = identity?.name ?? null;
     const provider = providerStore.getProviderById(model.providerId);
     const providerName = provider?.name ?? null;
-    // #N suffix: parse from stored senderName (e.g. "ModelName #2")
     let suffix: string | null = null;
     if (message.senderName) {
       const match = message.senderName.match(/#(\d+)$/);
       if (match) suffix = `#${match[1]}`;
     }
-    return { modelName, identityName, providerName, suffix };
-  }, [message.senderModelId, message.identityId, message.senderName]);
+    return { nickname: null, modelName, identityName, providerName, suffix };
+  }, [
+    message.senderModelId,
+    message.identityId,
+    message.senderName,
+    senderParticipant,
+    participants,
+  ]);
 
   return (
     <div data-message-id={message.id} className="group mb-6 flex flex-col gap-1 px-4">
@@ -502,13 +514,18 @@ export const MessageRow = memo(function MessageRow({
         >
           {labelParts ? (
             <>
-              <span className="uppercase">{labelParts.modelName}</span>
-              {labelParts.suffix && <span className="uppercase opacity-60"> {labelParts.suffix}</span>}
+              <span className="uppercase">{labelParts.nickname ?? labelParts.modelName}</span>
+              {labelParts.suffix && (
+                <span className="uppercase opacity-60"> {labelParts.suffix}</span>
+              )}
+              {labelParts.nickname && (
+                <span className="font-normal opacity-50"> · {labelParts.modelName}</span>
+              )}
               {labelParts.identityName && (
-                <span className="opacity-50 font-normal"> · {labelParts.identityName}</span>
+                <span className="font-normal opacity-50"> · {labelParts.identityName}</span>
               )}
               {labelParts.providerName && (
-                <span className="opacity-40 font-normal"> · {labelParts.providerName}</span>
+                <span className="font-normal opacity-40"> · {labelParts.providerName}</span>
               )}
             </>
           ) : (
@@ -684,7 +701,7 @@ export const MessageRow = memo(function MessageRow({
                           <div className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase">
                             {t("chat.currentFile")}
                           </div>
-                          <pre className="text-muted-foreground max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-relaxed">
+                          <pre className="text-muted-foreground max-h-40 overflow-auto text-[11px] leading-relaxed break-all whitespace-pre-wrap">
                             {status.currentContent.slice(0, 1200)}
                             {status.currentContent.length > 1200 ? "\n…" : ""}
                           </pre>
@@ -694,7 +711,7 @@ export const MessageRow = memo(function MessageRow({
                         <div className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase">
                           {t("chat.generatedFile")}
                         </div>
-                        <pre className="text-foreground max-h-48 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-relaxed">
+                        <pre className="text-foreground max-h-48 overflow-auto text-[11px] leading-relaxed break-all whitespace-pre-wrap">
                           {block.content.slice(0, 1600)}
                           {block.content.length > 1600 ? "\n…" : ""}
                         </pre>

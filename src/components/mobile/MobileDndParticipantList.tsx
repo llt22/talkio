@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IoTrashOutline } from "../../icons";
+import { Pencil } from "lucide-react";
 import { useChatStore } from "../../stores/chat-store";
 import type { ConversationParticipant } from "../../types";
 import { getParticipantLabelParts } from "../../stores/chat-message-builder";
@@ -27,6 +28,7 @@ function MobileSortableRow({
   getModelById,
   getIdentityById,
   onEditRole,
+  onEditNickname,
   onRemove,
   isSequential,
   onReasoningEffortCycle,
@@ -37,6 +39,7 @@ function MobileSortableRow({
   getModelById: (id: string) => any;
   getIdentityById: (id: string) => any;
   onEditRole: () => void;
+  onEditNickname: () => void;
   onRemove: () => void;
   isSequential: boolean;
   onReasoningEffortCycle: () => void;
@@ -50,7 +53,6 @@ function MobileSortableRow({
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
-  const pModel = getModelById(p.modelId);
   const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
   const parts = getParticipantLabelParts(p, allParticipants);
   return (
@@ -76,12 +78,14 @@ function MobileSortableRow({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-foreground truncate text-[13px] font-medium">
-          {parts.modelName}
+          {parts.nickname ?? parts.modelName}
           {parts.suffix && <span className="text-muted-foreground"> {parts.suffix}</span>}
         </p>
-        {parts.providerName && (
-          <p className="text-muted-foreground truncate text-[11px]">{parts.providerName}</p>
-        )}
+        <p className="text-muted-foreground truncate text-[11px]">
+          {[parts.nickname ? parts.modelName : null, parts.identityName, parts.providerName]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
       </div>
       <button
         className="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] active:opacity-60"
@@ -96,6 +100,13 @@ function MobileSortableRow({
         {p.reasoningEffort
           ? t(`providerEdit.reasoningEffort_${p.reasoningEffort}`)
           : t("providerEdit.reasoningEffort_default")}
+      </button>
+      <button
+        className="flex h-7 w-7 flex-shrink-0 items-center justify-center active:opacity-60"
+        onClick={onEditNickname}
+        title={t("chat.editNickname")}
+      >
+        <Pencil size={14} color="var(--muted-foreground)" />
       </button>
       <button
         className="flex-shrink-0 rounded px-2 py-0.5 text-[11px] active:opacity-60"
@@ -121,6 +132,7 @@ export function MobileDndParticipantList({
   getModelById,
   getIdentityById,
   onEditRole,
+  onEditNickname,
   onRemove,
   onReasoningEffortCycle,
 }: {
@@ -131,6 +143,7 @@ export function MobileDndParticipantList({
   getIdentityById: (id: string) => any;
   onEditRole: (participantId: string) => void;
   onRemove: (participantId: string, displayName: string) => void;
+  onEditNickname: (participantId: string) => void;
   onReasoningEffortCycle: (participantId: string) => void;
 }) {
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } });
@@ -164,6 +177,7 @@ export function MobileDndParticipantList({
             getModelById={getModelById}
             getIdentityById={getIdentityById}
             onEditRole={() => onEditRole(p.id)}
+            onEditNickname={() => onEditNickname(p.id)}
             onRemove={() => {
               const m = getModelById(p.modelId);
               onRemove(p.id, m?.displayName ?? p.modelId);

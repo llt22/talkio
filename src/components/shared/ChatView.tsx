@@ -311,6 +311,7 @@ export function ChatView({
             <MessageRow
               key={msg.id}
               message={msg}
+              participants={participants}
               onCopy={handleCopy}
               onRegenerate={msg.role === "assistant" ? handleRegenerate : undefined}
               onBranch={msg.role === "assistant" ? handleBranch : undefined}

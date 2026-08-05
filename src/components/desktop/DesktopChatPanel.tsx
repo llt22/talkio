@@ -45,9 +45,14 @@ import { ChatView, type ChatViewHandle } from "../shared/ChatView";
 import { MentionTextarea } from "../shared/MentionTextarea";
 import { ModelPicker } from "../shared/ModelPicker";
 import { AddMemberPicker } from "../shared/AddMemberPicker";
+import { ParticipantNicknameDialog } from "../shared/ParticipantNicknameDialog";
 import { useChatStore } from "../../stores/chat-store";
 import { manualCompress, setManualSummary, getManualSummary } from "../../lib/context-compression";
-import { buildApiMessagesForParticipant, getParticipantLabel, getParticipantLabelParts } from "../../stores/chat-message-builder";
+import {
+  buildApiMessagesForParticipant,
+  getParticipantLabel,
+  getParticipantLabelParts,
+} from "../../stores/chat-message-builder";
 import { buildProviderHeaders } from "../../services/provider-headers";
 import { useProviderStore } from "../../stores/provider-store";
 import { useChatPanelState } from "../../hooks/useChatPanelState";
@@ -76,6 +81,7 @@ function SortableParticipantRow({
   getModelById,
   getIdentityById,
   onEditRole,
+  onEditNickname,
   onRemove,
   isSequential,
   onReasoningEffortCycle,
@@ -86,6 +92,7 @@ function SortableParticipantRow({
   getModelById: (id: string) => any;
   getIdentityById: (id: string) => any;
   onEditRole: () => void;
+  onEditNickname: () => void;
   onRemove: () => void;
   isSequential: boolean;
   onReasoningEffortCycle: () => void;
@@ -99,7 +106,6 @@ function SortableParticipantRow({
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
-  const pModel = getModelById(p.modelId);
   const pIdentity = p.identityId ? getIdentityById(p.identityId) : null;
   const parts = getParticipantLabelParts(p, allParticipants);
   return (
@@ -118,12 +124,14 @@ function SortableParticipantRow({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-foreground truncate text-[13px] font-medium">
-          {parts.modelName}
+          {parts.nickname ?? parts.modelName}
           {parts.suffix && <span className="text-muted-foreground"> {parts.suffix}</span>}
         </p>
-        {parts.providerName && (
-          <p className="text-muted-foreground truncate text-[11px]">{parts.providerName}</p>
-        )}
+        <p className="text-muted-foreground truncate text-[11px]">
+          {[parts.nickname ? parts.modelName : null, parts.identityName, parts.providerName]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
       </div>
       <button
         className="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] transition-opacity hover:opacity-80"
@@ -141,6 +149,15 @@ function SortableParticipantRow({
           ? t(`providerEdit.reasoningEffort_${p.reasoningEffort}`)
           : t("providerEdit.reasoningEffort_default")}
       </button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        onClick={onEditNickname}
+        title={t("chat.editNickname")}
+      >
+        <Pencil size={13} className="text-muted-foreground" />
+      </Button>
       <button
         className="flex-shrink-0 rounded px-2 py-0.5 text-[11px] transition-opacity hover:opacity-80"
         style={{
@@ -201,6 +218,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
+  const [nicknameParticipantId, setNicknameParticipantId] = useState<string | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [groupPromptText, setGroupPromptText] = useState(conv?.groupSystemPrompt ?? "");
@@ -227,6 +245,9 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
         };
       }),
     [conv?.participants],
+  );
+  const nicknameParticipant = conv?.participants.find(
+    (participant) => participant.id === nicknameParticipantId,
   );
   const title = isGroup
     ? (conv?.title ?? t("chat.group"))
@@ -481,8 +502,15 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
                     : "var(--muted)",
                 }}
               >
-                <Sparkles size={11} className={currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"} />
-                <span className={`text-[10px] font-medium ${currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"}`}>
+                <Sparkles
+                  size={11}
+                  className={
+                    currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"
+                  }
+                />
+                <span
+                  className={`text-[10px] font-medium ${currentParticipant.reasoningEffort ? "text-primary" : "text-muted-foreground"}`}
+                >
                   {currentParticipant.reasoningEffort
                     ? t(`providerEdit.reasoningEffort_${currentParticipant.reasoningEffort}`)
                     : t("providerEdit.reasoningEffort")}
@@ -493,7 +521,9 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
               {REASONING_EFFORT_LEVELS.map((level) => (
                 <DropdownMenuItem
                   key={level ?? "__default__"}
-                  onClick={() => updateParticipantReasoningEffort(conversationId, currentParticipant.id, level)}
+                  onClick={() =>
+                    updateParticipantReasoningEffort(conversationId, currentParticipant.id, level)
+                  }
                 >
                   <span className="flex-1">
                     {level
@@ -710,10 +740,15 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
                     setShowParticipants(false);
                     setShowIdentityPanel(true);
                   }}
+                  onEditNickname={() => setNicknameParticipantId(p.id)}
                   onRemove={() => removeParticipant(conversationId, p.id)}
                   isSequential={(conv.speakingOrder ?? "sequential") === "sequential"}
                   onReasoningEffortCycle={() => {
-                    updateParticipantReasoningEffort(conversationId, p.id, nextReasoningEffort(p.reasoningEffort));
+                    updateParticipantReasoningEffort(
+                      conversationId,
+                      p.id,
+                      nextReasoningEffort(p.reasoningEffort),
+                    );
                   }}
                 />
               ))}
@@ -802,6 +837,24 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
           ))}
         </div>
       )}
+
+      <ParticipantNicknameDialog
+        open={nicknameParticipantId !== null}
+        participantName={
+          nicknameParticipant
+            ? getParticipantLabel(nicknameParticipant, conv?.participants ?? [])
+            : ""
+        }
+        initialNickname={nicknameParticipant?.nickname ?? ""}
+        onOpenChange={(open) => {
+          if (!open) setNicknameParticipantId(null);
+        }}
+        onSave={(nickname) =>
+          useChatStore
+            .getState()
+            .updateParticipantNickname(conversationId, nicknameParticipantId!, nickname)
+        }
+      />
 
       <ModelPicker
         open={showModelPicker}

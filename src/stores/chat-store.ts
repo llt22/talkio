@@ -32,6 +32,7 @@ import {
   togglePinConversation,
   updateGroupSystemPrompt,
   updateParticipantIdentity,
+  updateParticipantNickname,
   updateParticipantModel,
   updateParticipantReasoningEffort,
   updateSpeakingOrder,
@@ -87,6 +88,11 @@ export interface ChatState {
     conversationId: string,
     participantId: string,
     identityId: string | null,
+  ) => Promise<void>;
+  updateParticipantNickname: (
+    conversationId: string,
+    participantId: string,
+    nickname: string,
   ) => Promise<void>;
   updateParticipantModel: (
     conversationId: string,
@@ -268,6 +274,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     identityId: string | null,
   ) => {
     await updateParticipantIdentity(conversationId, participantId, identityId);
+  },
+
+  updateParticipantNickname: async (
+    conversationId: string,
+    participantId: string,
+    nickname: string,
+  ) => {
+    await updateParticipantNickname(conversationId, participantId, nickname);
   },
 
   updateParticipantModel: async (

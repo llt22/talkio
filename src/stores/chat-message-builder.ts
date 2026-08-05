@@ -37,6 +37,7 @@ export function resolveTargetParticipants(
  * Structured parts of a participant label for rich UI rendering.
  */
 export interface ParticipantLabelParts {
+  nickname: string | null;
   modelName: string;
   identityName: string | null;
   providerName: string | null;
@@ -52,6 +53,7 @@ export function getParticipantLabelParts(
 ): ParticipantLabelParts {
   const providerStore = useProviderStore.getState();
   const identityStore = useIdentityStore.getState();
+  const nickname = participant.nickname?.trim() || null;
   const model = providerStore.getModelById(participant.modelId);
   const modelName = model?.displayName ?? participant.modelId;
   const identity = participant.identityId
@@ -63,15 +65,17 @@ export function getParticipantLabelParts(
     : null;
 
   let suffix: string | null = null;
-  const sameLabelParticipants = allParticipants.filter(
-    (p) => p.modelId === participant.modelId && p.identityId === participant.identityId,
-  );
-  if (sameLabelParticipants.length > 1) {
-    const index = sameLabelParticipants.findIndex((p) => p.id === participant.id);
-    suffix = `#${index + 1}`;
+  if (!nickname) {
+    const sameLabelParticipants = allParticipants.filter(
+      (p) => p.modelId === participant.modelId && p.identityId === participant.identityId,
+    );
+    if (sameLabelParticipants.length > 1) {
+      const index = sameLabelParticipants.findIndex((p) => p.id === participant.id);
+      suffix = `#${index + 1}`;
+    }
   }
 
-  return { modelName, identityName, providerName, suffix };
+  return { nickname, modelName, identityName, providerName, suffix };
 }
 
 /**
@@ -81,6 +85,8 @@ export function getParticipantLabel(
   participant: ConversationParticipant,
   allParticipants: ConversationParticipant[],
 ): string {
+  const nickname = participant.nickname?.trim();
+  if (nickname) return nickname;
   const providerStore = useProviderStore.getState();
   const identityStore = useIdentityStore.getState();
   const model = providerStore.getModelById(participant.modelId);

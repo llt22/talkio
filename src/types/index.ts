@@ -127,6 +127,7 @@ export interface ConversationParticipant {
   id: string;
   modelId: string;
   identityId: string | null;
+  nickname?: string;
   reasoningEffort?: ReasoningEffort;
 }
 
