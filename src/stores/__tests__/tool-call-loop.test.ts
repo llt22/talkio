@@ -8,12 +8,20 @@ const {
   mockExecuteBuiltInTool,
   mockExecuteMcpToolByName,
   mockCreateStreamFlusher,
+  mockUseSettingsStore,
 } = vi.hoisted(() => ({
   mockUpdateMessage: vi.fn(),
   mockNotifyDbChange: vi.fn(),
   mockExecuteBuiltInTool: vi.fn(),
   mockExecuteMcpToolByName: vi.fn(),
   mockCreateStreamFlusher: vi.fn(),
+  mockUseSettingsStore: {
+    getState: vi.fn(() => ({ settings: { toolApprovalMode: "auto" as const } })),
+  },
+}));
+
+vi.mock("../settings-store", () => ({
+  useSettingsStore: mockUseSettingsStore,
 }));
 
 vi.mock("../../storage/database", () => ({
@@ -41,6 +49,7 @@ vi.mock("../generation-helpers", async () => {
 });
 
 import { runToolCallLoop } from "../tool-call-loop";
+import { toolApproval } from "../../services/tool-approval";
 import { MessageStatus } from "../../types";
 import type { GenerationContext } from "../chat-generation";
 import type { ProviderAdapter, StreamChatResult } from "../../services/provider-adapters";
@@ -125,6 +134,10 @@ describe("runToolCallLoop", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreateStreamFlusher.mockReturnValue({ flush: vi.fn(), schedule: vi.fn() });
+    // clearAllMocks keeps mockReturnValue — reset the approval mode explicitly.
+    (mockUseSettingsStore.getState as Mock).mockReturnValue({
+      settings: { toolApprovalMode: "auto" as const },
+    });
   });
 
   describe("no tool calls — immediate return", () => {
@@ -198,6 +211,51 @@ describe("runToolCallLoop", () => {
   });
 
   describe("tool execution — single round", () => {
+    it("skips tool execution when the user rejects approval", async () => {
+      (mockUseSettingsStore.getState as Mock).mockReturnValue({
+        settings: { toolApprovalMode: "ask" },
+      });
+      const ctx = makeGenerationContext();
+      const acc = makeContentAccumulator({
+        fullContent: "",
+        pendingToolCalls: [{ id: "tc-1", name: "get_weather", arguments: "{}" }],
+      });
+      const adapter = makeMockAdapter();
+      mockExecuteBuiltInTool.mockResolvedValue({ success: true, content: "should not run" });
+
+      const runPromise = runToolCallLoop(
+        ctx,
+        "msg-1",
+        acc,
+        "",
+        [],
+        adapter,
+        "https://api.example.com",
+        {},
+        "gpt-4",
+        null,
+        undefined,
+        [],
+        {},
+        null,
+        undefined,
+        null,
+        undefined,
+      );
+
+      // Approval request parks; simulate the user rejecting it.
+      await vi.waitFor(() => expect(toolApproval.getPending().length).toBe(1));
+      toolApproval.resolve(toolApproval.getPending()[0].id, false);
+      await runPromise;
+
+      expect(mockExecuteBuiltInTool).not.toHaveBeenCalled();
+      expect(mockUpdateMessage).toHaveBeenCalledWith(
+        "msg-1",
+        expect.objectContaining({
+          toolResults: [{ toolCallId: "tc-1", content: "Tool call rejected by user: get_weather" }],
+        }),
+      );
+    });
     it("executes a built-in tool call and saves results", async () => {
       const ctx = makeGenerationContext();
       const acc = makeContentAccumulator({

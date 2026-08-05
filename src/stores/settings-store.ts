@@ -4,6 +4,7 @@
  */
 import { create } from "zustand";
 import { kvStore } from "../storage/kv-store";
+import type { ToolApprovalMode } from "../services/tool-approval";
 
 export interface AppSettings {
   language: "system" | "en" | "zh";
@@ -19,6 +20,8 @@ export interface AppSettings {
   contextCompressionThreshold: number;
   /** Enter key behavior on desktop: true = Enter sends (default), false = Enter inserts newline */
   enterToSend: boolean;
+  /** Tool execution gate: "auto" runs tools without asking, "ask" requires user approval */
+  toolApprovalMode: ToolApprovalMode;
 }
 
 interface SettingsState {
@@ -38,6 +41,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   contextCompressionEnabled: false,
   contextCompressionThreshold: 16000,
   enterToSend: true,
+  toolApprovalMode: "auto",
 };
 
 const SETTINGS_KEY = "settings";

@@ -18,10 +18,12 @@ export function resolveTargetParticipants(
   }
   let targets: ConversationParticipant[];
   if (mentionedParticipantIds && mentionedParticipantIds.length > 0) {
+    // Explicit user mentions override muting — the user can wake a muted member.
     const mentionedSet = new Set(mentionedParticipantIds);
     targets = conv.participants.filter((p) => mentionedSet.has(p.id));
   } else {
-    targets = [...conv.participants];
+    // Automatic rounds skip muted participants.
+    targets = conv.participants.filter((p) => !p.muted);
   }
   if (conv.speakingOrder === "random") {
     // Fisher-Yates shuffle

@@ -7,6 +7,7 @@ import { create } from "zustand";
 import type { Message, Conversation, SpeakingOrder, ReasoningEffort } from "../types";
 import { getConversation } from "../storage/database";
 import { type StreamingState } from "./chat-generation";
+import { toolApproval } from "../services/tool-approval";
 import { dispatchMessageGeneration, runAutoDiscuss } from "./chat-dispatch";
 import {
   autoTitle,
@@ -35,6 +36,7 @@ import {
   updateParticipantNickname,
   updateParticipantModel,
   updateParticipantReasoningEffort,
+  toggleParticipantMuted,
   updateSpeakingOrder,
 } from "./chat-store-actions";
 
@@ -119,6 +121,7 @@ export interface ChatState {
     participantId: string,
     reasoningEffort: ReasoningEffort | undefined,
   ) => Promise<void>;
+  toggleParticipantMuted: (conversationId: string, participantId: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -199,6 +202,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   stopGeneration: () => {
     const next = stopConversationGeneration(get().currentConversationId, _abortControllers);
     if (next) set(next);
+    // Any tool calls awaiting user approval become moot — reject them so the
+    // generation loop can unwind instead of hanging on a dialog.
+    toolApproval.rejectAll();
   },
 
   startAutoDiscuss: async (rounds: number, topicText?: string) => {
@@ -333,6 +339,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     reasoningEffort: ReasoningEffort | undefined,
   ) => {
     await updateParticipantReasoningEffort(conversationId, participantId, reasoningEffort);
+  },
+
+  toggleParticipantMuted: async (conversationId: string, participantId: string) => {
+    await toggleParticipantMuted(conversationId, participantId);
   },
 
   branchFromMessage: async (messageId: string, messages: Message[]) => {

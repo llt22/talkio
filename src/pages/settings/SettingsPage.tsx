@@ -22,6 +22,7 @@ import {
   Download,
   Upload,
   Trash2,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import i18n from "../../i18n";
@@ -343,9 +344,46 @@ export function SettingsPage({
               </div>
             </div>
           )}
+          {/* Tool approval mode */}
+          <div
+            className="flex w-full items-center gap-4 px-4 py-3"
+            style={{ borderTop: "0.5px solid var(--border)" }}
+          >
+            <div
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: "rgba(236,72,153,0.1)" }}
+            >
+              <ShieldCheck size={18} color="#ec4899" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-foreground text-[16px] font-medium">
+                {t("settings.toolApproval")}
+              </span>
+            </div>
+            <button
+              onClick={() =>
+                updateSettings({
+                  toolApprovalMode: settings.toolApprovalMode === "ask" ? "auto" : "ask",
+                })
+              }
+              className="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors"
+              style={{
+                backgroundColor:
+                  settings.toolApprovalMode === "ask" ? "var(--primary)" : "var(--muted)",
+              }}
+            >
+              <span
+                className="inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform"
+                style={{
+                  transform:
+                    settings.toolApprovalMode === "ask"
+                      ? "translateX(20px) translateY(2px)"
+                      : "translateX(2px) translateY(2px)",
+                }}
+              />
+            </button>
+          </div>
         </div>
-
-        {/* ── Group 3: Appearance ── */}
         <SectionHeader label={t("settings.appearance")} />
         <div>
           <SettingsRow
@@ -527,7 +565,9 @@ function RefreshAllButton() {
     } else if (success === 0) {
       toast.error(`${t("providers.refreshFailed")}\n${failedNames.join("\n")}`);
     } else {
-      toast.warning(`${t("providers.refreshPartial", { success, failed })}\n${failedNames.join("\n")}`);
+      toast.warning(
+        `${t("providers.refreshPartial", { success, failed })}\n${failedNames.join("\n")}`,
+      );
     }
     setRefreshing(false);
   }, [refreshing, providers, fetchModels, updateProvider]);

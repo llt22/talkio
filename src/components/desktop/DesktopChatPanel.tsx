@@ -21,6 +21,9 @@ import {
   FolderOpen,
   Search,
   FileSearch,
+  Volume2,
+  VolumeX,
+  Activity,
   AlertTriangle,
   FileDown,
   X,
@@ -71,6 +74,11 @@ import { useConfirm } from "../shared/ConfirmDialogProvider";
 import { updateConversation } from "../../storage/database";
 import { notifyDbChange } from "../../hooks/useDatabase";
 import { getWorkspaceName, pickWorkspaceDir } from "../../services/workspace";
+import {
+  computeParticipantStats,
+  formatTokenCount,
+  type ParticipantStats,
+} from "../../lib/participant-stats";
 
 // ── Drag-sortable participant row ──
 
@@ -83,6 +91,8 @@ function SortableParticipantRow({
   onEditRole,
   onEditNickname,
   onRemove,
+  onToggleMute,
+  stats,
   isSequential,
   onReasoningEffortCycle,
 }: {
@@ -94,6 +104,8 @@ function SortableParticipantRow({
   onEditRole: () => void;
   onEditNickname: () => void;
   onRemove: () => void;
+  onToggleMute: () => void;
+  stats?: ParticipantStats;
   isSequential: boolean;
   onReasoningEffortCycle: () => void;
 }) {
@@ -132,7 +144,23 @@ function SortableParticipantRow({
             .filter(Boolean)
             .join(" · ")}
         </p>
+        {stats && stats.messageCount > 0 && (
+          <p className="text-muted-foreground/60 flex items-center gap-1 text-[10px]">
+            <Activity size={9} />
+            {formatTokenCount(stats.inputTokens)} in · {formatTokenCount(stats.outputTokens)} out
+            {stats.toolCalls > 0 && ` · ${stats.toolCalls} tools`}
+          </p>
+        )}
       </div>
+      <button
+        className={`flex-shrink-0 rounded p-1 transition-opacity hover:opacity-80 ${
+          p.muted ? "text-destructive" : "text-muted-foreground"
+        }`}
+        onClick={onToggleMute}
+        title={p.muted ? t("chat.unmuteMember") : t("chat.muteMember")}
+      >
+        {p.muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+      </button>
       <button
         className="flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] transition-opacity hover:opacity-80"
         style={{
@@ -144,7 +172,7 @@ function SortableParticipantRow({
         onClick={onReasoningEffortCycle}
         title={t("providerEdit.reasoningEffort")}
       >
-        <Sparkles size={10} className="inline mr-0.5" />
+        <Sparkles size={10} className="mr-0.5 inline" />
         {p.reasoningEffort
           ? t(`providerEdit.reasoningEffort_${p.reasoningEffort}`)
           : t("providerEdit.reasoningEffort_default")}
@@ -213,6 +241,7 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
     duplicateConversation,
   } = useChatPanelState(conversationId);
   const renameConversation = useChatStore((s) => s.renameConversation);
+  const statsByParticipant = useMemo(() => computeParticipantStats(messages), [messages]);
   const sendMessage = useChatStore((s) => s.sendMessage);
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -742,6 +771,10 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
                   }}
                   onEditNickname={() => setNicknameParticipantId(p.id)}
                   onRemove={() => removeParticipant(conversationId, p.id)}
+                  onToggleMute={() =>
+                    useChatStore.getState().toggleParticipantMuted(conversationId, p.id)
+                  }
+                  stats={statsByParticipant.get(p.id)}
                   isSequential={(conv.speakingOrder ?? "sequential") === "sequential"}
                   onReasoningEffortCycle={() => {
                     updateParticipantReasoningEffort(

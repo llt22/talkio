@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
-const mockAppFetch = vi.fn();
+const { mockAppFetch } = vi.hoisted(() => ({ mockAppFetch: vi.fn() }));
 vi.mock("../../../lib/http", () => ({
   appFetch: mockAppFetch,
 }));

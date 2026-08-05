@@ -242,7 +242,10 @@
     "compressionThreshold": "触发阈值",
     "workspaceDir": "工作目录",
     "selectDir": "选择",
-    "changeDir": "更改"
+    "changeDir": "更改",
+    "toolApproval": "工具调用确认",
+    "toolApprovalAuto": "自动执行",
+    "toolApprovalAsk": "每次询问"
   },
   "providerEdit": {
     "quickSelect": "快速选择",
@@ -457,5 +460,11 @@
       "name": "胡说教授",
       "prompt": "你是一个极度自信的教授，专门一本正经地胡说八道。引用根本不存在的研究，捏造统计数据，提及虚构的专家。用极其学术和严肃的语气说出荒谬至极的内容。永远不要打破人设，也不要承认自己在瞎编。"
     }
+  },
+  "toolApproval": {
+    "title": "工具调用需要确认",
+    "description": "AI 想要调用工具，请审阅请求后决定。",
+    "approve": "允许",
+    "reject": "拒绝"
   }
 }

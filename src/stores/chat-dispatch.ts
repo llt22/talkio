@@ -212,9 +212,12 @@ export async function dispatchMessageGeneration(args: {
       }
       for (const response of responses) mentionedIds.delete(response.participantId);
       if (mentionedIds.size === 0) break;
-      currentTargets = conversation.participants.filter((participant) =>
-        mentionedIds.has(participant.id),
+      // AI @ propagation respects muting — muted members stay out of the loop
+      // (only the user can wake them with an explicit mention).
+      currentTargets = conversation.participants.filter(
+        (participant) => mentionedIds.has(participant.id) && !participant.muted,
       );
+      if (currentTargets.length === 0) break;
     }
   } finally {
     if (abortControllers.get(cid) === abortController) {

@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IoTrashOutline } from "../../icons";
-import { Pencil } from "lucide-react";
+import { Pencil, Volume2, VolumeX } from "lucide-react";
 import { useChatStore } from "../../stores/chat-store";
 import type { ConversationParticipant } from "../../types";
 import { getParticipantLabelParts } from "../../stores/chat-message-builder";
@@ -30,6 +30,7 @@ function MobileSortableRow({
   onEditRole,
   onEditNickname,
   onRemove,
+  onToggleMute,
   isSequential,
   onReasoningEffortCycle,
 }: {
@@ -41,6 +42,7 @@ function MobileSortableRow({
   onEditRole: () => void;
   onEditNickname: () => void;
   onRemove: () => void;
+  onToggleMute: () => void;
   isSequential: boolean;
   onReasoningEffortCycle: () => void;
 }) {
@@ -100,6 +102,17 @@ function MobileSortableRow({
         {p.reasoningEffort
           ? t(`providerEdit.reasoningEffort_${p.reasoningEffort}`)
           : t("providerEdit.reasoningEffort_default")}
+      </button>
+      <button
+        className="flex h-7 w-7 flex-shrink-0 items-center justify-center active:opacity-60"
+        onClick={onToggleMute}
+        title={p.muted ? t("chat.unmuteMember") : t("chat.muteMember")}
+      >
+        {p.muted ? (
+          <VolumeX size={14} color="var(--destructive)" />
+        ) : (
+          <Volume2 size={14} color="var(--muted-foreground)" />
+        )}
       </button>
       <button
         className="flex h-7 w-7 flex-shrink-0 items-center justify-center active:opacity-60"
@@ -182,6 +195,9 @@ export function MobileDndParticipantList({
               const m = getModelById(p.modelId);
               onRemove(p.id, m?.displayName ?? p.modelId);
             }}
+            onToggleMute={() =>
+              useChatStore.getState().toggleParticipantMuted(conversationId, p.id)
+            }
             isSequential={isSequential}
             onReasoningEffortCycle={() => onReasoningEffortCycle(p.id)}
           />

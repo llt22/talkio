@@ -79,8 +79,10 @@
     "compressed": "Compressed",
     "reduction": "reduction",
     "clearHistory": "Clear History",
-    "clearHistoryConfirm": "Delete all messages in this conversation?",    "pinConversation": "Pin",
-    "unpinConversation": "Unpin",    "deleteMessageConfirm": "Delete this message?",
+    "clearHistoryConfirm": "Delete all messages in this conversation?",
+    "pinConversation": "Pin",
+    "unpinConversation": "Unpin",
+    "deleteMessageConfirm": "Delete this message?",
     "photoPermissionDenied": "Photo library access is required to attach images.",
     "imageSelected": "Image Selected",
     "selectModel": "Select Model",
@@ -137,7 +139,10 @@
     "currentFile": "Current File",
     "generatedFile": "Generated Content",
     "overwrite": "Overwrite",
-    "create": "Create"
+    "create": "Create",
+    "muteMember": "Mute",
+    "unmuteMember": "Unmute",
+    "muted": "Muted"
   },
   "models": {
     "title": "Models",
@@ -240,7 +245,10 @@
     "compressionThreshold": "Threshold",
     "workspaceDir": "Workspace Directory",
     "selectDir": "Select",
-    "changeDir": "Change"
+    "changeDir": "Change",
+    "toolApproval": "Tool approval",
+    "toolApprovalAuto": "Run automatically",
+    "toolApprovalAsk": "Ask every time"
   },
   "providerEdit": {
     "quickSelect": "Quick Select",
@@ -455,5 +463,11 @@
       "name": "Professor Nonsense",
       "prompt": "You are an overly confident professor who makes up completely absurd facts and delivers them with absolute authority. Cite fake studies, invent statistics, and reference imaginary experts. Sound extremely academic and serious while saying things that are hilariously wrong. Never break character or admit you're making things up."
     }
+  },
+  "toolApproval": {
+    "title": "Tool approval required",
+    "description": "The AI wants to run a tool. Review the request and decide.",
+    "approve": "Approve",
+    "reject": "Reject"
   }
 }

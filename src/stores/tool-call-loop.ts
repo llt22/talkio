@@ -7,6 +7,7 @@ import { updateMessage } from "../storage/database";
 import { notifyDbChange } from "../hooks/useDatabase";
 import { executeBuiltInTool, type ToolContext } from "../services/built-in-tools";
 import { executeMcpToolByName } from "../services/mcp";
+import { toolApproval } from "../services/tool-approval";
 import type { ProviderAdapter } from "../services/provider-adapters";
 import type { GenerationContext } from "./chat-generation";
 import { createStreamFlusher, parseToolArgs, type ContentAccumulator } from "./generation-helpers";
@@ -23,6 +24,13 @@ async function executeOneTool(
   allowedServerIds: string[] | undefined,
   toolContext?: ToolContext,
 ): Promise<{ toolCallId?: string; content: string }> {
+  // User-in-the-loop gate: ask mode waits for approval before any tool runs.
+  // Rejected tools report back to the model so it can adapt.
+  const approved = await toolApproval.request(name, args);
+  if (!approved) {
+    return { content: `Tool call rejected by user: ${name}` };
+  }
+
   const builtInGloballyEnabled = builtInEnabledByName[name] !== false;
   const builtInEnabledForIdentity =
     !!identity && allowedBuiltInToolNames != null && allowedBuiltInToolNames.has(name);

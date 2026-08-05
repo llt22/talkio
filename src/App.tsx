@@ -3,6 +3,7 @@ import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { ConfirmDialogProvider, appAlert } from "./components/shared/ConfirmDialogProvider";
+import { ToolApprovalDialog } from "./components/shared/ToolApprovalDialog";
 import { MobileLayout } from "./components/mobile/MobileLayout";
 import { DesktopLayout } from "./components/desktop/DesktopLayout";
 import { initDatabase } from "./storage/database";
@@ -119,6 +120,7 @@ export default function App() {
             </div>
           </div>
           <Toaster position={isMobile ? "top-center" : "bottom-right"} richColors />
+          <ToolApprovalDialog />
         </TooltipProvider>
       </ConfirmDialogProvider>
     </BrowserRouter>

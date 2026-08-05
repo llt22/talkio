@@ -1,5 +1,9 @@
 export type ProviderType = "openai" | "anthropic" | "gemini" | "azure-openai";
-export type ApiFormat = "chat-completions" | "responses" | "anthropic-messages";
+export type ApiFormat =
+  | "chat-completions"
+  | "responses"
+  | "anthropic-messages"
+  | "gemini-generate-content";
 export type ProviderStatus = "connected" | "disconnected" | "error" | "pending";
 export type ConversationType = "single" | "group";
 export type MessageRole = "user" | "assistant" | "system" | "tool";
@@ -16,6 +20,8 @@ export interface Provider {
   name: string;
   type: ProviderType;
   apiFormat?: ApiFormat;
+  /** Optional data-driven profile reference (see provider-profiles registry). */
+  profileId?: string;
   baseUrl: string;
   /**
    * Runtime memory only — never persisted to the providers blob.
@@ -142,6 +148,8 @@ export interface ConversationParticipant {
   identityId: string | null;
   nickname?: string;
   reasoningEffort?: ReasoningEffort;
+  /** Muted participants skip automatic rounds and AI @ propagation; explicit user mentions still reach them. */
+  muted?: boolean;
 }
 
 export type SpeakingOrder = "sequential" | "random" | "parallel";

@@ -183,6 +183,19 @@ export async function updateParticipantReasoningEffort(
   notifyDbChange("conversations");
 }
 
+export async function toggleParticipantMuted(
+  conversationId: string,
+  participantId: string,
+): Promise<void> {
+  const conversation = await getConversation(conversationId);
+  if (!conversation) return;
+  const participants = conversation.participants.map((participant) =>
+    participant.id === participantId ? { ...participant, muted: !participant.muted } : participant,
+  );
+  await updateConversation(conversationId, { participants });
+  notifyDbChange("conversations");
+}
+
 export async function addParticipant(
   conversationId: string,
   modelId: string,
