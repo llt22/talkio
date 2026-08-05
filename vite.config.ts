@@ -32,7 +32,6 @@ export default defineConfig(async () => ({
           if (id.includes('node_modules/mermaid')) return 'mermaid-core';
           if (id.includes('node_modules/katex')) return 'katex';
           if (id.includes('node_modules/pdfjs-dist')) return 'pdf';
-          if (id.includes('node_modules/xlsx')) return 'xlsx';
           if (id.includes('node_modules/cytoscape')) return 'cytoscape';
           if (id.includes('node_modules/shiki')) return 'shiki';
         },

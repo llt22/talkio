@@ -17,6 +17,11 @@ export interface Provider {
   type: ProviderType;
   apiFormat?: ApiFormat;
   baseUrl: string;
+  /**
+   * Runtime memory only — never persisted to the providers blob.
+   * Desktop: stored in the OS credential store keyed by provider id;
+   * browser/Android fallback: localStorage under `talkio:secret:<id>`.
+   */
   apiKey: string;
   apiVersion?: string;
   customHeaders: CustomHeader[];
@@ -35,10 +40,18 @@ export interface ModelCapabilities {
 export type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
 export const REASONING_EFFORT_LEVELS: readonly (ReasoningEffort | undefined)[] = [
-  undefined, "none", "minimal", "low", "medium", "high", "xhigh",
+  undefined,
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
 ] as const;
 
-export function nextReasoningEffort(current: ReasoningEffort | undefined): ReasoningEffort | undefined {
+export function nextReasoningEffort(
+  current: ReasoningEffort | undefined,
+): ReasoningEffort | undefined {
   const idx = REASONING_EFFORT_LEVELS.indexOf(current);
   return REASONING_EFFORT_LEVELS[(idx + 1) % REASONING_EFFORT_LEVELS.length];
 }

@@ -4,10 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import {
-  IoLockClosed,
-  IoCheckmarkCircle,
-} from "../../icons";
+import { IoLockClosed, IoCheckmarkCircle } from "../../icons";
 import { useProviderStore } from "../../stores/provider-store";
 import type { Provider, ProviderType, ApiFormat, CustomHeader } from "../../types";
 import { generateId } from "../../lib/id";
@@ -19,16 +16,23 @@ import { ProviderConfigForm } from "./ProviderConfigForm";
 
 type ProviderStoreState = ReturnType<typeof useProviderStore.getState>;
 
-const PROVIDER_PRESETS: Record<string, { name: string; baseUrl: string; type: ProviderType; apiFormat?: ApiFormat }> = {
+const PROVIDER_PRESETS: Record<
+  string,
+  { name: string; baseUrl: string; type: ProviderType; apiFormat?: ApiFormat }
+> = {
   deepseek: { name: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", type: "openai" },
   openai: { name: "OpenAI", baseUrl: "https://api.openai.com/v1", type: "openai" },
-  anthropic: { name: "Anthropic", baseUrl: "https://api.anthropic.com", type: "openai", apiFormat: "anthropic-messages" },
+  anthropic: {
+    name: "Anthropic",
+    baseUrl: "https://api.anthropic.com",
+    type: "openai",
+    apiFormat: "anthropic-messages",
+  },
   openrouter: { name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", type: "openai" },
   groq: { name: "Groq", baseUrl: "https://api.groq.com/openai/v1", type: "openai" },
   ollama: { name: "Ollama", baseUrl: "http://localhost:11434/v1", type: "openai" },
   "ollama-cloud": { name: "Ollama Cloud", baseUrl: "https://ollama.com/v1", type: "openai" },
 };
-
 
 export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose?: () => void }) {
   const { t } = useTranslation();
@@ -70,7 +74,7 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
         setName(provider.name);
         setBaseUrl(provider.baseUrl);
         setApiKey(provider.apiKey);
-        setProviderType("openai");
+        setProviderType(provider.type);
         setApiFormat(provider.apiFormat ?? "chat-completions");
         setCustomHeaders(provider.customHeaders ?? []);
         setProviderEnabled(provider.enabled !== false);
@@ -133,7 +137,11 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
         // New provider: test connection WITHOUT saving (1:1 RN)
         const url = baseUrl.trim().replace(/\/+$/, "");
 
-        const headers = buildProviderHeadersFromRaw({ apiKey: apiKey.trim(), customHeaders, apiFormat });
+        const headers = buildProviderHeadersFromRaw({
+          apiKey: apiKey.trim(),
+          customHeaders,
+          apiFormat,
+        });
 
         let ok: boolean;
         let res: Response;
@@ -316,9 +324,21 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
             <div className="mb-2 flex flex-wrap gap-1.5">
               {(
                 [
-                  { key: "__openai__", label: t("providerEdit.openaiCompatible"), format: "chat-completions" as ApiFormat },
-                  { key: "__responses__", label: "OpenAI Responses", format: "responses" as ApiFormat },
-                  { key: "anthropic", label: "Anthropic", format: "anthropic-messages" as ApiFormat },
+                  {
+                    key: "__openai__",
+                    label: t("providerEdit.openaiCompatible"),
+                    format: "chat-completions" as ApiFormat,
+                  },
+                  {
+                    key: "__responses__",
+                    label: "OpenAI Responses",
+                    format: "responses" as ApiFormat,
+                  },
+                  {
+                    key: "anthropic",
+                    label: "Anthropic",
+                    format: "anthropic-messages" as ApiFormat,
+                  },
                 ] as const
               ).map((opt) => {
                 const active = selectedPreset === opt.key;
@@ -525,4 +545,3 @@ export function ProviderEditPage({ editId, onClose }: { editId?: string; onClose
     </div>
   );
 }
-

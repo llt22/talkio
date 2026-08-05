@@ -94,6 +94,18 @@ export async function runToolCallLoop(
   let accumulatedContent = acc.fullContent;
   let currentTokenUsage = tokenUsage;
 
+  // Nothing to continue from — no follow-up stream needed. Callers normally
+  // filter empty pendingToolCalls before invoking; this guards the contract.
+  if (currentToolCalls.length === 0) {
+    await updateMessage(assistantMsgId, {
+      content: accumulatedContent,
+      isStreaming: false,
+      status: MessageStatus.SUCCESS,
+      tokenUsage: currentTokenUsage,
+    });
+    return { content: accumulatedContent, tokenUsage: currentTokenUsage };
+  }
+
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const toolMessages = [
       ...apiMessages,
@@ -151,7 +163,8 @@ export async function runToolCallLoop(
         if (delta?.tool_calls) {
           for (const tc of delta.tool_calls) {
             const idx = tc.index ?? 0;
-            while (newToolCalls.length <= idx) newToolCalls.push({ id: "", name: "", arguments: "" });
+            while (newToolCalls.length <= idx)
+              newToolCalls.push({ id: "", name: "", arguments: "" });
             if (tc.id) newToolCalls[idx].id = tc.id;
             if (tc.function?.name) newToolCalls[idx].name += tc.function.name;
             if (tc.function?.arguments) newToolCalls[idx].arguments += tc.function.arguments;

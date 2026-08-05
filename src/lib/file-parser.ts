@@ -1,6 +1,6 @@
 /**
  * File parser — extracts text content from documents for chat context.
- * Supports: PDF, Word (.docx), Excel (.xlsx/.xls), plain text (.txt, .md, .csv, etc.)
+ * Supports: PDF, Word (.docx), Excel (.xlsx), plain text (.txt, .md, .csv, etc.)
  */
 
 const TEXT_EXTENSIONS = new Set([
@@ -71,7 +71,7 @@ function isDocx(filename: string): boolean {
 }
 
 function isExcel(filename: string): boolean {
-  return ["xlsx", "xls"].includes(getExtension(filename));
+  return getExtension(filename) === "xlsx";
 }
 
 function isImageFile(filename: string): boolean {
@@ -171,17 +171,41 @@ function sheetToMarkdownTable(jsonData: Record<string, any>[]): string {
 }
 
 async function extractExcelText(file: File): Promise<string> {
-  const xlsx = await import("xlsx");
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = xlsx.read(arrayBuffer, { type: "array" });
-  const sheets: string[] = [];
-  for (const name of workbook.SheetNames) {
-    const ws = workbook.Sheets[name];
-    const json = xlsx.utils.sheet_to_json<Record<string, any>>(ws, { defval: "", raw: false });
-    const md = sheetToMarkdownTable(json);
-    sheets.push(`## Sheet: ${name}\n\n${md}`);
+  const readExcelFile = (await import("read-excel-file/browser")).default;
+  let sheets: Array<{ sheet: string; data: unknown[][] }>;
+  try {
+    sheets = await readExcelFile(file);
+  } catch (err) {
+    // Upstream read-excel-file bug: a minimal .xlsx without styles.xml /
+    // sharedStrings.xml makes the internal reader return a non-Promise, and
+    // the library crashes with "readFiles(...).then is not a function".
+    if (err instanceof TypeError && /readFiles\(.*\)\.then/.test(String(err.message))) {
+      throw new Error(
+        "This .xlsx file is missing its standard style table and cannot be parsed. " +
+          "Please re-save it from Excel / Google Sheets and try again.",
+      );
+    }
+    throw err;
   }
-  return sheets.join("\n\n");
+  const results: string[] = [];
+  for (const { sheet: name, data } of sheets) {
+    if (!data || data.length === 0) {
+      results.push(`## Sheet: ${name}\n\n*Sheet is empty.*`);
+      continue;
+    }
+    const [headerRow, ...rows] = data;
+    const headers: string[] = headerRow.map((cell) => (cell == null ? "" : String(cell)));
+    const json = rows.map((row) => {
+      const obj: Record<string, unknown> = {};
+      headers.forEach((h, i) => {
+        obj[h] = row[i] == null ? "" : row[i];
+      });
+      return obj;
+    });
+    const md = sheetToMarkdownTable(json);
+    results.push(`## Sheet: ${name}\n\n${md}`);
+  }
+  return results.join("\n\n");
 }
 
 const MAX_TEXT_LENGTH = 50_000; // ~12k tokens
@@ -209,6 +233,12 @@ export async function parseFile(file: File): Promise<ParsedFile> {
   if (isDocx(name)) {
     const text = truncate(await extractDocxText(file));
     return { name, type: "docx", content: text, size: file.size };
+  }
+
+  if (getExtension(name) === "xls") {
+    throw new Error(
+      "Legacy .xls format is not supported. Please convert the file to .xlsx format and try again.",
+    );
   }
 
   if (isExcel(name)) {

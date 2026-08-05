@@ -3,6 +3,7 @@
  * Exports/imports providers, models, identities, and MCP servers as JSON.
  */
 import { kvStore } from "../storage/kv-store";
+import { secretStore } from "./secret-store";
 import { saveOrShareFile } from "./file-download";
 import type { Provider, Model, Identity, McpServer } from "../types";
 import type { AppSettings } from "../stores/settings-store";
@@ -60,7 +61,17 @@ export function importBackupFromString(text: string): ImportResult {
       return { success: false, errorCode: "UNSUPPORTED_VERSION", errorDetail: data.version };
     }
 
-    if (data.providers) kvStore.setObject("providers", data.providers);
+    // Providers: move any legacy plaintext keys into the secret store, then
+    // persist the blob without them (same policy as provider-store).
+    if (data.providers) {
+      for (const p of data.providers) {
+        if (p.apiKey) void secretStore.set(p.id, p.apiKey);
+      }
+      kvStore.setObject(
+        "providers",
+        data.providers.map(({ apiKey: _apiKey, ...rest }) => rest),
+      );
+    }
     if (data.models) kvStore.setObject("models", data.models);
     if (data.identities) kvStore.setObject("identities", data.identities);
     if (data.mcpServers) kvStore.setObject("mcp_servers", data.mcpServers);

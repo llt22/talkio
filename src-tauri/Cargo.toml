@@ -31,3 +31,4 @@ uuid = { version = "1", features = ["v4"] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 tokio = { version = "1", features = ["process", "io-util", "sync", "time"] }
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }

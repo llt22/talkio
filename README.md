@@ -105,7 +105,7 @@ Talkio 不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉
 
 - 所有数据存储在本地（SQLite）
 - 不运行任何云端服务，不收集用户数据
-- API Key 加密存储，永远不离开你的设备
+- **API Key 安全存储** — 桌面端存入系统凭据库（macOS Keychain / Windows 凭据管理器 / Linux Secret Service），不写入应用本地存储；Android 端存储在应用私有 WebView 存储中，密钥永不离开设备
 
 ---
 
@@ -202,7 +202,7 @@ talkio/
 
 ## 隐私
 
-- **本地优先** — 对话、设置、API Key 全部存储在本地
+- **本地优先** — 对话、设置全部存储在本地；API Key 在桌面端存入系统凭据库（macOS Keychain / Windows 凭据管理器 / Linux Secret Service），不会写入应用本地存储
 - **无服务器** — 不运行云端服务，不收集任何用户数据
 - **AI 请求** — 聊天消息发送到你配置的 AI Provider，这是 AI 功能运行的必要条件
 

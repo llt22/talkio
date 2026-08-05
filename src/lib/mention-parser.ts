@@ -5,7 +5,10 @@ export interface MentionMatch {
   displayName: string;
 }
 
-const MENTION_REGEX = /@(\S+)/g;
+// Stops at whitespace or common trailing punctuation so that "@Alice," and
+// "@Alice!" resolve to "@Alice" — punctuation stays in the text and the
+// mention is still recognized.
+const MENTION_REGEX = /@(\S+?)(?=[\s,.;:!?，。！？；：]|$)/g;
 
 export function parseMentions(text: string, participantNames: Map<string, string>): MentionMatch[] {
   const matches: MentionMatch[] = [];

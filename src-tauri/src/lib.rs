@@ -6,6 +6,8 @@ use tauri::Manager;
 mod mcp_stdio;
 #[cfg(not(target_os = "android"))]
 mod git_cmd;
+#[cfg(not(target_os = "android"))]
+mod secrets;
 
 #[tauri::command]
 fn check_pending_import(app: tauri::AppHandle) -> Option<String> {
@@ -61,6 +63,9 @@ pub fn run() {
       mcp_stdio::mcp_stdio_stop,
       mcp_stdio::mcp_stdio_list,
       git_cmd::git_execute,
+      secrets::secret_set,
+      secrets::secret_get,
+      secrets::secret_delete,
     ]);
 
   // Mobile: only register base commands

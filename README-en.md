@@ -105,7 +105,7 @@ Connect to external tool servers via [Model Context Protocol](https://modelconte
 
 - All data stored locally (SQLite)
 - No cloud services, no data collection
-- API keys encrypted locally, never leave your device
+- **API keys stored securely** — on desktop they live in the OS credential store (macOS Keychain / Windows Credential Manager / Linux Secret Service), never in app local storage; on Android they are kept in the app's private WebView storage. Keys never leave your device
 
 ---
 
@@ -202,7 +202,7 @@ talkio/
 
 ## Privacy
 
-- **Local-First** — Conversations, settings, API keys all stored locally
+- **Local-First** — Conversations and settings stored locally; API keys are stored in the OS credential store on desktop (macOS Keychain / Windows Credential Manager / Linux Secret Service), never written to app local storage
 - **No Server** — No cloud services, no user data collection
 - **AI Requests** — Chat messages are sent to your configured AI provider, required for AI functionality
 
