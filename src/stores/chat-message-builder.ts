@@ -63,9 +63,11 @@ export function getParticipantLabelParts(
     : null;
 
   let suffix: string | null = null;
-  const sameModelParticipants = allParticipants.filter((p) => p.modelId === participant.modelId);
-  if (sameModelParticipants.length > 1) {
-    const index = sameModelParticipants.findIndex((p) => p.id === participant.id);
+  const sameLabelParticipants = allParticipants.filter(
+    (p) => p.modelId === participant.modelId && p.identityId === participant.identityId,
+  );
+  if (sameLabelParticipants.length > 1) {
+    const index = sameLabelParticipants.findIndex((p) => p.id === participant.id);
     suffix = `#${index + 1}`;
   }
 
@@ -87,31 +89,44 @@ export function getParticipantLabel(
     ? identityStore.getIdentityById(participant.identityId)
     : null;
 
-  if (identity?.name) {
-    return `${modelName}（${identity.name}）`;
-  }
-
-  // Same modelId added multiple times → append #N
-  const sameModelParticipants = allParticipants.filter((p) => p.modelId === participant.modelId);
-  if (sameModelParticipants.length > 1) {
-    const index = sameModelParticipants.findIndex((p) => p.id === participant.id);
-    return `${modelName} #${index + 1}`;
-  }
-
-  // Different modelIds but same displayName (e.g. same model from different providers)
   const sameNameParticipants = allParticipants.filter((p) => {
     if (p.modelId === participant.modelId) return false;
-    const m = providerStore.getModelById(p.modelId);
-    return (m?.displayName ?? p.modelId) === modelName;
+    const otherModel = providerStore.getModelById(p.modelId);
+    return (otherModel?.displayName ?? p.modelId) === modelName;
   });
-  if (sameNameParticipants.length > 0 && model) {
-    const provider = providerStore.getProviderById(model.providerId);
-    if (provider?.name) {
-      return `${modelName} [${provider.name}]`;
-    }
-  }
+  const providerName =
+    sameNameParticipants.length > 0 && model
+      ? (providerStore.getProviderById(model.providerId)?.name ?? null)
+      : null;
+  const qualifiedModelName = providerName ? `${modelName} [${providerName}]` : modelName;
+  const baseLabel = identity?.name
+    ? `${qualifiedModelName}（${identity.name}）`
+    : qualifiedModelName;
+  const sameLabelParticipants = allParticipants.filter((p) => {
+    const otherModel = providerStore.getModelById(p.modelId);
+    const otherModelName = otherModel?.displayName ?? p.modelId;
+    const otherSameName = allParticipants.some((candidate) => {
+      if (candidate.modelId === p.modelId) return false;
+      const candidateModel = providerStore.getModelById(candidate.modelId);
+      return (candidateModel?.displayName ?? candidate.modelId) === otherModelName;
+    });
+    const otherProviderName =
+      otherSameName && otherModel
+        ? (providerStore.getProviderById(otherModel.providerId)?.name ?? null)
+        : null;
+    const otherQualifiedName = otherProviderName
+      ? `${otherModelName} [${otherProviderName}]`
+      : otherModelName;
+    const otherIdentity = p.identityId ? identityStore.getIdentityById(p.identityId) : null;
+    const otherLabel = otherIdentity?.name
+      ? `${otherQualifiedName}（${otherIdentity.name}）`
+      : otherQualifiedName;
+    return otherLabel === baseLabel;
+  });
 
-  return modelName;
+  if (sameLabelParticipants.length <= 1) return baseLabel;
+  const index = sameLabelParticipants.findIndex((p) => p.id === participant.id);
+  return `${baseLabel} #${index + 1}`;
 }
 
 /**

@@ -38,10 +38,7 @@ export function AddMemberContent({
   const [search, setSearch] = useState("");
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedMember[]>([]);
-  const existingModelIdSet = useMemo(
-    () => new Set(existingModelIds ?? []),
-    [existingModelIds],
-  );
+  const existingModelIdSet = useMemo(() => new Set(existingModelIds ?? []), [existingModelIds]);
 
   const enabledModels = useMemo(() => models.filter((m) => m.enabled), [models]);
 
@@ -172,18 +169,20 @@ export function AddMemberContent({
                     return (
                       <button
                         key={model.id}
+                        type="button"
+                        disabled={isExisting}
                         onClick={() => {
                           if (!isSelected) addMember(model.id, null);
                           setActiveModelId(model.id);
                         }}
                         className={`flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-[13px] transition-colors ${
-                          isActive
-                            ? "bg-primary/10 text-primary font-medium"
-                            : isSelected
-                              ? "bg-primary/5 text-foreground hover:bg-primary/10"
-                              : isExisting
+                          isExisting
+                            ? "bg-primary/5 text-muted-foreground cursor-not-allowed"
+                            : isActive
+                              ? "bg-primary/10 text-primary font-medium"
+                              : isSelected
                                 ? "bg-primary/5 text-foreground hover:bg-primary/10"
-                              : "text-foreground hover:bg-muted/50"
+                                : "text-foreground hover:bg-muted/50"
                         }`}
                       >
                         <span className="min-w-0 flex-1 truncate">{model.displayName}</span>

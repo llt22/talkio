@@ -1,4 +1,10 @@
-import type { Conversation, ConversationParticipant, Message, SpeakingOrder, ReasoningEffort } from "../types";
+import type {
+  Conversation,
+  ConversationParticipant,
+  Message,
+  SpeakingOrder,
+  ReasoningEffort,
+} from "../types";
 import {
   clearMessages as dbClearMessages,
   deleteMessage as dbDeleteMessage,
@@ -156,6 +162,7 @@ export async function addParticipant(
 ): Promise<void> {
   const conversation = await getConversation(conversationId);
   if (!conversation) return;
+  if (conversation.participants.some((participant) => participant.modelId === modelId)) return;
 
   const newParticipant: ConversationParticipant = {
     id: generateId(),
@@ -182,11 +189,20 @@ export async function addParticipants(
   const conversation = await getConversation(conversationId);
   if (!conversation || members.length === 0) return;
 
-  const newParticipants: ConversationParticipant[] = members.map((member) => ({
-    id: generateId(),
-    modelId: member.modelId,
-    identityId: member.identityId,
-  }));
+  const existingModelIds = new Set(
+    conversation.participants.map((participant) => participant.modelId),
+  );
+  const newParticipants: ConversationParticipant[] = [];
+  for (const member of members) {
+    if (existingModelIds.has(member.modelId)) continue;
+    existingModelIds.add(member.modelId);
+    newParticipants.push({
+      id: generateId(),
+      modelId: member.modelId,
+      identityId: member.identityId,
+    });
+  }
+  if (newParticipants.length === 0) return;
   const participants = [...conversation.participants, ...newParticipants];
   const becomesGroup = conversation.type === "single" && participants.length > 1;
   const oldAutoTitle = autoTitle(conversation.participants);
