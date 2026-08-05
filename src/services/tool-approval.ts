@@ -79,6 +79,18 @@ export const toolApproval = {
     emit();
   },
 
+  /** Reject pending approvals owned by one conversation. */
+  rejectConversation(conversationId: string): void {
+    let changed = false;
+    for (const [id, entry] of pending) {
+      if (entry.approval.conversationId !== conversationId) continue;
+      pending.delete(id);
+      entry.resolve(false);
+      changed = true;
+    }
+    if (changed) emit();
+  },
+
   /** Snapshot of pending approvals for the UI. */
   getPending(): PendingApproval[] {
     return Array.from(pending.values()).map((entry) => entry.approval);

@@ -104,3 +104,20 @@ export function stopConversationGeneration(
   controller.abort();
   return { autoDiscussRemaining: 0 };
 }
+
+export function clearConversationRuntime(
+  conversationId: string,
+  currentConversationId: string | null,
+  abortControllers: Map<string, AbortController>,
+  streamingMessages: Map<string, StreamingState>,
+): { isGenerating: false; streamingMessages: StreamingState[] } | null {
+  abortControllers.get(conversationId)?.abort();
+  abortControllers.delete(conversationId);
+
+  for (const [messageId, state] of streamingMessages) {
+    if (state.cid === conversationId) streamingMessages.delete(messageId);
+  }
+
+  if (conversationId !== currentConversationId) return null;
+  return { isGenerating: false, streamingMessages: [] };
+}

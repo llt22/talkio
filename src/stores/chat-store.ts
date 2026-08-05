@@ -13,6 +13,7 @@ import {
   autoTitle,
   createConversationRecord,
   deleteConversationRecord,
+  clearConversationRuntime,
   deleteAllConversationRecords,
   deriveConversationViewState,
   stopConversationGeneration,
@@ -271,6 +272,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   clearConversationMessages: async (conversationId: string) => {
+    _autoDiscussSession++;
+    if (_autoDiscussConversationId === conversationId) _autoDiscussConversationId = null;
+    const runtimeState = clearConversationRuntime(
+      conversationId,
+      get().currentConversationId,
+      _abortControllers,
+      _streamingMessages,
+    );
+    toolApproval.rejectConversation(conversationId);
+    set({
+      ...(runtimeState ?? {}),
+      autoDiscussRemaining: 0,
+      autoDiscussTotalRounds: 0,
+    });
     await clearConversationMessages(conversationId);
   },
 

@@ -596,7 +596,13 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label={t("common.more", { defaultValue: "More" })}
+              data-testid="chat-more-menu"
+            >
               <MoreHorizontal size={16} />
             </Button>
           </DropdownMenuTrigger>

@@ -51,3 +51,45 @@ test("provider to chat flow preserves model state and classifies authentication 
   ).toBeVisible();
   await expect(page.getByText(/API Error 401/)).toBeVisible();
 });
+
+test("clearing history aborts an active generation and removes its placeholder", async ({
+  page,
+}) => {
+  await page.addInitScript(() => localStorage.clear());
+  await page.route("https://mock.talkio.test/v1/models", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data: [{ id: "talkio-e2e-model", object: "model" }] }),
+    });
+  });
+  const pendingResponse = Promise.withResolvers<void>();
+  await page.route("https://mock.talkio.test/v1/chat/completions", async (route) => {
+    await pendingResponse.promise;
+    await route.abort();
+  });
+
+  await page.goto("/");
+  await page.getByTestId("desktop-nav-settings").click();
+  await page.getByRole("button", { name: "Providers" }).click();
+  await page.getByTestId("add-provider").click();
+  await page.getByLabel("Name").fill("Talkio Clear History Provider");
+  await page.getByLabel("Base URL").fill("https://mock.talkio.test/v1");
+  await page.getByLabel("API Key").fill("test-key");
+  await page.getByRole("button", { name: "Connect & Fetch Models" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+
+  await page.getByTestId("desktop-nav-experts").click();
+  await page.getByRole("button", { name: /talkio-e2e-model/ }).click();
+  await page.getByTestId("chat-input").fill("Keep generating");
+  await page.getByTestId("chat-input").press("Enter");
+  await expect(page.getByTestId("chat-input")).toBeDisabled();
+
+  await page.getByTestId("chat-more-menu").click();
+  await page.getByRole("menuitem", { name: "Clear History" }).click();
+  await page.getByRole("button", { name: "Confirm" }).click();
+
+  await expect(page.getByText("Keep generating")).toHaveCount(0);
+  await expect(page.getByTestId("chat-input")).toBeEnabled();
+  pendingResponse.resolve();
+});

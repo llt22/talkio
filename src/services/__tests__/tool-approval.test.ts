@@ -83,6 +83,30 @@ describe("toolApproval", () => {
     expect(toolApproval.getPending()).toHaveLength(0);
   });
 
+  it("rejectConversation only rejects approvals from that conversation", async () => {
+    setMode("ask");
+    const first = toolApproval.request({
+      toolName: "a",
+      args: {},
+      conversationId: "conv-1",
+      risk: "unknown",
+    });
+    const second = toolApproval.request({
+      toolName: "b",
+      args: {},
+      conversationId: "conv-2",
+      risk: "unknown",
+    });
+
+    toolApproval.rejectConversation("conv-1");
+    await expect(first).resolves.toBe(false);
+    expect(toolApproval.getPending()).toHaveLength(1);
+    expect(toolApproval.getPending()[0].conversationId).toBe("conv-2");
+
+    toolApproval.resolve(toolApproval.getPending()[0].id, true);
+    await expect(second).resolves.toBe(true);
+  });
+
   it("subscribers are notified of pending changes", () => {
     setMode("ask");
     const notified: number[] = [];
