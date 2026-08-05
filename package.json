@@ -14,6 +14,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.30",
+    "@ai-sdk/google": "^4.0.34",
+    "@ai-sdk/openai": "^4.0.30",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -38,6 +41,7 @@
     "@tauri-apps/plugin-notification": "^2.2.2",
     "@tauri-apps/plugin-opener": "^2.2.6",
     "@tauri-apps/plugin-sql": "^2.2.0",
+    "ai": "^7.0.52",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
