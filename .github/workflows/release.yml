@@ -82,14 +82,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: pnpm
+          node-version: 22
+          cache: npm
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -116,7 +112,7 @@ jobs:
             libjavascriptcoregtk-4.1-dev
 
       - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
@@ -135,14 +131,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: pnpm
+          node-version: 22
+          cache: npm
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -167,10 +159,7 @@ jobs:
         run: sdkmanager "ndk;27.0.12077973"
 
       - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Tauri CLI
-        run: pnpm add -g @tauri-apps/cli
+        run: npm ci
 
       - name: Decode keystore
         run: |
@@ -183,7 +172,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: tauri android build --apk
+        run: npx tauri android build --apk
 
       - name: Find and rename APK
         id: apk

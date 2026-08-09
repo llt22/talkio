@@ -54,7 +54,7 @@
     "lucide-react": "^0.575.0",
     "mammoth": "^1.11.0",
     "mermaid": "^11.16.1",
-    "nanoid": "^5.1.6",
+    "nanoid": "^5.1.16",
     "pdfjs-dist": "^5.4.530",
     "radix-ui": "^1.4.3",
     "react": "^19.1.0",

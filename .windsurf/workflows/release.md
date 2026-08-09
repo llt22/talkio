@@ -8,7 +8,7 @@ Talkio 已配置 GitHub Actions CI/CD（`.github/workflows/release.yml`），推
 
 ## 前置条件
 
-- 所有功能已合并到 `main` 分支
+- 所有功能已合并到 `main` 分支，且最新 CI 已通过
 - 本地代码已拉取最新：`git pull --rebase`
 - 工作区无未提交改动：`git status` 干净
 - GitHub Secrets 已配置（Android 签名）：
@@ -24,23 +24,27 @@ Talkio 已配置 GitHub Actions CI/CD（`.github/workflows/release.yml`），推
 - **minor**（x.Y.0）：新功能、非破坏性改动
 - **major**（X.0.0）：破坏性变更
 
-## 2. 更新版本号（3 个文件）
+## 2. 更新版本号（5 个文件）
 
-以下 3 个文件中的版本号必须同步更新：
+以下 5 个文件中的版本号必须同步更新：
 
 // turbo
 1. `package.json` → `"version": "X.Y.Z"`
-2. `src-tauri/tauri.conf.json` → `"version": "X.Y.Z"`
-3. `src-tauri/Cargo.toml` → `version = "X.Y.Z"`
+2. `package-lock.json` → 根节点及 `packages[""]` 的 `"version": "X.Y.Z"`
+3. `src-tauri/tauri.conf.json` → `"version": "X.Y.Z"`
+4. `src-tauri/Cargo.toml` → `version = "X.Y.Z"`
+5. `src-tauri/Cargo.lock` → `talkio` package 的 `version = "X.Y.Z"`
 
 > `__APP_VERSION__` 由 `vite.config.ts` 从 `package.json` 自动读取，无需额外处理。
 
 ## 3. 提交版本变更
 
 ```bash
-git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
-git commit -m "🔖 release: vX.Y.Z"
+git add package.json package-lock.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
+git commit -m "release: 发布 vX.Y.Z"
 ```
+
+推送版本提交并等待 CI 通过后，再创建 tag，避免失败提交触发 Release workflow。
 
 ## 4. 打 Git Tag
 
@@ -165,7 +169,7 @@ npm run build
 
 | 项目 | 路径/命令 |
 |------|----------|
-| 版本号文件 | `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` |
+| 版本号文件 | `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` |
 | CI/CD 配置 | `.github/workflows/release.yml`, `.github/workflows/ci.yml` |
 | macOS 本地构建 | `npx tauri build` |
 | Android debug | `npx tauri android build -d -t aarch64 --apk` |
