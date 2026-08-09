@@ -650,6 +650,29 @@ export async function getAllMessagesForConversation(conversationId: string): Pro
   return rows.map(rowToMessage);
 }
 
+export async function getAllMessagesForConversationBranch(
+  conversationId: string,
+  branchId?: string | null,
+): Promise<Message[]> {
+  const db = await getDb();
+  const rows = branchId
+    ? await db.select(
+        `SELECT * FROM messages WHERE conversationId = $1 AND branchId = $2 ORDER BY createdAt ASC`,
+        [conversationId, branchId],
+      )
+    : await db.select(
+        `SELECT * FROM messages WHERE conversationId = $1 AND branchId IS NULL ORDER BY createdAt ASC`,
+        [conversationId],
+      );
+  return rows.map(rowToMessage);
+}
+
+export async function getAllMessages(): Promise<Message[]> {
+  const db = await getDb();
+  const rows = await db.select(`SELECT * FROM messages ORDER BY createdAt ASC`);
+  return rows.map(rowToMessage);
+}
+
 export async function clearMessages(conversationId: string): Promise<void> {
   const db = await getDb();
   await db.execute(`DELETE FROM messages WHERE conversationId = $1`, [conversationId]);
@@ -742,6 +765,48 @@ export async function getBlocksByMessageId(messageId: string): Promise<MessageBl
     [messageId],
   );
   return rows.map(rowToBlock);
+}
+
+export async function getAllBlocks(): Promise<MessageBlock[]> {
+  const db = await getDb();
+  const rows = await db.select(
+    `SELECT * FROM message_blocks ORDER BY createdAt ASC, sortOrder ASC`,
+  );
+  return rows.map(rowToBlock);
+}
+
+export async function replaceChatData(args: {
+  conversations: Conversation[];
+  messages: Message[];
+  messageBlocks: MessageBlock[];
+}): Promise<void> {
+  const conversationIds = new Set(args.conversations.map((conversation) => conversation.id));
+  const messageIds = new Set(args.messages.map((message) => message.id));
+  if (args.messages.some((message) => !conversationIds.has(message.conversationId))) {
+    throw new Error("Backup contains a message without its conversation");
+  }
+  if (args.messageBlocks.some((block) => !messageIds.has(block.messageId))) {
+    throw new Error("Backup contains a message block without its message");
+  }
+
+  const db = await getDb();
+  await db.execute("BEGIN TRANSACTION");
+  try {
+    await db.execute(`DELETE FROM message_blocks`);
+    await db.execute(`DELETE FROM messages`);
+    await db.execute(`DELETE FROM conversations`);
+    for (const conversation of args.conversations) await insertConversation(conversation);
+    for (const message of args.messages) await insertMessage(message);
+    for (const block of args.messageBlocks) await insertBlock(block);
+    await db.execute("COMMIT");
+  } catch (error) {
+    try {
+      await db.execute("ROLLBACK");
+    } catch {
+      // Preserve the restore error if rollback itself fails.
+    }
+    throw error;
+  }
 }
 
 export async function deleteBlocksByMessageId(messageId: string): Promise<void> {

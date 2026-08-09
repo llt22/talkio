@@ -1,7 +1,11 @@
 import { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
-import { ConfirmDialogProvider, appAlert } from "./components/shared/ConfirmDialogProvider";
+import {
+  ConfirmDialogProvider,
+  appAlert,
+  appConfirm,
+} from "./components/shared/ConfirmDialogProvider";
 import { ToolApprovalDialog } from "./components/shared/ToolApprovalDialog";
 import { initDatabase } from "./storage/database";
 import { useProviderStore } from "./stores/provider-store";
@@ -78,8 +82,26 @@ export default function App() {
           const { invoke } = await import("@tauri-apps/api/core");
           const data = await invoke<string | null>("check_pending_import");
           if (data) {
+            let parsed: { version?: string };
+            try {
+              parsed = JSON.parse(data) as { version?: string };
+            } catch {
+              await appAlert(i18n.t("settings.importParseError"));
+              return;
+            }
+            if (
+              parsed.version === "3.0" &&
+              !(await appConfirm({
+                title: i18n.t("settings.importBackup"),
+                description: i18n.t("settings.restoreConfirm"),
+                confirmText: i18n.t("settings.importBackup"),
+                destructive: true,
+              }))
+            ) {
+              return;
+            }
             const { importBackupFromString } = await import("./services/backup");
-            const result = importBackupFromString(data);
+            const result = await importBackupFromString(data);
             if (result.success) {
               useProviderStore.getState().loadFromStorage();
               useSettingsStore.getState().loadFromStorage();

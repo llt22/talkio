@@ -41,7 +41,7 @@ export async function downloadMarkdownFile(filenameBase: string, markdown: strin
   });
 }
 
-export function exportConversationAsMarkdown(args: {
+export async function exportConversationAsMarkdown(args: {
   conversation: Conversation;
   messages: Message[];
   titleFallback: string;
@@ -58,7 +58,7 @@ export function exportConversationAsMarkdown(args: {
     thoughtProcessLabel: args.thoughtProcessLabel,
     exportedFooter: args.exportedFooter,
   });
-  downloadMarkdownFile(title, md);
+  await downloadMarkdownFile(title, md);
 }
 
 /**

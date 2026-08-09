@@ -4,7 +4,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
 import { SettingsRow, SectionHeader } from "../../pages/settings/SettingsPage";
 import { createBackup, downloadBackup, pickAndImportBackup } from "../../services/backup";
-import { appAlert } from "../../components/shared/ConfirmDialogProvider";
+import { useConfirm, appAlert } from "../../components/shared/ConfirmDialogProvider";
 import {
   ArrowLeftRight,
   Wrench,
@@ -19,6 +19,7 @@ import i18n from "../../i18n";
 
 export function SettingsMainContent() {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
   const mobileNav = useMobileNav();
   const providers = useProviderStore((s) => s.providers);
   const settings = useSettingsStore((s) => s.settings);
@@ -171,9 +172,15 @@ export function SettingsMainContent() {
           iconBg="rgba(20,184,166,0.1)"
           label={t("settings.exportBackup")}
           onPress={async () => {
-            const data = createBackup();
-            const saved = await downloadBackup(data);
-            if (saved) await appAlert(t("settings.exportSuccess"));
+            try {
+              const data = await createBackup();
+              const saved = await downloadBackup(data);
+              if (saved) await appAlert(t("settings.exportSuccess"));
+            } catch (error) {
+              await appAlert(
+                `${t("settings.exportFailed")}: ${error instanceof Error ? error.message : "Unknown"}`,
+              );
+            }
           }}
         />
         <SettingsRow
@@ -182,6 +189,13 @@ export function SettingsMainContent() {
           iconBg="rgba(245,158,11,0.1)"
           label={t("settings.importBackup")}
           onPress={async () => {
+            const approved = await confirm({
+              title: t("settings.importBackup"),
+              description: t("settings.restoreConfirm"),
+              confirmText: t("settings.importBackup"),
+              destructive: true,
+            });
+            if (!approved) return;
             const result = await pickAndImportBackup();
             if (!result) return;
             if (result.success) {

@@ -26,6 +26,7 @@ import {
   Activity,
   AlertTriangle,
   FileDown,
+  FileImage,
   X,
   Sparkles,
 } from "lucide-react";
@@ -70,7 +71,9 @@ import type { ConversationParticipant, Identity, ReasoningEffort } from "../../t
 import { nextReasoningEffort, REASONING_EFFORT_LEVELS } from "../../types";
 import { MessageStatus } from "../../types";
 import { exportConversationAsMarkdown, exportConversationAsPdf } from "../../services/export";
-import { useConfirm } from "../shared/ConfirmDialogProvider";
+import { exportConversationAsImages } from "../../services/export-image";
+import { getAllMessagesForConversationBranch } from "../../storage/database";
+import { useConfirm, appAlert } from "../shared/ConfirmDialogProvider";
 import { updateConversation } from "../../storage/database";
 import { notifyDbChange } from "../../hooks/useDatabase";
 import { getWorkspaceName, pickWorkspaceDir } from "../../services/workspace";
@@ -289,13 +292,16 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
     if (!conv || isExporting || messages.length === 0) return;
     setIsExporting(true);
     try {
-      exportConversationAsMarkdown({
+      const exportMessages = await getAllMessagesForConversationBranch(conv.id);
+      await exportConversationAsMarkdown({
         conversation: conv,
-        messages,
+        messages: exportMessages,
         titleFallback: t("chat.chatTitle"),
         youLabel: t("chat.you"),
         thoughtProcessLabel: t("chat.thoughtProcess"),
       });
+    } catch (error) {
+      await appAlert(`${t("common.error")}: ${error instanceof Error ? error.message : "Unknown"}`);
     } finally {
       setIsExporting(false);
     }
@@ -329,17 +335,42 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
     if (!conv || isExporting || messages.length === 0) return;
     setIsExporting(true);
     try {
+      const exportMessages = await getAllMessagesForConversationBranch(conv.id);
       await exportConversationAsPdf({
         conversation: conv,
-        messages,
+        messages: exportMessages,
         titleFallback: t("chat.chatTitle"),
         youLabel: t("chat.you"),
         thoughtProcessLabel: t("chat.thoughtProcess"),
       });
+    } catch (error) {
+      await appAlert(`${t("common.error")}: ${error instanceof Error ? error.message : "Unknown"}`);
     } finally {
       setIsExporting(false);
     }
   }, [conv, messages, isExporting]);
+
+  const handleExportImage = useCallback(async () => {
+    if (!conv || isExporting || messages.length === 0) return;
+    setIsExporting(true);
+    try {
+      const exportMessages = await getAllMessagesForConversationBranch(conv.id);
+      const pages = await exportConversationAsImages({
+        conversation: conv,
+        messages: exportMessages,
+        titleFallback: t("chat.chatTitle"),
+        youLabel: t("chat.you"),
+        thoughtProcessLabel: t("chat.thoughtProcess"),
+      });
+      if (pages > 1) await appAlert(t("chat.exportImagePages", { count: pages }));
+    } catch (error) {
+      await appAlert(
+        `${t("chat.exportImageFailed")}: ${error instanceof Error ? error.message : "Unknown"}`,
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }, [conv, messages, isExporting, t]);
 
   const [isCompressing, setIsCompressing] = useState(false);
   const hasManualSummary = !!getManualSummary(conversationId);
@@ -634,6 +665,13 @@ export function DesktopChatPanel({ conversationId }: { conversationId: string })
             >
               <FileDown size={14} className="mr-2" />
               {t("chat.exportPdf")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={handleExportImage}
+              disabled={messages.length === 0 || isExporting}
+            >
+              <FileImage size={14} className="mr-2" />
+              {t("chat.exportImage")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleCompress}

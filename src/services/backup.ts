@@ -1,38 +1,69 @@
 /**
- * Config Backup & Restore service.
- * Exports/imports providers, models, identities, and MCP servers as JSON.
+ * Versioned full-data backup and restore service.
  */
 import { kvStore } from "../storage/kv-store";
 import { secretStore } from "./secret-store";
 import { saveOrShareFile } from "./file-download";
 import type { Provider, Model, Identity, McpServer } from "../types";
+import type { Conversation, Message, MessageBlock } from "../types";
 import type { AppSettings } from "../stores/settings-store";
+import {
+  getAllBlocks,
+  getAllConversations,
+  getAllMessages,
+  replaceChatData,
+} from "../storage/database";
 
-export interface BackupData {
+type BackupProvider = Omit<Provider, "apiKey"> & { apiKey?: string };
+type BackupSettings = Omit<AppSettings, "sttApiKey"> & { sttApiKey?: string };
+
+export interface LegacyBackupData {
   version: "2.0";
   exportedAt: string;
-  providers: Provider[];
+  providers: BackupProvider[];
   models: Model[];
   identities: Identity[];
   mcpServers: McpServer[];
-  settings?: AppSettings | null;
+  settings?: BackupSettings | null;
 }
 
-export function createBackup(): BackupData {
+export interface BackupData extends Omit<LegacyBackupData, "version"> {
+  version: "3.0";
+  conversations: Conversation[];
+  messages: Message[];
+  messageBlocks: MessageBlock[];
+}
+
+export async function createBackup(): Promise<BackupData> {
+  const [conversations, messages, messageBlocks] = await Promise.all([
+    getAllConversations(),
+    getAllMessages(),
+    getAllBlocks(),
+  ]);
+  const providers = (kvStore.getObject<Provider[]>("providers") ?? []).map(
+    ({ apiKey: _apiKey, ...provider }) => provider,
+  );
+  const storedSettings = kvStore.getObject<AppSettings>("settings");
+  const settings = storedSettings
+    ? (({ sttApiKey: _sttApiKey, ...value }) => value)(storedSettings)
+    : null;
   return {
-    version: "2.0",
+    version: "3.0",
     exportedAt: new Date().toISOString(),
-    providers: kvStore.getObject("providers") ?? [],
+    providers,
     models: kvStore.getObject("models") ?? [],
     identities: kvStore.getObject("identities") ?? [],
     mcpServers: kvStore.getObject("mcp_servers") ?? [],
-    settings: kvStore.getObject("settings") ?? null,
+    settings,
+    conversations,
+    messages,
+    messageBlocks,
   };
 }
 
 export async function downloadBackup(data: BackupData): Promise<boolean> {
   const json = JSON.stringify(data, null, 2);
-  const defaultName = `talkio-config-${new Date().toISOString().slice(0, 10)}.json`;
+  const defaultName = `talkio-backup-${new Date().toISOString().slice(0, 10)}.json`;
   return saveOrShareFile(defaultName, json, {
     mimeType: "application/json",
     filterName: "JSON",
@@ -50,32 +81,35 @@ export interface ImportResult {
     identities: number;
     mcpServers: number;
     settings: boolean;
+    conversations: number;
+    messages: number;
+    messageBlocks: number;
   };
 }
 
-export function importBackupFromString(text: string): ImportResult {
+export async function importBackupFromString(text: string): Promise<ImportResult> {
   try {
-    const data = JSON.parse(text) as BackupData;
+    const parsed: unknown = JSON.parse(text);
+    if (!isRecord(parsed)) throw new Error("Backup root must be an object");
 
-    if (data.version !== "2.0") {
-      return { success: false, errorCode: "UNSUPPORTED_VERSION", errorDetail: data.version };
+    if (parsed.version !== "2.0" && parsed.version !== "3.0") {
+      return {
+        success: false,
+        errorCode: "UNSUPPORTED_VERSION",
+        errorDetail: typeof parsed.version === "string" ? parsed.version : undefined,
+      };
     }
 
-    // Providers: move any legacy plaintext keys into the secret store, then
-    // persist the blob without them (same policy as provider-store).
-    if (data.providers) {
-      for (const p of data.providers) {
-        if (p.apiKey) void secretStore.set(p.id, p.apiKey);
-      }
-      kvStore.setObject(
-        "providers",
-        data.providers.map(({ apiKey: _apiKey, ...rest }) => rest),
-      );
+    const data = validateBackupData(parsed);
+
+    const configSnapshot = captureConfigSnapshot();
+    try {
+      await applyConfigData(data, data.version === "2.0");
+      if (data.version === "3.0") await replaceChatData(data);
+    } catch (error) {
+      restoreConfigSnapshot(configSnapshot);
+      throw error;
     }
-    if (data.models) kvStore.setObject("models", data.models);
-    if (data.identities) kvStore.setObject("identities", data.identities);
-    if (data.mcpServers) kvStore.setObject("mcp_servers", data.mcpServers);
-    if (data.settings) kvStore.setObject("settings", data.settings);
 
     return {
       success: true,
@@ -85,6 +119,9 @@ export function importBackupFromString(text: string): ImportResult {
         identities: data.identities?.length ?? 0,
         mcpServers: data.mcpServers?.length ?? 0,
         settings: !!data.settings,
+        conversations: data.version === "3.0" ? data.conversations.length : 0,
+        messages: data.version === "3.0" ? data.messages.length : 0,
+        messageBlocks: data.version === "3.0" ? data.messageBlocks.length : 0,
       },
     };
   } catch (err) {
@@ -96,9 +133,124 @@ export function importBackupFromString(text: string): ImportResult {
   }
 }
 
+function validateBackupData(data: Record<string, unknown>): BackupData | LegacyBackupData {
+  requireRecordsWithStringFields(data, "providers", ["id"]);
+  requireRecordsWithStringFields(data, "models", ["id", "providerId"]);
+  requireRecordsWithStringFields(data, "identities", ["id"]);
+  requireRecordsWithStringFields(data, "mcpServers", ["id"]);
+  if (data.settings !== undefined && data.settings !== null && !isRecord(data.settings)) {
+    throw new Error("Backup field settings must be an object or null");
+  }
+
+  if (data.version === "3.0") {
+    const conversations = requireRecordsWithStringFields(data, "conversations", [
+      "id",
+      "type",
+      "title",
+      "createdAt",
+      "updatedAt",
+    ]);
+    conversations.forEach((conversation, index) => {
+      if (!Array.isArray(conversation.participants) || typeof conversation.pinned !== "boolean") {
+        throw new Error(`Backup conversation at index ${index} has invalid fields`);
+      }
+    });
+
+    const messages = requireRecordsWithStringFields(data, "messages", [
+      "id",
+      "conversationId",
+      "role",
+      "content",
+      "status",
+      "createdAt",
+    ]);
+    messages.forEach((message, index) => {
+      const arrayFields = ["images", "generatedImages", "toolCalls", "toolResults"];
+      if (
+        arrayFields.some((field) => !Array.isArray(message[field])) ||
+        typeof message.isStreaming !== "boolean"
+      ) {
+        throw new Error(`Backup message at index ${index} has invalid fields`);
+      }
+    });
+
+    const blocks = requireRecordsWithStringFields(data, "messageBlocks", [
+      "id",
+      "messageId",
+      "type",
+      "content",
+      "status",
+      "createdAt",
+    ]);
+    blocks.forEach((block, index) => {
+      if (typeof block.sortOrder !== "number") {
+        throw new Error(`Backup message block at index ${index} has invalid fields`);
+      }
+    });
+  }
+
+  return data as unknown as BackupData | LegacyBackupData;
+}
+
+function requireRecordsWithStringFields(
+  data: Record<string, unknown>,
+  field: string,
+  stringFields: string[],
+): Record<string, unknown>[] {
+  const value = data[field];
+  if (!Array.isArray(value)) throw new Error(`Backup field ${field} must be an array`);
+  return value.map((item, index) => {
+    if (!isRecord(item) || stringFields.some((key) => typeof item[key] !== "string")) {
+      throw new Error(`Backup field ${field} has an invalid item at index ${index}`);
+    }
+    return item;
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const CONFIG_KEYS = ["providers", "models", "identities", "mcp_servers", "settings"] as const;
+
+function captureConfigSnapshot(): Map<(typeof CONFIG_KEYS)[number], string | null> {
+  return new Map(CONFIG_KEYS.map((key) => [key, kvStore.getString(key)]));
+}
+
+function restoreConfigSnapshot(snapshot: Map<(typeof CONFIG_KEYS)[number], string | null>): void {
+  for (const [key, value] of snapshot) {
+    if (value === null) kvStore.delete(key);
+    else kvStore.set(key, value);
+  }
+}
+
+async function applyConfigData(
+  data: BackupData | LegacyBackupData,
+  importLegacySecrets: boolean,
+): Promise<void> {
+  if (data.providers) {
+    if (importLegacySecrets) {
+      for (const provider of data.providers) {
+        if (provider.apiKey) await secretStore.set(provider.id, provider.apiKey);
+      }
+    }
+    kvStore.setObject(
+      "providers",
+      data.providers.map(({ apiKey: _apiKey, ...provider }) => provider),
+    );
+  }
+  if (data.models) kvStore.setObject("models", data.models);
+  if (data.identities) kvStore.setObject("identities", data.identities);
+  if (data.mcpServers) kvStore.setObject("mcp_servers", data.mcpServers);
+  if (data.settings) {
+    const { sttApiKey: _sttApiKey, ...settings } = data.settings;
+    kvStore.setObject("settings", settings);
+  }
+}
+
 export async function importBackup(file: File): Promise<ImportResult> {
   const text = await file.text();
-  return importBackupFromString(text);
+  return await importBackupFromString(text);
 }
 
 export async function pickAndImportBackup(): Promise<ImportResult | null> {
@@ -112,7 +264,7 @@ export async function pickAndImportBackup(): Promise<ImportResult | null> {
       });
       if (!filePath) return null;
       const text = await readTextFile(filePath as string);
-      return importBackupFromString(text);
+      return await importBackupFromString(text);
     } catch {
       // Fallback to browser file picker
     }

@@ -427,9 +427,15 @@ export function SettingsPage({
             iconBg="rgba(20,184,166,0.1)"
             label={t("settings.exportBackup")}
             onPress={async () => {
-              const data = createBackup();
-              const saved = await downloadBackup(data);
-              if (saved) await appAlert(t("settings.exportSuccess"));
+              try {
+                const data = await createBackup();
+                const saved = await downloadBackup(data);
+                if (saved) await appAlert(t("settings.exportSuccess"));
+              } catch (error) {
+                await appAlert(
+                  `${t("settings.exportFailed")}: ${error instanceof Error ? error.message : "Unknown"}`,
+                );
+              }
             }}
           />
           <SettingsRow
@@ -438,6 +444,13 @@ export function SettingsPage({
             iconBg="rgba(245,158,11,0.1)"
             label={t("settings.importBackup")}
             onPress={async () => {
+              const approved = await confirm({
+                title: t("settings.importBackup"),
+                description: t("settings.restoreConfirm"),
+                confirmText: t("settings.importBackup"),
+                destructive: true,
+              });
+              if (!approved) return;
               const result = await pickAndImportBackup();
               if (!result) return;
               if (result.success) {

@@ -25,6 +25,7 @@ import {
   ChevronUp,
   ChevronDown,
   FileDown,
+  FileImage,
   X,
   Sparkles,
 } from "lucide-react";
@@ -37,6 +38,8 @@ import type { Identity } from "../../types";
 import { nextReasoningEffort } from "../../types";
 import { MessageStatus } from "../../types";
 import { exportConversationAsMarkdown, exportConversationAsPdf } from "../../services/export";
+import { exportConversationAsImages } from "../../services/export-image";
+import { getAllMessagesForConversationBranch } from "../../storage/database";
 import { useConfirm, appAlert } from "../shared/ConfirmDialogProvider";
 import { manualCompress, setManualSummary, getManualSummary } from "../../lib/context-compression";
 import {
@@ -234,14 +237,17 @@ export function MobileChatDetail({
     if (!conv || isExporting || messages.length === 0) return;
     setIsExporting(true);
     try {
-      exportConversationAsMarkdown({
+      const exportMessages = await getAllMessagesForConversationBranch(conv.id);
+      await exportConversationAsMarkdown({
         conversation: conv,
-        messages,
+        messages: exportMessages,
         titleFallback: t("chat.chatTitle"),
         youLabel: t("chat.you"),
         thoughtProcessLabel: t("chat.thoughtProcess"),
         exportedFooter: `*Exported from Talkio · ${new Date().toLocaleDateString()}*`,
       });
+    } catch (error) {
+      await appAlert(`${t("common.error")}: ${error instanceof Error ? error.message : "Unknown"}`);
     } finally {
       setIsExporting(false);
     }
@@ -251,13 +257,38 @@ export function MobileChatDetail({
     if (!conv || isExporting || messages.length === 0) return;
     setIsExporting(true);
     try {
+      const exportMessages = await getAllMessagesForConversationBranch(conv.id);
       await exportConversationAsPdf({
         conversation: conv,
-        messages,
+        messages: exportMessages,
         titleFallback: t("chat.chatTitle"),
         youLabel: t("chat.you"),
         thoughtProcessLabel: t("chat.thoughtProcess"),
       });
+    } catch (error) {
+      await appAlert(`${t("common.error")}: ${error instanceof Error ? error.message : "Unknown"}`);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [conv, messages, isExporting, t]);
+
+  const handleExportImage = useCallback(async () => {
+    if (!conv || isExporting || messages.length === 0) return;
+    setIsExporting(true);
+    try {
+      const exportMessages = await getAllMessagesForConversationBranch(conv.id);
+      const pages = await exportConversationAsImages({
+        conversation: conv,
+        messages: exportMessages,
+        titleFallback: t("chat.chatTitle"),
+        youLabel: t("chat.you"),
+        thoughtProcessLabel: t("chat.thoughtProcess"),
+      });
+      if (pages > 1) await appAlert(t("chat.exportImagePages", { count: pages }));
+    } catch (error) {
+      await appAlert(
+        `${t("chat.exportImageFailed")}: ${error instanceof Error ? error.message : "Unknown"}`,
+      );
     } finally {
       setIsExporting(false);
     }
@@ -458,7 +489,12 @@ export function MobileChatDetail({
         <div
           className={`${!isCompressing && !hasManualSummary && !(currentParticipant && !isGroup) ? "ml-auto" : ""} relative z-10`}
         >
-          <button className="p-2 active:opacity-60" onClick={() => setShowMoreMenu((v) => !v)}>
+          <button
+            className="p-2 active:opacity-60"
+            aria-label={t("common.more", { defaultValue: "More" })}
+            data-testid="chat-more-menu"
+            onClick={() => setShowMoreMenu((v) => !v)}
+          >
             <IoEllipsisHorizontal size={22} color="var(--primary)" />
           </button>
 
@@ -541,6 +577,18 @@ export function MobileChatDetail({
                 >
                   <FileDown size={18} color="var(--foreground)" />
                   <span className="text-foreground text-[14px]">{t("chat.exportPdf")}</span>
+                </button>
+                <button
+                  className="flex w-full items-center gap-3 px-4 py-3 active:opacity-60"
+                  style={{ opacity: messages.length === 0 ? 0.4 : 1 }}
+                  disabled={messages.length === 0 || isExporting}
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    handleExportImage();
+                  }}
+                >
+                  <FileImage size={18} color="var(--foreground)" />
+                  <span className="text-foreground text-[14px]">{t("chat.exportImage")}</span>
                 </button>
                 <button
                   className="flex w-full items-center gap-3 px-4 py-3 active:opacity-60"
