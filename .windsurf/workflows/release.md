@@ -4,7 +4,7 @@ description: Talkio 版本发布流程（macOS + Android + Web）
 
 # Talkio 发布流程
 
-Talkio 已配置 GitHub Actions CI/CD（`.github/workflows/release.yml`），推送 tag 后自动构建所有平台产物并创建 draft release。
+Talkio 已配置 GitHub Actions CI/CD（`.github/workflows/release.yml`），推送 tag 后自动构建所有平台产物；全部成功后自动发布 Release，任一平台失败则保留 Draft Release。
 
 ## 前置条件
 
@@ -64,14 +64,17 @@ git push origin vX.Y.Z
 > 2. 并行构建 **Desktop**（Windows x64 `.msi/.exe` + macOS Universal `.dmg` + Linux x64 `.AppImage/.deb`）
 > 3. 并行构建 **Android APK**（release 签名）
 > 4. 所有产物自动上传到 Draft Release
+> 5. 所有平台构建成功后自动发布 Release；任一平台失败时保留 Draft
+
+重复触发同一 tag 时会复用已有 Draft Release、保留现有 Release Notes，并替换同名 APK，不会创建重复 Release。
 
 ## 6. 等待 GitHub Actions 完成
 
 前往 https://github.com/llt22/talkio/actions 查看构建进度。
 
-所有 job 完成后，前往 https://github.com/llt22/talkio/releases 找到 draft release。
+无需持续等待。所有 job 成功后 Release 会自动发布；失败时可在 Actions 查看日志，修复后使用同一 tag 手动重跑。
 
-## 7. 编辑并发布 Release
+## 7. Release Notes
 
 ### 7.1 生成 Release Notes
 
@@ -108,11 +111,11 @@ git log $(git describe --tags --abbrev=0 HEAD~1)..HEAD --oneline --no-merges
 | Android | `Talkio-vX.Y.Z.apk` |
 ```
 
-### 7.3 发布
+### 7.3 完善 Release Notes
 
-1. 在 GitHub Draft Release 页面粘贴 Release Notes
-2. 确认所有产物已上传（dmg、msi/exe、AppImage、deb、apk）
-3. 取消 "Set as a draft" → 点击 **Publish release**
+新建 Draft 时 GitHub 会自动生成 Release Notes。需要自定义内容时，可在构建期间编辑 Draft；流水线重跑不会覆盖已有说明。
+
+所有平台构建成功后流水线自动发布，无需手动点击 **Publish release**。
 
 ## 8. 本地测试验证（可选）
 
@@ -148,7 +151,7 @@ npm run build
 | Workflow | 触发条件 | 用途 |
 |----------|----------|------|
 | `ci.yml` | push/PR to `main` | TypeScript 类型检查 |
-| `release.yml` | push tag `v*.*.*` 或手动 workflow_dispatch | 全平台构建 + Draft Release |
+| `release.yml` | push tag `v*.*.*` 或手动 workflow_dispatch | 全平台构建 + 自动发布 Release |
 
 ### release.yml 构建矩阵
 

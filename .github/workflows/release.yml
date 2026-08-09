@@ -20,7 +20,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
-      release_id: ${{ steps.create.outputs.id }}
+      release_id: ${{ steps.release.outputs.release_id }}
       tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
@@ -35,13 +35,12 @@ jobs:
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create draft release
-        id: create
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: 'Talkio ${{ steps.version.outputs.tag }}'
-          body: |
+      - name: Prepare draft release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          DEFAULT_NOTES: |
             ## Talkio ${{ steps.version.outputs.tag }}
 
             ### Downloads
@@ -54,10 +53,25 @@ jobs:
 
             ---
             Built by GitHub Actions
-          draft: true
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_ID=$(gh api --paginate "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq '.[] | select(.draft and .name == ("Talkio " + env.TAG)) | .id' | head -1)
+
+          if [ -z "$RELEASE_ID" ]; then
+            RELEASE_ID=$(gh api --method POST "repos/${{ github.repository }}/releases" \
+              -f tag_name="$TAG" \
+              -f name="Talkio $TAG" \
+              -f body="$DEFAULT_NOTES" \
+              -F draft=true \
+              -F prerelease=false \
+              -F generate_release_notes=true \
+              --jq '.id')
+          else
+            gh api --method PATCH "repos/${{ github.repository }}/releases/$RELEASE_ID" \
+              -f tag_name="$TAG" >/dev/null
+          fi
+
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
 
   # ── Step 2: Desktop builds (Windows / macOS / Linux) ──
   build-desktop:
@@ -195,13 +209,16 @@ jobs:
 
       - name: Upload APK to Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
-        run: |
-          FILE="${{ steps.apk.outputs.path }}"
-          FILENAME=$(basename "$FILE")
-          curl -s -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            --data-binary @"$FILE" \
-            "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=${FILENAME}"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ needs.create-release.outputs.tag }}" "${{ steps.apk.outputs.path }}" --clobber --repo "${{ github.repository }}"
+
+  # ── Step 3: Publish only after every platform succeeds ──
+  publish-release:
+    needs: [create-release, build-desktop, build-android]
+    name: Publish Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ needs.create-release.outputs.tag }}" --draft=false --latest --repo "${{ github.repository }}"
