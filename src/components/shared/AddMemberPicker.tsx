@@ -170,17 +170,16 @@ export function AddMemberContent({
                       <button
                         key={model.id}
                         type="button"
-                        disabled={isExisting}
                         onClick={() => {
                           if (!isSelected) addMember(model.id, null);
                           setActiveModelId(model.id);
                         }}
                         className={`flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-[13px] transition-colors ${
-                          isExisting
-                            ? "bg-primary/5 text-muted-foreground cursor-not-allowed"
-                            : isActive
-                              ? "bg-primary/10 text-primary font-medium"
-                              : isSelected
+                          isActive
+                            ? "bg-primary/10 text-primary font-medium"
+                            : isSelected
+                              ? "bg-primary/5 text-foreground hover:bg-primary/10"
+                              : isExisting
                                 ? "bg-primary/5 text-foreground hover:bg-primary/10"
                                 : "text-foreground hover:bg-muted/50"
                         }`}

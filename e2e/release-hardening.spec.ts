@@ -93,3 +93,16 @@ test("clearing history aborts an active generation and removes its placeholder",
   await expect(page.getByTestId("chat-input")).toBeEnabled();
   pendingResponse.resolve();
 });
+
+test("mobile chats expose the create-group flow", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.clear());
+
+  await page.goto("/");
+  const createGroup = page.getByTestId("mobile-new-group");
+  await expect(createGroup).toBeVisible();
+  await createGroup.click();
+
+  await expect(page.getByText("Create Group", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create Group" })).toBeDisabled();
+});

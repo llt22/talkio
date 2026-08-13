@@ -199,12 +199,25 @@ function MobileConversationList({
           <h1 className="text-foreground text-[20px] font-bold tracking-tight">
             {t("tabs.chats")}
           </h1>
-          <button
-            onClick={() => setShowSearch((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-full active:opacity-60"
-          >
-            <IoSearchOutline size={22} color="var(--primary)" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => mobileNav?.pushAddMember()}
+              aria-label={t("chats.groupChat")}
+              data-testid="mobile-new-group"
+              className="flex h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+            >
+              <IoAddCircleOutline size={22} color="var(--primary)" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowSearch((v) => !v)}
+              aria-label={t("common.search")}
+              className="flex h-9 w-9 items-center justify-center rounded-full active:opacity-60"
+            >
+              <IoSearchOutline size={22} color="var(--primary)" />
+            </button>
+          </div>
         </div>
       </div>
 
