@@ -12,6 +12,7 @@ import {
   Loader2,
   FileText,
   Paperclip,
+  Gavel,
 } from "lucide-react";
 import type { ConversationParticipant, Model } from "../../types";
 import { extractMentionedParticipantIds } from "../../lib/mention-parser";
@@ -47,6 +48,8 @@ interface ChatInputProps {
   onStopAutoDiscuss?: () => void;
   autoDiscussRemaining?: number;
   autoDiscussTotalRounds?: number;
+  /** Request a moderator summary from the given participant (group chats). */
+  onRequestSummary?: (participantId: string) => void;
   externalFiles?: { images: string[]; files: ParsedFile[] } | null;
   onExternalFilesConsumed?: () => void;
   keyboardInset?: number;
@@ -70,6 +73,7 @@ export const ChatInput = memo(function ChatInput({
   externalFiles,
   onExternalFilesConsumed,
   keyboardInset = 0,
+  onRequestSummary,
 }: ChatInputProps) {
   const { t } = useTranslation();
   const getModelById = useProviderStore((s) => s.getModelById);
@@ -87,6 +91,14 @@ export const ChatInput = memo(function ChatInput({
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [showRoundPicker, setShowRoundPicker] = useState(false);
+  const [showSummaryPicker, setShowSummaryPicker] = useState(false);
+
+  // The pickers are mutually exclusive — opening one closes the others.
+  const openPicker = useCallback((picker: "mention" | "rounds" | "summary" | "none") => {
+    setShowMentionPicker(picker === "mention");
+    setShowRoundPicker(picker === "rounds");
+    setShowSummaryPicker(picker === "summary");
+  }, []);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -495,6 +507,60 @@ export const ChatInput = memo(function ChatInput({
         </>
       )}
 
+      {/* Moderator summary host picker */}
+      {showSummaryPicker && isGroup && (
+        <>
+          <button
+            className="fixed inset-0 z-40"
+            onClick={() => setShowSummaryPicker(false)}
+            aria-label="Close summary picker"
+          />
+          <div
+            className="relative z-50 px-4 py-3"
+            style={{ borderBottom: "0.5px solid var(--border)", backgroundColor: "var(--muted)" }}
+          >
+            <p className="text-muted-foreground mb-2 text-[11px] font-bold tracking-widest uppercase">
+              {t("chat.summaryPickHost")}
+            </p>
+            {participantEntries.map((entry) => {
+              const { color: avatarColor, initials } = getAvatarProps(entry.label);
+              const { modelName, identityName, providerName, suffix } = entry.parts;
+              const secondLine = [identityName, providerName].filter(Boolean).join(" · ");
+              const muted = !!entry.participant.muted;
+              return (
+                <button
+                  key={entry.participant.id}
+                  onClick={() => {
+                    setShowSummaryPicker(false);
+                    onRequestSummary?.(entry.participant.id);
+                  }}
+                  className="-mx-2 flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left active:opacity-60"
+                >
+                  <div
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white"
+                    style={{ backgroundColor: avatarColor, opacity: muted ? 0.45 : 1 }}
+                  >
+                    {initials}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-foreground block truncate text-[15px] font-medium">
+                      {modelName}
+                      {suffix && <span className="text-muted-foreground"> {suffix}</span>}
+                    </span>
+                    {secondLine && (
+                      <span className="text-muted-foreground block truncate text-[12px]">
+                        {secondLine}
+                        {muted && <span className="ml-1">{t("chat.mutedLabel")}</span>}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       {/* Auto-discuss control panel */}
       {isAutoDiscussing ? (
         <div
@@ -637,9 +703,8 @@ export const ChatInput = memo(function ChatInput({
                     setText(val);
                     handleInput();
                     if (isGroup && val.endsWith("@") && !showMentionPicker) {
-                      setShowMentionPicker(true);
+                      openPicker("mention");
                       setMentionIndex(0);
-                      setShowRoundPicker(false);
                     }
                   }}
                   onKeyDown={handleKeyDown}
@@ -726,10 +791,7 @@ export const ChatInput = memo(function ChatInput({
 
             {isGroup && (
               <button
-                onClick={() => {
-                  setShowMentionPicker((v) => !v);
-                  setShowRoundPicker(false);
-                }}
+                onClick={() => openPicker(showMentionPicker ? "none" : "mention")}
                 className={`flex items-center justify-center rounded-full active:opacity-60 ${isMobile ? "h-10 w-10" : "h-8 w-8"}`}
                 disabled={isGenerating}
               >
@@ -764,10 +826,7 @@ export const ChatInput = memo(function ChatInput({
 
             {isGroup && (
               <button
-                onClick={() => {
-                  setShowRoundPicker((v) => !v);
-                  setShowMentionPicker(false);
-                }}
+                onClick={() => openPicker(showRoundPicker ? "none" : "rounds")}
                 className="ml-0.5 flex items-center gap-1.5 rounded-full px-3 py-2 active:opacity-60"
               >
                 <MessagesSquare
@@ -781,6 +840,27 @@ export const ChatInput = memo(function ChatInput({
                   }}
                 >
                   {t("chat.autoDiscuss")}
+                </span>
+              </button>
+            )}
+
+            {isGroup && onRequestSummary && (
+              <button
+                onClick={() => openPicker(showSummaryPicker ? "none" : "summary")}
+                className="ml-0.5 flex items-center gap-1.5 rounded-full px-3 py-2 active:opacity-60"
+                disabled={isGenerating}
+              >
+                <Gavel
+                  size={isMobile ? 20 : 18}
+                  color={isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)"}
+                />
+                <span
+                  className="text-[13px] font-medium"
+                  style={{
+                    color: isGenerating ? "var(--muted-foreground)" : "var(--secondary-foreground)",
+                  }}
+                >
+                  {t("chat.summary")}
                 </span>
               </button>
             )}

@@ -246,6 +246,7 @@ function rowToMessage(row: any): Message {
     errorMessage: row.errorMessage ?? null,
     tokenUsage: safeJsonParse(row.tokenUsage, null),
     createdAt: row.createdAt,
+    kind: row.kind ?? undefined,
   };
 }
 
@@ -295,6 +296,12 @@ export async function initDatabase(): Promise<void> {
   // Migration: add groupSystemPrompt column
   try {
     await db.execute(`ALTER TABLE conversations ADD COLUMN groupSystemPrompt TEXT`);
+  } catch {
+    /* column already exists */
+  }
+  // Migration: add kind column (moderator summary requests/results)
+  try {
+    await db.execute(`ALTER TABLE messages ADD COLUMN kind TEXT`);
   } catch {
     /* column already exists */
   }
@@ -461,8 +468,8 @@ export async function insertMessage(msg: Message): Promise<void> {
   await db.execute(
     `INSERT INTO messages (id, conversationId, role, senderModelId, senderName, identityId, participantId,
      content, images, generatedImages, reasoningContent, reasoningDuration,
-     toolCalls, toolResults, branchId, parentMessageId, isStreaming, status, errorMessage, tokenUsage, createdAt)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
+     toolCalls, toolResults, branchId, parentMessageId, isStreaming, status, errorMessage, tokenUsage, createdAt, kind)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`,
     [
       msg.id,
       msg.conversationId,
@@ -485,6 +492,7 @@ export async function insertMessage(msg: Message): Promise<void> {
       msg.errorMessage ?? null,
       msg.tokenUsage ? JSON.stringify(msg.tokenUsage) : null,
       msg.createdAt,
+      msg.kind ?? null,
     ],
   );
 }
@@ -543,6 +551,11 @@ export async function updateMessage(id: string, updates: Partial<Message>): Prom
   if (updates.errorMessage !== undefined) {
     sets.push(`errorMessage = $${idx}`);
     params.push(updates.errorMessage);
+    idx++;
+  }
+  if (updates.kind !== undefined) {
+    sets.push(`kind = $${idx}`);
+    params.push(updates.kind);
     idx++;
   }
   if (updates.tokenUsage !== undefined) {

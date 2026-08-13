@@ -86,6 +86,8 @@ export async function dispatchMessageGeneration(args: {
     reuseUserMessageId?: string;
     mentionedParticipantIds?: string[];
     targetParticipantIds?: string[];
+    /** Moderator summary flow: targetParticipantIds selects the host. */
+    moderatorSummary?: boolean;
   };
   activeBranchId: string | null;
   getCurrentConversationId: () => string | null;
@@ -119,7 +121,14 @@ export async function dispatchMessageGeneration(args: {
     if (!existing || existing.role !== "user") return;
     userMsg = existing;
   } else {
-    userMsg = createUserMessage(generateId(), cid, text, images ?? [], activeBranchId);
+    userMsg = createUserMessage(
+      generateId(),
+      cid,
+      text,
+      images ?? [],
+      activeBranchId,
+      options?.moderatorSummary ? "summary-request" : undefined,
+    );
     await insertMessage(userMsg);
     updateConversation(cid, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(
       () => {},
@@ -167,6 +176,9 @@ export async function dispatchMessageGeneration(args: {
     workspaceTree: workspaceContext.tree,
     workspaceFiles: workspaceContext.files,
     isRetry,
+    // Derived from the persisted message kind so retries (regenerate/edit)
+    // keep their moderator semantics without the caller re-specifying it.
+    moderatorSummary: userMsg.kind === "summary-request",
   };
 
   let globalMsgIndex = 0;
@@ -199,7 +211,9 @@ export async function dispatchMessageGeneration(args: {
         }
       }
 
-      if (conversation.type !== "group" || round >= MAX_MENTION_ROUNDS) break;
+      // Moderator summaries are a one-shot host reply — no @ propagation.
+      if (ctx.moderatorSummary || conversation.type !== "group" || round >= MAX_MENTION_ROUNDS)
+        break;
       const mentionedIds = new Set<string>();
       for (const response of responses) {
         if (!response.content) continue;

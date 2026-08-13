@@ -246,6 +246,7 @@ describe("dispatchMessageGeneration", () => {
         "Hello world",
         [],
         null,
+        undefined,
       );
       expect(mockInsertMessage).toHaveBeenCalled();
     });

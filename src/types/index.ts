@@ -194,6 +194,9 @@ export enum MessageStatus {
   PAUSED = "paused",
 }
 
+/** Special message kinds driving product flows (e.g. moderator summary). */
+export type MessageKind = "summary-request" | "summary";
+
 export enum MessageBlockType {
   MAIN_TEXT = "main_text",
   THINKING = "thinking",
@@ -244,6 +247,8 @@ export interface Message {
   errorMessage: string | null;
   tokenUsage: TokenUsage | null;
   createdAt: string;
+  /** Optional product-level kind (e.g. moderator summary requests/results). */
+  kind?: MessageKind;
 }
 
 export interface ChatApiToolCall {

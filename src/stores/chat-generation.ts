@@ -23,6 +23,7 @@ import { notifyDbChange } from "../hooks/useDatabase";
 import { getBuiltInToolDefs } from "../services/built-in-tools";
 import { getMcpToolDefsForIdentity, refreshMcpConnections } from "../services/mcp";
 import { generateId } from "../lib/id";
+import i18n from "../i18n";
 import { buildProviderHeaders } from "../services/provider-headers";
 import { getAdapter } from "../services/provider-adapters";
 import { resolveAdapterBaseUrl } from "../services/provider-request";
@@ -68,6 +69,8 @@ export interface GenerationContext {
   workspaceTree?: string;
   workspaceFiles?: Array<{ path: string; content: string }>;
   isRetry?: boolean;
+  /** When true, the generated assistant message is a moderator summary. */
+  moderatorSummary?: boolean;
 }
 
 export function applyRuntimeEvent(
@@ -146,6 +149,7 @@ export async function generateForParticipant(
     participant.identityId,
     ctx.activeBranchId,
     msgCreatedAt,
+    ctx.moderatorSummary ? "summary" : undefined,
   );
   await insertMessage(assistantMsg);
   notifyDbChange("messages", ctx.cid);
@@ -196,6 +200,9 @@ export async function generateForParticipant(
     let apiMessages = buildApiMessagesForParticipant(filtered, participant, ctx.conversation, {
       workspaceTree: ctx.workspaceTree,
       workspaceFiles: ctx.workspaceFiles,
+      moderatorSummaryInstruction: ctx.moderatorSummary
+        ? i18n.t("chat.summaryInstruction")
+        : undefined,
     });
     apiMessages = await applyCompression(
       apiMessages,

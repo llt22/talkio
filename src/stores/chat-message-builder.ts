@@ -2,7 +2,7 @@
  * Chat message building utilities — extracted from chat-store.ts.
  * Pure functions for constructing API messages from conversation state.
  */
-import type { Message, Conversation, ConversationParticipant } from "../types";
+import type { Message, Conversation, ConversationParticipant, MessageKind } from "../types";
 import { MessageStatus } from "../types";
 import { useProviderStore } from "./provider-store";
 import { useIdentityStore } from "./identity-store";
@@ -192,6 +192,8 @@ export function buildApiMessagesForParticipant(
   options?: {
     workspaceTree?: string;
     workspaceFiles?: Array<{ path: string; content: string }>;
+    /** Appended to the participant's system prompt when acting as moderator. */
+    moderatorSummaryInstruction?: string;
   },
 ): Array<{ role: string; content: unknown; tool_calls?: unknown; tool_call_id?: string }> {
   const identity = participant.identityId
@@ -239,13 +241,25 @@ export function buildApiMessagesForParticipant(
     if (conv.groupSystemPrompt) parts.push(conv.groupSystemPrompt);
     if (identity?.systemPrompt) parts.push(identity.systemPrompt);
     parts.push(roster);
+    if (options?.moderatorSummaryInstruction) {
+      parts.push(options.moderatorSummaryInstruction);
+    }
     const groupPrompt = parts.join("\n\n") + workspaceHint;
     apiMessages.push({ role: "system", content: groupPrompt });
-  } else if (identity?.systemPrompt || workspaceHint) {
-    apiMessages.push({ role: "system", content: (identity?.systemPrompt || "") + workspaceHint });
+  } else if (identity?.systemPrompt || workspaceHint || options?.moderatorSummaryInstruction) {
+    apiMessages.push({
+      role: "system",
+      content:
+        (identity?.systemPrompt || "") +
+        workspaceHint +
+        (options?.moderatorSummaryInstruction ?? ""),
+    });
   }
 
   for (const m of allMessages) {
+    // Moderator summary requests are user-visible UI records, not part of the
+    // discussion context the model should reason over.
+    if (m.kind === "summary-request") continue;
     if (m.role !== "user" && m.role !== "assistant") continue;
 
     let role: "user" | "assistant" = m.role as "user" | "assistant";
@@ -314,6 +328,7 @@ export function createUserMessage(
   text: string,
   images: string[],
   branchId: string | null,
+  kind?: MessageKind,
 ): Message {
   return {
     id,
@@ -337,6 +352,7 @@ export function createUserMessage(
     errorMessage: null,
     tokenUsage: null,
     createdAt: new Date().toISOString(),
+    kind,
   };
 }
 
@@ -352,6 +368,7 @@ export function createAssistantMessage(
   identityId: string | null,
   branchId: string | null,
   createdAt: string,
+  kind?: MessageKind,
 ): Message {
   return {
     id,
@@ -375,5 +392,6 @@ export function createAssistantMessage(
     errorMessage: null,
     tokenUsage: null,
     createdAt,
+    kind,
   };
 }

@@ -165,6 +165,17 @@ export function ChatView({
     navigator.clipboard.writeText(content);
   }, []);
 
+  const handleRequestSummary = useCallback(
+    (participantId: string) => {
+      scrollToBottom({ animation: "instant", ignoreEscapes: true, duration: 500 });
+      sendMessage(t("chat.summaryRequestText"), undefined, {
+        targetParticipantIds: [participantId],
+        moderatorSummary: true,
+      });
+    },
+    [sendMessage, scrollToBottom, t],
+  );
+
   const handleRegenerate = useCallback(
     (messageId: string) => {
       regenerateMessage(messageId);
@@ -270,6 +281,7 @@ export function ChatView({
           onStopAutoDiscuss={stopAutoDiscuss}
           autoDiscussRemaining={autoDiscussRemaining}
           autoDiscussTotalRounds={autoDiscussTotalRounds}
+          onRequestSummary={isGroup ? handleRequestSummary : undefined}
         />
       </div>
     );
@@ -345,6 +357,7 @@ export function ChatView({
         autoDiscussTotalRounds={autoDiscussTotalRounds}
         externalFiles={droppedFiles}
         onExternalFilesConsumed={consumeDroppedFiles}
+        onRequestSummary={isGroup ? handleRequestSummary : undefined}
       />
     </div>
   );

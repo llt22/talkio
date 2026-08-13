@@ -353,6 +353,51 @@ export const MessageRow = memo(function MessageRow({
   }, [editText, content, onEdit, message.id, cancelEditing]);
 
   if (isUser) {
+    if (message.kind === "summary-request") {
+      return (
+        <div
+          data-message-id={message.id}
+          className="group mb-6 flex flex-col items-end gap-1 px-4"
+        >
+          <div className="mr-1 flex items-baseline gap-2">
+            <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
+              🎙️ {t("chat.summaryRequestLabel")}
+            </span>
+            <span className="text-muted-foreground/60 text-[10px]">
+              {formatTime(message.createdAt)}
+            </span>
+          </div>
+          <div
+            className="max-w-[80%] rounded-2xl px-4 py-3"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))",
+              border: "1px solid color-mix(in srgb, var(--primary) 25%, transparent)",
+              maxWidth: "min(80%, 640px)",
+              borderTopRightRadius: 0,
+            }}
+          >
+            <p className="text-foreground text-[14px] leading-relaxed break-words whitespace-pre-wrap">
+              {content}
+            </p>
+          </div>
+
+          {/* A failed/abandoned summary request must be removable */}
+          {onDelete && (
+            <div className="mr-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                onClick={() => onDelete(message.id)}
+                className="flex items-center gap-1 rounded-md px-1.5 py-1 active:opacity-60"
+              >
+                <IoTrashOutline size={13} color="var(--destructive)" />
+                <span className="text-[11px] font-medium" style={{ color: "var(--destructive)" }}>
+                  {t("common.delete")}
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
     return (
       <div data-message-id={message.id} className="group mb-6 flex flex-col items-end gap-1 px-4">
         {/* Label */}
@@ -530,6 +575,17 @@ export const MessageRow = memo(function MessageRow({
             </>
           ) : (
             <span className="uppercase">{senderName}</span>
+          )}
+          {message.kind === "summary" && (
+            <span
+              className="ml-1.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase"
+              style={{
+                backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)",
+                color: "var(--primary)",
+              }}
+            >
+              🎙️ {t("chat.summaryBadge")}
+            </span>
           )}
         </span>
         <span className="text-muted-foreground/60 text-[10px]">

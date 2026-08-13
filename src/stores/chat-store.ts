@@ -47,6 +47,15 @@ const _streamingMessages = new Map<string, StreamingState>();
 let _autoDiscussSession = 0;
 let _autoDiscussConversationId: string | null = null;
 
+export interface SendMessageOptions {
+  reuseUserMessageId?: string;
+  mentionedParticipantIds?: string[];
+  targetParticipantIds?: string[];
+  moderatorSummary?: boolean;
+  conversationId?: string;
+  activeBranchId?: string | null;
+}
+
 export interface ChatState {
   currentConversationId: string | null;
   isGenerating: boolean;
@@ -65,17 +74,7 @@ export interface ChatState {
   deleteConversation: (id: string) => Promise<void>;
   deleteAllConversations: () => Promise<void>;
   setCurrentConversation: (id: string | null) => void;
-  sendMessage: (
-    text: string,
-    images?: string[],
-    options?: {
-      reuseUserMessageId?: string;
-      mentionedParticipantIds?: string[];
-      targetParticipantIds?: string[];
-      conversationId?: string;
-      activeBranchId?: string | null;
-    },
-  ) => Promise<void>;
+  sendMessage: (text: string, images?: string[], options?: SendMessageOptions) => Promise<void>;
   stopGeneration: () => void;
   startAutoDiscuss: (rounds: number, topicText?: string) => Promise<void>;
   stopAutoDiscuss: () => void;
@@ -169,17 +168,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (next) set(next);
   },
 
-  sendMessage: async (
-    text: string,
-    images?: string[],
-    options?: {
-      reuseUserMessageId?: string;
-      mentionedParticipantIds?: string[];
-      targetParticipantIds?: string[];
-      conversationId?: string;
-      activeBranchId?: string | null;
-    },
-  ) => {
+  sendMessage: async (text: string, images?: string[], options?: SendMessageOptions) => {
     const {
       conversationId: requestedConversationId,
       activeBranchId: requestedBranchId,
