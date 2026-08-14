@@ -194,8 +194,8 @@ export enum MessageStatus {
   PAUSED = "paused",
 }
 
-/** Special message kinds driving product flows (e.g. moderator summary). */
-export type MessageKind = "summary-request" | "summary";
+/** Special message kinds driving product flows (moderator summary, tasks). */
+export type MessageKind = "summary-request" | "summary" | "task-request" | "task-result";
 
 export enum MessageBlockType {
   MAIN_TEXT = "main_text",
@@ -249,6 +249,26 @@ export interface Message {
   createdAt: string;
   /** Optional product-level kind (e.g. moderator summary requests/results). */
   kind?: MessageKind;
+}
+
+/** Lifecycle of a discussion task: created → executing → done/failed, pausable. */
+export type TaskStatus = "pending" | "running" | "paused" | "done" | "failed";
+
+export interface Task {
+  id: string;
+  conversationId: string;
+  title: string;
+  description: string;
+  assigneeParticipantId: string | null;
+  status: TaskStatus;
+  /** Message the task was promoted from (context anchor). */
+  sourceMessageId: string | null;
+  /** The task-request user message driving execution. */
+  requestMessageId: string | null;
+  /** The task-result assistant message with the outcome. */
+  resultMessageId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ChatApiToolCall {

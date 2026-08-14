@@ -4,6 +4,7 @@ import type {
   Message,
   SpeakingOrder,
   ReasoningEffort,
+  Task,
 } from "../types";
 import {
   clearMessages as dbClearMessages,
@@ -12,6 +13,7 @@ import {
   getRecentMessages,
   insertMessages,
   insertConversation,
+  insertTask,
   updateConversation,
   updateMessage,
 } from "../storage/database";
@@ -19,6 +21,7 @@ import { notifyDbChange } from "../hooks/useDatabase";
 import { useProviderStore } from "./provider-store";
 import { generateId } from "../lib/id";
 import { autoTitle } from "./chat-store-core";
+import i18n from "../i18n";
 
 export async function regenerateAssistantMessage(
   conversationId: string,
@@ -105,6 +108,7 @@ export async function clearConversationMessages(conversationId: string): Promise
   await dbClearMessages(conversationId);
   await updateConversation(conversationId, { lastMessage: null, lastMessageAt: null });
   notifyDbChange("messages", conversationId);
+  notifyDbChange("tasks", conversationId);
   notifyDbChange("conversations");
 }
 
@@ -359,4 +363,50 @@ export async function duplicateConversation(conversationId: string): Promise<Con
   await insertConversation(duplicated);
   notifyDbChange("conversations");
   return duplicated;
+}
+
+/**
+ * Promote a discussion message to a task: persist the task record, then kick
+ * off execution by the assignee via the regular generation pipeline.
+ */
+export async function promoteMessageToTask(
+  conversationId: string,
+  sourceMessageId: string,
+  title: string,
+  description: string,
+  assigneeParticipantId: string,
+  sendMessage: (
+    text: string,
+    images?: string[],
+    options?: {
+      reuseUserMessageId?: string;
+      mentionedParticipantIds?: string[];
+      targetParticipantIds?: string[];
+      taskId?: string;
+    },
+  ) => Promise<void>,
+): Promise<string> {
+  const now = new Date().toISOString();
+  const taskId = generateId();
+  const task: Task = {
+    id: taskId,
+    conversationId,
+    title,
+    description,
+    assigneeParticipantId,
+    status: "pending",
+    sourceMessageId,
+    requestMessageId: null,
+    resultMessageId: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await insertTask(task);
+  notifyDbChange("tasks", conversationId);
+
+  await sendMessage(i18n.t("chat.taskRequestText", { title }), undefined, {
+    targetParticipantIds: [assigneeParticipantId],
+    taskId,
+  });
+  return taskId;
 }

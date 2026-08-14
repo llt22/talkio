@@ -192,8 +192,8 @@ export function buildApiMessagesForParticipant(
   options?: {
     workspaceTree?: string;
     workspaceFiles?: Array<{ path: string; content: string }>;
-    /** Appended to the participant's system prompt when acting as moderator. */
-    moderatorSummaryInstruction?: string;
+    /** Extra instructions appended to the participant's system prompt (moderator/task flows). */
+    systemPromptAppend?: string;
   },
 ): Array<{ role: string; content: unknown; tool_calls?: unknown; tool_call_id?: string }> {
   const identity = participant.identityId
@@ -241,25 +241,23 @@ export function buildApiMessagesForParticipant(
     if (conv.groupSystemPrompt) parts.push(conv.groupSystemPrompt);
     if (identity?.systemPrompt) parts.push(identity.systemPrompt);
     parts.push(roster);
-    if (options?.moderatorSummaryInstruction) {
-      parts.push(options.moderatorSummaryInstruction);
+    if (options?.systemPromptAppend) {
+      parts.push(options.systemPromptAppend);
     }
     const groupPrompt = parts.join("\n\n") + workspaceHint;
     apiMessages.push({ role: "system", content: groupPrompt });
-  } else if (identity?.systemPrompt || workspaceHint || options?.moderatorSummaryInstruction) {
+  } else if (identity?.systemPrompt || workspaceHint || options?.systemPromptAppend) {
     apiMessages.push({
       role: "system",
       content:
-        (identity?.systemPrompt || "") +
-        workspaceHint +
-        (options?.moderatorSummaryInstruction ?? ""),
+        (identity?.systemPrompt || "") + workspaceHint + (options?.systemPromptAppend ?? ""),
     });
   }
 
   for (const m of allMessages) {
-    // Moderator summary requests are user-visible UI records, not part of the
-    // discussion context the model should reason over.
-    if (m.kind === "summary-request") continue;
+    // Moderator summary / task requests are user-visible UI records, not part
+    // of the discussion context the model should reason over.
+    if (m.kind === "summary-request" || m.kind === "task-request") continue;
     if (m.role !== "user" && m.role !== "assistant") continue;
 
     let role: "user" | "assistant" = m.role as "user" | "assistant";

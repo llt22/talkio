@@ -1,15 +1,18 @@
 /**
  * ChatView — shared chat message list + input (1:1 RN original).
  */
-import { useRef, useEffect, useCallback, useMemo, useImperativeHandle } from "react";
+import { useRef, useEffect, useCallback, useMemo, useState, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
 import { IoChatbubbleOutline } from "../../icons";
-import { GitBranch, Paperclip } from "lucide-react";
+import { GitBranch, Paperclip, ClipboardList } from "lucide-react";
 import { ChatInput } from "./ChatInput";
 import { useChatStore, type ChatState } from "../../stores/chat-store";
-import { useMessages, useConversation } from "../../hooks/useDatabase";
-import type { ConversationParticipant } from "../../types";
+import { useMessages, useConversation, useTasks } from "../../hooks/useDatabase";
+import type { ConversationParticipant, Message, Task } from "../../types";
 import { MessageStatus } from "../../types";
+import { TaskPromoteDialog } from "./TaskPromoteDialog";
+import { TaskPanel } from "./TaskPanel";
+import { promoteMessageToTask } from "../../stores/chat-store-actions";
 import { useConfirm } from "./ConfirmDialogProvider";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { MessageRow } from "./MessageRow";
@@ -49,11 +52,15 @@ export function ChatView({
   const { confirm } = useConfirm();
   const activeBranchId = useChatStore((s: ChatState) => s.activeBranchId);
   const messages = useMessages(conversationId, activeBranchId);
+  const tasks = useTasks(conversationId);
   const setCurrentConversation = useChatStore((s: ChatState) => s.setCurrentConversation);
   const isGenerating = useChatStore((s: ChatState) => s.isGenerating);
   const streamingMessages = useChatStore((s: ChatState) => s.streamingMessages);
   const sendMessage = useChatStore((s: ChatState) => s.sendMessage);
   const stopGeneration = useChatStore((s: ChatState) => s.stopGeneration);
+  const [showTaskPanel, setShowTaskPanel] = useState(false);
+  const [promoteSource, setPromoteSource] = useState<Message | null>(null);
+  const [showPromoteDialog, setShowPromoteDialog] = useState(false);
   const startAutoDiscuss = useChatStore((s: ChatState) => s.startAutoDiscuss);
   const stopAutoDiscuss = useChatStore((s: ChatState) => s.stopAutoDiscuss);
   const autoDiscussRemaining = useChatStore((s: ChatState) => s.autoDiscussRemaining);
@@ -174,6 +181,81 @@ export function ChatView({
       });
     },
     [sendMessage, scrollToBottom, t],
+  );
+
+  // ── Discussion tasks ──
+  const tasksByRequestId = useMemo(() => {
+    const map = new Map<string, Task>();
+    for (const task of tasks) {
+      if (task.requestMessageId) map.set(task.requestMessageId, task);
+    }
+    return map;
+  }, [tasks]);
+  const activeTaskCount = useMemo(
+    () =>
+      tasks.filter(
+        (task) => task.status === "running" || task.status === "pending" || task.status === "paused",
+      ).length,
+    [tasks],
+  );
+
+  const handlePromoteToTask = useCallback(
+    (message: Message) => {
+      if (isGenerating) return;
+      setPromoteSource(message);
+      setShowPromoteDialog(true);
+    },
+    [isGenerating],
+  );
+
+  const handlePromoteConfirm = useCallback(
+    async (title: string, description: string, assigneeParticipantId: string) => {
+      if (!promoteSource || isGenerating) return;
+      scrollToBottom({ animation: "instant", ignoreEscapes: true, duration: 500 });
+      await promoteMessageToTask(
+        conversationId,
+        promoteSource.id,
+        title,
+        description,
+        assigneeParticipantId,
+        sendMessage,
+      );
+    },
+    [promoteSource, isGenerating, conversationId, sendMessage, scrollToBottom],
+  );
+
+  // Pausing = aborting the in-flight generation; chat-generation flips the
+  // task to paused as part of its abort handling.
+  const handlePauseTask = useCallback(
+    (_taskId: string) => {
+      stopGeneration();
+    },
+    [stopGeneration],
+  );
+
+  // Resume and retry both re-trigger execution from the persisted request.
+  const handleResumeTask = useCallback(
+    (taskId: string) => {
+      if (isGenerating) return;
+      const task = tasks.find((item) => item.id === taskId);
+      if (!task?.requestMessageId || !task.assigneeParticipantId) return;
+      scrollToBottom({ animation: "instant", ignoreEscapes: true, duration: 500 });
+      sendMessage(t("chat.taskRequestText", { title: task.title }), undefined, {
+        reuseUserMessageId: task.requestMessageId,
+        targetParticipantIds: [task.assigneeParticipantId],
+        taskId,
+      });
+    },
+    [isGenerating, tasks, sendMessage, scrollToBottom, t],
+  );
+
+  const handleJumpToMessage = useCallback(
+    (messageId: string) => {
+      if (handleRef && typeof handleRef === "object" && "current" in handleRef) {
+        handleRef.current?.scrollToMessage(messageId);
+      }
+    },
+    [handleRef],
   );
 
   const handleRegenerate = useCallback(
@@ -317,7 +399,8 @@ export function ChatView({
       {branchBanner}
 
       {/* Messages */}
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pt-3 pb-2">
+      <div className="relative min-h-0 flex-1">
+      <div ref={scrollRef} className="h-full overflow-y-auto pt-3 pb-2">
         <div ref={contentRef}>
           {displayMessages.map((msg) => (
             <MessageRow
@@ -334,9 +417,39 @@ export function ChatView({
               pendingFileBlocks={!isMobile ? pendingFileBlocksMap[msg.id] : undefined}
               pendingFileStatuses={!isMobile ? pendingFileStatusMap[msg.id] : undefined}
               onApplyFileBlocks={!isMobile ? handleApplyFileBlocks : undefined}
+              onPromoteToTask={msg.role === "assistant" && !isGenerating ? handlePromoteToTask : undefined}
+              tasksByRequestId={tasksByRequestId}
+              onPauseTask={handlePauseTask}
+              onResumeTask={handleResumeTask}
+              onRetryTask={handleResumeTask}
             />
           ))}
         </div>
+      </div>
+        {/* Floating tasks entry — visible whenever the conversation has tasks */}
+        {(tasks.length > 0 || isGroup) && (
+          <button
+            onClick={() => setShowTaskPanel(true)}
+            className="absolute top-2 right-3 z-10 flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-opacity hover:opacity-100 active:opacity-70"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--card) 92%, transparent)",
+              border: "0.5px solid var(--border)",
+              boxShadow: "0 1px 6px rgba(0,0,0,0.08)",
+              opacity: tasks.length > 0 ? 0.9 : 0.55,
+            }}
+            title={t("chat.tasks")}
+          >
+            <ClipboardList size={14} color="var(--muted-foreground)" />
+            {activeTaskCount > 0 && (
+              <span
+                className="flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+                style={{ backgroundColor: "var(--primary)" }}
+              >
+                {activeTaskCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Input */}
@@ -358,6 +471,27 @@ export function ChatView({
         externalFiles={droppedFiles}
         onExternalFilesConsumed={consumeDroppedFiles}
         onRequestSummary={isGroup ? handleRequestSummary : undefined}
+      />
+
+      <TaskPromoteDialog
+        open={showPromoteDialog}
+        sourceMessage={promoteSource}
+        participants={participants}
+        onOpenChange={(open) => {
+          setShowPromoteDialog(open);
+          if (!open) setPromoteSource(null);
+        }}
+        onConfirm={handlePromoteConfirm}
+      />
+      <TaskPanel
+        open={showTaskPanel}
+        onOpenChange={setShowTaskPanel}
+        tasks={tasks}
+        participants={participants}
+        onPause={handlePauseTask}
+        onResume={handleResumeTask}
+        onRetry={handleResumeTask}
+        onJumpToRequest={handleJumpToMessage}
       />
     </div>
   );

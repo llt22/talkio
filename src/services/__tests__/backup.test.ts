@@ -4,6 +4,7 @@ const database = vi.hoisted(() => ({
   getAllConversations: vi.fn(),
   getAllMessages: vi.fn(),
   getAllBlocks: vi.fn(),
+  getAllTasks: vi.fn(),
   replaceChatData: vi.fn(),
 }));
 const storage = vi.hoisted(() => ({
@@ -52,6 +53,7 @@ describe("full backup", () => {
     database.getAllConversations.mockResolvedValue([{ id: "conversation-1" }]);
     database.getAllMessages.mockResolvedValue([{ id: "message-1" }]);
     database.getAllBlocks.mockResolvedValue([{ id: "block-1" }]);
+    database.getAllTasks.mockResolvedValue([{ id: "task-1" }]);
   });
 
   it("exports chat data in the 3.0 format", async () => {
@@ -61,6 +63,7 @@ describe("full backup", () => {
     expect(backup.conversations).toEqual([{ id: "conversation-1" }]);
     expect(backup.messages).toEqual([{ id: "message-1" }]);
     expect(backup.messageBlocks).toEqual([{ id: "block-1" }]);
+    expect(backup.tasks).toEqual([{ id: "task-1" }]);
   });
 
   it("never includes legacy plaintext provider keys", async () => {
@@ -80,6 +83,48 @@ describe("full backup", () => {
   });
 
   it("restores chat data from a 3.0 backup", async () => {
+    const validTask = {
+      id: "task-1",
+      conversationId: "conversation-1",
+      title: "Fix the bug",
+      description: "",
+      assigneeParticipantId: null,
+      status: "done",
+      sourceMessageId: "message-1",
+      requestMessageId: null,
+      resultMessageId: null,
+      createdAt: "2026-08-09T00:02:00.000Z",
+      updatedAt: "2026-08-09T00:03:00.000Z",
+    };
+    const result = await importBackupFromString(
+      JSON.stringify({
+        version: "3.0",
+        exportedAt: "2026-08-09T00:00:00.000Z",
+        providers: [],
+        models: [],
+        identities: [],
+        mcpServers: [],
+        conversations: [validConversation],
+        messages: [validMessage],
+        messageBlocks: [],
+        tasks: [validTask],
+      }),
+    );
+
+    expect(result.success).toBe(true);
+    expect(database.replaceChatData).toHaveBeenCalledOnce();
+    expect(database.replaceChatData).toHaveBeenCalledWith({
+      conversations: [validConversation],
+      messages: [validMessage],
+      messageBlocks: [],
+      tasks: [validTask],
+    });
+    expect(result.counts?.conversations).toBe(1);
+    expect(result.counts?.messages).toBe(1);
+    expect(result.counts?.tasks).toBe(1);
+  });
+
+  it("imports 3.0 backups exported before the tasks table existed", async () => {
     const result = await importBackupFromString(
       JSON.stringify({
         version: "3.0",
@@ -95,9 +140,12 @@ describe("full backup", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(database.replaceChatData).toHaveBeenCalledOnce();
-    expect(result.counts?.conversations).toBe(1);
-    expect(result.counts?.messages).toBe(1);
+    expect(database.replaceChatData).toHaveBeenCalledWith({
+      conversations: [validConversation],
+      messages: [validMessage],
+      messageBlocks: [],
+      tasks: [],
+    });
   });
 
   it("keeps accepting 2.0 configuration backups without replacing chats", async () => {

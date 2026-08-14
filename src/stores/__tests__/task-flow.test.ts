@@ -2,8 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Conversation, Message } from "../../types";
 import { MessageStatus } from "../../types";
 
-// Node has no localStorage — kv-store-backed stores (identity-store etc.)
-// touch it at module load time, so the stub must exist before imports run.
+// Node has no localStorage — kv-store-backed stores touch it at module load.
 vi.hoisted(() => {
   const map = new Map<string, string>();
   const storage = {
@@ -18,12 +17,16 @@ vi.hoisted(() => {
   (globalThis as unknown as { localStorage: typeof storage }).localStorage = storage;
 });
 
-const { mockGetConversation, mockGetRecentMessages, mockInsertMessage, mockUpdateConversation, mockNotifyDbChange } =
+const { mockGetConversation, mockGetRecentMessages, mockInsertMessage, mockUpdateConversation, mockClearMessages, mockInsertTask, mockUpdateTask, mockGetTaskById, mockNotifyDbChange } =
   vi.hoisted(() => ({
     mockGetConversation: vi.fn(),
     mockGetRecentMessages: vi.fn(),
     mockInsertMessage: vi.fn(),
     mockUpdateConversation: vi.fn(),
+    mockClearMessages: vi.fn(),
+    mockInsertTask: vi.fn(),
+    mockUpdateTask: vi.fn(),
+    mockGetTaskById: vi.fn(),
     mockNotifyDbChange: vi.fn(),
   }));
 
@@ -33,7 +36,11 @@ vi.mock("../../storage/database", () => ({
   insertMessage: mockInsertMessage,
   insertMessages: vi.fn(),
   updateConversation: mockUpdateConversation,
+  clearMessages: mockClearMessages,
   updateMessage: vi.fn(),
+  insertTask: mockInsertTask,
+  updateTask: mockUpdateTask,
+  getTaskById: mockGetTaskById,
 }));
 
 vi.mock("../../hooks/useDatabase", () => ({ notifyDbChange: mockNotifyDbChange }));
@@ -89,12 +96,9 @@ vi.mock("../chat-generation", async (importOriginal) => {
   };
 });
 
-import {
-  buildApiMessagesForParticipant,
-  createUserMessage,
-} from "../chat-message-builder";
+import { buildApiMessagesForParticipant } from "../chat-message-builder";
 import { dispatchMessageGeneration } from "../chat-dispatch";
-import type { StreamingState } from "../chat-generation";
+import { clearConversationMessages, promoteMessageToTask } from "../chat-store-actions";
 
 function makeConversation(): Conversation {
   return {
@@ -102,7 +106,7 @@ function makeConversation(): Conversation {
     type: "group",
     title: "Discussion",
     participants: [
-      { id: "host-1", modelId: "model-a", identityId: null },
+      { id: "executor-1", modelId: "model-a", identityId: null },
       { id: "member-2", modelId: "model-b", identityId: null },
     ],
     lastMessage: null,
@@ -121,7 +125,7 @@ function makeMessage(overrides: Partial<Message> = {}): Message {
     senderModelId: "model-a",
     senderName: "Model A",
     identityId: null,
-    participantId: "host-1",
+    participantId: "executor-1",
     content: "hello",
     images: [],
     generatedImages: [],
@@ -142,117 +146,186 @@ function makeMessage(overrides: Partial<Message> = {}): Message {
 
 const dispatchArgs = {
   conversationId: "conversation-1",
-  text: "",
+  text: "📋 request",
   activeBranchId: null,
   getCurrentConversationId: () => "conversation-1",
   abortControllers: new Map<string, AbortController>(),
-  streamingMessages: new Map<string, StreamingState>(),
+  streamingMessages: new Map(),
   setStoreState: vi.fn(),
 };
 
-describe("moderator summary", () => {
+describe("discussion tasks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetConversation.mockResolvedValue(makeConversation());
     mockGetRecentMessages.mockResolvedValue([
       makeMessage({ id: "m1", content: "earlier message" }),
     ]);
-    mockGenerateForParticipant.mockResolvedValue("summary text");
+    mockGenerateForParticipant.mockResolvedValue("task output");
     mockUpdateConversation.mockResolvedValue(undefined);
     mockInsertMessage.mockResolvedValue(undefined);
+    mockUpdateTask.mockResolvedValue(undefined);
+    mockInsertTask.mockResolvedValue(undefined);
+    mockClearMessages.mockResolvedValue(undefined);
+  });
+
+  describe("promoteMessageToTask", () => {
+    it("persists a pending task (title + description) and kicks off execution", async () => {
+      const sendMessage = vi.fn().mockResolvedValue(undefined);
+      const taskId = await promoteMessageToTask(
+        "conversation-1",
+        "source-msg",
+        "Fix the bug",
+        "Root cause analysis follows",
+        "executor-1",
+        sendMessage,
+      );
+
+      expect(mockInsertTask).toHaveBeenCalledOnce();
+      const task = mockInsertTask.mock.calls[0][0];
+      expect(task).toMatchObject({
+        conversationId: "conversation-1",
+        title: "Fix the bug",
+        description: "Root cause analysis follows",
+        assigneeParticipantId: "executor-1",
+        sourceMessageId: "source-msg",
+        status: "pending",
+        requestMessageId: null,
+      });
+      expect(task.id).toBe(taskId);
+
+      expect(sendMessage).toHaveBeenCalledWith(
+        expect.stringContaining("Fix the bug"),
+        undefined,
+        { targetParticipantIds: ["executor-1"], taskId },
+      );
+      expect(mockNotifyDbChange).toHaveBeenCalledWith("tasks", "conversation-1");
+    });
+
+    it("clears task state when clearing conversation messages", async () => {
+      await clearConversationMessages("conversation-1");
+
+      expect(mockClearMessages).toHaveBeenCalledWith("conversation-1");
+      expect(mockUpdateConversation).toHaveBeenCalledWith("conversation-1", {
+        lastMessage: null,
+        lastMessageAt: null,
+      });
+      expect(mockNotifyDbChange).toHaveBeenCalledWith("messages", "conversation-1");
+      expect(mockNotifyDbChange).toHaveBeenCalledWith("tasks", "conversation-1");
+      expect(mockNotifyDbChange).toHaveBeenCalledWith("conversations");
+    });
   });
 
   describe("buildApiMessagesForParticipant", () => {
-    it("filters summary-request messages out of the discussion context", () => {
+    it("filters task-request messages out of the execution context", () => {
       const conv = makeConversation();
       const messages = [
-        makeMessage({ id: "m1", role: "user", content: "normal question", status: MessageStatus.SUCCESS }),
+        makeMessage({ id: "m1", role: "user", content: "topic", status: MessageStatus.SUCCESS }),
         makeMessage({
           id: "m2",
           role: "user",
-          content: "🎙️ summary request",
+          content: "📋 request",
           status: MessageStatus.SUCCESS,
-          kind: "summary-request",
+          kind: "task-request",
         }),
       ];
       const apiMessages = buildApiMessagesForParticipant(messages, conv.participants[0], conv);
       const userContents = apiMessages
         .filter((m) => m.role === "user")
         .map((m) => m.content as string);
-      expect(userContents).toEqual(["[User said]: normal question"]);
+      expect(userContents).toEqual(["[User said]: topic"]);
     });
 
-    it("injects the moderator instruction into the host system prompt", () => {
+    it("injects the task instruction into the assignee system prompt", () => {
       const conv = makeConversation();
-      const messages = [makeMessage({ id: "m1", content: "debate" })];
+      const messages = [makeMessage({ id: "m1", content: "context" })];
       const apiMessages = buildApiMessagesForParticipant(messages, conv.participants[0], conv, {
-        systemPromptAppend: "You are the moderator.",
+        systemPromptAppend: "Task: Fix the bug",
       });
       const systemPrompt = apiMessages.find((m) => m.role === "system")?.content as string;
-      expect(systemPrompt).toContain("You are the moderator.");
-    });
-
-    it("keeps summary results as regular assistant context", () => {
-      const conv = makeConversation();
-      const messages = [
-        makeMessage({ id: "m1", content: "debate" }),
-        makeMessage({ id: "m2", content: "structured summary", kind: "summary" }),
-      ];
-      const apiMessages = buildApiMessagesForParticipant(messages, conv.participants[0], conv);
-      const contents = apiMessages.filter((m) => m.role === "assistant").map((m) => m.content as string);
-      expect(contents).toEqual(["debate", "structured summary"]);
+      expect(systemPrompt).toContain("Task: Fix the bug");
     });
   });
 
-  describe("createUserMessage", () => {
-    it("carries the summary-request kind", () => {
-      const msg = createUserMessage("id-1", "conversation-1", "text", [], null, "summary-request");
-      expect(msg.kind).toBe("summary-request");
-    });
-  });
-
-  describe("dispatchMessageGeneration", () => {
-    it("persists a summary-request message and generates exactly one host reply", async () => {
-      await dispatchMessageGeneration({
-        ...dispatchArgs,
-        text: "🎙️ request",
-        options: { targetParticipantIds: ["host-1"], moderatorSummary: true },
+  describe("dispatchMessageGeneration (task flow)", () => {
+    it("marks the task running, links the request message, and executes once", async () => {
+      mockGetTaskById.mockResolvedValue({
+        id: "task-1",
+        conversationId: "conversation-1",
+        title: "Fix the bug",
+        description: "",
+        assigneeParticipantId: "executor-1",
+        status: "pending",
+        sourceMessageId: "source-msg",
+        requestMessageId: null,
+        resultMessageId: null,
+        createdAt: "2026-08-13T00:00:00.000Z",
+        updatedAt: "2026-08-13T00:00:00.000Z",
       });
 
-      expect(mockInsertMessage).toHaveBeenCalled();
+      await dispatchMessageGeneration({
+        ...dispatchArgs,
+        options: { targetParticipantIds: ["executor-1"], taskId: "task-1" },
+      });
+
+      // Task-request message persisted with kind.
       const inserted = mockInsertMessage.mock.calls.map((c: any[]) => c[0]);
-      const requestMsg = inserted.find((m: Message) => m.kind === "summary-request");
+      const requestMsg = inserted.find((m: Message) => m.kind === "task-request");
       expect(requestMsg).toBeDefined();
       expect(requestMsg.role).toBe("user");
 
-      // Exactly one host generation — no @ propagation rounds.
+      // Task linked + running before generation.
+      expect(mockUpdateTask).toHaveBeenCalledWith("task-1", {
+        status: "running",
+        requestMessageId: requestMsg.id,
+      });
+
+      // Exactly one assignee generation — no @ propagation.
       expect(mockGenerateForParticipant).toHaveBeenCalledTimes(1);
       const [ctx, participant] = mockGenerateForParticipant.mock.calls[0];
-      expect(participant.id).toBe("host-1");
-      expect(ctx.moderatorSummary).toBe(true);
+      expect(participant.id).toBe("executor-1");
+      expect(ctx.taskId).toBe("task-1");
+      expect(ctx.systemPromptAppend).toContain("Fix the bug");
     });
 
-    it("keeps moderator semantics when a summary result is regenerated (reuse without options)", async () => {
+    it("resumes without touching requestMessageId when reusing the request", async () => {
+      mockGetTaskById.mockResolvedValue({
+        id: "task-1",
+        conversationId: "conversation-1",
+        title: "Fix the bug",
+        description: "",
+        assigneeParticipantId: "executor-1",
+        status: "paused",
+        sourceMessageId: "source-msg",
+        requestMessageId: "req-1",
+        resultMessageId: null,
+        createdAt: "2026-08-13T00:00:00.000Z",
+        updatedAt: "2026-08-13T00:00:00.000Z",
+      });
       mockGetRecentMessages.mockResolvedValue([
         makeMessage({
-          id: "old-request",
+          id: "req-1",
           role: "user",
-          content: "🎙️ request",
+          content: "📋 request",
           status: MessageStatus.SUCCESS,
-          kind: "summary-request",
+          kind: "task-request",
         }),
       ]);
 
       await dispatchMessageGeneration({
         ...dispatchArgs,
-        text: "irrelevant",
-        options: { reuseUserMessageId: "old-request", targetParticipantIds: ["host-1"] },
+        options: {
+          reuseUserMessageId: "req-1",
+          targetParticipantIds: ["executor-1"],
+          taskId: "task-1",
+        },
       });
 
-      // The kind on the persisted request message is the single source of truth.
+      expect(mockInsertMessage).not.toHaveBeenCalled();
+      expect(mockUpdateTask).toHaveBeenCalledWith("task-1", { status: "running" });
       expect(mockGenerateForParticipant).toHaveBeenCalledTimes(1);
       const [ctx] = mockGenerateForParticipant.mock.calls[0];
-      expect(ctx.moderatorSummary).toBe(true);
+      expect(ctx.taskId).toBe("task-1");
     });
   });
 });

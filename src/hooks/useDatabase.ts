@@ -8,13 +8,14 @@ import {
   getConversation,
   getRecentMessages,
   getBlocksByMessageId,
+  getTasksByConversation,
 } from "../storage/database";
-import type { Conversation, Message, MessageBlock } from "../types";
+import type { Conversation, Message, MessageBlock, Task } from "../types";
 
 const DEFAULT_MESSAGE_LIMIT = 200;
 
 // Global event emitter for DB changes
-export type DbChangeChannel = "all" | "conversations" | "messages" | "blocks";
+export type DbChangeChannel = "all" | "conversations" | "messages" | "blocks" | "tasks";
 type DbChangeEvent = { channel: DbChangeChannel; id?: string };
 type Listener = (event: DbChangeEvent) => void;
 const listeners = new Set<Listener>();
@@ -139,4 +140,35 @@ export function useMessageBlocks(messageId: string | null): MessageBlock[] {
   }, [load]);
 
   return blocks;
+}
+
+export function useTasks(conversationId: string | null): Task[] {
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  const load = useCallback(async () => {
+    if (!conversationId) {
+      setTasks([]);
+      return;
+    }
+    try {
+      const data = await getTasksByConversation(conversationId);
+      setTasks(data);
+    } catch (err) {
+      console.warn("[useTasks] DB query failed:", err);
+    }
+  }, [conversationId]);
+
+  useEffect(() => {
+    load();
+    const listener: Listener = (e) => {
+      if (e.channel === "all") return load();
+      if (e.channel === "tasks" && conversationId && e.id === conversationId) return load();
+    };
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, [load]);
+
+  return tasks;
 }

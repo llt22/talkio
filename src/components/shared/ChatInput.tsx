@@ -550,7 +550,7 @@ export const ChatInput = memo(function ChatInput({
                     {secondLine && (
                       <span className="text-muted-foreground block truncate text-[12px]">
                         {secondLine}
-                        {muted && <span className="ml-1">{t("chat.mutedLabel")}</span>}
+                        {muted && <span className="ml-1">{t("chat.muted")}</span>}
                       </span>
                     )}
                   </div>

@@ -23,9 +23,13 @@ import {
   FileText,
   FolderOpen,
   Save,
+  ClipboardList,
+  Pause,
+  Play,
+  RotateCcw,
 } from "lucide-react";
 import { MessageContent } from "./MessageContent";
-import type { ConversationParticipant, Message } from "../../types";
+import type { ConversationParticipant, Message, Task } from "../../types";
 import { MessageStatus } from "../../types";
 import type { WrittenFile, WorkspaceFileStatus } from "../../services/file-writer";
 import { getAvatarProps } from "../../lib/avatar-utils";
@@ -88,6 +92,13 @@ export interface MessageRowProps {
   pendingFileBlocks?: { path: string; content: string }[];
   pendingFileStatuses?: WorkspaceFileStatus[];
   onApplyFileBlocks?: (messageId: string, targetPath?: string) => void;
+  /** Promote an assistant message to a discussion task. */
+  onPromoteToTask?: (message: Message) => void;
+  /** Tasks indexed by their request message id (renders task cards). */
+  tasksByRequestId?: Map<string, Task>;
+  onPauseTask?: (taskId: string) => void;
+  onResumeTask?: (taskId: string) => void;
+  onRetryTask?: (taskId: string) => void;
 }
 
 // ── Assistant action bar: primary buttons + ··· overflow menu ──
@@ -98,6 +109,7 @@ function AssistantActionBar({
   onCopy,
   onRegenerate,
   onBranch,
+  onPromoteToTask,
   onDelete,
   t,
 }: {
@@ -106,6 +118,7 @@ function AssistantActionBar({
   onCopy?: (c: string) => void;
   onRegenerate?: (id: string) => void;
   onBranch?: (id: string) => void;
+  onPromoteToTask?: (message: Message) => void;
   onDelete?: (id: string) => void;
   t: (key: string) => string;
 }) {
@@ -167,6 +180,18 @@ function AssistantActionBar({
                 >
                   <GitBranch size={15} color="var(--foreground)" />
                   <span className="text-foreground text-[13px]">{t("chat.branchFromHere")}</span>
+                </button>
+              )}
+              {onPromoteToTask && (
+                <button
+                  className="flex w-full items-center gap-3 px-3.5 py-2.5 active:opacity-60"
+                  onClick={() => {
+                    setShowMenu(false);
+                    onPromoteToTask(message);
+                  }}
+                >
+                  <ClipboardList size={15} color="var(--foreground)" />
+                  <span className="text-foreground text-[13px]">{t("chat.promoteToTask")}</span>
                 </button>
               )}
               <button
@@ -305,6 +330,11 @@ export const MessageRow = memo(function MessageRow({
   pendingFileBlocks,
   pendingFileStatuses,
   onApplyFileBlocks,
+  onPromoteToTask,
+  tasksByRequestId,
+  onPauseTask,
+  onResumeTask,
+  onRetryTask,
 }: MessageRowProps) {
   const { t } = useTranslation();
   const isUser = message.role === "user";
@@ -395,6 +425,140 @@ export const MessageRow = memo(function MessageRow({
               </button>
             </div>
           )}
+        </div>
+      );
+    }
+    if (message.kind === "task-request") {
+      const task = tasksByRequestId?.get(message.id);
+      if (task) {
+        const statusKey = t(`chat.taskStatus.${task.status}`, {
+          defaultValue: task.status,
+        });
+        return (
+          <div
+            data-message-id={message.id}
+            className="group mb-6 flex flex-col items-end gap-1 px-4"
+          >
+            <div className="mr-1 flex items-baseline gap-2">
+              <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
+                📋 {t("chat.tasks")}
+              </span>
+              <span className="text-muted-foreground/60 text-[10px]">
+                {formatTime(message.createdAt)}
+              </span>
+            </div>
+            <div
+              className="max-w-[80%] rounded-2xl px-4 py-3"
+              style={{
+                backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))",
+                border: "1px solid color-mix(in srgb, var(--primary) 25%, transparent)",
+                maxWidth: "min(80%, 640px)",
+                borderTopRightRadius: 0,
+              }}
+            >
+              <p className="text-foreground text-[14px] font-semibold break-words">
+                {task.title}
+              </p>
+              {task.description && (
+                <p className="text-muted-foreground mt-0.5 text-[12px] leading-relaxed break-words whitespace-pre-wrap">
+                  {task.description}
+                </p>
+              )}
+              <div className="mt-2 flex items-center gap-2">
+                <span
+                  className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                  style={{
+                    backgroundColor:
+                      task.status === "done"
+                        ? "color-mix(in srgb, #22c55e 15%, transparent)"
+                        : task.status === "failed"
+                          ? "color-mix(in srgb, var(--destructive) 15%, transparent)"
+                          : task.status === "paused"
+                            ? "color-mix(in srgb, #f59e0b 15%, transparent)"
+                            : "color-mix(in srgb, var(--primary) 15%, transparent)",
+                    color:
+                      task.status === "done"
+                        ? "#22c55e"
+                        : task.status === "failed"
+                          ? "var(--destructive)"
+                          : task.status === "paused"
+                            ? "#f59e0b"
+                            : "var(--primary)",
+                  }}
+                >
+                  {statusKey}
+                </span>
+                {task.status === "running" && onPauseTask && (
+                  <button
+                    onClick={() => onPauseTask(task.id)}
+                    className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium active:opacity-60"
+                    style={{
+                      backgroundColor: "var(--secondary)",
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    <Pause size={11} />
+                    {t("chat.taskPause")}
+                  </button>
+                )}
+                {task.status === "paused" && onResumeTask && (
+                  <button
+                    onClick={() => onResumeTask(task.id)}
+                    className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium active:opacity-60"
+                    style={{
+                      backgroundColor: "color-mix(in srgb, #22c55e 15%, transparent)",
+                      color: "#22c55e",
+                    }}
+                  >
+                    <Play size={11} />
+                    {t("chat.taskResume")}
+                  </button>
+                )}
+                {task.status === "failed" && onRetryTask && (
+                  <button
+                    onClick={() => onRetryTask(task.id)}
+                    className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium active:opacity-60"
+                    style={{
+                      backgroundColor: "color-mix(in srgb, var(--destructive) 12%, transparent)",
+                      color: "var(--destructive)",
+                    }}
+                  >
+                    <RotateCcw size={11} />
+                    {t("chat.taskRetry")}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+      // Task record missing (e.g. cleaned up) — fall back to plain text.
+      return (
+        <div
+          data-message-id={message.id}
+          className="group mb-6 flex flex-col items-end gap-1 px-4"
+        >
+          <div className="mr-1 flex items-baseline gap-2">
+            <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
+              📋 {t("chat.tasks")}
+            </span>
+            <span className="text-muted-foreground/60 text-[10px]">
+              {formatTime(message.createdAt)}
+            </span>
+          </div>
+          <div
+            className="max-w-[80%] rounded-2xl px-4 py-3"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--primary) 10%, var(--background))",
+              border: "1px solid color-mix(in srgb, var(--primary) 25%, transparent)",
+              maxWidth: "min(80%, 640px)",
+              borderTopRightRadius: 0,
+            }}
+          >
+            <p className="text-foreground text-[14px] leading-relaxed break-words whitespace-pre-wrap">
+              {content}
+            </p>
+          </div>
         </div>
       );
     }
@@ -576,7 +740,7 @@ export const MessageRow = memo(function MessageRow({
           ) : (
             <span className="uppercase">{senderName}</span>
           )}
-          {message.kind === "summary" && (
+          {(message.kind === "summary" || message.kind === "task-result") && (
             <span
               className="ml-1.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase"
               style={{
@@ -584,7 +748,15 @@ export const MessageRow = memo(function MessageRow({
                 color: "var(--primary)",
               }}
             >
-              🎙️ {t("chat.summaryBadge")}
+              {message.kind === "summary" ? (
+                <>
+                  🎙️ {t("chat.summaryBadge")}
+                </>
+              ) : (
+                <>
+                  📋 {t("chat.taskDoneBadge")}
+                </>
+              )}
             </span>
           )}
         </span>
@@ -840,6 +1012,7 @@ export const MessageRow = memo(function MessageRow({
           onCopy={onCopy}
           onRegenerate={onRegenerate}
           onBranch={onBranch}
+          onPromoteToTask={onPromoteToTask}
           onDelete={onDelete}
           t={t}
         />

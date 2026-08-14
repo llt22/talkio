@@ -52,6 +52,7 @@ export interface SendMessageOptions {
   mentionedParticipantIds?: string[];
   targetParticipantIds?: string[];
   moderatorSummary?: boolean;
+  taskId?: string;
   conversationId?: string;
   activeBranchId?: string | null;
 }

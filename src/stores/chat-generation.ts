@@ -20,6 +20,7 @@ import {
   updateConversation,
 } from "../storage/database";
 import { notifyDbChange } from "../hooks/useDatabase";
+import { updateTask } from "../storage/database";
 import { getBuiltInToolDefs } from "../services/built-in-tools";
 import { getMcpToolDefsForIdentity, refreshMcpConnections } from "../services/mcp";
 import { generateId } from "../lib/id";
@@ -71,6 +72,10 @@ export interface GenerationContext {
   isRetry?: boolean;
   /** When true, the generated assistant message is a moderator summary. */
   moderatorSummary?: boolean;
+  /** When set, the generated assistant message is a task result for this task. */
+  taskId?: string;
+  /** Extra instructions appended to the participant's system prompt. */
+  systemPromptAppend?: string;
 }
 
 export function applyRuntimeEvent(
@@ -149,7 +154,7 @@ export async function generateForParticipant(
     participant.identityId,
     ctx.activeBranchId,
     msgCreatedAt,
-    ctx.moderatorSummary ? "summary" : undefined,
+    ctx.moderatorSummary ? "summary" : ctx.taskId ? "task-result" : undefined,
   );
   await insertMessage(assistantMsg);
   notifyDbChange("messages", ctx.cid);
@@ -200,9 +205,7 @@ export async function generateForParticipant(
     let apiMessages = buildApiMessagesForParticipant(filtered, participant, ctx.conversation, {
       workspaceTree: ctx.workspaceTree,
       workspaceFiles: ctx.workspaceFiles,
-      moderatorSummaryInstruction: ctx.moderatorSummary
-        ? i18n.t("chat.summaryInstruction")
-        : undefined,
+      systemPromptAppend: ctx.systemPromptAppend,
     });
     apiMessages = await applyCompression(
       apiMessages,
@@ -376,6 +379,10 @@ export async function generateForParticipant(
     });
     notifyDbChange("messages", ctx.cid);
     notifyDbChange("conversations");
+    if (ctx.taskId) {
+      await updateTask(ctx.taskId, { status: "done", resultMessageId: assistantMsgId });
+      notifyDbChange("tasks", ctx.cid);
+    }
     logGenerationRun({ ...runContext, event: "completed", durationMs: Date.now() - startTime });
     return lastContent;
   } catch (error: unknown) {
@@ -384,6 +391,10 @@ export async function generateForParticipant(
     const generationError = generationErrorFromUnknown(error);
 
     if (generationError.code === "aborted") {
+      if (ctx.taskId) {
+        await updateTask(ctx.taskId, { status: "paused" });
+        notifyDbChange("tasks", ctx.cid);
+      }
       if (sm) {
         await updateMessage(assistantMsgId, {
           content: sm.content,
@@ -410,6 +421,10 @@ export async function generateForParticipant(
         errorMessage: userVisibleGenerationError(generationError),
       });
       notifyDbChange("messages", ctx.cid);
+      if (ctx.taskId) {
+        await updateTask(ctx.taskId, { status: "failed" });
+        notifyDbChange("tasks", ctx.cid);
+      }
     }
     return "";
   } finally {

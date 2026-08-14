@@ -3,7 +3,7 @@
  * Uses @tauri-apps/plugin-sql for SQLite access.
  * API matches the RN version's database.ts exports.
  */
-import type { Message, Conversation, MessageBlock } from "../types";
+import type { Message, Conversation, MessageBlock, Task } from "../types";
 import { MessageStatus, MessageBlockType, MessageBlockStatus } from "../types";
 
 // Dynamic import to avoid SSR issues and allow fallback
@@ -28,6 +28,7 @@ function createInMemoryDb() {
     conversations: new Map(),
     messages: new Map(),
     message_blocks: new Map(),
+    tasks: new Map(),
   };
 
   type Condition = { col: string; val: any; op: "eq" | "like" };
@@ -299,12 +300,6 @@ export async function initDatabase(): Promise<void> {
   } catch {
     /* column already exists */
   }
-  // Migration: add kind column (moderator summary requests/results)
-  try {
-    await db.execute(`ALTER TABLE messages ADD COLUMN kind TEXT`);
-  } catch {
-    /* column already exists */
-  }
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS messages (
@@ -339,6 +334,30 @@ export async function initDatabase(): Promise<void> {
   await db.execute(
     `CREATE INDEX IF NOT EXISTS idx_messages_conv_branch_created ON messages(conversationId, branchId, createdAt)`,
   );
+  // Migration: add kind column (moderator summary requests/results, task flows).
+  // Runs after CREATE TABLE messages so fresh databases get the column too.
+  try {
+    await db.execute(`ALTER TABLE messages ADD COLUMN kind TEXT`);
+  } catch {
+    /* column already exists */
+  }
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      conversationId TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      assigneeParticipantId TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      sourceMessageId TEXT,
+      requestMessageId TEXT,
+      resultMessageId TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (conversationId) REFERENCES conversations(id) ON DELETE CASCADE
+    )
+  `);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_tasks_conversation ON tasks(conversationId)`);
   await db.execute(`
     CREATE TABLE IF NOT EXISTS message_blocks (
       id TEXT PRIMARY KEY,
@@ -440,12 +459,14 @@ export async function updateConversation(
 
 export async function deleteConversation(id: string): Promise<void> {
   const db = await getDb();
+  await db.execute(`DELETE FROM tasks WHERE conversationId = $1`, [id]);
   await db.execute(`DELETE FROM messages WHERE conversationId = $1`, [id]);
   await db.execute(`DELETE FROM conversations WHERE id = $1`, [id]);
 }
 
 export async function deleteAllConversations(): Promise<void> {
   const db = await getDb();
+  await db.execute(`DELETE FROM tasks`);
   await db.execute(`DELETE FROM messages`);
   await db.execute(`DELETE FROM conversations`);
 }
@@ -688,6 +709,7 @@ export async function getAllMessages(): Promise<Message[]> {
 
 export async function clearMessages(conversationId: string): Promise<void> {
   const db = await getDb();
+  await db.execute(`DELETE FROM tasks WHERE conversationId = $1`, [conversationId]);
   await db.execute(`DELETE FROM messages WHERE conversationId = $1`, [conversationId]);
 }
 
@@ -788,10 +810,17 @@ export async function getAllBlocks(): Promise<MessageBlock[]> {
   return rows.map(rowToBlock);
 }
 
+export async function getAllTasks(): Promise<Task[]> {
+  const db = await getDb();
+  const rows = await db.select(`SELECT * FROM tasks ORDER BY createdAt ASC`);
+  return rows.map(rowToTask);
+}
+
 export async function replaceChatData(args: {
   conversations: Conversation[];
   messages: Message[];
   messageBlocks: MessageBlock[];
+  tasks: Task[];
 }): Promise<void> {
   const conversationIds = new Set(args.conversations.map((conversation) => conversation.id));
   const messageIds = new Set(args.messages.map((message) => message.id));
@@ -801,16 +830,21 @@ export async function replaceChatData(args: {
   if (args.messageBlocks.some((block) => !messageIds.has(block.messageId))) {
     throw new Error("Backup contains a message block without its message");
   }
+  if (args.tasks.some((task) => !conversationIds.has(task.conversationId))) {
+    throw new Error("Backup contains a task without its conversation");
+  }
 
   const db = await getDb();
   await db.execute("BEGIN TRANSACTION");
   try {
+    await db.execute(`DELETE FROM tasks`);
     await db.execute(`DELETE FROM message_blocks`);
     await db.execute(`DELETE FROM messages`);
     await db.execute(`DELETE FROM conversations`);
     for (const conversation of args.conversations) await insertConversation(conversation);
     for (const message of args.messages) await insertMessage(message);
     for (const block of args.messageBlocks) await insertBlock(block);
+    for (const task of args.tasks) await insertTask(task);
     await db.execute("COMMIT");
   } catch (error) {
     try {
@@ -825,6 +859,115 @@ export async function replaceChatData(args: {
 export async function deleteBlocksByMessageId(messageId: string): Promise<void> {
   const db = await getDb();
   await db.execute(`DELETE FROM message_blocks WHERE messageId = $1`, [messageId]);
+}
+
+// ─── Tasks ───
+function rowToTask(row: any): Task {
+  return {
+    id: row.id,
+    conversationId: row.conversationId,
+    title: row.title || "",
+    description: row.description || "",
+    assigneeParticipantId: row.assigneeParticipantId ?? null,
+    status: row.status,
+    sourceMessageId: row.sourceMessageId ?? null,
+    requestMessageId: row.requestMessageId ?? null,
+    resultMessageId: row.resultMessageId ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export async function insertTask(task: Task): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `INSERT INTO tasks (id, conversationId, title, description, assigneeParticipantId, status,
+     sourceMessageId, requestMessageId, resultMessageId, createdAt, updatedAt)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [
+      task.id,
+      task.conversationId,
+      task.title,
+      task.description,
+      task.assigneeParticipantId,
+      task.status,
+      task.sourceMessageId,
+      task.requestMessageId,
+      task.resultMessageId,
+      task.createdAt,
+      task.updatedAt,
+    ],
+  );
+}
+
+export async function updateTask(id: string, updates: Partial<Task>): Promise<void> {
+  const db = await getDb();
+  const sets: string[] = [];
+  const params: any[] = [];
+  let idx = 1;
+
+  if (updates.title !== undefined) {
+    sets.push(`title = $${idx}`);
+    params.push(updates.title);
+    idx++;
+  }
+  if (updates.description !== undefined) {
+    sets.push(`description = $${idx}`);
+    params.push(updates.description);
+    idx++;
+  }
+  if (updates.assigneeParticipantId !== undefined) {
+    sets.push(`assigneeParticipantId = $${idx}`);
+    params.push(updates.assigneeParticipantId);
+    idx++;
+  }
+  if (updates.status !== undefined) {
+    sets.push(`status = $${idx}`);
+    params.push(updates.status);
+    idx++;
+  }
+  if (updates.sourceMessageId !== undefined) {
+    sets.push(`sourceMessageId = $${idx}`);
+    params.push(updates.sourceMessageId);
+    idx++;
+  }
+  if (updates.requestMessageId !== undefined) {
+    sets.push(`requestMessageId = $${idx}`);
+    params.push(updates.requestMessageId);
+    idx++;
+  }
+  if (updates.resultMessageId !== undefined) {
+    sets.push(`resultMessageId = $${idx}`);
+    params.push(updates.resultMessageId);
+    idx++;
+  }
+  sets.push(`updatedAt = $${idx}`);
+  params.push(new Date().toISOString());
+  idx++;
+
+  if (sets.length === 0) return;
+  params.push(id);
+  await db.execute(`UPDATE tasks SET ${sets.join(", ")} WHERE id = $${idx}`, params);
+}
+
+export async function getTaskById(id: string): Promise<Task | null> {
+  const db = await getDb();
+  const rows = await db.select(`SELECT * FROM tasks WHERE id = $1`, [id]);
+  return rows.length > 0 ? rowToTask(rows[0]) : null;
+}
+
+export async function getTasksByConversation(conversationId: string): Promise<Task[]> {
+  const db = await getDb();
+  const rows = await db.select(
+    `SELECT * FROM tasks WHERE conversationId = $1 ORDER BY createdAt`,
+    [conversationId],
+  );
+  return rows.map(rowToTask);
+}
+
+export async function clearTasks(conversationId: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(`DELETE FROM tasks WHERE conversationId = $1`, [conversationId]);
 }
 
 // Re-exports for compatibility

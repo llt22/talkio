@@ -4,13 +4,14 @@
 import { kvStore } from "../storage/kv-store";
 import { secretStore } from "./secret-store";
 import { saveOrShareFile } from "./file-download";
-import type { Provider, Model, Identity, McpServer } from "../types";
+import type { Provider, Model, Identity, McpServer, Task } from "../types";
 import type { Conversation, Message, MessageBlock } from "../types";
 import type { AppSettings } from "../stores/settings-store";
 import {
   getAllBlocks,
   getAllConversations,
   getAllMessages,
+  getAllTasks,
   replaceChatData,
 } from "../storage/database";
 
@@ -32,13 +33,15 @@ export interface BackupData extends Omit<LegacyBackupData, "version"> {
   conversations: Conversation[];
   messages: Message[];
   messageBlocks: MessageBlock[];
+  tasks: Task[];
 }
 
 export async function createBackup(): Promise<BackupData> {
-  const [conversations, messages, messageBlocks] = await Promise.all([
+  const [conversations, messages, messageBlocks, tasks] = await Promise.all([
     getAllConversations(),
     getAllMessages(),
     getAllBlocks(),
+    getAllTasks(),
   ]);
   const providers = (kvStore.getObject<Provider[]>("providers") ?? []).map(
     ({ apiKey: _apiKey, ...provider }) => provider,
@@ -58,6 +61,7 @@ export async function createBackup(): Promise<BackupData> {
     conversations,
     messages,
     messageBlocks,
+    tasks,
   };
 }
 
@@ -84,6 +88,7 @@ export interface ImportResult {
     conversations: number;
     messages: number;
     messageBlocks: number;
+    tasks: number;
   };
 }
 
@@ -105,7 +110,14 @@ export async function importBackupFromString(text: string): Promise<ImportResult
     const configSnapshot = captureConfigSnapshot();
     try {
       await applyConfigData(data, data.version === "2.0");
-      if (data.version === "3.0") await replaceChatData(data);
+      if (data.version === "3.0") {
+        await replaceChatData({
+          conversations: data.conversations,
+          messages: data.messages,
+          messageBlocks: data.messageBlocks,
+          tasks: data.tasks ?? [],
+        });
+      }
     } catch (error) {
       restoreConfigSnapshot(configSnapshot);
       throw error;
@@ -122,6 +134,7 @@ export async function importBackupFromString(text: string): Promise<ImportResult
         conversations: data.version === "3.0" ? data.conversations.length : 0,
         messages: data.version === "3.0" ? data.messages.length : 0,
         messageBlocks: data.version === "3.0" ? data.messageBlocks.length : 0,
+        tasks: data.version === "3.0" ? (data.tasks ?? []).length : 0,
       },
     };
   } catch (err) {
@@ -187,6 +200,18 @@ function validateBackupData(data: Record<string, unknown>): BackupData | LegacyB
         throw new Error(`Backup message block at index ${index} has invalid fields`);
       }
     });
+
+    // Optional for v3.0 backups exported before the tasks table existed.
+    if (data.tasks !== undefined) {
+      requireRecordsWithStringFields(data, "tasks", [
+        "id",
+        "conversationId",
+        "title",
+        "status",
+        "createdAt",
+        "updatedAt",
+      ]);
+    }
   }
 
   return data as unknown as BackupData | LegacyBackupData;

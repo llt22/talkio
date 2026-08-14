@@ -4,13 +4,16 @@ import {
   buildApiMessagesForParticipant,
   createUserMessage,
   extractMentionedParticipants,
+  getParticipantLabel,
   resolveTargetParticipants,
 } from "./chat-message-builder";
 import {
   getConversation,
   getRecentMessages,
+  getTaskById,
   insertMessage,
   updateConversation,
+  updateTask,
 } from "../storage/database";
 import { notifyDbChange } from "../hooks/useDatabase";
 import { useProviderStore } from "./provider-store";
@@ -88,6 +91,8 @@ export async function dispatchMessageGeneration(args: {
     targetParticipantIds?: string[];
     /** Moderator summary flow: targetParticipantIds selects the host. */
     moderatorSummary?: boolean;
+    /** Task execution flow: the task whose request message drives generation. */
+    taskId?: string;
   };
   activeBranchId: string | null;
   getCurrentConversationId: () => string | null;
@@ -127,7 +132,11 @@ export async function dispatchMessageGeneration(args: {
       text,
       images ?? [],
       activeBranchId,
-      options?.moderatorSummary ? "summary-request" : undefined,
+      options?.moderatorSummary
+        ? "summary-request"
+        : options?.taskId
+          ? "task-request"
+          : undefined,
     );
     await insertMessage(userMsg);
     updateConversation(cid, { lastMessage: text, lastMessageAt: userMsg.createdAt }).catch(
@@ -135,6 +144,17 @@ export async function dispatchMessageGeneration(args: {
     );
     notifyDbChange("messages", cid);
     notifyDbChange("conversations");
+  }
+
+  // Task execution: transition the task to running and link its request message.
+  if (options?.taskId) {
+    await updateTask(
+      options.taskId,
+      options?.reuseUserMessageId
+        ? { status: "running" }
+        : { status: "running", requestMessageId: userMsg.id },
+    );
+    notifyDbChange("tasks", cid);
   }
 
   const abortController = new AbortController();
@@ -161,6 +181,19 @@ export async function dispatchMessageGeneration(args: {
   const compressionSettings = useSettingsStore.getState().settings;
 
   const isRetry = !!(options?.reuseUserMessageId && options?.targetParticipantIds?.length);
+
+  // Task execution reads the persisted task for the instruction context.
+  const task = options?.taskId ? await getTaskById(options.taskId) : null;
+  const systemPromptAppend = userMsg.kind === "summary-request"
+    ? i18n.t("chat.summaryInstruction")
+    : task
+      ? i18n.t("chat.taskInstruction", {
+          title: task.title,
+          description: task.description,
+          assignee: targets[0] ? getParticipantLabel(targets[0], conversation.participants) : "",
+        })
+      : undefined;
+
   const ctx: GenerationContext = {
     cid,
     conversation,
@@ -179,6 +212,8 @@ export async function dispatchMessageGeneration(args: {
     // Derived from the persisted message kind so retries (regenerate/edit)
     // keep their moderator semantics without the caller re-specifying it.
     moderatorSummary: userMsg.kind === "summary-request",
+    taskId: task?.id,
+    systemPromptAppend,
   };
 
   let globalMsgIndex = 0;
