@@ -128,7 +128,13 @@ export async function generateForParticipant(
   const providerStore = useProviderStore.getState();
   const model = providerStore.getModelById(participant.modelId);
   const provider = model ? providerStore.getProviderById(model.providerId) : null;
-  if (!model || !provider) return "";
+  if (!model || !provider) {
+    if (ctx.taskId) {
+      await updateTask(ctx.taskId, { status: "failed" });
+      notifyDbChange("tasks", ctx.cid);
+    }
+    return "";
+  }
 
   const msgCreatedAt = ctx.isRetry
     ? new Date(Date.now() + index).toISOString()
@@ -307,6 +313,7 @@ export async function generateForParticipant(
       ? { inputTokens: sseUsage.prompt_tokens, outputTokens: sseUsage.completion_tokens }
       : null;
     let lastContent = acc.fullContent;
+    let generationSucceeded = true;
 
     // Tool calls → multi-round loop
     if (acc.pendingToolCalls.length > 0) {
@@ -345,6 +352,7 @@ export async function generateForParticipant(
       }
 
       if (!acc.fullContent && !acc.fullReasoning) {
+        generationSucceeded = false;
         await updateMessage(assistantMsgId, {
           isStreaming: false,
           status: MessageStatus.ERROR,
@@ -380,7 +388,12 @@ export async function generateForParticipant(
     notifyDbChange("messages", ctx.cid);
     notifyDbChange("conversations");
     if (ctx.taskId) {
-      await updateTask(ctx.taskId, { status: "done", resultMessageId: assistantMsgId });
+      await updateTask(
+        ctx.taskId,
+        generationSucceeded
+          ? { status: "done", resultMessageId: assistantMsgId }
+          : { status: "failed" },
+      );
       notifyDbChange("tasks", ctx.cid);
     }
     logGenerationRun({ ...runContext, event: "completed", durationMs: Date.now() - startTime });

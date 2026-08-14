@@ -17,18 +17,31 @@ vi.hoisted(() => {
   (globalThis as unknown as { localStorage: typeof storage }).localStorage = storage;
 });
 
-const { mockGetConversation, mockGetRecentMessages, mockInsertMessage, mockUpdateConversation, mockClearMessages, mockInsertTask, mockUpdateTask, mockGetTaskById, mockNotifyDbChange } =
-  vi.hoisted(() => ({
-    mockGetConversation: vi.fn(),
-    mockGetRecentMessages: vi.fn(),
-    mockInsertMessage: vi.fn(),
-    mockUpdateConversation: vi.fn(),
-    mockClearMessages: vi.fn(),
-    mockInsertTask: vi.fn(),
-    mockUpdateTask: vi.fn(),
-    mockGetTaskById: vi.fn(),
-    mockNotifyDbChange: vi.fn(),
-  }));
+const {
+  mockGetConversation,
+  mockGetRecentMessages,
+  mockInsertMessage,
+  mockUpdateConversation,
+  mockClearMessages,
+  mockInsertTask,
+  mockUpdateTask,
+  mockGetTaskById,
+  mockNotifyDbChange,
+  mockGetModelById,
+  mockGetProviderById,
+} = vi.hoisted(() => ({
+  mockGetConversation: vi.fn(),
+  mockGetRecentMessages: vi.fn(),
+  mockInsertMessage: vi.fn(),
+  mockUpdateConversation: vi.fn(),
+  mockClearMessages: vi.fn(),
+  mockInsertTask: vi.fn(),
+  mockUpdateTask: vi.fn(),
+  mockGetTaskById: vi.fn(),
+  mockNotifyDbChange: vi.fn(),
+  mockGetModelById: vi.fn(),
+  mockGetProviderById: vi.fn(),
+}));
 
 vi.mock("../../storage/database", () => ({
   getConversation: mockGetConversation,
@@ -48,29 +61,8 @@ vi.mock("../../hooks/useDatabase", () => ({ notifyDbChange: mockNotifyDbChange }
 vi.mock("../provider-store", () => ({
   useProviderStore: {
     getState: () => ({
-      getModelById: (id: string) => ({
-        id,
-        modelId: id,
-        displayName: id,
-        providerId: "provider-1",
-        capabilities: { vision: false, toolCall: false, reasoning: false, streaming: true },
-        maxContextLength: 128000,
-        enabled: true,
-        capabilitiesVerified: true,
-        avatar: null,
-      }),
-      getProviderById: (id: string) => ({
-        id,
-        name: "Provider",
-        type: "openai",
-        apiFormat: "chat-completions",
-        baseUrl: "https://example.com/v1",
-        apiKey: "sk-test",
-        customHeaders: [],
-        enabled: true,
-        status: "connected",
-        createdAt: "2026-01-01T00:00:00.000Z",
-      }),
+      getModelById: mockGetModelById,
+      getProviderById: mockGetProviderById,
     }),
   },
 }));
@@ -167,6 +159,29 @@ describe("discussion tasks", () => {
     mockUpdateTask.mockResolvedValue(undefined);
     mockInsertTask.mockResolvedValue(undefined);
     mockClearMessages.mockResolvedValue(undefined);
+    mockGetModelById.mockImplementation((id: string) => ({
+      id,
+      modelId: id,
+      displayName: id,
+      providerId: "provider-1",
+      capabilities: { vision: false, toolCall: false, reasoning: false, streaming: true },
+      maxContextLength: 128000,
+      enabled: true,
+      capabilitiesVerified: true,
+      avatar: null,
+    }));
+    mockGetProviderById.mockImplementation((id: string) => ({
+      id,
+      name: "Provider",
+      type: "openai",
+      apiFormat: "chat-completions",
+      baseUrl: "https://example.com/v1",
+      apiKey: "sk-test",
+      customHeaders: [],
+      enabled: true,
+      status: "connected",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    }));
   });
 
   describe("promoteMessageToTask", () => {
@@ -326,6 +341,46 @@ describe("discussion tasks", () => {
       expect(mockGenerateForParticipant).toHaveBeenCalledTimes(1);
       const [ctx] = mockGenerateForParticipant.mock.calls[0];
       expect(ctx.taskId).toBe("task-1");
+    });
+
+    it("does not create a request or start generation when the task no longer exists", async () => {
+      mockGetTaskById.mockResolvedValue(null);
+
+      await dispatchMessageGeneration({
+        ...dispatchArgs,
+        options: { targetParticipantIds: ["executor-1"], taskId: "missing-task" },
+      });
+
+      expect(mockInsertMessage).not.toHaveBeenCalled();
+      expect(mockUpdateTask).not.toHaveBeenCalled();
+      expect(mockGenerateForParticipant).not.toHaveBeenCalled();
+    });
+
+    it("marks the task failed before generation when its model is unavailable", async () => {
+      mockGetTaskById.mockResolvedValue({
+        id: "task-1",
+        conversationId: "conversation-1",
+        title: "Fix the bug",
+        description: "",
+        assigneeParticipantId: "executor-1",
+        status: "pending",
+        sourceMessageId: "source-msg",
+        requestMessageId: null,
+        resultMessageId: null,
+        createdAt: "2026-08-13T00:00:00.000Z",
+        updatedAt: "2026-08-13T00:00:00.000Z",
+      });
+      mockGetModelById.mockReturnValue(null);
+
+      await dispatchMessageGeneration({
+        ...dispatchArgs,
+        options: { targetParticipantIds: ["executor-1"], taskId: "task-1" },
+      });
+
+      expect(mockUpdateTask).toHaveBeenCalledWith("task-1", { status: "failed" });
+      expect(mockNotifyDbChange).toHaveBeenCalledWith("tasks", "conversation-1");
+      expect(mockInsertMessage).not.toHaveBeenCalled();
+      expect(mockGenerateForParticipant).not.toHaveBeenCalled();
     });
   });
 });

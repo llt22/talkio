@@ -119,6 +119,32 @@ export async function dispatchMessageGeneration(args: {
   if (!conversation) return;
   const cid = conversationId;
 
+  // Validate task execution before creating a visible request message or
+  // transitioning its lifecycle. This avoids orphan requests and tasks stuck
+  // in "running" when persisted task/model configuration is unavailable.
+  const task = options?.taskId ? await getTaskById(options.taskId) : null;
+  if (options?.taskId && !task) return;
+
+  const targetIds = options?.targetParticipantIds;
+  const targets = resolveTargetParticipants(
+    conversation,
+    targetIds && targetIds.length > 0 ? targetIds : options?.mentionedParticipantIds,
+  );
+  if (task) {
+    const providerStore = useProviderStore.getState();
+    const hasUnavailableTarget =
+      targets.length === 0 ||
+      targets.some((target) => {
+        const model = providerStore.getModelById(target.modelId);
+        return !model || !providerStore.getProviderById(model.providerId);
+      });
+    if (hasUnavailableTarget) {
+      await updateTask(task.id, { status: "failed" });
+      notifyDbChange("tasks", cid);
+      return;
+    }
+  }
+
   let userMsg: Message;
   if (options?.reuseUserMessageId) {
     const allMessages = await getRecentMessages(conversationId, null, MAX_HISTORY);
@@ -161,11 +187,6 @@ export async function dispatchMessageGeneration(args: {
   abortControllers.set(cid, abortController);
   if (cid === getCurrentConversationId()) setStoreState({ isGenerating: true });
 
-  const targetIds = options?.targetParticipantIds;
-  const targets = resolveTargetParticipants(
-    conversation,
-    targetIds && targetIds.length > 0 ? targetIds : options?.mentionedParticipantIds,
-  );
   const workspaceContext = conversation.workspaceDir
     ? await buildWorkspaceContextBundle(conversation.workspaceDir, text, { includeTree: true })
     : { files: [] as Array<{ path: string; content: string }>, tree: undefined };
@@ -182,8 +203,6 @@ export async function dispatchMessageGeneration(args: {
 
   const isRetry = !!(options?.reuseUserMessageId && options?.targetParticipantIds?.length);
 
-  // Task execution reads the persisted task for the instruction context.
-  const task = options?.taskId ? await getTaskById(options.taskId) : null;
   const systemPromptAppend = userMsg.kind === "summary-request"
     ? i18n.t("chat.summaryInstruction")
     : task
