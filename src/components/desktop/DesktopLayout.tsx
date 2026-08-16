@@ -216,11 +216,13 @@ function DesktopConversationList() {
   const renameConversation = useChatStore((s) => s.renameConversation);
   const togglePinConversation = useChatStore((s) => s.togglePinConversation);
   const models = useProviderStore((s) => s.models);
+  const providers = useProviderStore((s) => s.providers);
+  const getEnabledModels = useProviderStore((s) => s.getEnabledModels);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [animateRef] = useAutoAnimate();
 
-  const enabledModels = models.filter((m) => m.enabled);
+  const enabledModels = useMemo(() => getEnabledModels(), [models, providers]);
 
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return conversations;

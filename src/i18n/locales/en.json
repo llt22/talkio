@@ -361,8 +361,8 @@
     "refreshAll": "Refresh All Providers",
     "refreshingAll": "Refreshing...",
     "refreshSuccess": "Refreshed {{success}} providers",
-    "refreshPartial": "{{success}} succeeded, {{failed}} failed",
-    "refreshFailed": "All providers failed to refresh"
+    "refreshPartial": "{{success}} succeeded, {{failed}} failed (disabled)",
+    "refreshFailed": "All providers failed (disabled)"
   },
   "webConfig": {
     "scanOrVisit": "Scan QR or visit in browser",

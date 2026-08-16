@@ -238,20 +238,23 @@ const ProvidersList: ActivityComponentType = () => {
   const fetchModels = useProviderStore((s) => s.fetchModels);
   const updateProvider = useProviderStore((s) => s.updateProvider);
   const [refreshing, setRefreshing] = useState(false);
+  const hasEnabled = providers.some((p) => p.enabled !== false);
 
   const handleRefreshAll = useCallback(async () => {
-    if (refreshing || providers.length === 0) return;
+    if (refreshing || !hasEnabled) return;
     setRefreshing(true);
     let success = 0;
     let failed = 0;
     await Promise.all(
-      providers.map(async (p: { id: string }) => {
+      providers
+        .filter((p) => p.enabled !== false)
+        .map(async (p: { id: string }) => {
         await updateProvider(p.id, { status: "pending" });
         try {
           await fetchModels(p.id);
           success++;
         } catch {
-          await updateProvider(p.id, { status: "error" });
+          await updateProvider(p.id, { status: "error", enabled: false });
           failed++;
         }
       }),
@@ -266,6 +269,7 @@ const ProvidersList: ActivityComponentType = () => {
     setRefreshing(false);
   }, [refreshing, providers, fetchModels, updateProvider, t]);
 
+
   return (
     <AppScreen
       appBar={{
@@ -274,7 +278,7 @@ const ProvidersList: ActivityComponentType = () => {
           <div className="flex items-center">
             <button
               onClick={handleRefreshAll}
-              disabled={refreshing || providers.length === 0}
+              disabled={refreshing || !hasEnabled}
               className="p-2 active:opacity-60 disabled:opacity-40"
               title={t("providers.refreshAll")}
             >
@@ -358,9 +362,11 @@ const ProvidersList: ActivityComponentType = () => {
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-foreground truncate text-[16px] font-medium">
-                          {provider.name}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-foreground truncate text-[16px] font-medium">
+                            {provider.name}
+                          </p>
+                        </div>
                         <p className="text-muted-foreground truncate text-[13px]">
                           {t("providers.modelsCount", {
                             total: providerModels.length,

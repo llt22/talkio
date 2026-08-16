@@ -297,7 +297,9 @@ function IdentityForm({
   // Provider/model stores for AI generation
   const models = useProviderStore((s) => s.models);
   const getProviderById = useProviderStore((s) => s.getProviderById);
-  const enabledModels = useMemo(() => models.filter((m) => m.enabled), [models]);
+  const providers = useProviderStore((s) => s.providers);
+  const getEnabledModels = useProviderStore((s) => s.getEnabledModels);
+  const enabledModels = useMemo(() => getEnabledModels(), [models, providers]);
 
   // MCP stores
   const mcpServers = useMcpStore((s) => s.servers);

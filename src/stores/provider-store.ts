@@ -132,7 +132,14 @@ export const useProviderStore = create<ProviderState>((set, get) => {
     getProviderById: (id) => get().providers.find((p) => p.id === id),
     getModelById: (id) => get().models.find((m) => m.id === id),
     getModelsByProvider: (providerId) => get().models.filter((m) => m.providerId === providerId),
-    getEnabledModels: () => get().models.filter((m) => m.enabled),
+    getEnabledModels: () => {
+      const enabledProviderIds = new Set(
+        get().providers.filter((p) => p.enabled !== false).map((p) => p.id),
+      );
+      return get().models.filter(
+        (m) => m.enabled && enabledProviderIds.has(m.providerId),
+      );
+    },
 
     addProvider: async (provider) => {
       await secretStore.set(provider.id, provider.apiKey);
@@ -153,6 +160,7 @@ export const useProviderStore = create<ProviderState>((set, get) => {
         return { providers };
       });
     },
+
 
     deleteProvider: async (id) => {
       await secretStore.delete(id);
@@ -314,6 +322,7 @@ export const useProviderStore = create<ProviderState>((set, get) => {
         return false;
       }
     },
+
 
     probeModelCapabilities: async (modelId: string) => {
       const model = get().getModelById(modelId);

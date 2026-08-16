@@ -31,7 +31,9 @@ export function ModelsPage({
   const { t } = useTranslation();
   const mobileNav = useMobileNav();
   const models = useProviderStore((s) => s.models);
-  const enabledModels = useMemo(() => models.filter((m: Model) => m.enabled), [models]);
+  const providers = useProviderStore((s) => s.providers);
+  const getEnabledModels = useProviderStore((s) => s.getEnabledModels);
+  const enabledModels = useMemo(() => getEnabledModels(), [models, providers]);
   const getProviderById = useProviderStore((s) => s.getProviderById);
   const createConversation = useChatStore((s) => s.createConversation);
   const [searchQuery, setSearchQuery] = useState("");

@@ -33,6 +33,8 @@ export function AddMemberContent({
   const { t } = useTranslation();
   const models = useProviderStore((s) => s.models);
   const getProviderById = useProviderStore((s) => s.getProviderById);
+  const providers = useProviderStore((s) => s.providers);
+  const getEnabledModels = useProviderStore((s) => s.getEnabledModels);
   const identities = useIdentityStore((s) => s.identities);
 
   const [search, setSearch] = useState("");
@@ -40,7 +42,7 @@ export function AddMemberContent({
   const [selected, setSelected] = useState<SelectedMember[]>([]);
   const existingModelIdSet = useMemo(() => new Set(existingModelIds ?? []), [existingModelIds]);
 
-  const enabledModels = useMemo(() => models.filter((m) => m.enabled), [models]);
+  const enabledModels = useMemo(() => getEnabledModels(), [models, providers]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return enabledModels;

@@ -27,6 +27,8 @@ export function ModelPicker({
   const { t } = useTranslation();
   const models = useProviderStore((s) => s.models);
   const getProviderById = useProviderStore((s) => s.getProviderById);
+  const providers = useProviderStore((s) => s.providers);
+  const getEnabledModels = useProviderStore((s) => s.getEnabledModels);
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -53,7 +55,7 @@ export function ModelPicker({
     onClose();
   }, [selectedIds, onMultiSelect, onClose]);
 
-  const enabledModels = useMemo(() => models.filter((m) => m.enabled), [models]);
+  const enabledModels = useMemo(() => getEnabledModels(), [models, providers]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return enabledModels;

@@ -554,22 +554,25 @@ function RefreshAllButton() {
   const fetchModels = useProviderStore((s) => s.fetchModels);
   const updateProvider = useProviderStore((s) => s.updateProvider);
   const [refreshing, setRefreshing] = useState(false);
+  const hasEnabled = providers.some((p) => p.enabled !== false);
 
   const handleRefreshAll = useCallback(async () => {
-    if (refreshing || providers.length === 0) return;
+    if (refreshing || !hasEnabled) return;
     setRefreshing(true);
     let success = 0;
     let failed = 0;
     const failedNames: string[] = [];
     await Promise.all(
-      providers.map(async (p: { id: string; name: string }) => {
+      providers
+        .filter((p) => p.enabled !== false)
+        .map(async (p: { id: string; name: string }) => {
         await updateProvider(p.id, { status: "pending" });
         try {
           await fetchModels(p.id);
           success++;
         } catch (err: any) {
           console.error(`[RefreshAll] ${p.name} failed:`, err?.message || err);
-          await updateProvider(p.id, { status: "error" });
+          await updateProvider(p.id, { status: "error", enabled: false });
           failedNames.push(`${p.name}: ${err?.message || "unknown"}`);
           failed++;
         }
@@ -590,7 +593,7 @@ function RefreshAllButton() {
   return (
     <button
       onClick={handleRefreshAll}
-      disabled={refreshing || providers.length === 0}
+      disabled={refreshing || !hasEnabled}
       className="p-2 active:opacity-60 disabled:opacity-40"
       title={t("providers.refreshAll")}
     >
@@ -602,6 +605,7 @@ function RefreshAllButton() {
     </button>
   );
 }
+
 
 // ── Providers List Sub-page (1:1 RN original) ──
 
@@ -653,36 +657,36 @@ export function ProvidersListPage({
                 const isConnected = provider.status === "active" || provider.status === "connected";
                 const isError = provider.status === "error";
                 const isDisabled = provider.enabled === false;
+                const openEdit = () =>
+                  onPush({
+                    id: `provider-edit-${provider.id}`,
+                    title: provider.name,
+                    headerRight: (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const ok = await confirm({
+                            title: t("common.areYouSure"),
+                            description: t("providers.deleteConfirm", { name: provider.name }),
+                            destructive: true,
+                          });
+                          if (ok) {
+                            await deleteProvider(provider.id);
+                            onPop();
+                          }
+                        }}
+                        className="p-2 active:opacity-60"
+                        title={t("common.delete")}
+                      >
+                        <IoTrashOutline size={18} color="var(--destructive)" />
+                      </button>
+                    ),
+                    component: <ProviderEditPage editId={provider.id} onClose={onPop} />,
+                  });
                 return (
                   <button
                     key={provider.id}
-                    onClick={() =>
-                      onPush({
-                        id: `provider-edit-${provider.id}`,
-                        title: provider.name,
-                        headerRight: (
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const ok = await confirm({
-                                title: t("common.areYouSure"),
-                                description: t("providers.deleteConfirm", { name: provider.name }),
-                                destructive: true,
-                              });
-                              if (ok) {
-                                await deleteProvider(provider.id);
-                                onPop();
-                              }
-                            }}
-                            className="p-2 active:opacity-60"
-                            title={t("common.delete")}
-                          >
-                            <IoTrashOutline size={18} color="var(--destructive)" />
-                          </button>
-                        ),
-                        component: <ProviderEditPage editId={provider.id} onClose={onPop} />,
-                      })
-                    }
+                    onClick={openEdit}
                     className={`flex w-full items-center gap-4 px-4 py-3 text-left transition-colors active:bg-black/5 ${isDisabled ? "opacity-50" : ""}`}
                     style={{
                       borderBottom:
@@ -709,9 +713,11 @@ export function ProvidersListPage({
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-foreground truncate text-[16px] font-medium">
-                        {provider.name}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-foreground truncate text-[16px] font-medium">
+                          {provider.name}
+                        </p>
+                      </div>
                       <p className="text-muted-foreground truncate text-[13px]">
                         {t("providers.modelsCount", {
                           total: providerModels.length,
