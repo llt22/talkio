@@ -565,7 +565,9 @@ export const ChatInput = memo(function ChatInput({
       {isAutoDiscussing ? (
         <div
           className="px-4 pt-3"
-          style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom, 8px))" }}
+          style={{
+            paddingBottom: keyboardInset > 0 ? "8px" : "max(8px, env(safe-area-inset-bottom, 8px))",
+          }}
         >
           <div className="mb-2.5 flex items-center gap-2">
             <MessagesSquare
@@ -768,7 +770,10 @@ export const ChatInput = memo(function ChatInput({
           <div
             className="flex items-center gap-0.5 pr-7 pl-3"
             style={{
-              paddingBottom: isMobile ? "max(4px, env(safe-area-inset-bottom, 4px))" : "4px",
+              paddingBottom:
+                isMobile && keyboardInset === 0
+                  ? "max(4px, env(safe-area-inset-bottom, 4px))"
+                  : "4px",
             }}
           >
             <button
