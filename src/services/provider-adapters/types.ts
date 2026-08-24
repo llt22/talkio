@@ -4,6 +4,8 @@ import type { SseUsage } from "../openai-chat-sse";
 export interface StreamDelta {
   content?: string;
   reasoning_content?: string;
+  /** Images produced by the model, as `data:<mime>;base64,...` URLs */
+  images?: string[];
   tool_calls?: Array<{
     index: number;
     id?: string;

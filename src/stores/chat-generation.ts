@@ -53,6 +53,8 @@ export interface StreamingState {
   messageId: string;
   content: string;
   reasoning: string;
+  /** Images generated so far in this run, as `data:` URLs */
+  images: string[];
 }
 
 export interface GenerationContext {
@@ -89,6 +91,10 @@ export function applyRuntimeEvent(
   }
   if (event.type === "thinking-delta") {
     processSseDelta(acc, { reasoning_content: event.text });
+    return;
+  }
+  if (event.type === "image-generated") {
+    processSseDelta(acc, { images: [event.url] });
     return;
   }
   if (event.type === "tool-call-started") {
@@ -171,6 +177,7 @@ export async function generateForParticipant(
     messageId: assistantMsgId,
     content: "",
     reasoning: "",
+    images: [],
   });
   if (ctx.cid === ctx.getCurrentConversationId()) {
     const all = Array.from(ctx.streamingMessages.values()).filter((s) => s.cid === ctx.cid);
@@ -236,6 +243,7 @@ export async function generateForParticipant(
       fullContent: "",
       fullReasoning: "",
       inThinkTag: false,
+      images: [],
       pendingToolCalls: [],
     };
     const startTime = generationStartedAt;
@@ -251,6 +259,7 @@ export async function generateForParticipant(
       assistantMsgId,
       () => acc.fullContent,
       () => acc.fullReasoning,
+      () => acc.images,
     );
     const streamOnce = async () => {
       let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | null =
@@ -269,7 +278,13 @@ export async function generateForParticipant(
         signal: ctx.abortController.signal,
       })) {
         applyRuntimeEvent(event, acc, toolCallIndexById);
-        if (event.type === "text-delta" || event.type === "thinking-delta") flusher.schedule();
+        if (
+          event.type === "text-delta" ||
+          event.type === "thinking-delta" ||
+          event.type === "image-generated"
+        ) {
+          flusher.schedule();
+        }
         if (event.type === "usage") {
           usage = {
             prompt_tokens: event.usage.inputTokens,
@@ -291,6 +306,7 @@ export async function generateForParticipant(
       acc.fullContent = "";
       acc.fullReasoning = "";
       acc.inThinkTag = false;
+      acc.images = [];
       acc.pendingToolCalls = [];
     };
 
@@ -338,7 +354,7 @@ export async function generateForParticipant(
         provider.id,
       );
       lastContent = result.content;
-    } else if (!acc.fullContent && !acc.fullReasoning) {
+    } else if (!acc.fullContent && !acc.fullReasoning && acc.images.length === 0) {
       // Empty response — retry once
       resetAcc();
       const retry = await streamOnce();
@@ -351,7 +367,7 @@ export async function generateForParticipant(
         };
       }
 
-      if (!acc.fullContent && !acc.fullReasoning) {
+      if (!acc.fullContent && !acc.fullReasoning && acc.images.length === 0) {
         generationSucceeded = false;
         await updateMessage(assistantMsgId, {
           isStreaming: false,
@@ -364,6 +380,7 @@ export async function generateForParticipant(
           content: acc.fullContent,
           reasoningContent: acc.fullReasoning || null,
           reasoningDuration: acc.fullReasoning ? duration : null,
+          generatedImages: acc.images,
           isStreaming: false,
           status: MessageStatus.SUCCESS,
           tokenUsage,
@@ -375,6 +392,7 @@ export async function generateForParticipant(
         content: acc.fullContent,
         reasoningContent: acc.fullReasoning || null,
         reasoningDuration: acc.fullReasoning ? duration : null,
+        generatedImages: acc.images,
         isStreaming: false,
         status: MessageStatus.SUCCESS,
         tokenUsage,
@@ -412,6 +430,7 @@ export async function generateForParticipant(
         await updateMessage(assistantMsgId, {
           content: sm.content,
           reasoningContent: sm.reasoning || null,
+          generatedImages: sm.images,
           isStreaming: false,
           status: MessageStatus.PAUSED,
         });

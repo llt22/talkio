@@ -121,6 +121,7 @@ export function ChatView({
           ...m,
           content: sm.content,
           reasoningContent: sm.reasoning || null,
+          generatedImages: sm.images,
           status: MessageStatus.STREAMING,
         };
       }
@@ -139,7 +140,7 @@ export function ChatView({
           participantId: null,
           content: sm.content,
           images: [],
-          generatedImages: [],
+          generatedImages: sm.images,
           reasoningContent: sm.reasoning || null,
           reasoningDuration: null,
           toolCalls: [],

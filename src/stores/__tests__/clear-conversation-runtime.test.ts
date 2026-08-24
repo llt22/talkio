@@ -27,8 +27,14 @@ describe("clearConversationRuntime", () => {
       ["conv-2", otherController],
     ]);
     const streamingMessages = new Map<string, StreamingState>([
-      ["message-1", { cid: "conv-1", messageId: "message-1", content: "", reasoning: "Thinking" }],
-      ["message-2", { cid: "conv-2", messageId: "message-2", content: "other", reasoning: "" }],
+      [
+        "message-1",
+        { cid: "conv-1", messageId: "message-1", content: "", reasoning: "Thinking", images: [] },
+      ],
+      [
+        "message-2",
+        { cid: "conv-2", messageId: "message-2", content: "other", reasoning: "", images: [] },
+      ],
     ]);
 
     const state = clearConversationRuntime("conv-1", "conv-1", abortControllers, streamingMessages);
@@ -43,7 +49,10 @@ describe("clearConversationRuntime", () => {
 
   it("cleans a background conversation without replacing the active UI streams", () => {
     const streamingMessages = new Map<string, StreamingState>([
-      ["message-1", { cid: "conv-1", messageId: "message-1", content: "", reasoning: "Thinking" }],
+      [
+        "message-1",
+        { cid: "conv-1", messageId: "message-1", content: "", reasoning: "Thinking", images: [] },
+      ],
     ]);
 
     expect(clearConversationRuntime("conv-1", "conv-2", new Map(), streamingMessages)).toBeNull();

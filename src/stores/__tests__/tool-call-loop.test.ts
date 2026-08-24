@@ -119,6 +119,7 @@ function makeContentAccumulator(
     fullContent: string;
     fullReasoning: string;
     inThinkTag: boolean;
+    images: string[];
     pendingToolCalls: Array<{ id: string; name: string; arguments: string }>;
   }> = {},
 ) {
@@ -126,6 +127,7 @@ function makeContentAccumulator(
     fullContent: "",
     fullReasoning: "",
     inThinkTag: false,
+    images: [],
     pendingToolCalls: [],
     ...overrides,
   };

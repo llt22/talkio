@@ -100,6 +100,10 @@ export async function* streamChatToEvents(
             queue.push({ type: "thinking-delta", text: delta.reasoning_content });
             wake();
           }
+          for (const url of delta.images ?? []) {
+            queue.push({ type: "image-generated", url });
+            wake();
+          }
           for (const tc of delta.tool_calls ?? []) {
             const index = tc.index ?? 0;
             let entry = pending.get(index);

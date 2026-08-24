@@ -130,6 +130,15 @@ function toGeminiTools(toolDefs: any[]): Array<{ functionDeclarations: unknown[]
   ];
 }
 
+/**
+ * Gemini image-generation models (nano banana family). They only return images
+ * when the request opts into the IMAGE response modality, so it has to be set
+ * from the model id — the OpenAI-compatible model list carries no modality info.
+ */
+function supportsImageOutput(modelId: string): boolean {
+  return /-image(-|$)|image-generation/i.test(modelId);
+}
+
 const REASONING_BUDGET: Record<string, number> = {
   none: 0,
   minimal: 512,
@@ -158,6 +167,9 @@ function buildRequestBody(
     genConfig.thinkingConfig = {
       thinkingBudget: REASONING_BUDGET[reasoningEffort] ?? 8192,
     };
+  }
+  if (supportsImageOutput(modelId)) {
+    genConfig.responseModalities = ["TEXT", "IMAGE"];
   }
   if (Object.keys(genConfig).length > 0) body.generationConfig = genConfig;
 

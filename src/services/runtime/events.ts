@@ -35,6 +35,7 @@ export type GenerationEvent =
   | { type: "run-started"; runId: string }
   | { type: "text-delta"; text: string }
   | { type: "thinking-delta"; text: string }
+  | { type: "image-generated"; url: string }
   | { type: "tool-call-started"; callId: string; name: string }
   | { type: "tool-call-arguments-delta"; callId: string; delta: string }
   | { type: "approval-required"; approval: ApprovalRequest }

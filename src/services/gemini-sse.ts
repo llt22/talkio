@@ -9,6 +9,9 @@
  *
  * Tool calls arrive as complete `functionCall` parts (not incremental), which
  * are mapped to the normalized single-chunk tool_calls delta.
+ *
+ * Image models (e.g. gemini-2.5-flash-image) return complete images as
+ * `inlineData` parts, normalized here into `data:` URLs.
  */
 import type { StreamDelta } from "./provider-adapters/types";
 import { readWithAbort } from "./sse-utils";
@@ -17,6 +20,11 @@ export interface SseUsage {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
+}
+
+interface GeminiInlineData {
+  mimeType?: string;
+  data?: string;
 }
 
 interface GeminiFunctionCall {
@@ -73,15 +81,24 @@ export async function consumeGeminiGenerateContentSse(
       }
       const candidate = parsed.candidates?.[0];
       if (candidate?.finishReason) receivedFinishReason = true;
-      const parts: Array<{ text?: string; functionCall?: GeminiFunctionCall }> =
-        candidate?.content?.parts ?? [];
+      const parts: Array<{
+        text?: string;
+        inlineData?: GeminiInlineData;
+        functionCall?: GeminiFunctionCall;
+      }> = candidate?.content?.parts ?? [];
       if (parts.length === 0) continue;
       receivedData = true;
 
       let text = "";
+      const images: string[] = [];
       const toolCalls: NonNullable<StreamDelta["tool_calls"]> = [];
       for (const part of parts) {
         if (typeof part.text === "string") text += part.text;
+        if (part.inlineData?.data) {
+          const mimeType = part.inlineData.mimeType;
+          if (!mimeType) throw new Error("Gemini inlineData part is missing mimeType");
+          images.push(`data:${mimeType};base64,${part.inlineData.data}`);
+        }
         if (part.functionCall) {
           toolCalls.push({
             id: part.functionCall.id,
@@ -94,6 +111,7 @@ export async function consumeGeminiGenerateContentSse(
         }
       }
       if (text) onDelta({ content: text });
+      if (images.length > 0) onDelta({ images });
       if (toolCalls.length > 0) onDelta({ tool_calls: toolCalls });
     }
   }

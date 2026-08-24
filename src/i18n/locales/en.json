@@ -181,7 +181,8 @@
     "overwrite": "Overwrite",
     "create": "Create",
     "muteMember": "Mute",
-    "unmuteMember": "Unmute"
+    "unmuteMember": "Unmute",
+    "generatedImage": "Generated image"
   },
   "models": {
     "title": "Models",

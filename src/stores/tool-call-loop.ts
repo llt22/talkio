@@ -119,6 +119,7 @@ export async function runToolCallLoop(
     content: acc.fullContent,
     reasoningContent: fullReasoning || null,
     reasoningDuration: null,
+    generatedImages: acc.images,
     toolCalls: acc.pendingToolCalls,
   });
   notifyDbChange("messages", ctx.cid);
@@ -127,6 +128,7 @@ export async function runToolCallLoop(
   const allToolResults: { toolCallId: string; content: string }[] = [];
   let currentToolCalls = acc.pendingToolCalls;
   let accumulatedContent = acc.fullContent;
+  const generatedImages = [...acc.images];
   let currentTokenUsage = tokenUsage;
   const toolMessages = [...apiMessages];
   const runtime = new NormalModelRuntime(() => adapter);
@@ -157,6 +159,7 @@ export async function runToolCallLoop(
   if (currentToolCalls.length === 0) {
     await updateMessage(assistantMsgId, {
       content: accumulatedContent,
+      generatedImages,
       isStreaming: false,
       status: MessageStatus.SUCCESS,
       tokenUsage: currentTokenUsage,
@@ -187,6 +190,7 @@ export async function runToolCallLoop(
       messageId: assistantMsgId,
       content: accumulatedContent,
       reasoning: fullReasoning,
+      images: generatedImages,
     });
     if (ctx.cid === ctx.getCurrentConversationId()) {
       const all = Array.from(ctx.streamingMessages.values()).filter(
@@ -203,6 +207,7 @@ export async function runToolCallLoop(
       assistantMsgId,
       () => toolContent,
       () => fullReasoning,
+      () => generatedImages,
     );
     const runId = `${assistantMsgId}:tool:${round + 1}`;
     const runStartedAt = Date.now();
@@ -221,6 +226,9 @@ export async function runToolCallLoop(
     })) {
       if (event.type === "text-delta") {
         toolContent += event.text;
+        flusher.schedule();
+      } else if (event.type === "image-generated") {
+        generatedImages.push(event.url);
         flusher.schedule();
       } else if (event.type === "tool-call-started") {
         toolCallIndexById.set(event.callId, newToolCalls.length);
@@ -271,6 +279,7 @@ export async function runToolCallLoop(
 
   await updateMessage(assistantMsgId, {
     content: accumulatedContent,
+    generatedImages,
     isStreaming: false,
     status: MessageStatus.SUCCESS,
     tokenUsage: currentTokenUsage,

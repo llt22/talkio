@@ -793,6 +793,20 @@ export const MessageRow = memo(function MessageRow({
         </div>
       )}
 
+      {/* Generated images */}
+      {message.generatedImages && message.generatedImages.length > 0 && (
+        <div className="flex flex-wrap gap-1.5" style={{ maxWidth: 720 }}>
+          {message.generatedImages.map((uri: string, idx: number) => (
+            <img
+              key={idx}
+              src={uri}
+              alt={t("chat.generatedImage")}
+              className="max-h-80 max-w-full rounded-lg object-contain"
+            />
+          ))}
+        </div>
+      )}
+
       {/* Tool Calls — compact inline cards */}
       {message.toolCalls && message.toolCalls.length > 0 && (
         <div className="flex flex-col gap-1" style={{ maxWidth: 720 }}>

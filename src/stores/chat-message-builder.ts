@@ -249,8 +249,7 @@ export function buildApiMessagesForParticipant(
   } else if (identity?.systemPrompt || workspaceHint || options?.systemPromptAppend) {
     apiMessages.push({
       role: "system",
-      content:
-        (identity?.systemPrompt || "") + workspaceHint + (options?.systemPromptAppend ?? ""),
+      content: (identity?.systemPrompt || "") + workspaceHint + (options?.systemPromptAppend ?? ""),
     });
   }
 
@@ -262,6 +261,19 @@ export function buildApiMessagesForParticipant(
 
     let role: "user" | "assistant" = m.role as "user" | "assistant";
     let content: unknown = m.content;
+
+    // Images the model produced earlier are part of the visual context: without
+    // them a follow-up like "make the sky darker" has nothing to edit.
+    if (m.role === "assistant" && m.generatedImages && m.generatedImages.length > 0) {
+      if (supportsVision) {
+        const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+        if (m.content) parts.push({ type: "text", text: m.content });
+        for (const uri of m.generatedImages) {
+          parts.push({ type: "image_url", image_url: { url: uri } });
+        }
+        content = parts;
+      }
+    }
 
     if (m.role === "user") {
       if (m.images && m.images.length > 0) {

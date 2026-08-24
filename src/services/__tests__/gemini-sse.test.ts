@@ -33,6 +33,32 @@ describe("consumeGeminiGenerateContentSse", () => {
     expect(usage).toBeNull();
   });
 
+  it("maps inlineData parts to image data URLs", async () => {
+    const deltas: StreamDelta[] = [];
+    await consumeGeminiGenerateContentSse(
+      sseReader([
+        'data: {"candidates":[{"content":{"parts":[{"text":"here"},{"inlineData":{"mimeType":"image/png","data":"AAAB"}}]},"index":0}]}\n\n',
+        "data: [DONE]\n\n",
+      ]),
+      (d) => deltas.push(d),
+      NO_SIGNAL,
+    );
+
+    expect(deltas).toEqual([{ content: "here" }, { images: ["data:image/png;base64,AAAB"] }]);
+  });
+
+  it("fails fast when an inlineData part has no mimeType", async () => {
+    const promise = consumeGeminiGenerateContentSse(
+      sseReader([
+        'data: {"candidates":[{"content":{"parts":[{"inlineData":{"data":"AAAB"}}]},"index":0}]}\n\n',
+      ]),
+      () => {},
+      NO_SIGNAL,
+    );
+
+    await expect(promise).rejects.toThrow("missing mimeType");
+  });
+
   it("maps functionCall parts to a normalized tool_calls delta", async () => {
     const deltas: StreamDelta[] = [];
     await consumeGeminiGenerateContentSse(

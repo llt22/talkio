@@ -179,7 +179,8 @@
     "currentFile": "当前文件",
     "generatedFile": "生成内容",
     "overwrite": "覆盖",
-    "create": "新建"
+    "create": "新建",
+    "generatedImage": "生成的图片"
   },
   "models": {
     "title": "模型",

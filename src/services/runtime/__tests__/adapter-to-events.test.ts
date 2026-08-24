@@ -50,6 +50,26 @@ describe("streamChatToEvents", () => {
     expect(events[events.length - 1]).toEqual({ type: "run-completed", reason: "completed" });
   });
 
+  it("emits one image-generated event per image in a delta", async () => {
+    const adapter = makeMockAdapter(async ({ onDelta }) => {
+      onDelta({ images: ["data:image/png;base64,AAA", "data:image/png;base64,BBB"] });
+      return { usage: null };
+    });
+
+    const events = await collect(
+      streamChatToEvents(
+        adapter,
+        { baseUrl: "u", headers: {}, modelId: "m", messages: [], signal: NO_SIGNAL },
+        "run-img",
+      ),
+    );
+
+    expect(events.slice(1, 3)).toEqual([
+      { type: "image-generated", url: "data:image/png;base64,AAA" },
+      { type: "image-generated", url: "data:image/png;base64,BBB" },
+    ]);
+  });
+
   it("emits thinking deltas alongside text", async () => {
     const adapter = makeMockAdapter(async ({ onDelta }) => {
       onDelta({ reasoning_content: "let me think" });
