@@ -181,8 +181,7 @@
     "overwrite": "Overwrite",
     "create": "Create",
     "muteMember": "Mute",
-    "unmuteMember": "Unmute",
-    "muted": "Muted"
+    "unmuteMember": "Unmute"
   },
   "models": {
     "title": "Models",
@@ -284,6 +283,8 @@
     "chat": "Chat",
     "contextCompression": "Context Compression",
     "enterToSend": "Enter to Send",
+    "closeToTray": "Close to Tray",
+    "closeToTrayHint": "Keep the app running in the background when the main window is closed",
     "compressionThreshold": "Threshold",
     "workspaceDir": "Workspace Directory",
     "selectDir": "Select",
@@ -511,5 +512,9 @@
     "description": "The AI wants to run a tool. Review the request and decide.",
     "approve": "Approve",
     "reject": "Reject"
+  },
+  "tray": {
+    "show": "Show Window",
+    "quit": "Quit Talkio"
   }
 }

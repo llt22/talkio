@@ -281,6 +281,8 @@
     "chat": "对话",
     "contextCompression": "上下文压缩",
     "enterToSend": "Enter 键发送",
+    "closeToTray": "关闭时最小化到托盘",
+    "closeToTrayHint": "关闭主窗口后应用继续在后台运行",
     "compressionThreshold": "触发阈值",
     "workspaceDir": "工作目录",
     "selectDir": "选择",
@@ -508,5 +510,9 @@
     "description": "AI 想要调用工具，请审阅请求后决定。",
     "approve": "允许",
     "reject": "拒绝"
+  },
+  "tray": {
+    "show": "显示主窗口",
+    "quit": "退出 Talkio"
   }
 }

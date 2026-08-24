@@ -8,6 +8,8 @@ mod mcp_stdio;
 mod git_cmd;
 #[cfg(not(target_os = "android"))]
 mod secrets;
+#[cfg(not(target_os = "android"))]
+mod tray;
 
 #[tauri::command]
 fn check_pending_import(app: tauri::AppHandle) -> Option<String> {
@@ -56,8 +58,11 @@ pub fn run() {
   #[cfg(not(target_os = "android"))]
   let builder = builder
     .manage(mcp_stdio::Sessions::default())
+    .manage(tray::TrayState::default())
+    .on_window_event(tray::on_window_event)
     .invoke_handler(tauri::generate_handler![
       check_pending_import,
+      tray::set_close_to_tray,
       mcp_stdio::mcp_stdio_start,
       mcp_stdio::mcp_stdio_send,
       mcp_stdio::mcp_stdio_stop,

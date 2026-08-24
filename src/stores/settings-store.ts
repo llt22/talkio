@@ -22,6 +22,8 @@ export interface AppSettings {
   enterToSend: boolean;
   /** Tool execution gate: "auto" runs tools without asking, "ask" requires user approval */
   toolApprovalMode: ToolApprovalMode;
+  /** Desktop only: closing the main window hides it to the system tray instead of quitting */
+  closeToTray: boolean;
 }
 
 interface SettingsState {
@@ -42,6 +44,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   contextCompressionThreshold: 16000,
   enterToSend: true,
   toolApprovalMode: "auto",
+  closeToTray: false,
 };
 
 const SETTINGS_KEY = "settings";

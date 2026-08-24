@@ -14,6 +14,7 @@ import { useMcpStore } from "./stores/mcp-store";
 import { useSettingsStore } from "./stores/settings-store";
 import { useBuiltInToolsStore } from "./stores/built-in-tools-store";
 import { refreshMcpConnections } from "./services/mcp";
+import { syncCloseToTray } from "./services/tray";
 import i18n from "./i18n";
 const MobileLayout = lazy(() =>
   import("./components/mobile/MobileLayout").then((module) => ({
@@ -46,6 +47,8 @@ function useIsMobile() {
 export default function App() {
   const isMobile = useIsMobile();
   const [ready, setReady] = useState(false);
+  const closeToTray = useSettingsStore((s) => s.settings.closeToTray);
+  const language = useSettingsStore((s) => s.settings.language);
   const mcpServers = useMcpStore((s) => s.servers);
   const enabledMcpSignature = useMemo(
     () =>
@@ -123,6 +126,13 @@ export default function App() {
     }
     init().catch(console.error);
   }, []);
+
+  // Keep the native tray in sync with the setting; language is a dependency
+  // because the tray menu labels are translated in the web layer.
+  useEffect(() => {
+    if (!ready) return;
+    syncCloseToTray(closeToTray).catch((err) => console.warn("[App] tray sync failed:", err));
+  }, [ready, closeToTray, language]);
 
   useEffect(() => {
     if (!ready) return;

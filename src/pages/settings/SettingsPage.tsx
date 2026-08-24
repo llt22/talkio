@@ -14,6 +14,7 @@ import {
 import {
   ArrowLeftRight,
   ArrowUp,
+  PanelBottomClose,
   Wrench,
   Mic,
   Minimize2,
@@ -339,6 +340,44 @@ export function SettingsPage({
                   className="inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform"
                   style={{
                     transform: settings.enterToSend
+                      ? "translateX(20px) translateY(2px)"
+                      : "translateX(2px) translateY(2px)",
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          {/* Close to tray — desktop only */}
+          {isDesktop && (
+            <div
+              className="flex w-full items-center gap-4 px-4 py-3"
+              style={{ borderTop: "0.5px solid var(--border)" }}
+            >
+              <div
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: "rgba(20,184,166,0.1)" }}
+              >
+                <PanelBottomClose size={18} color="#14b8a6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-foreground text-[16px] font-medium">
+                  {t("settings.closeToTray")}
+                </span>
+                <p className="text-muted-foreground mt-0.5 text-[13px]">
+                  {t("settings.closeToTrayHint")}
+                </p>
+              </div>
+              <div
+                onClick={() => updateSettings({ closeToTray: !settings.closeToTray })}
+                className="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors"
+                style={{
+                  backgroundColor: settings.closeToTray ? "var(--primary)" : "var(--muted)",
+                }}
+              >
+                <span
+                  className="inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform"
+                  style={{
+                    transform: settings.closeToTray
                       ? "translateX(20px) translateY(2px)"
                       : "translateX(2px) translateY(2px)",
                   }}
