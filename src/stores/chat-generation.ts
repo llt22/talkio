@@ -43,6 +43,7 @@ import {
   type ContentAccumulator,
 } from "./generation-helpers";
 import { runToolCallLoop } from "./tool-call-loop";
+import { persistGeneratedImages } from "../services/image-store";
 
 const MAX_HISTORY = 200;
 
@@ -380,7 +381,7 @@ export async function generateForParticipant(
           content: acc.fullContent,
           reasoningContent: acc.fullReasoning || null,
           reasoningDuration: acc.fullReasoning ? duration : null,
-          generatedImages: acc.images,
+          generatedImages: await persistGeneratedImages(acc.images),
           isStreaming: false,
           status: MessageStatus.SUCCESS,
           tokenUsage,
@@ -392,7 +393,7 @@ export async function generateForParticipant(
         content: acc.fullContent,
         reasoningContent: acc.fullReasoning || null,
         reasoningDuration: acc.fullReasoning ? duration : null,
-        generatedImages: acc.images,
+        generatedImages: await persistGeneratedImages(acc.images),
         isStreaming: false,
         status: MessageStatus.SUCCESS,
         tokenUsage,
@@ -430,7 +431,7 @@ export async function generateForParticipant(
         await updateMessage(assistantMsgId, {
           content: sm.content,
           reasoningContent: sm.reasoning || null,
-          generatedImages: sm.images,
+          generatedImages: await persistGeneratedImages(sm.images),
           isStreaming: false,
           status: MessageStatus.PAUSED,
         });

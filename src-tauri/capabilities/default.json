@@ -15,6 +15,16 @@
     "opener:default",
     "dialog:default",
     "fs:allow-write-text-file",
+    "fs:allow-write-file",
+    "fs:allow-read-file",
+    "fs:allow-read-dir",
+    "fs:allow-mkdir",
+    "fs:allow-exists",
+    "fs:allow-remove",
+    {
+      "identifier": "fs:scope",
+      "allow": ["$APPDATA/generated-images/**/*"]
+    },
     "http:default",
     {
       "identifier": "http:allow-fetch",

@@ -17,6 +17,7 @@ import { NormalModelRuntime } from "../services/runtime/model-runtime";
 import { GenerationRunError, logGenerationRun } from "../services/runtime/generation-run";
 import type { GenerationContext } from "./chat-generation";
 import { createStreamFlusher, parseToolArgs, type ContentAccumulator } from "./generation-helpers";
+import { persistGeneratedImages } from "../services/image-store";
 
 const MAX_TOOL_ROUNDS = 5;
 
@@ -115,11 +116,15 @@ export async function runToolCallLoop(
     availableTools,
   };
 
+  // Write the images to disk once, up front: every later save reuses these
+  // references, so a long tool loop cannot write the same image twice.
+  const persistedImages = await persistGeneratedImages(acc.images);
+
   await updateMessage(assistantMsgId, {
     content: acc.fullContent,
     reasoningContent: fullReasoning || null,
     reasoningDuration: null,
-    generatedImages: acc.images,
+    generatedImages: persistedImages,
     toolCalls: acc.pendingToolCalls,
   });
   notifyDbChange("messages", ctx.cid);
@@ -128,7 +133,7 @@ export async function runToolCallLoop(
   const allToolResults: { toolCallId: string; content: string }[] = [];
   let currentToolCalls = acc.pendingToolCalls;
   let accumulatedContent = acc.fullContent;
-  const generatedImages = [...acc.images];
+  const generatedImages = [...persistedImages];
   let currentTokenUsage = tokenUsage;
   const toolMessages = [...apiMessages];
   const runtime = new NormalModelRuntime(() => adapter);
@@ -279,7 +284,7 @@ export async function runToolCallLoop(
 
   await updateMessage(assistantMsgId, {
     content: accumulatedContent,
-    generatedImages,
+    generatedImages: await persistGeneratedImages(generatedImages),
     isStreaming: false,
     status: MessageStatus.SUCCESS,
     tokenUsage: currentTokenUsage,

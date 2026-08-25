@@ -707,6 +707,24 @@ export async function getAllMessages(): Promise<Message[]> {
   return rows.map(rowToMessage);
 }
 
+/**
+ * File names in `generatedImages` that some message still points at.
+ *
+ * Reads just that one column rather than whole messages: this only feeds the
+ * orphan-image sweep, which runs over the entire table.
+ */
+export async function getReferencedImageNames(): Promise<Set<string>> {
+  const db = await getDb();
+  const rows: Array<{ generatedImages: string }> = await db.select(
+    `SELECT generatedImages FROM messages WHERE generatedImages != '[]'`,
+  );
+  const names = new Set<string>();
+  for (const row of rows) {
+    for (const ref of safeJsonParse<string[]>(row.generatedImages, [])) names.add(ref);
+  }
+  return names;
+}
+
 export async function clearMessages(conversationId: string): Promise<void> {
   const db = await getDb();
   await db.execute(`DELETE FROM tasks WHERE conversationId = $1`, [conversationId]);

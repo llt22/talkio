@@ -17,6 +17,8 @@ import { refreshMcpConnections } from "./services/mcp";
 import { syncCloseToTray } from "./services/tray";
 import i18n from "./i18n";
 import { useTranslation } from "react-i18next";
+import { getReferencedImageNames } from "./storage/database";
+import { pruneOrphanImages } from "./services/image-store";
 const MobileLayout = lazy(() =>
   import("./components/mobile/MobileLayout").then((module) => ({
     default: module.MobileLayout,
@@ -127,6 +129,16 @@ export default function App() {
     }
     init().catch(console.error);
   }, []);
+
+  // Sweep generated images no message references any more. Deleting a message or
+  // a conversation leaves its image files behind on purpose — one sweep here
+  // cannot miss a delete path, whereas a hook on each of them could.
+  useEffect(() => {
+    if (!ready) return;
+    getReferencedImageNames()
+      .then(pruneOrphanImages)
+      .catch((err) => console.warn("[App] image sweep failed:", err));
+  }, [ready]);
 
   // Keep the native tray in sync with the setting. The active i18n language is a
   // dependency because the tray menu labels are translated in the web layer — the

@@ -36,6 +36,7 @@ import { getAvatarProps } from "../../lib/avatar-utils";
 import { useProviderStore } from "../../stores/provider-store";
 import { useIdentityStore } from "../../stores/identity-store";
 import { getParticipantLabel, getParticipantLabelParts } from "../../stores/chat-message-builder";
+import { useImageUrls } from "../../hooks/useImageUrls";
 
 // ── Ionicons-style action button (1:1 RN ActionButton) ──
 
@@ -337,6 +338,7 @@ export const MessageRow = memo(function MessageRow({
   onRetryTask,
 }: MessageRowProps) {
   const { t } = useTranslation();
+  const generatedImageUrls = useImageUrls(message.generatedImages);
   const isUser = message.role === "user";
   const isStreaming = message.status === MessageStatus.STREAMING;
   const rawContent = (message.content || "").trimEnd();
@@ -794,12 +796,12 @@ export const MessageRow = memo(function MessageRow({
       )}
 
       {/* Generated images */}
-      {message.generatedImages && message.generatedImages.length > 0 && (
+      {generatedImageUrls.length > 0 && (
         <div className="flex flex-wrap gap-1.5" style={{ maxWidth: 720 }}>
-          {message.generatedImages.map((uri, idx) => (
+          {generatedImageUrls.map((url, idx) => (
             <img
               key={idx}
-              src={uri}
+              src={url}
               alt={t("chat.generatedImage")}
               className="max-h-80 max-w-full rounded-lg object-contain"
             />
