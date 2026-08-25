@@ -36,7 +36,7 @@ async function executeOneTool(
     modelName: string;
     availableTools: Map<string, string | undefined>;
   },
-): Promise<{ toolCallId?: string; content: string }> {
+): Promise<{ content: string; images?: string[] }> {
   const description = approvalContext.availableTools.get(name);
   if (!approvalContext.availableTools.has(name)) return { content: `Tool not found: ${name}` };
 
@@ -63,7 +63,11 @@ async function executeOneTool(
     builtInGloballyEnabled || builtInEnabledForIdentity
       ? await executeBuiltInTool(name, args, toolContext)
       : null;
-  if (builtIn) return { content: builtIn.success ? builtIn.content : `Error: ${builtIn.error}` };
+  if (builtIn) {
+    return builtIn.success
+      ? { content: builtIn.content, images: builtIn.images }
+      : { content: `Error: ${builtIn.error}` };
+  }
 
   try {
     const remote = await executeMcpToolByName(name, args, allowedServerIds);
@@ -152,13 +156,16 @@ export async function runToolCallLoop(
         approvalContext,
       );
       results.push({ toolCallId: call.id, content: result.content });
+      // A tool that produced images (generate_image) hands back stored
+      // references; they belong on the assistant message, not in its result text.
+      if (result.images) generatedImages.push(...result.images);
     }
     return results;
   };
 
   let currentToolResults = await executeCalls(currentToolCalls);
   allToolResults.push(...currentToolResults);
-  await updateMessage(assistantMsgId, { toolResults: allToolResults });
+  await updateMessage(assistantMsgId, { toolResults: allToolResults, generatedImages });
   notifyDbChange("messages", ctx.cid);
 
   if (currentToolCalls.length === 0) {
@@ -276,7 +283,7 @@ export async function runToolCallLoop(
 
     const newResults = await executeCalls(newToolCalls);
     allToolResults.push(...newResults);
-    await updateMessage(assistantMsgId, { toolResults: allToolResults });
+    await updateMessage(assistantMsgId, { toolResults: allToolResults, generatedImages });
     notifyDbChange("messages", ctx.cid);
     currentToolCalls = newToolCalls;
     currentToolResults = newResults;

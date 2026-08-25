@@ -9,6 +9,7 @@ import {
   ArrowLeftRight,
   Wrench,
   Mic,
+  Image as ImageIcon,
   Minimize2,
   Languages,
   Moon,
@@ -72,6 +73,14 @@ export function SettingsMainContent() {
           label={t("settings.sttProvider")}
           detail={settings.sttApiKey ? settings.sttModel : t("settings.sttNotConfigured")}
           onPress={() => mobileNav?.pushSettingsStt()}
+        />
+        <SettingsRow
+          icon={ImageIcon}
+          iconColor="#ec4899"
+          iconBg="rgba(236,72,153,0.1)"
+          label={t("settings.imageProvider")}
+          detail={settings.imageApiKey ? settings.imageModel : t("settings.imageNotConfigured")}
+          onPress={() => mobileNav?.pushSettingsImage()}
           isLast
         />
       </div>

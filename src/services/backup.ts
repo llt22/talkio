@@ -16,7 +16,10 @@ import {
 } from "../storage/database";
 
 type BackupProvider = Omit<Provider, "apiKey"> & { apiKey?: string };
-type BackupSettings = Omit<AppSettings, "sttApiKey"> & { sttApiKey?: string };
+type BackupSettings = Omit<AppSettings, "sttApiKey" | "imageApiKey"> & {
+  sttApiKey?: string;
+  imageApiKey?: string;
+};
 
 export interface LegacyBackupData {
   version: "2.0";
@@ -48,7 +51,7 @@ export async function createBackup(): Promise<BackupData> {
   );
   const storedSettings = kvStore.getObject<AppSettings>("settings");
   const settings = storedSettings
-    ? (({ sttApiKey: _sttApiKey, ...value }) => value)(storedSettings)
+    ? (({ sttApiKey: _sttApiKey, imageApiKey: _imageApiKey, ...value }) => value)(storedSettings)
     : null;
   return {
     version: "3.0",
@@ -268,7 +271,7 @@ async function applyConfigData(
   if (data.identities) kvStore.setObject("identities", data.identities);
   if (data.mcpServers) kvStore.setObject("mcp_servers", data.mcpServers);
   if (data.settings) {
-    const { sttApiKey: _sttApiKey, ...settings } = data.settings;
+    const { sttApiKey: _sttApiKey, imageApiKey: _imageApiKey, ...settings } = data.settings;
     kvStore.setObject("settings", settings);
   }
 }

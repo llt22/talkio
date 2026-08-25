@@ -10,6 +10,7 @@ export interface MobileNavFunctions {
   pushSettingsMcpTools: () => void;
   pushSettingsMcpServerEdit: (serverId?: string) => void;
   pushSettingsStt: () => void;
+  pushSettingsImage: () => void;
 }
 
 export const MobileNavContext = createContext<MobileNavFunctions | null>(null);

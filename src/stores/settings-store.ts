@@ -24,6 +24,10 @@ export interface AppSettings {
   toolApprovalMode: ToolApprovalMode;
   /** Desktop only: closing the main window hides it to the system tray instead of quitting */
   closeToTray: boolean;
+  /** OpenAI-compatible image endpoint backing the generate_image tool */
+  imageBaseUrl: string;
+  imageApiKey: string;
+  imageModel: string;
 }
 
 interface SettingsState {
@@ -45,6 +49,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   enterToSend: true,
   toolApprovalMode: "auto",
   closeToTray: false,
+  imageBaseUrl: "https://api.openai.com/v1",
+  imageApiKey: "",
+  imageModel: "gpt-image-1",
 };
 
 const SETTINGS_KEY = "settings";

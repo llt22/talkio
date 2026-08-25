@@ -21,6 +21,7 @@ import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../shared/EmptyState";
 import { ProviderEditPage } from "../../pages/settings/ProviderEditPage";
 import { SttSettingsPage } from "../../pages/settings/SttSettingsPage";
+import { ImageSettingsPage } from "../../pages/settings/ImageSettingsPage";
 import { McpPage } from "../../pages/settings/McpPage";
 import { McpServerForm } from "../../pages/settings/McpServerForm";
 import { IdentityEditPage } from "../../pages/settings/IdentityPage";
@@ -68,6 +69,7 @@ const Home: ActivityComponentType = () => {
       pushSettingsMcpServerEdit: (serverId?: string) =>
         push("McpServerEdit", { serverId: serverId ?? "" }),
       pushSettingsStt: () => push("SttSettings", {}),
+      pushSettingsImage: () => push("ImageSettings", {}),
     }),
     [push],
   );
@@ -112,6 +114,7 @@ const ChatDetail: ActivityComponentType<{ conversationId: string }> = ({ params 
       pushSettingsMcpServerEdit: (serverId?: string) =>
         push("McpServerEdit", { serverId: serverId ?? "" }),
       pushSettingsStt: () => push("SttSettings", {}),
+      pushSettingsImage: () => push("ImageSettings", {}),
     }),
     [push],
   );
@@ -513,6 +516,25 @@ const SttSettings: ActivityComponentType = () => {
 };
 
 // ══════════════════════════════════════════
+// Activity: Image Settings
+// ══════════════════════════════════════════
+const ImageSettings: ActivityComponentType = () => {
+  const { t } = useTranslation();
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
+
+  return (
+    <AppScreen appBar={{ title: t("settings.imageProvider") }}>
+      <ImageSettingsPage />
+    </AppScreen>
+  );
+};
+
+// ══════════════════════════════════════════
 // Stackflow Configuration
 // ══════════════════════════════════════════
 const result = stackflow({
@@ -528,6 +550,7 @@ const result = stackflow({
     McpTools,
     McpServerEdit,
     SttSettings,
+    ImageSettings,
   },
   plugins: [
     basicRendererPlugin(),

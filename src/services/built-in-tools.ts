@@ -14,11 +14,19 @@ import {
 import { gitExecute, isGitWriteCommand } from "./git-tools";
 import { appConfirm } from "../components/shared/ConfirmDialogProvider";
 import { isDesktop } from "../lib/platform";
+import { generateImages, isImageGenerationConfigured } from "./image-generation";
+import { persistGeneratedImages } from "./image-store";
 
 export interface ToolResult {
   success: boolean;
   content: string;
   error?: string;
+  /**
+   * Stored generated-image references, attached to the assistant message rather
+   * than to `content` — `content` becomes a tool message in the conversation
+   * history, which is no place for image bytes.
+   */
+  images?: string[];
 }
 
 export interface ToolContext {
@@ -35,6 +43,8 @@ export interface BuiltInToolDef {
   requiresWorkspace?: boolean;
   /** If true, the tool is only available on desktop (not on Android/iOS) */
   desktopOnly?: boolean;
+  /** If true, the tool is only available once an image endpoint is configured */
+  requiresImageConfig?: boolean;
 }
 
 async function handleGetCurrentTime(): Promise<ToolResult> {
@@ -68,6 +78,22 @@ async function handleReadClipboard(): Promise<ToolResult> {
 
 function failResult(error: string): ToolResult {
   return { success: false, content: "", error };
+}
+
+async function handleGenerateImage(args: Record<string, unknown>): Promise<ToolResult> {
+  const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
+  if (!prompt) return failResult("Missing required parameter: prompt");
+  const size = typeof args.size === "string" && args.size ? args.size : undefined;
+  try {
+    const images = await persistGeneratedImages(await generateImages({ prompt, size }));
+    return {
+      success: true,
+      content: `Generated ${images.length} image(s) from the prompt. They are already displayed to the user; do not describe the pixels you cannot see.`,
+      images,
+    };
+  } catch (err) {
+    return failResult(err instanceof Error ? err.message : "Image generation failed");
+  }
 }
 
 function requireWorkspaceDir(context?: ToolContext): string | ToolResult {
@@ -326,6 +352,29 @@ export const BUILT_IN_TOOLS: BuiltInToolDef[] = [
     requiresWorkspace: true,
     desktopOnly: true,
   },
+  {
+    name: "generate_image",
+    description:
+      "Generate an image from a text prompt using the configured image model. Call this when the user asks for a picture, illustration, logo, or any visual to be created. Write the prompt in English and describe subject, style, composition and lighting. The generated image is shown to the user automatically.",
+    parameters: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          description: "Detailed English description of the image to generate",
+        },
+        size: {
+          type: "string",
+          description:
+            "Optional image size, e.g. '1024x1024' (square), '1536x1024' (landscape), '1024x1536' (portrait). Omit for the model default.",
+        },
+      },
+      required: ["prompt"],
+    },
+    handler: (args) => handleGenerateImage(args),
+    enabledByDefault: true,
+    requiresImageConfig: true,
+  },
   // ── Git tools ──
   {
     name: "git_status",
@@ -428,7 +477,10 @@ export async function executeBuiltInTool(
  */
 export function getBuiltInToolDefs(context?: ToolContext) {
   return BUILT_IN_TOOLS.filter(
-    (t) => (!t.requiresWorkspace || !!context?.workspaceDir) && (!t.desktopOnly || isDesktop),
+    (t) =>
+      (!t.requiresWorkspace || !!context?.workspaceDir) &&
+      (!t.desktopOnly || isDesktop) &&
+      (!t.requiresImageConfig || isImageGenerationConfigured()),
   ).map((t) => ({
     type: "function" as const,
     function: {

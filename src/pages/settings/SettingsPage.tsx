@@ -17,6 +17,7 @@ import {
   PanelBottomClose,
   Wrench,
   Mic,
+  Image as ImageIcon,
   Minimize2,
   Languages,
   Moon,
@@ -34,6 +35,7 @@ import { useConfirm, appAlert } from "../../components/shared/ConfirmDialogProvi
 import { createBackup, downloadBackup, pickAndImportBackup } from "../../services/backup";
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
+import { ImageSettingsPage } from "./ImageSettingsPage";
 import { McpPage, type McpPageHandle } from "./McpPage";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
@@ -250,6 +252,20 @@ export function SettingsPage({
                 id: "stt-settings",
                 title: t("settings.sttProvider"),
                 component: <SttSettingsPage />,
+              })
+            }
+          />
+          <SettingsRow
+            icon={ImageIcon}
+            iconColor="#ec4899"
+            iconBg="rgba(236,72,153,0.1)"
+            label={t("settings.imageProvider")}
+            detail={settings.imageApiKey ? settings.imageModel : t("settings.imageNotConfigured")}
+            onPress={() =>
+              push({
+                id: "image-settings",
+                title: t("settings.imageProvider"),
+                component: <ImageSettingsPage />,
               })
             }
             isLast
