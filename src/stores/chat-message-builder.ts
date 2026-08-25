@@ -181,6 +181,14 @@ export function extractMentionedParticipants(
   return [...mentioned];
 }
 
+/** Multimodal message content: leading text (if any) followed by the images. */
+function toImageContent(text: string, uris: string[]) {
+  const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+  if (text) parts.push({ type: "text", text });
+  for (const uri of uris) parts.push({ type: "image_url", image_url: { url: uri } });
+  return parts;
+}
+
 /**
  * Build the API messages array for a specific participant,
  * applying system prompts, group roster, and role mapping.
@@ -201,6 +209,9 @@ export function buildApiMessagesForParticipant(
     : null;
   const model = useProviderStore.getState().getModelById(participant.modelId);
   const supportsVision = !!model?.capabilities?.vision;
+  const apiFormat = model
+    ? useProviderStore.getState().getProviderById(model.providerId)?.apiFormat
+    : undefined;
 
   const isGroup = conv.type === "group";
   const apiMessages: Array<{ role: string; content: unknown }> = [];
@@ -249,7 +260,8 @@ export function buildApiMessagesForParticipant(
   } else if (identity?.systemPrompt || workspaceHint || options?.systemPromptAppend) {
     apiMessages.push({
       role: "system",
-      content: (identity?.systemPrompt || "") + workspaceHint + (options?.systemPromptAppend ?? ""),
+      content:
+        (identity?.systemPrompt || "") + workspaceHint + (options?.systemPromptAppend ?? ""),
     });
   }
 
@@ -263,27 +275,23 @@ export function buildApiMessagesForParticipant(
     let content: unknown = m.content;
 
     // Images the model produced earlier are part of the visual context: without
-    // them a follow-up like "make the sky darker" has nothing to edit.
-    if (m.role === "assistant" && m.generatedImages && m.generatedImages.length > 0) {
-      if (supportsVision) {
-        const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
-        if (m.content) parts.push({ type: "text", text: m.content });
-        for (const uri of m.generatedImages) {
-          parts.push({ type: "image_url", image_url: { url: uri } });
-        }
-        content = parts;
-      }
+    // them a follow-up like "make the sky darker" has nothing to edit. Only the
+    // Gemini protocol accepts images inside an assistant turn — the OpenAI-style
+    // protocols reject image_url parts on anything but a user message.
+    if (
+      m.role === "assistant" &&
+      m.generatedImages &&
+      m.generatedImages.length > 0 &&
+      supportsVision &&
+      apiFormat === "gemini-generate-content"
+    ) {
+      content = toImageContent(m.content, m.generatedImages);
     }
 
     if (m.role === "user") {
       if (m.images && m.images.length > 0) {
         if (supportsVision) {
-          const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
-          if (m.content) parts.push({ type: "text", text: m.content });
-          for (const uri of m.images) {
-            parts.push({ type: "image_url", image_url: { url: uri } });
-          }
-          content = parts;
+          content = toImageContent(m.content, m.images);
         } else {
           const imageOmittedNotice =
             "[User attached image(s), but they were omitted because this model does not support image input.]";

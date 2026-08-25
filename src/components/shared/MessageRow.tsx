@@ -796,7 +796,7 @@ export const MessageRow = memo(function MessageRow({
       {/* Generated images */}
       {message.generatedImages && message.generatedImages.length > 0 && (
         <div className="flex flex-wrap gap-1.5" style={{ maxWidth: 720 }}>
-          {message.generatedImages.map((uri: string, idx: number) => (
+          {message.generatedImages.map((uri, idx) => (
             <img
               key={idx}
               src={uri}
