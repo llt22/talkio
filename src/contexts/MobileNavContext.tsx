@@ -12,7 +12,6 @@ export interface MobileNavFunctions {
   pushSettingsStt: () => void;
   pushSettingsImage: () => void;
   pushSettingsAbout: () => void;
-  pushSettingsWebdav: () => void;
 }
 
 export const MobileNavContext = createContext<MobileNavFunctions | null>(null);

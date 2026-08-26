@@ -16,7 +16,6 @@ import {
   Download,
   Upload,
   Info,
-  CloudUpload,
 } from "lucide-react";
 import i18n from "../../i18n";
 
@@ -83,13 +82,6 @@ export function SettingsMainContent() {
           label={t("settings.imageProvider")}
           detail={settings.imageApiKey ? settings.imageModel : t("settings.imageNotConfigured")}
           onPress={() => mobileNav?.pushSettingsImage()}
-        />
-        <SettingsRow
-          icon={CloudUpload}
-          iconColor="#0ea5e9"
-          iconBg="rgba(14,165,233,0.1)"
-          label={t("settings.webdav")}
-          onPress={() => mobileNav?.pushSettingsWebdav()}
         />
         <SettingsRow
           icon={Info}

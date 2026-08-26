@@ -16,10 +16,9 @@ import {
 } from "../storage/database";
 
 type BackupProvider = Omit<Provider, "apiKey"> & { apiKey?: string };
-type BackupSettings = Omit<AppSettings, "sttApiKey" | "imageApiKey" | "webdavPassword"> & {
+type BackupSettings = Omit<AppSettings, "sttApiKey" | "imageApiKey"> & {
   sttApiKey?: string;
   imageApiKey?: string;
-  webdavPassword?: string;
 };
 
 export interface LegacyBackupData {
@@ -63,7 +62,6 @@ export async function createBackup(includeSecrets = false): Promise<BackupData> 
       : (({
           sttApiKey: _sttApiKey,
           imageApiKey: _imageApiKey,
-          webdavPassword: _webdavPassword,
           ...value
         }) => value)(storedSettings)
     : null;
@@ -281,11 +279,10 @@ async function applyConfigData(data: BackupData | LegacyBackupData): Promise<voi
   if (data.identities) kvStore.setObject("identities", data.identities);
   if (data.mcpServers) kvStore.setObject("mcp_servers", data.mcpServers);
   if (data.settings) {
-    const { sttApiKey, imageApiKey, webdavPassword, ...rest } = data.settings;
+    const { sttApiKey, imageApiKey, ...rest } = data.settings;
     const settings: Record<string, unknown> = { ...rest };
     if (sttApiKey) settings.sttApiKey = sttApiKey;
     if (imageApiKey) settings.imageApiKey = imageApiKey;
-    if (webdavPassword) settings.webdavPassword = webdavPassword;
     kvStore.setObject("settings", settings);
   }
 }
