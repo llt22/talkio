@@ -5,10 +5,9 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -81,11 +80,16 @@ class MainActivity : TauriActivity() {
    * the web layer has no way to know the keyboard is there and the composer stays hidden
    * behind it. Below API 35 the system still resizes the window, so the CSS layout adapts
    * on its own and reporting an inset here would push the composer up twice.
+   *
+   * The listener must hand the insets back to the WebView (`onApplyWindowInsets`) and
+   * return that result: installing a listener takes over the view's inset policy, so the
+   * WebView otherwise never feeds the system-bar insets to CSS `env(safe-area-inset-*)`,
+   * which collapses to 0 and lets the status/navigation bars overlap the web UI.
    */
   private fun installKeyboardInsetBridge(webView: WebView) {
     if (Build.VERSION.SDK_INT < 35) return
-    ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
-      val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+    webView.setOnApplyWindowInsetsListener { view, windowInsets ->
+      val imeBottom = windowInsets.getInsets(WindowInsets.Type.ime()).bottom
       val density = view.resources.displayMetrics.density
       val cssPx = if (density > 0f) Math.round(imeBottom / density) else imeBottom
       if (cssPx != lastKeyboardInsetCss) {
@@ -95,7 +99,7 @@ class MainActivity : TauriActivity() {
           null
         )
       }
-      insets
+      view.onApplyWindowInsets(windowInsets)
     }
   }
 
