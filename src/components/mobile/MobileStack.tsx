@@ -22,6 +22,8 @@ import { EmptyState } from "../shared/EmptyState";
 import { ProviderEditPage } from "../../pages/settings/ProviderEditPage";
 import { SttSettingsPage } from "../../pages/settings/SttSettingsPage";
 import { ImageSettingsPage } from "../../pages/settings/ImageSettingsPage";
+import { AboutPage } from "../../pages/settings/AboutPage";
+import { WebDavSettingsPage } from "../../pages/settings/WebDavSettingsPage";
 import { McpPage } from "../../pages/settings/McpPage";
 import { McpServerForm } from "../../pages/settings/McpServerForm";
 import { IdentityEditPage } from "../../pages/settings/IdentityPage";
@@ -70,6 +72,8 @@ const Home: ActivityComponentType = () => {
         push("McpServerEdit", { serverId: serverId ?? "" }),
       pushSettingsStt: () => push("SttSettings", {}),
       pushSettingsImage: () => push("ImageSettings", {}),
+      pushSettingsAbout: () => push("About", {}),
+      pushSettingsWebdav: () => push("WebDavSettings", {}),
     }),
     [push],
   );
@@ -115,6 +119,8 @@ const ChatDetail: ActivityComponentType<{ conversationId: string }> = ({ params 
         push("McpServerEdit", { serverId: serverId ?? "" }),
       pushSettingsStt: () => push("SttSettings", {}),
       pushSettingsImage: () => push("ImageSettings", {}),
+      pushSettingsAbout: () => push("About", {}),
+      pushSettingsWebdav: () => push("WebDavSettings", {}),
     }),
     [push],
   );
@@ -534,6 +540,44 @@ const ImageSettings: ActivityComponentType = () => {
   );
 };
 
+// ═══════════════════════════════
+// Activity: About
+// ═══════════════════════════════
+const About: ActivityComponentType = () => {
+  const { t } = useTranslation();
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
+
+  return (
+    <AppScreen appBar={{ title: t("settings.about") }}>
+      <AboutPage />
+    </AppScreen>
+  );
+};
+
+// ═══════════════════════════════
+// Activity: WebDAV Settings
+// ═══════════════════════════════
+const WebDavSettings: ActivityComponentType = () => {
+  const { t } = useTranslation();
+  useEffect(() => {
+    _stackDepth++;
+    return () => {
+      _stackDepth--;
+    };
+  }, []);
+
+  return (
+    <AppScreen appBar={{ title: t("settings.webdav") }}>
+      <WebDavSettingsPage />
+    </AppScreen>
+  );
+};
+
 // ══════════════════════════════════════════
 // Stackflow Configuration
 // ══════════════════════════════════════════
@@ -551,6 +595,8 @@ const result = stackflow({
     McpServerEdit,
     SttSettings,
     ImageSettings,
+    About,
+    WebDavSettings,
   },
   plugins: [
     basicRendererPlugin(),

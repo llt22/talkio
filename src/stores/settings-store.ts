@@ -28,6 +28,10 @@ export interface AppSettings {
   imageBaseUrl: string;
   imageApiKey: string;
   imageModel: string;
+  /** WebDAV backup: directory URL + credentials (password treated as a secret) */
+  webdavUrl: string;
+  webdavUsername: string;
+  webdavPassword: string;
 }
 
 interface SettingsState {
@@ -52,6 +56,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   imageBaseUrl: "https://api.openai.com/v1",
   imageApiKey: "",
   imageModel: "gpt-image-1",
+  webdavUrl: "",
+  webdavUsername: "",
+  webdavPassword: "",
 };
 
 const SETTINGS_KEY = "settings";

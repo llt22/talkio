@@ -16,9 +16,10 @@ import {
 } from "../storage/database";
 
 type BackupProvider = Omit<Provider, "apiKey"> & { apiKey?: string };
-type BackupSettings = Omit<AppSettings, "sttApiKey" | "imageApiKey"> & {
+type BackupSettings = Omit<AppSettings, "sttApiKey" | "imageApiKey" | "webdavPassword"> & {
   sttApiKey?: string;
   imageApiKey?: string;
+  webdavPassword?: string;
 };
 
 export interface LegacyBackupData {
@@ -39,19 +40,32 @@ export interface BackupData extends Omit<LegacyBackupData, "version"> {
   tasks: Task[];
 }
 
-export async function createBackup(): Promise<BackupData> {
+export async function createBackup(includeSecrets = false): Promise<BackupData> {
   const [conversations, messages, messageBlocks, tasks] = await Promise.all([
     getAllConversations(),
     getAllMessages(),
     getAllBlocks(),
     getAllTasks(),
   ]);
-  const providers = (kvStore.getObject<Provider[]>("providers") ?? []).map(
-    ({ apiKey: _apiKey, ...provider }) => provider,
-  );
+  const rawProviders = kvStore.getObject<Provider[]>("providers") ?? [];
+  const providers: BackupProvider[] = includeSecrets
+    ? await Promise.all(
+        rawProviders.map(async ({ apiKey: _apiKey, ...provider }) => {
+          const key = await secretStore.get(provider.id);
+          return key ? { ...provider, apiKey: key } : provider;
+        }),
+      )
+    : rawProviders.map(({ apiKey: _apiKey, ...provider }) => provider);
   const storedSettings = kvStore.getObject<AppSettings>("settings");
-  const settings = storedSettings
-    ? (({ sttApiKey: _sttApiKey, imageApiKey: _imageApiKey, ...value }) => value)(storedSettings)
+  const settings: BackupSettings | null = storedSettings
+    ? includeSecrets
+      ? storedSettings
+      : (({
+          sttApiKey: _sttApiKey,
+          imageApiKey: _imageApiKey,
+          webdavPassword: _webdavPassword,
+          ...value
+        }) => value)(storedSettings)
     : null;
   return {
     version: "3.0",
@@ -112,7 +126,7 @@ export async function importBackupFromString(text: string): Promise<ImportResult
 
     const configSnapshot = captureConfigSnapshot();
     try {
-      await applyConfigData(data, data.version === "2.0");
+      await applyConfigData(data);
       if (data.version === "3.0") {
         await replaceChatData({
           conversations: data.conversations,
@@ -252,15 +266,11 @@ function restoreConfigSnapshot(snapshot: Map<(typeof CONFIG_KEYS)[number], strin
   }
 }
 
-async function applyConfigData(
-  data: BackupData | LegacyBackupData,
-  importLegacySecrets: boolean,
-): Promise<void> {
+async function applyConfigData(data: BackupData | LegacyBackupData): Promise<void> {
   if (data.providers) {
-    if (importLegacySecrets) {
-      for (const provider of data.providers) {
-        if (provider.apiKey) await secretStore.set(provider.id, provider.apiKey);
-      }
+    // Restore any secrets the backup carried; backups without keys simply skip this.
+    for (const provider of data.providers) {
+      if (provider.apiKey) await secretStore.set(provider.id, provider.apiKey);
     }
     kvStore.setObject(
       "providers",
@@ -271,7 +281,11 @@ async function applyConfigData(
   if (data.identities) kvStore.setObject("identities", data.identities);
   if (data.mcpServers) kvStore.setObject("mcp_servers", data.mcpServers);
   if (data.settings) {
-    const { sttApiKey: _sttApiKey, imageApiKey: _imageApiKey, ...settings } = data.settings;
+    const { sttApiKey, imageApiKey, webdavPassword, ...rest } = data.settings;
+    const settings: Record<string, unknown> = { ...rest };
+    if (sttApiKey) settings.sttApiKey = sttApiKey;
+    if (imageApiKey) settings.imageApiKey = imageApiKey;
+    if (webdavPassword) settings.webdavPassword = webdavPassword;
     kvStore.setObject("settings", settings);
   }
 }

@@ -1,0 +1,7 @@
+{
+  "identifier": "desktop-capability",
+  "description": "Desktop-only permissions (window state persistence)",
+  "windows": ["main"],
+  "platforms": ["linux", "macOS", "windows"],
+  "permissions": ["window-state:default"]
+}

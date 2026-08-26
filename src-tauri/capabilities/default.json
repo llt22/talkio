@@ -13,6 +13,7 @@
     "fs:default",
     "notification:default",
     "opener:default",
+    "opener:allow-open-url",
     "dialog:default",
     "fs:allow-write-text-file",
     "fs:allow-write-file",

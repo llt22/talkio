@@ -25,6 +25,8 @@ import {
   Upload,
   Trash2,
   ShieldCheck,
+  Info,
+  CloudUpload,
   type LucideIcon,
 } from "lucide-react";
 import i18n from "../../i18n";
@@ -36,6 +38,8 @@ import { createBackup, downloadBackup, pickAndImportBackup } from "../../service
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
 import { ImageSettingsPage } from "./ImageSettingsPage";
+import { AboutPage } from "./AboutPage";
+import { WebDavSettingsPage } from "./WebDavSettingsPage";
 import { McpPage, type McpPageHandle } from "./McpPage";
 import { getAvatarProps } from "../../lib/avatar-utils";
 import { EmptyState } from "../../components/shared/EmptyState";
@@ -268,6 +272,32 @@ export function SettingsPage({
                 component: <ImageSettingsPage />,
               })
             }
+          />
+          <SettingsRow
+            icon={CloudUpload}
+            iconColor="#0ea5e9"
+            iconBg="rgba(14,165,233,0.1)"
+            label={t("settings.webdav")}
+            onPress={() =>
+              push({
+                id: "webdav-settings",
+                title: t("settings.webdav"),
+                component: <WebDavSettingsPage />,
+              })
+            }
+          />
+          <SettingsRow
+            icon={Info}
+            iconColor="#6b7280"
+            iconBg="rgba(107,114,128,0.1)"
+            label={t("settings.about")}
+            onPress={() =>
+              push({
+                id: "about",
+                title: t("settings.about"),
+                component: <AboutPage />,
+              })
+            }
             isLast
           />
         </div>
@@ -482,8 +512,14 @@ export function SettingsPage({
             iconBg="rgba(20,184,166,0.1)"
             label={t("settings.exportBackup")}
             onPress={async () => {
+              const includeSecrets = await confirm({
+                title: t("settings.exportBackup"),
+                description: t("settings.exportSecretsPrompt"),
+                confirmText: t("settings.exportWithSecrets"),
+                cancelText: t("settings.exportWithoutSecrets"),
+              });
               try {
-                const data = await createBackup();
+                const data = await createBackup(includeSecrets);
                 const saved = await downloadBackup(data);
                 if (saved) await appAlert(t("settings.exportSuccess"));
               } catch (error) {

@@ -57,6 +57,7 @@ pub fn run() {
   // Desktop: register MCP stdio commands + managed state
   #[cfg(not(target_os = "android"))]
   let builder = builder
+    .plugin(tauri_plugin_window_state::Builder::default().build())
     .manage(mcp_stdio::Sessions::default())
     .manage(tray::TrayState::default())
     .on_window_event(tray::on_window_event)
