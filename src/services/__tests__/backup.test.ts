@@ -14,10 +14,15 @@ const storage = vi.hoisted(() => ({
   set: vi.fn(),
   delete: vi.fn(),
 }));
+const secretStore = vi.hoisted(() => ({
+  set: vi.fn(),
+  get: vi.fn(),
+  delete: vi.fn(),
+}));
 
 vi.mock("../../storage/database", () => database);
 vi.mock("../../storage/kv-store", () => ({ kvStore: storage }));
-vi.mock("../secret-store", () => ({ secretStore: { set: vi.fn() } }));
+vi.mock("../secret-store", () => ({ secretStore }));
 vi.mock("../file-download", () => ({ saveOrShareFile: vi.fn() }));
 
 import { createBackup, importBackupFromString } from "../backup";
@@ -50,6 +55,9 @@ describe("full backup", () => {
     vi.clearAllMocks();
     storage.getObject.mockReturnValue(undefined);
     storage.getString.mockReturnValue(null);
+    secretStore.set.mockResolvedValue(undefined);
+    secretStore.get.mockResolvedValue(undefined);
+    secretStore.delete.mockResolvedValue(undefined);
     database.getAllConversations.mockResolvedValue([{ id: "conversation-1" }]);
     database.getAllMessages.mockResolvedValue([{ id: "message-1" }]);
     database.getAllBlocks.mockResolvedValue([{ id: "block-1" }]);
@@ -225,5 +233,35 @@ describe("full backup", () => {
     expect(result.success).toBe(false);
     expect(storage.set).toHaveBeenCalledWith("providers", "old-providers");
     expect(storage.set).toHaveBeenCalledWith("settings", "old-settings");
+  });
+
+  it("rolls back provider secrets when import fails", async () => {
+    storage.getObject.mockImplementation((key: string) =>
+      key === "providers" ? [{ id: "provider-1" }] : undefined,
+    );
+    secretStore.get.mockResolvedValue("old-secret");
+    database.replaceChatData.mockRejectedValueOnce(new Error("restore failed"));
+
+    const result = await importBackupFromString(
+      JSON.stringify({
+        version: "3.0",
+        exportedAt: "2026-08-09T00:00:00.000Z",
+        providers: [
+          { id: "provider-1", apiKey: "new-secret" },
+          { id: "provider-2", apiKey: "new-secret-2" },
+        ],
+        models: [],
+        identities: [],
+        mcpServers: [],
+        conversations: [validConversation],
+        messages: [validMessage],
+        messageBlocks: [],
+      }),
+    );
+
+    expect(result.success).toBe(false);
+    expect(secretStore.set).toHaveBeenCalledWith("provider-1", "new-secret");
+    expect(secretStore.set).toHaveBeenCalledWith("provider-1", "old-secret");
+    expect(secretStore.delete).toHaveBeenCalledWith("provider-2");
   });
 });

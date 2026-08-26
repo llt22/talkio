@@ -20,6 +20,7 @@ type BackupSettings = Omit<AppSettings, "sttApiKey" | "imageApiKey"> & {
   sttApiKey?: string;
   imageApiKey?: string;
 };
+type SecretSnapshot = Map<string, string | undefined>;
 
 export interface LegacyBackupData {
   version: "2.0";
@@ -123,6 +124,7 @@ export async function importBackupFromString(text: string): Promise<ImportResult
     const data = validateBackupData(parsed);
 
     const configSnapshot = captureConfigSnapshot();
+    const secretSnapshot = await captureProviderSecretSnapshot();
     try {
       await applyConfigData(data);
       if (data.version === "3.0") {
@@ -135,6 +137,7 @@ export async function importBackupFromString(text: string): Promise<ImportResult
       }
     } catch (error) {
       restoreConfigSnapshot(configSnapshot);
+      await restoreProviderSecretsSnapshot(secretSnapshot, data.providers ?? []);
       throw error;
     }
 
@@ -261,6 +264,29 @@ function restoreConfigSnapshot(snapshot: Map<(typeof CONFIG_KEYS)[number], strin
   for (const [key, value] of snapshot) {
     if (value === null) kvStore.delete(key);
     else kvStore.set(key, value);
+  }
+}
+
+async function captureProviderSecretSnapshot(): Promise<SecretSnapshot> {
+  const providers = kvStore.getObject<Provider[]>("providers") ?? [];
+  const entries = await Promise.all(
+    providers.map(async ({ id }) => [id, await secretStore.get(id)] as const),
+  );
+  return new Map(entries);
+}
+
+async function restoreProviderSecretsSnapshot(
+  snapshot: SecretSnapshot,
+  importedProviders: ReadonlyArray<{ id: string }>,
+): Promise<void> {
+  const ids = new Set<string>([...snapshot.keys(), ...importedProviders.map(({ id }) => id)]);
+  for (const id of ids) {
+    const secret = snapshot.get(id);
+    if (secret) {
+      await secretStore.set(id, secret);
+    } else {
+      await secretStore.delete(id);
+    }
   }
 }
 

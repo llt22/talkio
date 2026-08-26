@@ -33,6 +33,7 @@ import { useProviderStore } from "../../stores/provider-store";
 import { useChatStore } from "../../stores/chat-store";
 import { useSettingsStore, type AppSettings } from "../../stores/settings-store";
 import { useConfirm, appAlert } from "../../components/shared/ConfirmDialogProvider";
+import { useBackupSecretsChoice } from "../../components/shared/useBackupSecretsChoice";
 import { createBackup, downloadBackup, pickAndImportBackup } from "../../services/backup";
 import { ProviderEditPage } from "./ProviderEditPage";
 import { SttSettingsPage } from "./SttSettingsPage";
@@ -105,6 +106,7 @@ export function SettingsPage({
 }: { onSubPageChange?: (inSubPage: boolean) => void } = {}) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
+  const { prompt: promptBackupSecrets, dialog: backupSecretsDialog } = useBackupSecretsChoice();
   const providers = useProviderStore(
     (s: ReturnType<typeof useProviderStore.getState>) => s.providers,
   );
@@ -174,6 +176,7 @@ export function SettingsPage({
 
   return (
     <div className="relative h-full w-full overflow-hidden">
+      {backupSecretsDialog}
       {/* Main settings list — always mounted */}
       <div
         className="absolute inset-0 overflow-y-auto"
@@ -497,12 +500,8 @@ export function SettingsPage({
             iconBg="rgba(20,184,166,0.1)"
             label={t("settings.exportBackup")}
             onPress={async () => {
-              const includeSecrets = await confirm({
-                title: t("settings.exportBackup"),
-                description: t("settings.exportSecretsPrompt"),
-                confirmText: t("settings.exportWithSecrets"),
-                cancelText: t("settings.exportWithoutSecrets"),
-              });
+              const includeSecrets = await promptBackupSecrets();
+              if (includeSecrets === null) return;
               try {
                 const data = await createBackup(includeSecrets);
                 const saved = await downloadBackup(data);

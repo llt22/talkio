@@ -5,6 +5,7 @@ import { useSettingsStore, type AppSettings } from "../../stores/settings-store"
 import { SettingsRow, SectionHeader } from "../../pages/settings/SettingsPage";
 import { createBackup, downloadBackup, pickAndImportBackup } from "../../services/backup";
 import { useConfirm, appAlert } from "../../components/shared/ConfirmDialogProvider";
+import { useBackupSecretsChoice } from "../../components/shared/useBackupSecretsChoice";
 import {
   ArrowLeftRight,
   Wrench,
@@ -22,6 +23,7 @@ import i18n from "../../i18n";
 export function SettingsMainContent() {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
+  const { prompt: promptBackupSecrets, dialog: backupSecretsDialog } = useBackupSecretsChoice();
   const mobileNav = useMobileNav();
   const providers = useProviderStore((s) => s.providers);
   const settings = useSettingsStore((s) => s.settings);
@@ -42,6 +44,7 @@ export function SettingsMainContent() {
 
   return (
     <div className="h-full overflow-y-auto" style={{ backgroundColor: "var(--background)" }}>
+      {backupSecretsDialog}
       {/* iOS Large Title */}
       <div className="px-4 pt-2 pb-2">
         <h1 className="text-foreground text-[20px] font-bold tracking-tight">
@@ -189,12 +192,8 @@ export function SettingsMainContent() {
           iconBg="rgba(20,184,166,0.1)"
           label={t("settings.exportBackup")}
           onPress={async () => {
-            const includeSecrets = await confirm({
-              title: t("settings.exportBackup"),
-              description: t("settings.exportSecretsPrompt"),
-              confirmText: t("settings.exportWithSecrets"),
-              cancelText: t("settings.exportWithoutSecrets"),
-            });
+            const includeSecrets = await promptBackupSecrets();
+            if (includeSecrets === null) return;
             try {
               const data = await createBackup(includeSecrets);
               const saved = await downloadBackup(data);
