@@ -252,6 +252,12 @@ body,
   background: var(--scrollbar-thumb-hover);
 }
 
+/* Stackflow's default Cupertino theme hard-codes a light app bar. */
+html .talkio-mobile-stack {
+  --stackflow-plugin-basic-ui-app-bar-background-color: var(--background);
+  --stackflow-plugin-basic-ui-app-bar-background-image: none;
+}
+
 /* Shiki syntax highlighting */
 .shiki-code pre {
   background-color: transparent !important;

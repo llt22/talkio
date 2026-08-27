@@ -226,7 +226,7 @@ export const McpPage = forwardRef<McpPageHandle, McpPageProps>(function McpPage(
                     >
                       <div className="min-w-0 flex-1">
                         <p className="text-foreground text-[13px] font-medium">{tool.name}</p>
-                        <p className="text-muted-foreground truncate text-[11px]">
+                        <p className="text-muted-foreground text-[11px] leading-relaxed break-words">
                           {tool.description}
                         </p>
                       </div>

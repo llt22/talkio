@@ -1,0 +1,17 @@
+{
+  "app": {
+    "windows": [
+      {
+        "title": "Talkio",
+        "width": 1100,
+        "height": 700,
+        "minWidth": 400,
+        "minHeight": 300,
+        "resizable": true,
+        "visible": true,
+        "fullscreen": false,
+        "dragDropEnabled": false
+      }
+    ]
+  }
+}

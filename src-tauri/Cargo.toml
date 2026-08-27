@@ -33,4 +33,5 @@ uuid = { version = "1", features = ["v4"] }
 tauri = { version = "2.10.0", features = ["tray-icon"] }
 tokio = { version = "1", features = ["process", "io-util", "sync", "time"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2"

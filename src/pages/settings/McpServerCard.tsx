@@ -127,7 +127,9 @@ export function McpServerCard({
               style={{ borderTop: idx > 0 ? "0.5px solid var(--border)" : "none" }}
             >
               <p className="text-foreground text-[12px] font-medium">{tool.name}</p>
-              <p className="text-muted-foreground line-clamp-1 text-[11px]">{tool.description}</p>
+              <p className="text-muted-foreground text-[11px] leading-relaxed break-words">
+                {tool.description}
+              </p>
             </div>
           ))}
         </div>

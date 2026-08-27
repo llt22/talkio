@@ -579,7 +579,12 @@ const result = stackflow({
     basicRendererPlugin(),
     basicUIPlugin({
       theme: "cupertino",
+      rootClassName: "talkio-mobile-stack",
+      backgroundColor: "var(--background)",
       appBar: {
+        borderColor: "var(--border)",
+        iconColor: "var(--foreground)",
+        textColor: "var(--foreground)",
         minSafeAreaInsetTop: "0px",
       },
     }),

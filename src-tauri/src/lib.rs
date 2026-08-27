@@ -3,6 +3,9 @@ use std::path::PathBuf;
 use tauri::Manager;
 
 #[cfg(not(target_os = "android"))]
+use tauri_plugin_window_state::{StateFlags, WindowExt};
+
+#[cfg(not(target_os = "android"))]
 mod mcp_stdio;
 #[cfg(not(target_os = "android"))]
 mod git_cmd;
@@ -46,7 +49,14 @@ fn check_pending_import(app: tauri::AppHandle) -> Option<String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  let builder = tauri::Builder::default()
+  let builder = tauri::Builder::default();
+
+  #[cfg(not(target_os = "android"))]
+  let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+    tray::show_main_window(app);
+  }));
+
+  let builder = builder
     .plugin(tauri_plugin_sql::Builder::default().build())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_notification::init())
@@ -57,7 +67,12 @@ pub fn run() {
   // Desktop: register MCP stdio commands + managed state
   #[cfg(not(target_os = "android"))]
   let builder = builder
-    .plugin(tauri_plugin_window_state::Builder::default().build())
+    .plugin(
+      tauri_plugin_window_state::Builder::default()
+        .with_state_flags(StateFlags::SIZE)
+        .skip_initial_state("main")
+        .build(),
+    )
     .manage(mcp_stdio::Sessions::default())
     .manage(tray::TrayState::default())
     .on_window_event(tray::on_window_event)
@@ -88,6 +103,23 @@ pub fn run() {
             .build(),
         )?;
       }
+
+      #[cfg(not(target_os = "android"))]
+      {
+        let window = app
+          .get_webview_window("main")
+          .ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::NotFound, "main window not found")
+          })?;
+        if let Err(error) = window.restore_state(StateFlags::SIZE) {
+          log::warn!("failed to restore main window size: {error}");
+        }
+        if let Err(error) = window.center() {
+          log::warn!("failed to center main window: {error}");
+        }
+        window.show()?;
+      }
+
       Ok(())
     })
     .run(tauri::generate_context!())
