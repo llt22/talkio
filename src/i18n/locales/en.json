@@ -21,7 +21,8 @@
     "yesterday": "Yesterday",
     "add": "Add",
     "success": "Success",
-    "selected": "Selected"
+    "selected": "Selected",
+    "remove": "Remove"
   },
   "tabs": {
     "chats": "Chats",
@@ -191,7 +192,8 @@
     "configureProvider": "Configure Provider",
     "selectModels": "Select Models",
     "selectModelsHint": "Pick at least 2 models for a group chat.",
-    "createGroup": "Create Group ({{count}})"
+    "createGroup": "Create Group ({{count}})",
+    "manage": "Manage"
   },
   "personas": {
     "searchIdentities": "Search personas...",

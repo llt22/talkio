@@ -21,7 +21,8 @@
     "yesterday": "昨天",
     "add": "添加",
     "success": "成功",
-    "selected": "已选"
+    "selected": "已选",
+    "remove": "移除"
   },
   "tabs": {
     "chats": "聊天",
@@ -189,7 +190,8 @@
     "configureProvider": "配置供应商",
     "selectModels": "选择模型",
     "selectModelsHint": "至少选择 2 个模型以创建群聊。",
-    "createGroup": "创建群聊 ({{count}})"
+    "createGroup": "创建群聊 ({{count}})",
+    "manage": "管理"
   },
   "personas": {
     "searchIdentities": "搜索角色...",

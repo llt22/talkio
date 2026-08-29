@@ -56,6 +56,8 @@ export function DesktopLayout() {
   const setCurrentConversation = useChatStore((s: ChatState) => s.setCurrentConversation);
   const createConversation = useChatStore((s: ChatState) => s.createConversation);
   const [showCreateGroupPicker, setShowCreateGroupPicker] = useState(false);
+  // Deep-link target for opening a provider's edit page from the Models page.
+  const [settingsProviderEditId, setSettingsProviderEditId] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem("desktop-sidebar-width");
     return saved ? Math.max(MIN_SIDEBAR, Math.min(MAX_SIDEBAR, Number(saved))) : DEFAULT_SIDEBAR;
@@ -78,6 +80,14 @@ export function DesktopLayout() {
   useEffect(() => {
     sidebarWidthRef.current = sidebarWidth;
   }, [sidebarWidth]);
+
+  // Clear the provider deep-link once we leave settings, so re-entering settings
+  // normally doesn't re-open the edit page (SettingsPage remounts on section switch).
+  useEffect(() => {
+    if (activeSection !== "settings" && settingsProviderEditId) {
+      setSettingsProviderEditId(null);
+    }
+  }, [activeSection, settingsProviderEditId]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -173,7 +183,7 @@ export function DesktopLayout() {
       {/* Main Content Area */}
       <div className="bg-background min-w-0 flex-1">
         {activeSection === "settings" ? (
-          <SettingsPage />
+          <SettingsPage initialProviderEditId={settingsProviderEditId ?? undefined} />
         ) : activeSection === "discover" ? (
           <DiscoverPage />
         ) : activeSection === "experts" ? (
@@ -183,6 +193,10 @@ export function DesktopLayout() {
               setActiveSection("chats");
             }}
             onCreateGroup={() => setShowCreateGroupPicker(true)}
+            onEditProvider={(providerId) => {
+              setSettingsProviderEditId(providerId);
+              setActiveSection("settings");
+            }}
           />
         ) : activeSection === "chats" && currentConversationId ? (
           <DesktopChatPanel conversationId={currentConversationId} />

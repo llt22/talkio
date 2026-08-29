@@ -103,7 +103,12 @@ export function SectionHeader({ label }: { label: string }) {
 
 export function SettingsPage({
   onSubPageChange,
-}: { onSubPageChange?: (inSubPage: boolean) => void } = {}) {
+  initialProviderEditId,
+}: {
+  onSubPageChange?: (inSubPage: boolean) => void;
+  /** Desktop deep-link: open this provider's edit page on mount (from Models "Manage"). */
+  initialProviderEditId?: string;
+} = {}) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
   const { prompt: promptBackupSecrets, dialog: backupSecretsDialog } = useBackupSecretsChoice();
@@ -158,6 +163,20 @@ export function SettingsPage({
     window.addEventListener("popstate", handler);
     return () => window.removeEventListener("popstate", handler);
   }, [popInternal]);
+
+  // Desktop deep-link: open the target provider's edit page once on mount.
+  const didDeepLinkRef = useRef(false);
+  useEffect(() => {
+    if (didDeepLinkRef.current || !initialProviderEditId) return;
+    const provider = providers.find((p) => p.id === initialProviderEditId);
+    if (!provider) return;
+    didDeepLinkRef.current = true;
+    push({
+      id: `provider-edit-${provider.id}`,
+      title: provider.name,
+      component: <ProviderEditPage editId={provider.id} onClose={pop} />,
+    });
+  }, [initialProviderEditId, providers, push, pop]);
 
   const top = subPageStack.length > 0 ? subPageStack[subPageStack.length - 1] : null;
 

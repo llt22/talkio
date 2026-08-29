@@ -20,12 +20,15 @@ import { EmptyState } from "../../components/shared/EmptyState";
 interface ModelsPageProps {
   onNavigateToChat?: (convId: string) => void;
   onCreateGroup?: () => void;
+  /** Desktop: open a provider's edit page. Mobile falls back to MobileNav. */
+  onEditProvider?: (providerId: string) => void;
   isMobile?: boolean;
 }
 
 export function ModelsPage({
   onNavigateToChat,
   onCreateGroup,
+  onEditProvider,
   isMobile = false,
 }: ModelsPageProps = {}) {
   const { t } = useTranslation();
@@ -120,6 +123,15 @@ export function ModelsPage({
     }
   }, [onCreateGroup, mobileNav]);
 
+  // Jump to the provider's edit page to add/remove/toggle its models.
+  const handleManageProvider = useCallback(
+    (providerId: string) => {
+      if (onEditProvider) onEditProvider(providerId);
+      else mobileNav?.pushSettingsProviderEdit(providerId);
+    },
+    [onEditProvider, mobileNav],
+  );
+
   return (
     <div className="flex h-full flex-col" style={{ backgroundColor: "var(--background)" }}>
       {/* iOS Large Title Header */}
@@ -185,10 +197,18 @@ export function ModelsPage({
               <div key={section.title} id={`section-${section.title}`}>
                 {/* Section Header */}
                 <div
-                  className="sticky top-0 z-10 px-5 py-1.5"
+                  className="sticky top-0 z-10 flex items-center justify-between px-5 py-1.5"
                   style={{ backgroundColor: "var(--secondary)" }}
                 >
                   <p className="text-muted-foreground text-[13px] font-semibold">{section.title}</p>
+                  {section.data[0]?.providerId && (
+                    <button
+                      onClick={() => handleManageProvider(section.data[0].providerId)}
+                      className="text-primary text-[12px] font-medium active:opacity-60"
+                    >
+                      {t("models.manage")}
+                    </button>
+                  )}
                 </div>
                 {/* Items */}
                 {section.data.map((model, idx) => {

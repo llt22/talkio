@@ -100,6 +100,11 @@ export function AddMemberContent({
     setSelected((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  // Deselect every member entry for a given model (tap the ✓ badge to remove)
+  const removeMembersByModelId = useCallback((modelId: string) => {
+    setSelected((prev) => prev.filter((m) => m.modelId !== modelId));
+  }, []);
+
   const handleConfirm = useCallback(() => {
     if (selected.length >= minMembers) {
       onConfirm(selected);
@@ -189,13 +194,24 @@ export function AddMemberContent({
                         <span className="min-w-0 flex-1 truncate">{model.displayName}</span>
                         {StatusIcon && (
                           <span
+                            onClick={
+                              isSelected
+                                ? (e) => {
+                                    e.stopPropagation();
+                                    removeMembersByModelId(model.id);
+                                  }
+                                : undefined
+                            }
+                            role={isSelected ? "button" : undefined}
                             className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
                               isSelected
-                                ? "bg-primary text-primary-foreground"
+                                ? "bg-primary text-primary-foreground hover:opacity-80"
                                 : "bg-primary/10 text-primary"
                             }`}
-                            title={statusLabel ?? undefined}
-                            aria-label={statusLabel ?? undefined}
+                            title={isSelected ? t("common.remove") : (statusLabel ?? undefined)}
+                            aria-label={
+                              isSelected ? t("common.remove") : (statusLabel ?? undefined)
+                            }
                           >
                             <StatusIcon size={12} strokeWidth={2.5} />
                           </span>
