@@ -43,6 +43,9 @@ src-tauri/target/
 docs/*.md
 !docs/README.md
 plans/
+.commandcode/
+.playwright-cli/
+yuque-page.yml
 
 # Environment
 .env
