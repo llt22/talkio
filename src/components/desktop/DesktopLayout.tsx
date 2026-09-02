@@ -183,7 +183,10 @@ export function DesktopLayout() {
       {/* Main Content Area */}
       <div className="bg-background min-w-0 flex-1">
         {activeSection === "settings" ? (
-          <SettingsPage initialProviderEditId={settingsProviderEditId ?? undefined} />
+          <SettingsPage
+            initialProviderEditId={settingsProviderEditId ?? undefined}
+            onInitialProviderEditClose={() => setActiveSection("experts")}
+          />
         ) : activeSection === "discover" ? (
           <DiscoverPage />
         ) : activeSection === "experts" ? (

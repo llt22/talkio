@@ -72,6 +72,7 @@ export function ChatView({
   const editMessage = useChatStore((s: ChatState) => s.editMessage);
 
   const { scrollRef, contentRef, scrollToBottom, isAtBottom } = useStickToBottom({
+    initial: "instant",
     resize: "instant",
   });
 

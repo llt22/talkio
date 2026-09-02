@@ -3,7 +3,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { CodeBlock } from "./CodeBlock";
+import { normalizeMarkdownMath } from "../../lib/markdown-math";
 
 interface MarkdownRendererProps {
   content: string;
@@ -57,7 +59,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
         rehypePlugins={[rehypeKatex]}
         components={{ pre: PreComponent, code: codeComponent, a: LinkComponent }}
       >
-        {content}
+        {normalizeMarkdownMath(content)}
       </ReactMarkdown>
     </div>
   );
