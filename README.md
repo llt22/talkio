@@ -105,13 +105,13 @@ Talkio 不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉
 
 - 所有数据存储在本地（SQLite）
 - 不运行任何云端服务，不收集用户数据
-- **API Key 安全存储** — 桌面端存入系统凭据库（macOS Keychain / Windows 凭据管理器 / Linux Secret Service），不写入应用本地存储；Android 端存储在应用私有 WebView 存储中，密钥永不离开设备
+- **API Key 安全存储** — 桌面端存入系统凭据库（macOS Keychain / Windows 凭据管理器 / Linux Secret Service），不写入应用本地存储；Android 端存储在应用私有 WebView 存储中。密钥仅用于直连对应 AI Provider，不经过 Talkio 服务
 
 ---
 
 ## 更多功能
 
-- **多 Provider** — OpenAI / Anthropic / DeepSeek / Groq / Ollama 等，支持 OpenAI Chat / Responses API 和 Anthropic Messages API
+- **多 Provider** — 内置 OpenAI、Anthropic、Google Gemini、Azure OpenAI、OpenRouter、DeepSeek、Groq、Ollama 等预设，支持 Responses、Chat Completions、Anthropic Messages 和 Gemini Generate Content 协议
 - **流式输出** — 实时渲染，支持 Markdown / 代码高亮 / Mermaid 图表 / HTML 预览
 - **深度推理** — 支持 DeepSeek、Qwen 等模型的 reasoning_content 和 `<think>` 标签
 - **工作区工具** — 绑定本地项目目录，AI 可读取、搜索、编辑文件，支持逐文件预览确认
@@ -123,9 +123,9 @@ Talkio 不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉
 - **Token 用量** — 每条回复显示输入/输出 Token 数
 - **消息编辑** — 编辑已发送的用户消息，AI 重新回答
 - **消息分支** — 重新生成回复，自动管理分支历史
-- **对话导出** — 导出为 Markdown 文件
+- **对话导出** — 导出为 Markdown、PDF 或 PNG 长截图，超长会话自动分片
 - **暗色模式** — 跟随系统主题，CSS 变量驱动
-- **数据备份** — 导出 JSON，跨设备迁移
+- **数据备份与恢复** — 将配置和完整聊天记录导出为 JSON，并可在其他设备恢复；备份不包含供应商和语音 API 密钥
 - **双语** — 中文 / English
 - **响应式** — 桌面 / 窄屏自适应布局
 
@@ -137,11 +137,11 @@ Talkio 不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉
 |------|------|
 | 桌面框架 | Tauri 2 (Rust) |
 | 前端框架 | React 19 · Vite |
-| 路由 | react-router-dom |
+| 移动端导航 | Stackflow |
 | 状态管理 | Zustand |
 | 数据库 | tauri-plugin-sql (SQLite) |
 | 样式 | TailwindCSS v4 · shadcn/ui · Radix UI |
-| AI | 自定义 SSE 流式客户端（OpenAI 兼容） |
+| AI | AI SDK · 多协议 Provider Adapter · 统一流式 Runtime |
 | 工具协议 | @modelcontextprotocol/sdk |
 | 渲染 | react-markdown · Mermaid · KaTeX |
 | 动画 | Framer Motion |
@@ -182,8 +182,12 @@ talkio/
 │   │   ├── shared/             # 共享组件（ChatView / ChatInput / Markdown 等）
 │   │   └── ui/                 # shadcn/ui 基础组件
 │   ├── services/               # 业务逻辑（AI API / MCP / 备份导出）
+│   │   ├── provider-adapters/   # Provider 协议适配
+│   │   ├── provider-profiles/   # Provider 预设与模型目录
+│   │   └── runtime/             # 统一模型运行时
 │   ├── stores/                 # Zustand 状态管理
 │   ├── storage/                # 持久化（SQLite · KV Store）
+│   ├── contexts/               # React Context
 │   ├── hooks/                  # React Hooks
 │   ├── i18n/                   # 国际化（中文 / English）
 │   ├── pages/                  # 页面组件

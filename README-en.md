@@ -105,13 +105,13 @@ Connect to external tool servers via [Model Context Protocol](https://modelconte
 
 - All data stored locally (SQLite)
 - No cloud services, no data collection
-- **API keys stored securely** — on desktop they live in the OS credential store (macOS Keychain / Windows Credential Manager / Linux Secret Service), never in app local storage; on Android they are kept in the app's private WebView storage. Keys never leave your device
+- **API keys stored securely** — on desktop they live in the OS credential store (macOS Keychain / Windows Credential Manager / Linux Secret Service), never in app local storage; on Android they are kept in the app's private WebView storage. Keys are only used to connect directly to the corresponding AI provider and never pass through a Talkio service
 
 ---
 
 ## More Features
 
-- **Multi-Provider** — OpenAI / Anthropic / DeepSeek / Groq / Ollama and more, supports OpenAI Chat / Responses API and Anthropic Messages API
+- **Multi-Provider** — Built-in presets for OpenAI, Anthropic, Google Gemini, Azure OpenAI, OpenRouter, DeepSeek, Groq, Ollama, and more; supports Responses, Chat Completions, Anthropic Messages, and Gemini Generate Content protocols
 - **Streaming Output** — Real-time rendering with Markdown / syntax highlighting / Mermaid diagrams / HTML preview
 - **Deep Reasoning** — Supports reasoning_content and `<think>` tags from DeepSeek, Qwen, etc.
 - **Workspace Tools** — Bind a local project directory, AI can read, search, and edit files with per-file preview confirmation
@@ -123,9 +123,9 @@ Connect to external tool servers via [Model Context Protocol](https://modelconte
 - **Token Usage** — Input/output token counts displayed per message
 - **Message Editing** — Edit sent user messages, AI re-generates the response
 - **Message Branching** — Regenerate replies with automatic branch history management
-- **Conversation Export** — Export as Markdown file
+- **Conversation Export** — Export as Markdown, PDF, or long PNG screenshots, with automatic pagination for long conversations
 - **Dark Mode** — Follows system theme, CSS variable driven
-- **Data Backup** — Export JSON, migrate across devices
+- **Backup & Restore** — Export settings and complete chat history as JSON and restore them on another device; provider and voice API keys are excluded
 - **Bilingual** — 中文 / English
 - **Responsive** — Adaptive layout for desktop and narrow screens
 
@@ -137,11 +137,11 @@ Connect to external tool servers via [Model Context Protocol](https://modelconte
 |-------|-----------|
 | Desktop | Tauri 2 (Rust) |
 | Frontend | React 19 · Vite |
-| Routing | react-router-dom |
+| Mobile Navigation | Stackflow |
 | State | Zustand |
 | Database | tauri-plugin-sql (SQLite) |
 | Styling | TailwindCSS v4 · shadcn/ui · Radix UI |
-| AI | Custom SSE streaming client (OpenAI compatible) |
+| AI | AI SDK · multi-protocol provider adapters · unified streaming runtime |
 | Tools | @modelcontextprotocol/sdk |
 | Rendering | react-markdown · Mermaid · KaTeX |
 | Animation | Framer Motion |
@@ -182,8 +182,12 @@ talkio/
 │   │   ├── shared/             # Shared components (ChatView / ChatInput / Markdown etc.)
 │   │   └── ui/                 # shadcn/ui base components
 │   ├── services/               # Business logic (AI API / MCP / backup & export)
+│   │   ├── provider-adapters/   # Provider protocol adapters
+│   │   ├── provider-profiles/   # Provider presets and model catalog
+│   │   └── runtime/             # Unified model runtime
 │   ├── stores/                 # Zustand state management
 │   ├── storage/                # Persistence (SQLite · KV Store)
+│   ├── contexts/               # React contexts
 │   ├── hooks/                  # React Hooks
 │   ├── i18n/                   # Internationalization (中文 / English)
 │   ├── pages/                  # Page components
