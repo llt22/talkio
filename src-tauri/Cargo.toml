@@ -1,6 +1,6 @@
 [package]
 name = "talkio"
-version = "2.13.3"
+version = "2.14.0"
 description = "Talkio - AI Chat Client"
 authors = ["lilongtao"]
 license = "MIT"
