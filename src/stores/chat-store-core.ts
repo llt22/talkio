@@ -78,16 +78,19 @@ export function deriveConversationViewState(
   id: string | null,
   currentConversationId: string | null,
   abortControllers: Map<string, AbortController>,
+  participantAbortControllers: Map<string, AbortController>,
   streamingMessages: Map<string, StreamingState>,
 ): {
   currentConversationId: string | null;
   isGenerating: boolean;
+  canSkipCurrent: boolean;
   streamingMessages: StreamingState[];
 } | null {
   if (id === currentConversationId) return null;
   return {
     currentConversationId: id,
     isGenerating: id ? abortControllers.has(id) : false,
+    canSkipCurrent: id ? participantAbortControllers.has(id) : false,
     streamingMessages: id
       ? Array.from(streamingMessages.values()).filter((state) => state.cid === id)
       : [],
@@ -97,27 +100,41 @@ export function deriveConversationViewState(
 export function stopConversationGeneration(
   currentConversationId: string | null,
   abortControllers: Map<string, AbortController>,
-): { autoDiscussRemaining: number } | null {
+): { autoDiscussRemaining: number; canSkipCurrent: false } | null {
   if (!currentConversationId) return null;
   const controller = abortControllers.get(currentConversationId);
   if (!controller) return null;
   controller.abort();
-  return { autoDiscussRemaining: 0 };
+  return { autoDiscussRemaining: 0, canSkipCurrent: false };
+}
+
+export function skipCurrentParticipant(
+  currentConversationId: string | null,
+  participantAbortControllers: Map<string, AbortController>,
+): boolean {
+  if (!currentConversationId) return false;
+  const controller = participantAbortControllers.get(currentConversationId);
+  if (!controller) return false;
+  participantAbortControllers.delete(currentConversationId);
+  controller.abort();
+  return true;
 }
 
 export function clearConversationRuntime(
   conversationId: string,
   currentConversationId: string | null,
   abortControllers: Map<string, AbortController>,
+  participantAbortControllers: Map<string, AbortController>,
   streamingMessages: Map<string, StreamingState>,
-): { isGenerating: false; streamingMessages: StreamingState[] } | null {
+): { isGenerating: false; canSkipCurrent: false; streamingMessages: StreamingState[] } | null {
   abortControllers.get(conversationId)?.abort();
   abortControllers.delete(conversationId);
+  participantAbortControllers.delete(conversationId);
 
   for (const [messageId, state] of streamingMessages) {
     if (state.cid === conversationId) streamingMessages.delete(messageId);
   }
 
   if (conversationId !== currentConversationId) return null;
-  return { isGenerating: false, streamingMessages: [] };
+  return { isGenerating: false, canSkipCurrent: false, streamingMessages: [] };
 }

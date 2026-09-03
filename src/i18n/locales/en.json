@@ -138,6 +138,8 @@
     "autoDiscussProgress": "Round {{current}}/{{total}}",
     "autoDiscussRunning": "Auto-pilot",
     "autoDiscussStop": "Stop",
+    "skipCurrent": "Skip current AI",
+    "stopGeneration": "Stop generating",
     "autoDiscussNeedMessage": "Send a message first to set the discussion topic",
     "summary": "Summarize discussion",
     "summaryPickHost": "Choose moderator",

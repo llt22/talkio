@@ -58,6 +58,8 @@ export function ChatView({
   const streamingMessages = useChatStore((s: ChatState) => s.streamingMessages);
   const sendMessage = useChatStore((s: ChatState) => s.sendMessage);
   const stopGeneration = useChatStore((s: ChatState) => s.stopGeneration);
+  const skipCurrentParticipant = useChatStore((s: ChatState) => s.skipCurrentParticipant);
+  const canSkipCurrent = useChatStore((s: ChatState) => s.canSkipCurrent);
   const [showTaskPanel, setShowTaskPanel] = useState(false);
   const [promoteSource, setPromoteSource] = useState<Message | null>(null);
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
@@ -354,6 +356,8 @@ export function ChatView({
           onSend={handleSend}
           isGenerating={isGenerating}
           onStop={stopGeneration}
+          onSkip={skipCurrentParticipant}
+          canSkip={canSkipCurrent}
           isMobile={isMobile}
           modelName={modelName}
           onSwitchModel={onSwitchModel}
@@ -459,6 +463,8 @@ export function ChatView({
         onSend={handleSend}
         isGenerating={isGenerating}
         onStop={stopGeneration}
+        onSkip={skipCurrentParticipant}
+        canSkip={canSkipCurrent}
         isMobile={isMobile}
         modelName={modelName}
         onSwitchModel={onSwitchModel}

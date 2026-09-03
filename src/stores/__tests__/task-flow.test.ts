@@ -142,6 +142,7 @@ const dispatchArgs = {
   activeBranchId: null,
   getCurrentConversationId: () => "conversation-1",
   abortControllers: new Map<string, AbortController>(),
+  participantAbortControllers: new Map<string, AbortController>(),
   streamingMessages: new Map(),
   setStoreState: vi.fn(),
 };

@@ -165,6 +165,7 @@ function makeArgs(overrides: Partial<Parameters<typeof dispatchMessageGeneration
     activeBranchId: null,
     getCurrentConversationId: () => "conv-1",
     abortControllers: new Map(),
+    participantAbortControllers: new Map(),
     streamingMessages: new Map(),
     setStoreState: vi.fn(),
     images: [],
@@ -225,6 +226,66 @@ describe("dispatchMessageGeneration", () => {
       expect(calls[0][2]).toBe(0);
       expect(calls[1][1]).toMatchObject({ id: "p2" });
       expect(calls[1][2]).toBe(1);
+    });
+
+    it("skips the active participant and continues with the next target", async () => {
+      mockResolveTargetParticipants.mockReturnValue([
+        { id: "p1", nickname: "Alice", modelId: "m1", identityId: null },
+        { id: "p2", nickname: "Bob", modelId: "m2", identityId: null },
+      ]);
+      mockGetConversation.mockResolvedValue(makeConversation({ speakingOrder: "sequential" }));
+      mockGenerateForParticipant.mockImplementationOnce(
+        (ctx: { abortController: AbortController }) =>
+          new Promise<string>((resolve) => {
+            ctx.abortController.signal.addEventListener("abort", () => resolve(""), { once: true });
+          }),
+      );
+
+      const args = makeArgs();
+      const generation = dispatchMessageGeneration(args);
+      await vi.waitFor(() => expect(args.participantAbortControllers.has("conv-1")).toBe(true));
+
+      args.participantAbortControllers.get("conv-1")?.abort();
+      await generation;
+
+      expect(mockGenerateForParticipant).toHaveBeenCalledTimes(2);
+      expect((mockGenerateForParticipant as Mock).mock.calls[1][1]).toMatchObject({ id: "p2" });
+      expect(args.participantAbortControllers.size).toBe(0);
+      expect(args.setStoreState).toHaveBeenCalledWith({ canSkipCurrent: true });
+    });
+
+    it("does not offer skip when there is no next target", async () => {
+      mockResolveTargetParticipants.mockReturnValue([
+        { id: "p1", nickname: "Alice", modelId: "m1", identityId: null },
+      ]);
+
+      const args = makeArgs();
+      await dispatchMessageGeneration(args);
+
+      expect(args.participantAbortControllers.size).toBe(0);
+      expect(args.setStoreState).not.toHaveBeenCalledWith({ canSkipCurrent: true });
+    });
+
+    it("stops the whole queue when the conversation controller is aborted", async () => {
+      mockResolveTargetParticipants.mockReturnValue([
+        { id: "p1", nickname: "Alice", modelId: "m1", identityId: null },
+        { id: "p2", nickname: "Bob", modelId: "m2", identityId: null },
+      ]);
+      mockGenerateForParticipant.mockImplementationOnce(
+        (ctx: { abortController: AbortController }) =>
+          new Promise<string>((resolve) => {
+            ctx.abortController.signal.addEventListener("abort", () => resolve(""), { once: true });
+          }),
+      );
+
+      const args = makeArgs();
+      const generation = dispatchMessageGeneration(args);
+      await vi.waitFor(() => expect(args.abortControllers.has("conv-1")).toBe(true));
+
+      args.abortControllers.get("conv-1")?.abort();
+      await generation;
+
+      expect(mockGenerateForParticipant).toHaveBeenCalledTimes(1);
     });
 
     it("returns early if conversation is not found", async () => {

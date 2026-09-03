@@ -6,6 +6,7 @@ import {
   Image,
   ArrowLeftRight,
   Square,
+  SkipForward,
   Mic,
   MessagesSquare,
   AtSign,
@@ -37,6 +38,8 @@ interface ChatInputProps {
   onSend: (text: string, mentionedParticipantIds?: string[], images?: string[]) => void;
   isGenerating: boolean;
   onStop: () => void;
+  onSkip?: () => void;
+  canSkip?: boolean;
   placeholder?: string;
   modelName?: string;
   onSwitchModel?: () => void;
@@ -59,6 +62,8 @@ export const ChatInput = memo(function ChatInput({
   onSend,
   isGenerating,
   onStop,
+  onSkip,
+  canSkip = false,
   placeholder,
   modelName,
   onSwitchModel,
@@ -600,16 +605,30 @@ export const ChatInput = memo(function ChatInput({
               }}
             />
           </div>
-          <button
-            onClick={onStopAutoDiscuss}
-            className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 active:opacity-70"
-            style={{ backgroundColor: "var(--secondary)", border: "0.5px solid var(--border)" }}
-          >
-            <Square size={12} color="var(--destructive)" />
-            <span className="text-[14px] font-medium" style={{ color: "var(--destructive)" }}>
-              {t("chat.autoDiscussStop")}
-            </span>
-          </button>
+          <div className="flex gap-2">
+            {canSkip && onSkip && (
+              <button
+                onClick={onSkip}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 active:opacity-70"
+                style={{ backgroundColor: "var(--secondary)", border: "0.5px solid var(--border)" }}
+              >
+                <SkipForward size={15} color="var(--primary)" />
+                <span className="text-[14px] font-medium" style={{ color: "var(--primary)" }}>
+                  {t("chat.skipCurrent")}
+                </span>
+              </button>
+            )}
+            <button
+              onClick={onStopAutoDiscuss}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 active:opacity-70"
+              style={{ backgroundColor: "var(--secondary)", border: "0.5px solid var(--border)" }}
+            >
+              <Square size={12} color="var(--destructive)" />
+              <span className="text-[14px] font-medium" style={{ color: "var(--destructive)" }}>
+                {t("chat.autoDiscussStop")}
+              </span>
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -737,13 +756,28 @@ export const ChatInput = memo(function ChatInput({
                   className={`text-foreground placeholder:text-muted-foreground/50 flex-1 resize-none bg-transparent outline-none ${isMobile ? "max-h-24 min-h-[44px] py-2.5 text-[16px]" : "max-h-32 min-h-[36px] py-2 text-[14px]"}`}
                 />
                 {isGenerating ? (
-                  <button
-                    onClick={onStop}
-                    className="my-1.5 ml-1.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full active:opacity-70"
-                    style={{ backgroundColor: "var(--destructive)" }}
-                  >
-                    <Square size={14} color="white" />
-                  </button>
+                  <div className="ml-1.5 flex flex-shrink-0 items-center gap-1">
+                    {canSkip && onSkip && (
+                      <button
+                        onClick={onSkip}
+                        aria-label={t("chat.skipCurrent")}
+                        title={t("chat.skipCurrent")}
+                        className="my-1.5 flex h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+                        style={{ backgroundColor: "var(--secondary)" }}
+                      >
+                        <SkipForward size={17} color="var(--primary)" />
+                      </button>
+                    )}
+                    <button
+                      onClick={onStop}
+                      aria-label={t("chat.stopGeneration")}
+                      title={t("chat.stopGeneration")}
+                      className="my-1.5 flex h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+                      style={{ backgroundColor: "var(--destructive)" }}
+                    >
+                      <Square size={14} color="white" />
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={handleSend}

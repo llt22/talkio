@@ -15,7 +15,7 @@ vi.hoisted(() => {
   (globalThis as unknown as { localStorage: typeof storage }).localStorage = storage;
 });
 
-import { clearConversationRuntime } from "../chat-store-core";
+import { clearConversationRuntime, skipCurrentParticipant } from "../chat-store-core";
 
 describe("clearConversationRuntime", () => {
   it("aborts generation and removes only the cleared conversation streams", () => {
@@ -37,14 +37,22 @@ describe("clearConversationRuntime", () => {
       ],
     ]);
 
-    const state = clearConversationRuntime("conv-1", "conv-1", abortControllers, streamingMessages);
+    const participantAbortControllers = new Map([["conv-1", controller]]);
+    const state = clearConversationRuntime(
+      "conv-1",
+      "conv-1",
+      abortControllers,
+      participantAbortControllers,
+      streamingMessages,
+    );
 
     expect(abortSpy).toHaveBeenCalledOnce();
     expect(abortControllers.has("conv-1")).toBe(false);
     expect(abortControllers.get("conv-2")).toBe(otherController);
+    expect(participantAbortControllers.has("conv-1")).toBe(false);
     expect(streamingMessages.has("message-1")).toBe(false);
     expect(streamingMessages.has("message-2")).toBe(true);
-    expect(state).toEqual({ isGenerating: false, streamingMessages: [] });
+    expect(state).toEqual({ isGenerating: false, canSkipCurrent: false, streamingMessages: [] });
   });
 
   it("cleans a background conversation without replacing the active UI streams", () => {
@@ -55,7 +63,30 @@ describe("clearConversationRuntime", () => {
       ],
     ]);
 
-    expect(clearConversationRuntime("conv-1", "conv-2", new Map(), streamingMessages)).toBeNull();
+    expect(
+      clearConversationRuntime("conv-1", "conv-2", new Map(), new Map(), streamingMessages),
+    ).toBeNull();
     expect(streamingMessages.size).toBe(0);
+  });
+});
+
+describe("skipCurrentParticipant", () => {
+  it("aborts only the active participant controller", () => {
+    const current = new AbortController();
+    const other = new AbortController();
+    const controllers = new Map([
+      ["conv-1", current],
+      ["conv-2", other],
+    ]);
+
+    expect(skipCurrentParticipant("conv-1", controllers)).toBe(true);
+    expect(current.signal.aborted).toBe(true);
+    expect(other.signal.aborted).toBe(false);
+    expect(controllers.has("conv-1")).toBe(false);
+  });
+
+  it("does nothing without a skippable participant", () => {
+    expect(skipCurrentParticipant("conv-1", new Map())).toBe(false);
+    expect(skipCurrentParticipant(null, new Map())).toBe(false);
   });
 });
