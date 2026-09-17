@@ -10,6 +10,7 @@ describe("provider profile registry", () => {
       "gemini",
       "azure-openai",
       "openrouter",
+      "api-route",
       "deepseek",
       "groq",
       "together",
@@ -39,6 +40,17 @@ describe("provider profile registry", () => {
   it("anthropic sends the version header by default", () => {
     const anthropic = getProfile("anthropic");
     expect(anthropic?.endpoint.headers?.["anthropic-version"]).toBe("2023-06-01");
+  });
+
+  it("configures API Route as an OpenAI-compatible gateway", () => {
+    const apiRoute = getProfile("api-route");
+    expect(apiRoute).toMatchObject({
+      name: "API Route",
+      protocol: "chat-completions",
+      endpoint: { baseUrl: "https://global.api-route.com/v1" },
+      auth: { type: "bearer" },
+      modelDiscovery: { type: "openai-models" },
+    });
   });
 
   it("ollama discovers via ollama-tags, anthropic via manual", () => {

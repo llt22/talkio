@@ -64,6 +64,14 @@ export const PROVIDER_PROFILES: ProviderProfile[] = [
     },
   },
   {
+    id: "api-route",
+    name: "API Route",
+    protocol: "chat-completions",
+    endpoint: { baseUrl: "https://global.api-route.com/v1" },
+    auth: { type: "bearer", secretRef: "" },
+    modelDiscovery: { type: "openai-models" },
+  },
+  {
     id: "deepseek",
     name: "DeepSeek",
     protocol: "chat-completions",
