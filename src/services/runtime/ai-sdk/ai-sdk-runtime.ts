@@ -25,6 +25,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogle } from "@ai-sdk/google";
 import { APICallError, type LanguageModelV4 } from "@ai-sdk/provider";
 import { appFetch } from "../../../lib/http";
+import { createStreamedCompletionFetch } from "./streamed-completion-fetch";
 import type { ApiFormat } from "../../../types";
 import type { GenerationEvent, GenerationError } from "../events";
 import type { ParticipantRequest, ParticipantRuntime } from "../types";
@@ -116,7 +117,8 @@ export function getLanguageModel(opts: ModelResolveOptions): LanguageModelV4 {
         queryParams,
         apiKey: usesHeaderApiKey ? undefined : apiKey,
         headers,
-        fetch,
+        // Gateways such as Chatbox AI stream even when the request asks for JSON.
+        fetch: createStreamedCompletionFetch(fetch),
         includeUsage: true,
       }).chatModel(opts.modelId);
       break;
