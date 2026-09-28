@@ -56,7 +56,7 @@ describe("AI SDK model probes", () => {
   });
 
   it("checks model health through the same SDK model resolver", async () => {
-    mocks.generateText.mockResolvedValueOnce({ text: "ok" });
+    mocks.generateText.mockResolvedValueOnce({ text: "ok", toolCalls: [] });
     await expect(checkModelHealth(provider, "model-1")).resolves.toEqual({ ok: true });
 
     mocks.generateText.mockRejectedValueOnce(new Error("unreachable"));

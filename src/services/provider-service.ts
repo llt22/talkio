@@ -36,6 +36,120 @@ function errorDetail(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** Completion recovered from an SSE body a gateway returned to a non-streaming request. */
+interface StreamedCompletion {
+  statusCode: number;
+  text: string;
+  toolCalls: string[];
+  streamError?: string;
+}
+
+/** A well-formed SSE frame carrying a JSON payload. */
+const SSE_DATA_LINE = /^data:\s*[{[]/m;
+
+const streamedChunkSchema = z.object({
+  choices: z
+    .array(
+      z.object({
+        delta: z
+          .object({
+            content: z.string().nullish(),
+            tool_calls: z
+              .array(
+                z.object({
+                  function: z.object({ name: z.string().nullish() }).nullish(),
+                }),
+              )
+              .nullish(),
+          })
+          .nullish(),
+      }),
+    )
+    .nullish(),
+  error: z.union([z.string(), z.object({ message: z.string().nullish() })]).nullish(),
+});
+
+/**
+ * Some OpenAI-compatible gateways (Chatbox AI, several proxies) answer
+ * non-streaming requests with an SSE stream regardless of `stream: false`. The
+ * AI SDK parses non-streaming bodies as JSON, so those responses surface as a
+ * 2xx `APICallError` instead of a completion. Rebuild the completion from the
+ * raw body so reachability and capability probes keep working.
+ *
+ * Returns undefined when the error is not an SSE completion, e.g. a real HTTP
+ * failure or a non-SSE error page.
+ */
+function recoverStreamedCompletion(error: unknown): StreamedCompletion | undefined {
+  if (!APICallError.isInstance(error)) return undefined;
+  const statusCode = error.statusCode;
+  if (statusCode === undefined || statusCode < 200 || statusCode >= 300) return undefined;
+  const body = error.responseBody;
+  if (!body || !SSE_DATA_LINE.test(body)) return undefined;
+
+  const text: string[] = [];
+  const toolCalls: string[] = [];
+  let streamError: string | undefined;
+
+  for (const line of body.split(/\r?\n/)) {
+    if (!line.startsWith("data:")) continue;
+    const payload = line.slice("data:".length).trim();
+    if (!payload || payload === "[DONE]") continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(payload);
+    } catch {
+      continue;
+    }
+    const chunk = streamedChunkSchema.safeParse(parsed);
+    if (!chunk.success) continue;
+    const { error: chunkError, choices } = chunk.data;
+    if (chunkError != null) {
+      streamError =
+        typeof chunkError === "string" ? chunkError : (chunkError.message ?? "Stream error");
+    }
+    for (const choice of choices ?? []) {
+      const delta = choice.delta;
+      if (delta?.content) text.push(delta.content);
+      for (const call of delta?.tool_calls ?? []) {
+        const name = call.function?.name;
+        if (name) toolCalls.push(name);
+      }
+    }
+  }
+
+  return { statusCode, text: text.join(""), toolCalls, streamError };
+}
+
+type ProbeResponse =
+  | { status: "ok" | "streamed"; text: string; toolCalls: string[] }
+  | { status: "error"; error: string };
+
+/**
+ * Run one non-streaming probe request, transparently supporting gateways that
+ * answer with SSE whether or not streaming was requested.
+ */
+async function runProbeRequest(
+  options: Parameters<typeof generateText>[0],
+): Promise<ProbeResponse> {
+  try {
+    const result = await generateText(options);
+    return {
+      status: "ok",
+      text: result.text,
+      toolCalls: result.toolCalls.map((call) => call.toolName),
+    };
+  } catch (error) {
+    const streamed = recoverStreamedCompletion(error);
+    if (streamed?.streamError) {
+      return { status: "error", error: `HTTP ${streamed.statusCode}: ${streamed.streamError}` };
+    }
+    if (streamed) {
+      return { status: "streamed", text: streamed.text, toolCalls: streamed.toolCalls };
+    }
+    return { status: "error", error: errorDetail(error) };
+  }
+}
+
 export interface ProviderModelPayload {
   id: string;
   object?: string;
@@ -161,53 +275,49 @@ export async function probeProviderModelCapabilities(
   const capabilities: Partial<ModelCapabilities> = {};
   const warnings: string[] = [];
 
-  try {
-    await generateText({
-      model,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Describe this image in one word." },
-            { type: "image", image: PROBE_IMAGE },
-          ],
-        },
-      ],
-      maxOutputTokens: 8,
-      maxRetries: 0,
-      abortSignal: AbortSignal.timeout(15000),
-    });
-    capabilities.vision = true;
-  } catch (error) {
-    warnings.push(`Vision probe failed: ${errorDetail(error)}`);
-  }
-
-  try {
-    const result = await generateText({
-      model,
-      prompt: "Call the test tool.",
-      tools: {
-        test: tool({
-          description: "Capability probe tool",
-          inputSchema: jsonSchema<Record<string, never>>({
-            type: "object",
-            additionalProperties: false,
-            properties: {},
-          }),
-        }),
+  const vision = await runProbeRequest({
+    model,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Describe this image in one word." },
+          { type: "image", image: PROBE_IMAGE },
+        ],
       },
-      toolChoice: { type: "tool", toolName: "test" },
-      maxOutputTokens: 8,
-      maxRetries: 0,
-      abortSignal: AbortSignal.timeout(15000),
-    });
-    if (result.toolCalls.some((call) => call.toolName === "test")) {
-      capabilities.toolCall = true;
-    } else {
-      warnings.push("Tool probe completed without a tool call");
-    }
-  } catch (error) {
-    warnings.push(`Tool probe failed: ${errorDetail(error)}`);
+    ],
+    maxOutputTokens: 8,
+    maxRetries: 0,
+    abortSignal: AbortSignal.timeout(15000),
+  });
+  // Either transport confirms the model accepted the image input.
+  if (vision.status !== "error") capabilities.vision = true;
+  else warnings.push(`Vision probe failed: ${vision.error}`);
+
+  const tools = await runProbeRequest({
+    model,
+    prompt: "Call the test tool.",
+    tools: {
+      test: tool({
+        description: "Capability probe tool",
+        inputSchema: jsonSchema<Record<string, never>>({
+          type: "object",
+          additionalProperties: false,
+          properties: {},
+        }),
+      }),
+    },
+    toolChoice: { type: "tool", toolName: "test" },
+    maxOutputTokens: 8,
+    maxRetries: 0,
+    abortSignal: AbortSignal.timeout(15000),
+  });
+  if (tools.status === "error") {
+    warnings.push(`Tool probe failed: ${tools.error}`);
+  } else if (tools.toolCalls.includes("test")) {
+    capabilities.toolCall = true;
+  } else {
+    warnings.push("Tool probe completed without a tool call");
   }
 
   return { capabilities, warnings };
@@ -221,16 +331,14 @@ export async function checkModelHealth(
   provider: Provider,
   modelId: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  try {
-    await generateText({
-      model: resolveSdkModel(provider, modelId),
-      prompt: "hi",
-      maxOutputTokens: 1,
-      maxRetries: 0,
-      abortSignal: AbortSignal.timeout(15000),
-    });
-    return { ok: true };
-  } catch (error) {
-    return { ok: false, error: errorDetail(error) };
-  }
+  const result = await runProbeRequest({
+    model: resolveSdkModel(provider, modelId),
+    prompt: "hi",
+    maxOutputTokens: 1,
+    maxRetries: 0,
+    abortSignal: AbortSignal.timeout(15000),
+  });
+  if (result.status === "error") return { ok: false, error: result.error };
+  // A streamed body without text still proves the endpoint answered the request.
+  return { ok: true };
 }
