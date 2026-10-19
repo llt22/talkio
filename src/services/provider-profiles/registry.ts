@@ -104,6 +104,14 @@ export const PROVIDER_PROFILES: ProviderProfile[] = [
     modelDiscovery: { type: "openai-models" },
   },
   {
+    id: "atlascloud",
+    name: "Atlas Cloud",
+    protocol: "chat-completions",
+    endpoint: { baseUrl: "https://api.atlascloud.ai/v1" },
+    auth: { type: "bearer", secretRef: "" },
+    modelDiscovery: { type: "openai-models" },
+  },
+  {
     id: "ollama",
     name: "Ollama",
     protocol: "chat-completions",

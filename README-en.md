@@ -111,7 +111,7 @@ Connect to external tool servers via [Model Context Protocol](https://modelconte
 
 ## More Features
 
-- **Multi-Provider** — Built-in presets for OpenAI, Anthropic, Google Gemini, Azure OpenAI, OpenRouter, DeepSeek, Groq, Ollama, and more; supports Responses, Chat Completions, Anthropic Messages, and Gemini Generate Content protocols
+- **Multi-Provider** — Built-in presets for OpenAI, Anthropic, Google Gemini, Azure OpenAI, OpenRouter, DeepSeek, Groq, Atlas Cloud, Ollama, and more; supports Responses, Chat Completions, Anthropic Messages, and Gemini Generate Content protocols
 - **Streaming Output** — Real-time rendering with Markdown / syntax highlighting / Mermaid diagrams / HTML preview
 - **Deep Reasoning** — Supports reasoning_content and `<think>` tags from DeepSeek, Qwen, etc.
 - **Workspace Tools** — Bind a local project directory, AI can read, search, and edit files with per-file preview confirmation

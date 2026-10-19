@@ -111,7 +111,7 @@ Talkio 不只是又一个 ChatGPT 客户端——你可以把多个 AI 模型拉
 
 ## 更多功能
 
-- **多 Provider** — 内置 OpenAI、Anthropic、Google Gemini、Azure OpenAI、OpenRouter、DeepSeek、Groq、Ollama 等预设，支持 Responses、Chat Completions、Anthropic Messages 和 Gemini Generate Content 协议
+- **多 Provider** — 内置 OpenAI、Anthropic、Google Gemini、Azure OpenAI、OpenRouter、DeepSeek、Groq、Atlas Cloud、Ollama 等预设，支持 Responses、Chat Completions、Anthropic Messages 和 Gemini Generate Content 协议
 - **流式输出** — 实时渲染，支持 Markdown / 代码高亮 / Mermaid 图表 / HTML 预览
 - **深度推理** — 支持 DeepSeek、Qwen 等模型的 reasoning_content 和 `<think>` 标签
 - **工作区工具** — 绑定本地项目目录，AI 可读取、搜索、编辑文件，支持逐文件预览确认
