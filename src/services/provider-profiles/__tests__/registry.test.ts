@@ -16,6 +16,7 @@ describe("provider profile registry", () => {
       "together",
       "fireworks",
       "atlascloud",
+      "cheaperinference",
       "ollama",
       "lm-studio",
       "vllm",
