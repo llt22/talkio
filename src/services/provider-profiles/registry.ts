@@ -112,6 +112,14 @@ export const PROVIDER_PROFILES: ProviderProfile[] = [
     modelDiscovery: { type: "openai-models" },
   },
   {
+    id: "opper",
+    name: "Opper",
+    protocol: "chat-completions",
+    endpoint: { baseUrl: "https://api.opper.ai/v3/compat" },
+    auth: { type: "bearer", secretRef: "" },
+    modelDiscovery: { type: "openai-models" },
+  },
+  {
     id: "ollama",
     name: "Ollama",
     protocol: "chat-completions",
