@@ -112,6 +112,14 @@ export const PROVIDER_PROFILES: ProviderProfile[] = [
     modelDiscovery: { type: "openai-models" },
   },
   {
+    id: "runcrate",
+    name: "Runcrate",
+    protocol: "chat-completions",
+    endpoint: { baseUrl: "https://api.runcrate.ai/v1" },
+    auth: { type: "bearer", secretRef: "" },
+    modelDiscovery: { type: "openai-models" },
+  },
+  {
     id: "ollama",
     name: "Ollama",
     protocol: "chat-completions",
