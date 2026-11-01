@@ -46,7 +46,8 @@ const modelPayloadSchema = z
   .object({
     id: z.string().min(1),
     object: z.string().optional(),
-    context_length: z.number().finite().optional(),
+    // Some providers (e.g. Poe) return null for models without a known context window.
+    context_length: z.number().finite().nullish(),
   })
   .passthrough();
 const modelListSchema = z.union([
@@ -122,7 +123,11 @@ export async function fetchProviderModels(provider: Provider): Promise<ProviderM
   }
   const parsed = modelListSchema.parse(json);
   const models = Array.isArray(parsed) ? parsed : parsed.data;
-  return models.map(({ id, object, context_length }) => ({ id, object, context_length }));
+  return models.map(({ id, object, context_length }) => ({
+    id,
+    object,
+    context_length: context_length ?? undefined,
+  }));
 }
 
 export async function testProviderConnection(provider: Provider): Promise<boolean> {
