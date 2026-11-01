@@ -153,6 +153,9 @@ export async function testProviderConnection(provider: Provider): Promise<boolea
   return res.ok;
 }
 
+// OpenAI Responses API rejects max_output_tokens below 16.
+const MIN_OUTPUT_TOKENS = 16;
+
 export async function probeProviderModelCapabilities(
   provider: Provider,
   modelId: string,
@@ -173,7 +176,7 @@ export async function probeProviderModelCapabilities(
           ],
         },
       ],
-      maxOutputTokens: 8,
+      maxOutputTokens: MIN_OUTPUT_TOKENS,
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(15000),
     });
@@ -197,7 +200,7 @@ export async function probeProviderModelCapabilities(
         }),
       },
       toolChoice: { type: "tool", toolName: "test" },
-      maxOutputTokens: 8,
+      maxOutputTokens: MIN_OUTPUT_TOKENS,
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(15000),
     });
@@ -225,7 +228,7 @@ export async function checkModelHealth(
     await generateText({
       model: resolveSdkModel(provider, modelId),
       prompt: "hi",
-      maxOutputTokens: 1,
+      maxOutputTokens: MIN_OUTPUT_TOKENS,
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(15000),
     });
