@@ -10,6 +10,7 @@ describe("provider profile registry", () => {
       "gemini",
       "azure-openai",
       "openrouter",
+      "demonroute",
       "api-route",
       "deepseek",
       "groq",

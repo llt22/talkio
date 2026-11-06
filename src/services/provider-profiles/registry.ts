@@ -64,6 +64,14 @@ export const PROVIDER_PROFILES: ProviderProfile[] = [
     },
   },
   {
+    id: "demonroute",
+    name: "Demon Route",
+    protocol: "chat-completions",
+    endpoint: { baseUrl: "https://api.demonroute.com/v1" },
+    auth: { type: "bearer", secretRef: "" },
+    modelDiscovery: { type: "openai-models" },
+  },
+  {
     id: "api-route",
     name: "API Route",
     protocol: "chat-completions",
